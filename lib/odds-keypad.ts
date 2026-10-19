@@ -38,7 +38,10 @@ export type KeypadAction =
   | { type: "advance"; token: number }
   | { type: "confirm"; yes: boolean }
   // Kön har ändrat längd (t.ex. när omgången hämtades på nytt).
-  | { type: "resize"; total: number };
+  | { type: "resize"; total: number }
+  // X-faktorn byttes (E2.1, 6.8). Ett väntande hopp avbryts (räknas som ett
+  // nytt tryck), men siffrorna och det sparade oddset står kvar: Nästa krävs.
+  | { type: "hold" };
 
 export type KeypadEffect = { type: "save"; index: number; odds: number } | { type: "delete"; index: number };
 
@@ -63,6 +66,7 @@ export function keypadReduce(s: KeypadState, action: KeypadAction, ctx: KeypadCo
   const none = (state: KeypadState) => ({ state, effect: null });
 
   if (action.type === "resize") return none({ ...s, total: action.total, index: Math.min(s.index, action.total) });
+  if (action.type === "hold") return none(s.advance === null ? s : { ...s, advance: null });
   if (action.type === "advance") return none(s.advance !== null && s.advance === action.token ? moveTo(s, s.index + 1) : s);
   if (action.type === "confirm") {
     if (!s.confirmDelete) return none(s);
@@ -125,12 +129,15 @@ const sv = (x: number) => formatOdds(Math.abs(x));
 
 // Resultatraden i S4 för oddset i displayen (eller det sparade).
 // "0,70 över riktoddset · föreslås som Spelbar", "0,10 under riktoddset · inte spelbar".
-export function keypadVerdict(m: { odds: number | null; riktodds: number | null; interesting: boolean; override: Override; guideline: number }): Verdict {
+// Med X-faktor (E2.1) är riktodds riktoddset med X-faktor och ref
+// "riktoddset med X": "0,70 över riktoddset med X · föreslås som Spelbar".
+export function keypadVerdict(m: { odds: number | null; riktodds: number | null; interesting: boolean; override: Override; guideline: number; ref?: string }): Verdict {
+  const ref = m.ref ?? "riktoddset";
   const below = m.odds !== null && m.odds < m.guideline;
   if (m.odds === null) return { tone: "help", text: "Skriv tre siffror, till exempel 3 1 0 för 3,10.", below: false };
   if (m.riktodds === null) return { tone: "warn", text: "Riktodds saknas – hämta omgången igen. Oddset sparas ändå.", below };
   const d = oddsDiff(m.odds, m.riktodds)!;
-  const head = d > 0 ? `${sv(d)} över riktoddset` : d < 0 ? `${sv(d)} under riktoddset` : "Samma som riktoddset";
+  const head = d > 0 ? `${sv(d)} över ${ref}` : d < 0 ? `${sv(d)} under ${ref}` : `Samma som ${ref}`;
   let tail: string;
   if (d > 0) tail = !m.interesting ? "inte Intressant" : m.override === "OFF" ? "Spelbar borttagen av dig" : "föreslås som Spelbar";
   else tail = m.override === "ON" ? "Spelbar satt av dig" : "inte spelbar";
@@ -138,12 +145,14 @@ export function keypadVerdict(m: { odds: number | null; riktodds: number | null;
   return { tone: spelbar ? "ok" : "no", text: `${head} · ${tail}`, below };
 }
 
-// Meningen i RiktoddsBox (S3).
-export function riktoddsSentence(m: { unibetOdds: number | null; riktodds: number | null; interesting: boolean; spelbar: boolean; override: Override }): string {
+// Meningen i RiktoddsBox (S3). Med X-faktor (E2.1) är riktodds riktoddset med
+// X-faktor och ref "riktoddset med X-faktor".
+export function riktoddsSentence(m: { unibetOdds: number | null; riktodds: number | null; interesting: boolean; spelbar: boolean; override: Override; ref?: string }): string {
+  const ref = m.ref ?? "riktoddset";
   if (m.riktodds === null) return m.unibetOdds === null ? "Riktodds saknas för hästen." : "Riktodds saknas, så förslaget kan inte räknas.";
   if (m.unibetOdds === null) return "Fyll i Unibet-odds för att se om hästen är spelbar";
   const d = oddsDiff(m.unibetOdds, m.riktodds)!;
-  const how = d > 0 ? `Unibet ger ${sv(d)} mer än riktoddset` : d < 0 ? `Unibet ger ${sv(d)} mindre än riktoddset` : "Unibet ger samma odds som riktoddset";
+  const how = d > 0 ? `Unibet ger ${sv(d)} mer än ${ref}` : d < 0 ? `Unibet ger ${sv(d)} mindre än ${ref}` : `Unibet ger samma odds som ${ref}`;
   if (m.spelbar) return m.override === "ON" ? `Spelbar (satt av dig): ${how}` : `Spelbar: ${how}`;
   if (m.override === "OFF") return `Inte spelbar (borttagen av dig): ${how}`;
   if (!m.interesting && d > 0) return `${how}. Markera Intressant för att få förslaget.`;

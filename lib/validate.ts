@@ -1,6 +1,7 @@
 // Validering av kroppar till de skrivande rutterna. Rena funktioner: ger
 // antingen { ok: true, value } eller { ok: false, error } med en svensk mening.
 import type { ThemeSetting } from "@/lib/types";
+import { parseFactor } from "@/lib/xfactor";
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -49,15 +50,17 @@ export function parseCommentBody(body: Record<string, unknown>): Result<CommentI
   };
 }
 
-export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number };
+export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number; xFactorTror?: number; xFactorStark?: number };
 
 const hundredths = (x: number) => Math.abs(x * 100 - Math.round(x * 100)) < 1e-6;
 
-// PUT /api/settings: tema (E1), radpris och riktlinje (E2). Larmgränsen kommer i E3.
-// Bara fälten som skickas ändras.
+// PUT /api/settings: tema (E1), radpris och riktlinje (E2), X-faktorerna
+// (E2.1). Larmgränsen kommer i E3. Bara fälten som skickas ändras. Att Stark
+// känsla är större än Tror på kontrolleras mot det sparade värdet i
+// saveSettings (lib/e2-server.ts) när bara den ena skickas.
 export function parseSettingsBody(body: Record<string, unknown>): Result<SettingsInput> {
   if ("rushThresholdPe" in body) return fail("Den inställningen kommer i en senare version.");
-  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline"].includes(k));
+  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline", "xFactorTror", "xFactorStark"].includes(k));
   if (unknown.length) return fail("Okänd inställning.");
   const out: SettingsInput = {};
   if ("theme" in body) {
@@ -73,6 +76,12 @@ export function parseSettingsBody(body: Record<string, unknown>): Result<Setting
     const v = body.spelbarGuideline;
     if (typeof v !== "number" || !Number.isFinite(v) || v < 1.01 || v > 99.99 || !hundredths(v)) return fail("Riktlinjen ska ligga mellan 1,01 och 99,99.");
     out.spelbarGuideline = Math.round(v * 100) / 100;
+  }
+  for (const k of ["xFactorTror", "xFactorStark"] as const) {
+    if (!(k in body)) continue;
+    const f = parseFactor(body[k]);
+    if (!f.ok) return f;
+    out[k] = f.value;
   }
   if (!Object.keys(out).length) return fail("Inget att ändra.");
   return { ok: true, value: out };

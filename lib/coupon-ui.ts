@@ -15,7 +15,8 @@ export function couponLegs(data: RoundResponse): CouponLeg[] {
       scratched: s.scratched,
       spelbar: !!s.mark?.spelbar,
       interesting: !!s.mark?.interesting,
-      riktodds: s.riktodds,
+      // Från E2.1 sorteras på riktoddset med X-faktor (6.5). Utan Mark = riktodds.
+      riktodds: s.mark?.riktoddsX ?? s.riktodds,
       streck: s.streck,
     })),
   }));

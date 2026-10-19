@@ -24,6 +24,9 @@ const BADGE = {
   b: { short: "B", wide: "Bet", label: "Bet" },
   g: { short: "G", wide: "Galopp", label: "Galoppvarning: galopp i de 5 senaste starterna" },
   gd: { short: "GD", wide: "Galopp diskad", label: "Galoppvarning: galopp med diskning i de 5 senaste starterna" },
+  // X-faktor (E2.1, 6.8): "lysande" tavelstil.
+  x: { short: "X", wide: "Tror på", label: "X-faktor: Tror på" },
+  xp: { short: "X+", wide: "Stark känsla", label: "X-faktor: Stark känsla" },
 } as const;
 
 export function Badge({ kind, wide }: { kind: keyof typeof BADGE; wide?: boolean }) {
@@ -33,6 +36,12 @@ export function Badge({ kind, wide }: { kind: keyof typeof BADGE; wide?: boolean
       {wide ? b.wide : b.short}
     </span>
   );
+}
+
+// X-märket efter S och B. Inget märke för Ingen.
+export function XBadge({ x, wide }: { x: "NONE" | "TROR" | "STARK" | undefined; wide?: boolean }) {
+  if (!x || x === "NONE") return null;
+  return <Badge kind={x === "STARK" ? "xp" : "x"} wide={wide} />;
 }
 
 export function GallopBadge({ flag }: { flag: "G" | "GD" | null }) {

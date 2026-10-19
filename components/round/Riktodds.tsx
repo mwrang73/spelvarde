@@ -11,6 +11,8 @@ import { MIN_STARTERS } from "@/lib/riktodds";
 import { odds } from "@/lib/format";
 import { guidelineTag, riktoddsSentence } from "@/lib/odds-keypad";
 import type { RaceDto, RiktoddsDetailDto, StartDto, WhyRowDto } from "@/lib/types";
+import { calcLineWithX, factorText, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
+import { riktX, xOf } from "@/lib/xfactor-ui";
 
 // "v1, okalibrerad". Ingen version är kalibrerad i E2 (7.6).
 export const modelLabel = (key: string | null | undefined) => `${key ?? "v1"}, okalibrerad`;
@@ -39,6 +41,7 @@ export function RiktoddsBox({
   detailLoading,
   modelKey,
   guideline,
+  factors,
 }: {
   race: RaceDto;
   start: StartDto;
@@ -46,15 +49,28 @@ export function RiktoddsBox({
   detailLoading: boolean;
   modelKey: string | null;
   guideline: number;
+  factors: XFactorSettings;
 }) {
   const m = start.mark;
   const unibet = m?.unibetOdds ?? null;
   const rikt = start.riktodds;
+  // Med X-faktor (6.8): stora siffran är riktoddset med X-faktor, och meningen jämför mot det.
+  const x = xOf(m);
+  const rx = riktX(start, factors);
+  const withX = x !== "NONE" && rikt !== null && rx !== null;
   const below = unibet !== null && unibet < guideline;
   const sentence =
     rikt === null
       ? missingReason(race, start)
-      : riktoddsSentence({ unibetOdds: unibet, riktodds: rikt, interesting: !!m?.interesting, spelbar: !!m?.spelbar, override: m?.spelbarOverride ?? "NONE" });
+      : riktoddsSentence({
+          unibetOdds: unibet,
+          riktodds: withX ? rx : rikt,
+          interesting: !!m?.interesting,
+          spelbar: !!m?.spelbar,
+          override: m?.spelbarOverride ?? "NONE",
+          ref: withX ? "riktoddset med X-faktor" : undefined,
+        });
+  const unc = start.uncertain && rikt !== null;
   const hid = `rk-${start.id}`;
   return (
     <section className="hk-sec" aria-labelledby={hid}>
@@ -63,19 +79,25 @@ export function RiktoddsBox({
       </h3>
       {detail?.uncertainLine && <p className="unc">{detail.uncertainLine}</p>}
       {!detail && start.uncertain && rikt !== null && <p className="unc">Osäkert riktodds</p>}
-      <div className="rbox brd">
+      <div className={`rbox brd${withX ? " x" : ""}`}>
         <div>
-          <span className="k">Riktodds</span>
+          <span className="k">{withX ? "Med X-faktor" : "Riktodds"}</span>
           <div className="big num">
-            {odds(rikt)}
-            {start.uncertain && rikt !== null && (
+            {odds(withX ? rx : rikt)}
+            {unc && (
               <sup aria-hidden="true" title="Osäkert">
                 *
               </sup>
             )}
-            {start.uncertain && rikt !== null && <span className="sr"> (osäkert)</span>}
+            {unc && <span className="sr"> (osäkert)</span>}
           </div>
         </div>
+        {withX && (
+          <div>
+            <span className="k">Riktodds</span>
+            <div className="mid num">{odds(rikt)}</div>
+          </div>
+        )}
         <div>
           <span className="k">Unibet</span>
           <div className="mid num">{odds(unibet)}</div>
@@ -85,8 +107,13 @@ export function RiktoddsBox({
           <Sentence text={sentence} />
         </p>
       </div>
+      {withX && (
+        <p className="help xunder">
+          <span className="num">{factorText(x, factors)}</span> · {X_LABEL[x]}
+        </p>
+      )}
       {rikt !== null && (detail ? <WhyList pros={detail.pros} cons={detail.cons} /> : detailLoading ? <div className="sk-block"><Skeleton width="80%" /><Skeleton width="70%" /><Skeleton width="75%" /></div> : null)}
-      {detail && <p className="formula num">{detail.calcLine}</p>}
+      {detail && <p className="formula num">{calcLineWithX(detail.calcLine, rikt, x, factors)}</p>}
     </section>
   );
 }

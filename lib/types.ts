@@ -7,6 +7,7 @@ import type { FormSummary, GallopWarning } from "@/lib/gallop";
 import type { NextStep, Phase, PhaseStep } from "@/lib/phase";
 import type { InputKey } from "@/lib/riktodds";
 import type { Bucket, LeagueRow, StartnrGroup, StartnrLeg } from "@/lib/travstatistik";
+import type { XFactor } from "@/lib/xfactor";
 
 export type ApiError = { error: string; code?: string };
 
@@ -15,6 +16,7 @@ export type FetchStatus = "COMPLETE" | "PARTIAL" | "FAILED";
 export type ThemeSetting = "system" | "light" | "dark";
 export type SpelbarOverride = "NONE" | "ON" | "OFF";
 export type CommentKind = "NOTE" | "RACE";
+export type { XFactor } from "@/lib/xfactor";
 
 // ---- Hämtning -------------------------------------------------------------------
 
@@ -116,12 +118,23 @@ export type MarkDto = {
   unibetOddsAt: string | null;
   unibetOddsPrev: number | null;
   updatedAt: string;
-  // Beräknade (6.1) med det aktiva riktoddset.
+  // X-faktor (6.8, E2.1). xFactorAt = när läget sattes (null för NONE).
+  xFactor: XFactor;
+  xFactorAt: string | null;
+  // 1 för NONE, annars användarens faktor (1,25 / 1,50 som standard).
+  xFactorValue: number;
+  // Källstöd 0–20, null = inte ifyllt. Påverkar inte riktodds eller Spelbar.
+  sourceSupport: number | null;
+  // Beräknade (6.1) mot riktoddset med X-faktor (riktoddsX).
   forslag: boolean;
   spelbar: boolean;
-  // Det aktiva riktoddset som förslaget räknades mot (null = saknas).
+  // Det aktiva riktoddset utan X-faktor (null = saknas). Oförändrat från E2.
   riktodds: number | null;
-  // Unibet-oddset är under riktlinjen (2,00): taggen "Under 2,00".
+  // Riktoddset med X-faktor: max(1,01, round2(riktodds / faktor)), = riktodds
+  // för NONE, null när riktodds saknas. Det är detta förslaget räknas mot.
+  riktoddsX: number | null;
+  // Unibet-oddset är under riktlinjen (2,00): taggen "Under 2,00". Gäller
+  // Unibet-oddset, inte riktoddset med X-faktor.
   belowGuideline: boolean;
 };
 
@@ -214,9 +227,16 @@ export type RoundResponse = {
   coupon: CouponDto | null;
   // Modellversionen som riktoddsen kommer från.
   model: { id: string; key: string } | null;
-  // Användarens inställningar som S4 och S6 behöver.
-  settings: { spelbarGuideline: number; rowPrice: number };
+  // Användarens inställningar som S2–S6 behöver. X-faktorerna (E2.1) skickas
+  // alltid av servern. Äldre cachade svar (localStorage) kan sakna dem tills
+  // omgången har hämtats igen, så läs dem med xFactorsOf() i
+  // lib/round-overlay.ts, som faller tillbaka på standardfaktorerna.
+  settings: RoundSettings;
+  // Antal påslagna källor (Source.enabled) för användaren: m i "n av m källor" (6.8).
+  sourcesEnabled: number;
 };
+
+export type RoundSettings = { spelbarGuideline: number; rowPrice: number; xFactorTror: number; xFactorStark: number };
 
 export type LegSummary = {
   raceId: string;
@@ -417,7 +437,7 @@ export type ModelResponse = {
 };
 
 // GET/PUT /api/settings
-export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number };
+export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number; xFactorTror: number; xFactorStark: number };
 
 // /api/sources
 export type SourceDto = {

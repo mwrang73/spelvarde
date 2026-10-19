@@ -1,6 +1,10 @@
 // Spelbar (specen 6.1). Räknas fram vid läsning och lagras inte. Mikaels val
 // lagras som override: NONE (följer förslaget), ON (satt av dig) eller OFF
 // (borttagen av dig). Rena funktioner, testade i lib/spelbar.test.ts.
+//
+// Från E2.1 är `riktodds` i indata riktoddset MED X-faktor (riktoddsX i
+// lib/xfactor.ts). Anroparna (lib/dto.ts, lib/marks.ts, lib/round-overlay.ts)
+// räknar fram det först. Riktlinjen gäller fortfarande Unibet-oddset.
 
 export type Override = "NONE" | "ON" | "OFF";
 export type SpelbarInput = "on" | "off" | "auto";

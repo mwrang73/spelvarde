@@ -24,6 +24,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ageSex, dayDate, hhmm, kr, methodLabel, pct, shortRaceName } from "@/lib/format";
 import { PHASE_LABELS } from "@/lib/phase";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
+import { nextXFactor } from "@/lib/xfactor";
+import { xOf } from "@/lib/xfactor-ui";
 import { refetchStats, useFetchChain } from "./fetchChain";
 import { HorseCard } from "./HorseCard";
 import { Counts, MarkBadges, PhaseRail, RaceTabs, RiktCell, RoundLinks, firstTodoLeg } from "./parts";
@@ -31,6 +33,7 @@ import { RaceStatsContent } from "./RaceStats";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
 import { useRound } from "./RoundProvider";
 import { prefetchDetails } from "./roundStore";
+import { xLockReason } from "./XFactor";
 
 const PATH_RE = /^\/omgang\/([^/]+)\/avd\/(\d+)(?:\/hast\/([^/]+))?\/?$/;
 
@@ -49,7 +52,7 @@ const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
 
 export function RaceWorkspace() {
-  const { data, load, roundId, setInteresting, setReviewed } = useRound();
+  const { data, load, roundId, setInteresting, setReviewed, setXFactor } = useRound();
   const pathname = usePathname() ?? "";
   const { leg, startId } = parseRacePath(pathname);
 
@@ -66,7 +69,7 @@ export function RaceWorkspace() {
         </main>
       </>
     );
-  return <Workspace data={data} race={race} startId={startId} setInteresting={setInteresting} setReviewed={setReviewed} />;
+  return <Workspace data={data} race={race} startId={startId} setInteresting={setInteresting} setReviewed={setReviewed} setXFactor={setXFactor} />;
 }
 
 function Workspace({
@@ -75,12 +78,14 @@ function Workspace({
   startId,
   setInteresting,
   setReviewed,
+  setXFactor,
 }: {
   data: RoundResponse;
   race: RaceDto;
   startId: string | null;
   setInteresting: (race: RaceDto, start: StartDto, v: boolean) => void;
   setReviewed: (race: RaceDto, v: boolean) => void;
+  setXFactor: ReturnType<typeof useRound>["setXFactor"];
 }) {
   const roundId = data.round.id;
   const leg = race.leg;
@@ -145,6 +150,20 @@ function Workspace({
     [race, setInteresting, toast],
   );
 
+  // Tangenten X (Shift + X baklänges) stegar X-faktorn (6.8). Låst häst:
+  // ingenting ändras, och toasten (role="status") läser upp varför.
+  const stepX = useCallback(
+    (s: StartDto, backwards: boolean) => {
+      const locked = xLockReason(race, s);
+      if (locked) {
+        toast({ text: `${locked}. X-faktorn går inte att ändra.` });
+        return;
+      }
+      setXFactor(race, s, nextXFactor(xOf(s.mark), backwards));
+    },
+    [race, setXFactor, toast],
+  );
+
   // Fokus: rubriken i hästkortet när det öppnas i mobilen, och tillbaka till
   // raden när listan visas igen.
   const prevView = useRef(view);
@@ -177,8 +196,9 @@ function Workspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDesktop, roundId]);
 
-  // Tangentbord: ←/→ avdelning, och på desktop ↑/↓ vald rad, Enter
-  // hästkortet och I för Intressant.
+  // Tangentbord: ←/→ avdelning, X för X-faktorn i hästkortet (S3, och vald
+  // rad på desktop), och på desktop ↑/↓ vald rad, Enter hästkortet och I för
+  // Intressant.
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return;
@@ -187,6 +207,11 @@ function Workspace({
     if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !inTabs) {
       e.preventDefault();
       selectLeg(leg + (e.key === "ArrowRight" ? 1 : -1));
+      return;
+    }
+    if ((e.key === "x" || e.key === "X") && start) {
+      e.preventDefault();
+      stepX(start, e.shiftKey);
       return;
     }
     if (!window.matchMedia(DESKTOP_QUERY).matches) return;
@@ -383,7 +408,7 @@ function Workspace({
           <div className="twrap d-only">
             <table className="tbl">
               <caption className="sr">
-                Startlista avdelning {leg}. Välj rad med pil upp och ned, Enter öppnar hästkortet och I växlar Intressant.
+                Startlista avdelning {leg}. Välj rad med pil upp och ned, Enter öppnar hästkortet, I växlar Intressant och X stegar X-faktorn.
               </caption>
               <thead>
                 <tr>
@@ -417,7 +442,7 @@ function Workspace({
               </tbody>
             </table>
             <p className="help">
-              Vinst och plats: hela karriären (ATG). Spår %: startnumrets vinst % på distansen och startmetoden (travstatistik.se). Rikt: riktodds för plats, modell {data.model?.key ?? "v1"}, okalibrerad. * = osäkert.
+              Vinst och plats: hela karriären (ATG). Spår %: startnumrets vinst % på distansen och startmetoden (travstatistik.se). Rikt: riktodds för plats, modell {data.model?.key ?? "v1"}, okalibrerad. Med X-faktor står riktoddset med X överst och det vanliga under. * = osäkert.
             </p>
           </div>
 
@@ -430,7 +455,7 @@ function Workspace({
           ) : (
             <div className="pick d-only">
               <p>Välj en häst i listan för att se hästkortet.</p>
-              <p className="help">Pil upp och ned väljer rad, Enter går till hästkortet och I växlar Intressant.</p>
+              <p className="help">Pil upp och ned väljer rad, Enter går till hästkortet, I växlar Intressant och X stegar X-faktorn (Shift + X baklänges).</p>
             </div>
           )}
         </aside>
@@ -520,7 +545,7 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
       <td className="r num">{pct(s.quick.placePct, 0)}</td>
       <td className="r num">{pct(s.quick.postPct)}</td>
       <td className="r">
-        <RiktCell s={s} className="rk num dk" />
+        <RiktCell s={s} className="rk num dk" two />
       </td>
       <td className="c">
         <LampToggle on={on} horseName={s.horse.name} disabledReason={started ? "Loppet har startat" : s.scratched ? "Hästen är struken" : null} onToggle={() => onToggle(s, !on)} />

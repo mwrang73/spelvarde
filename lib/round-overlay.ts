@@ -12,14 +12,17 @@
 // applyDone(), så att läget inte blinkar tillbaka.
 //
 // Mark-poster (E2) läggs på med samma regler som servern (applyMarkChange i
-// lib/marks.ts), så att Spelbar, Bet och "Ändrat från" stämmer direkt.
+// lib/marks.ts), så att Spelbar, Bet och "Ändrat från" stämmer direkt. Från
+// E2.1 räknas förslaget mot riktoddset med X-faktor med användarens faktorer
+// ur data.settings (lib/xfactor.ts), precis som på servern.
 
 import { couponCost, rowCount, type Selections } from "@/lib/coupon";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, type MarkChange, type MarkState } from "@/lib/marks";
 import type { OutboxItem } from "@/lib/outbox";
 import { nextStep, type NextStepRace } from "@/lib/phase";
 import { belowGuideline, forslag, spelbar } from "@/lib/spelbar";
-import type { CommentDto, CommentKind, CouponDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, StartDto } from "@/lib/types";
+import type { CommentDto, CommentKind, CouponDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto } from "@/lib/types";
+import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
 
 // ---- Posternas meta ------------------------------------------------------------------
 
@@ -68,6 +71,8 @@ export function markWhat(item: OutboxItem): string {
   if (c.unibetOdds !== undefined || c.betOdds !== undefined) return "oddset";
   if (c.bet !== undefined) return "Bet";
   if (c.spelbar !== undefined) return "Spelbar";
+  if (c.xFactor !== undefined && c.interesting === undefined) return "X-faktor";
+  if (c.sourceSupport !== undefined && c.interesting === undefined) return "källstödet";
   return "Intressant";
 }
 
@@ -159,12 +164,27 @@ export function markStateOf(m: MarkDto | null): MarkState {
     unibetOdds: m.unibetOdds,
     unibetOddsAt: time(m.unibetOddsAt),
     unibetOddsPrev: m.unibetOddsPrev,
+    // Cachade svar från före E2.1 saknar fälten.
+    xFactor: m.xFactor ?? "NONE",
+    xFactorAt: time(m.xFactorAt ?? null),
+    sourceSupport: m.sourceSupport ?? null,
   };
 }
 
-// MarkState (optimistiskt läge) till MarkDto med beräknad Spelbar (6.1).
-export function markDtoOf(startId: string, s: MarkState, riktodds: number | null, guideline: number, updatedAt: string): MarkDto {
-  const base = { interesting: s.interesting, unibetOdds: s.unibetOdds, riktodds, override: s.spelbarOverride };
+// Användarens X-faktorer ur omgångens inställningar (standard om de saknas,
+// som i ett cachat svar från före E2.1).
+export function xFactorsOf(settings: Partial<RoundSettings> | null | undefined): XFactorSettings {
+  return {
+    xFactorTror: settings?.xFactorTror ?? DEFAULT_X_FACTORS.xFactorTror,
+    xFactorStark: settings?.xFactorStark ?? DEFAULT_X_FACTORS.xFactorStark,
+  };
+}
+
+// MarkState (optimistiskt läge) till MarkDto med beräknad Spelbar (6.1),
+// räknad mot riktoddset med X-faktor (6.8). Samma som markDto i lib/dto.ts.
+export function markDtoOf(startId: string, s: MarkState, riktodds: number | null, guideline: number, updatedAt: string, factors: XFactorSettings = DEFAULT_X_FACTORS): MarkDto {
+  const rx = riktoddsX(riktodds, s.xFactor, factors);
+  const base = { interesting: s.interesting, unibetOdds: s.unibetOdds, riktodds: rx, override: s.spelbarOverride };
   return {
     startId,
     interesting: s.interesting,
@@ -177,20 +197,40 @@ export function markDtoOf(startId: string, s: MarkState, riktodds: number | null
     unibetOddsAt: isoOf(s.unibetOddsAt),
     unibetOddsPrev: s.unibetOddsPrev,
     updatedAt,
+    xFactor: s.xFactor,
+    xFactorAt: isoOf(s.xFactorAt),
+    xFactorValue: factorFor(s.xFactor, factors),
+    sourceSupport: s.sourceSupport,
     forslag: forslag(base),
     spelbar: spelbar(base),
     riktodds,
+    riktoddsX: rx,
     belowGuideline: belowGuideline(s.unibetOdds, guideline),
   };
 }
 
 // Lägger ändringarna (i köns ordning) på hästens Mark. Tiden för varje
 // ändring är när den lades i kön, så att "Ändrat från … kl …" står still.
-function setMark(start: StartDto, changes: { change: MarkChange; at: number }[], guideline: number): StartDto {
+function setMark(start: StartDto, changes: { change: MarkChange; at: number }[], guideline: number, factors: XFactorSettings): StartDto {
   let state = markStateOf(start.mark ?? null);
-  for (const c of changes) state = applyMarkChange(state, c.change, { now: new Date(c.at), riktodds: start.riktodds });
+  for (const c of changes) state = applyMarkChange(state, c.change, { now: new Date(c.at), riktodds: start.riktodds, factors });
   const updatedAt = new Date(changes[changes.length - 1]?.at ?? 0).toISOString();
-  return { ...start, mark: markDtoOf(start.id, state, start.riktodds, guideline, updatedAt) };
+  return { ...start, mark: markDtoOf(start.id, state, start.riktodds, guideline, updatedAt, factors) };
+}
+
+// Nya inställningar (S10: riktlinje, radpris, X-faktorer) in i cachen. Alla
+// hästars beräknade fält (forslag, spelbar, riktoddsX, xFactorValue,
+// belowGuideline) räknas om med samma regler som servern, så att förslagen
+// ändras direkt utan att omgången hämtas igen.
+export function applySettings(data: RoundResponse, s: Pick<SettingsDto, "spelbarGuideline" | "rowPrice" | "xFactorTror" | "xFactorStark">, now: Date = new Date()): RoundResponse {
+  const settings: RoundSettings = { spelbarGuideline: s.spelbarGuideline, rowPrice: s.rowPrice, xFactorTror: s.xFactorTror, xFactorStark: s.xFactorStark };
+  const races = data.races.map((race) =>
+    recountRace({
+      ...race,
+      starts: race.starts.map((st) => (st.mark ? { ...st, mark: markDtoOf(st.id, markStateOf(st.mark), st.riktodds, s.spelbarGuideline, st.mark.updatedAt, s) } : st)),
+    }),
+  );
+  return withNextStep({ ...data, settings, races }, now);
 }
 
 // Kupongen i kön som CouponDto (rader och kostnad räknas här, som på servern).
@@ -221,10 +261,11 @@ export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date
   }
   if (!marks.size && !reviews.size && !coupon) return data;
   const guideline = data.settings?.spelbarGuideline ?? 2;
+  const factors = xFactorsOf(data.settings);
   const races = data.races.map((race) => {
     const touched = race.starts.some((s) => marks.has(s.id)) || reviews.has(race.id);
     if (!touched) return race;
-    const starts = race.starts.map((s) => (marks.has(s.id) ? setMark(s, marks.get(s.id)!, guideline) : s));
+    const starts = race.starts.map((s) => (marks.has(s.id) ? setMark(s, marks.get(s.id)!, guideline, factors) : s));
     const r = reviews.get(race.id);
     const review = r ? (r.reviewed ? { reviewedAt: new Date(r.at).toISOString(), noneInteresting: r.noneInteresting } : null) : race.review;
     return recountRace({ ...race, starts, review });

@@ -13,11 +13,12 @@ import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { Badge, Banner, BetToggle, FlapNumber, LampToggle, Skeleton, SpelbarToggle } from "@/components/ui/board";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, distShort, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
-import { applyPendingComments, type CommentBody, type PendingComment } from "@/lib/round-overlay";
+import { applyPendingComments, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
 import type { CommentDto, RaceDto, RoundResponse, StartDetailResponse, StartDto, YearStatsDto } from "@/lib/types";
 import { RiktoddsBox } from "./Riktodds";
 import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
+import { XFactorBlock } from "./XFactor";
 
 export function useDetail(startId: string) {
   return useSyncExternalStore(
@@ -62,6 +63,7 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
   const mark = start.mark;
   const override = mark?.spelbarOverride ?? "NONE";
   const isSpelbar = !!mark?.spelbar;
+  const factors = xFactorsOf(data.settings);
 
   return (
     <article className="hk" aria-labelledby={`hk-${start.id}`}>
@@ -114,9 +116,11 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
           </button>
         </p>
       )}
-      {started && <p className="acts-sub help">Loppet har startat. Intressant, Spelbar och Bet är låsta.</p>}
+      {started && <p className="acts-sub help">Loppet har startat. Intressant, Spelbar, Bet, X-faktor och källstöd är låsta.</p>}
 
-      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} guideline={data.settings?.spelbarGuideline ?? 2} />
+      <XFactorBlock key={start.id} race={race} start={start} factors={factors} sourcesEnabled={data.sourcesEnabled ?? 0} />
+
+      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} guideline={data.settings?.spelbarGuideline ?? 2} factors={factors} />
 
       <section className="hk-sec" aria-labelledby={`st-${start.id}`}>
         <h3 id={`st-${start.id}`}>Statistik</h3>

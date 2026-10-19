@@ -11,13 +11,15 @@ import path from "node:path";
 import type { PrismaClient as PrismaClientType } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AtgError, type AtgFetch } from "@/lib/atg";
-import { ADMIN_ONLY, getCoupon, getModel, RACE_STARTED, saveCoupon, saveMark, saveModel } from "@/lib/e2-server";
+import { ADMIN_ONLY, getCoupon, getModel, RACE_STARTED, saveCoupon, saveMark, saveModel, saveSettings } from "@/lib/e2-server";
 import { fetchGameStep, fetchRaceStep, fetchStatsStep, type FetchDeps } from "@/lib/fetch-round";
 import { harvilleTop3, oddsFromP3, softmax } from "@/lib/riktodds";
 import { riktoddsStep } from "@/lib/riktodds-server";
 import { buildRoundResponse, buildStartDetail, fetchState } from "@/lib/round-server";
 import { decodeHtml, TS_PAGES, type TsFetch } from "@/lib/travstatistik";
-import type { CouponResponse, MarkResponse, ModelResponse } from "@/lib/types";
+import { applyPending } from "@/lib/round-overlay";
+import type { OutboxItem } from "@/lib/outbox";
+import type { CouponResponse, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
 
 const ROOT = path.join(__dirname, "..");
 const FX = path.join(ROOT, "test", "fixtures");
@@ -155,7 +157,8 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
       expect(race.starts.filter((s) => !s.scratched).every((s) => s.riktodds !== null)).toBe(true);
     }
     expect(res.model?.key).toBe("v1");
-    expect(res.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5 });
+    expect(res.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5 });
+    expect(res.sourcesEnabled).toBe(0);
   });
 
   it("hästkortet: riktodds, högst 3 + 3 skäl och beräkningsraden", async () => {
@@ -296,5 +299,145 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(state.resumeFrom).toEqual({ step: "RIKTODDS" });
     const res = (await buildRoundResponse(db, roundId, admin.id, thursday))!;
     expect(res.nextStep.kind).toBe("RESUME_FETCH");
+  });
+  // ---- E2.1: X-faktor och källstöd ----------------------------------------------------------
+
+  const startIn = (leg: number, number: number) => db.start.findFirstOrThrow({ where: { race: { roundId, leg }, number }, include: { race: true } });
+  const activeRikt = async (startId: string) => {
+    const m = await db.modelVersion.findFirstOrThrow({ where: { active: true } });
+    return Number((await db.riktodds.findUniqueOrThrow({ where: { startId_modelVersionId: { startId, modelVersionId: m.id } } })).odds);
+  };
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+
+  it("E2.1 PUT mark: X tänder Intressant, förslaget räknas mot riktoddsX, override står kvar och idempotens", async () => {
+    const s = await startIn(3, 1);
+    const rikt = await activeRikt(s.id);
+    const rx = Math.max(1.01, r2(rikt / 1.25));
+    // Unibet mellan riktoddsX och riktodds: föreslås bara med X.
+    const unibet = r2((rikt + rx) / 2);
+    expect(unibet).toBeGreaterThan(rx);
+    const a = (await saveMark(db, admin.id, s.id, { unibetOdds: unibet }, thursday)).body as MarkResponse;
+    expect(a.mark).toMatchObject({ interesting: false, xFactor: "NONE", xFactorValue: 1, riktoddsX: rikt, forslag: false });
+    const b = await saveMark(db, admin.id, s.id, { xFactor: "TROR" }, thursday);
+    expect(b.status).toBe(200);
+    const mb = (b.body as MarkResponse).mark;
+    expect(mb).toMatchObject({ interesting: true, xFactor: "TROR", xFactorValue: 1.25, riktodds: rikt, riktoddsX: rx, forslag: true, spelbar: true, xFactorAt: thursday.toISOString() });
+    // Samma kropp igen: ingen skrivning.
+    const again = (await saveMark(db, admin.id, s.id, { xFactor: "TROR" }, new Date("2026-10-23T10:00:00Z"))).body as MarkResponse;
+    expect(again.mark.updatedAt).toBe(mb.updatedAt);
+    expect(again.mark.xFactorAt).toBe(thursday.toISOString());
+    // Ta bort förslaget för hand: OFF står kvar när X byts.
+    await saveMark(db, admin.id, s.id, { spelbar: "off" }, thursday);
+    const c = (await saveMark(db, admin.id, s.id, { xFactor: "STARK" }, thursday)).body as MarkResponse;
+    expect(c.mark).toMatchObject({ spelbarOverride: "OFF", spelbar: false, forslag: true, xFactorValue: 1.5 });
+    // Källstöd, och släckt Intressant nollställer X och override men inte källstödet.
+    await saveMark(db, admin.id, s.id, { sourceSupport: 3 }, thursday);
+    const d = (await saveMark(db, admin.id, s.id, { interesting: false }, thursday)).body as MarkResponse;
+    expect(d.mark).toMatchObject({ interesting: false, spelbarOverride: "NONE", xFactor: "NONE", xFactorAt: null, sourceSupport: 3, riktoddsX: rikt });
+    // Ångra i ett anrop.
+    const u = (await saveMark(db, admin.id, s.id, { interesting: true, spelbar: "off", xFactor: "STARK" }, thursday)).body as MarkResponse;
+    expect(u.mark).toMatchObject({ interesting: true, spelbarOverride: "OFF", xFactor: "STARK", sourceSupport: 3 });
+  });
+
+  it("E2.1 PUT mark: 400 för fel värden och för interesting:false + X, 409 efter start, 422 på struken", async () => {
+    const s = await startIn(3, 2);
+    expect(await saveMark(db, admin.id, s.id, { interesting: false, xFactor: "TROR" }, thursday)).toEqual({ status: 400, body: { error: "X-faktor kräver Intressant." } });
+    expect(await saveMark(db, admin.id, s.id, { xFactor: "MAX" }, thursday)).toEqual({ status: 400, body: { error: "Okänt läge för X-faktor." } });
+    expect(await saveMark(db, admin.id, s.id, { sourceSupport: 21 }, thursday)).toEqual({ status: 400, body: { error: "Källstödet ska vara ett heltal mellan 0 och 20." } });
+    expect(await db.mark.count({ where: { userId: admin.id, startId: s.id } })).toBe(0);
+    const after = new Date(s.race.startAt.getTime() + 1000);
+    expect(await saveMark(db, admin.id, s.id, { xFactor: "TROR" }, after)).toEqual({ status: 409, body: { error: RACE_STARTED } });
+    expect(await saveMark(db, admin.id, s.id, { sourceSupport: 2 }, s.race.startAt)).toEqual({ status: 409, body: { error: RACE_STARTED } });
+    await db.start.update({ where: { id: s.id }, data: { scratched: true } });
+    expect((await saveMark(db, admin.id, s.id, { xFactor: "STARK" }, thursday)).status).toBe(422);
+    expect((await saveMark(db, admin.id, s.id, { sourceSupport: 1 }, thursday)).status).toBe(422);
+    // Att släcka eller rensa går.
+    expect((await saveMark(db, admin.id, s.id, { xFactor: "NONE", sourceSupport: null }, thursday)).status).toBe(200);
+    await db.start.update({ where: { id: s.id }, data: { scratched: false } });
+  });
+
+  it("E2.1 databasens villkor: X kräver Intressant, källstöd 0–20, faktorerna 1,05–3,00 och Stark > Tror", async () => {
+    const s = await startIn(3, 3);
+    await expect(db.mark.create({ data: { userId: admin.id, startId: s.id, xFactor: "TROR", xFactorAt: thursday } })).rejects.toThrow();
+    await expect(db.mark.create({ data: { userId: admin.id, startId: s.id, interesting: true, xFactor: "TROR" } })).rejects.toThrow();
+    await expect(db.mark.create({ data: { userId: admin.id, startId: s.id, sourceSupport: 21 } })).rejects.toThrow();
+    await expect(db.userSettings.create({ data: { userId: user.id, xFactorTror: 1.5, xFactorStark: 1.5 } })).rejects.toThrow();
+    await expect(db.userSettings.create({ data: { userId: user.id, xFactorTror: 1.0, xFactorStark: 1.5 } })).rejects.toThrow();
+    const outcome = { userId: admin.id, startId: s.id, roundId, interesting: true, spelbar: false, bet: false };
+    await expect(db.outcome.create({ data: { ...outcome, xFactor: "NONE", xFactorValue: 1.25 } })).rejects.toThrow();
+    // Standardvärdena uppfyller villkoren (så som befintliga rader i drift får dem).
+    const m = await db.mark.create({ data: { userId: admin.id, startId: s.id } });
+    expect(m).toMatchObject({ xFactor: "NONE", xFactorAt: null, sourceSupport: null });
+    const o = await db.outcome.create({ data: outcome });
+    expect(o).toMatchObject({ xFactor: "NONE", riktoddsX: null, sourceSupport: null, sourceTotal: null });
+    expect(Number(o.xFactorValue)).toBe(1);
+    await db.outcome.delete({ where: { id: o.id } });
+    await db.mark.delete({ where: { id: m.id } });
+  });
+
+  it("E2.1 inställningar: gränser, Stark > Tror mot sparat värde, och omgången räknas om", async () => {
+    const bad = async (body: Record<string, unknown>) => (await saveSettings(db, admin.id, body)).body;
+    expect(await bad({ xFactorTror: 1.04 })).toEqual({ error: "Faktorn ska ligga mellan 1,05 och 3,00." });
+    expect(await bad({ xFactorStark: 3.01 })).toEqual({ error: "Faktorn ska ligga mellan 1,05 och 3,00." });
+    expect(await bad({ xFactorTror: 1.5 })).toEqual({ error: "Stark känsla ska vara större än Tror på." });
+    expect(await bad({ xFactorTror: 1.6, xFactorStark: 1.6 })).toEqual({ error: "Stark känsla ska vara större än Tror på." });
+    const ok = await saveSettings(db, admin.id, { xFactorTror: 1.6, xFactorStark: 2 });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ xFactorTror: 1.6, xFactorStark: 2, spelbarGuideline: 2, rowPrice: 0.5 });
+    // Nu går Tror på upp till 1,99 utan att Stark skickas.
+    expect((await saveSettings(db, admin.id, { xFactorTror: 1.99 })).status).toBe(200);
+    expect(((await saveSettings(db, admin.id, { xFactorTror: 1.6 })).body as SettingsDto).xFactorTror).toBe(1.6);
+
+    const s = await startIn(3, 1);
+    const rikt = await activeRikt(s.id);
+    const res = (await buildRoundResponse(db, roundId, admin.id, thursday))!;
+    expect(res.settings).toMatchObject({ xFactorTror: 1.6, xFactorStark: 2 });
+    const mark = res.races[2].starts.find((x) => x.id === s.id)!.mark!;
+    expect(mark).toMatchObject({ xFactor: "STARK", xFactorValue: 2, riktoddsX: Math.max(1.01, r2(rikt / 2)) });
+    const detail = (await buildStartDetail(db, s.id, admin.id, thursday))!;
+    expect(detail.start.mark).toMatchObject({ xFactorValue: 2, riktoddsX: mark.riktoddsX });
+    // Tillbaka till standard.
+    await saveSettings(db, admin.id, { xFactorTror: 1.25, xFactorStark: 1.5 });
+  });
+
+  it("E2.1 sourcesEnabled räknar användarens påslagna källor", async () => {
+    await db.source.createMany({
+      data: [
+        { userId: admin.id, name: "A", url: "https://a.example.com/" },
+        { userId: admin.id, name: "B", url: "https://b.example.com/", enabled: false },
+        { userId: user.id, name: "C", url: "https://c.example.com/" },
+      ],
+    });
+    expect((await buildRoundResponse(db, roundId, admin.id, thursday))!.sourcesEnabled).toBe(1);
+    expect((await buildRoundResponse(db, roundId, user.id, thursday))!.sourcesEnabled).toBe(1);
+    await db.source.deleteMany({});
+  });
+
+  it("E2.1 overlay = server: utkorgens optimistiska läge blir samma Mark som servern sparar", async () => {
+    const s = await startIn(4, 2);
+    const rikt = await activeRikt(s.id);
+    await saveSettings(db, user.id, { xFactorTror: 1.4, xFactorStark: 1.9 });
+    const bodies: Record<string, unknown>[] = [
+      { unibetOdds: r2(rikt * 0.9) },
+      { xFactor: "TROR" },
+      { spelbar: "off" },
+      { xFactor: "STARK", sourceSupport: 2 },
+      { bet: true },
+      { interesting: false },
+      { interesting: true, spelbar: "off", xFactor: "STARK" },
+      { spelbar: "auto" },
+    ];
+    let cache = (await buildRoundResponse(db, roundId, user.id, thursday))!;
+    for (const [i, body] of bodies.entries()) {
+      const at = new Date(thursday.getTime() + i * 60_000);
+      const item: OutboxItem = { id: `o${i}`, method: "PUT", url: `/api/marks/${s.id}`, body, createdAt: at.getTime(), tries: 0, meta: { kind: "mark", roundId, raceId: s.raceId, startId: s.id, horseName: "H" } };
+      const optimistic = applyPending(cache, [item], at).races[3].starts.find((x) => x.id === s.id)!.mark!;
+      const res = await saveMark(db, user.id, s.id, body, at);
+      expect(res.status).toBe(200);
+      const server = (res.body as MarkResponse).mark;
+      expect({ ...optimistic, updatedAt: "" }).toEqual({ ...server, updatedAt: "" });
+      cache = (await buildRoundResponse(db, roundId, user.id, at))!;
+      expect({ ...cache.races[3].starts.find((x) => x.id === s.id)!.mark!, updatedAt: "" }).toEqual({ ...server, updatedAt: "" });
+    }
   });
 });

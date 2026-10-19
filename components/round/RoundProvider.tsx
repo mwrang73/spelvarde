@@ -5,8 +5,8 @@
 // när sidan syns igen. Utkorgens poster läggs ovanpå (lib/round-overlay.ts),
 // så att byte av avdelning och häst aldrig behöver något nätverksanrop.
 //
-// Alla användaråtgärder (Intressant, Spelbar, Bet, odds, granskning och
-// V85-raden) läggs i utkorgen här och syns direkt.
+// Alla användaråtgärder (Intressant, Spelbar, Bet, odds, X-faktor, källstöd,
+// granskning och V85-raden) läggs i utkorgen här och syns direkt.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ApiFailure } from "@/components/api";
@@ -17,6 +17,8 @@ import type { MarkChange } from "@/lib/marks";
 import { applyPending, type CouponBody } from "@/lib/round-overlay";
 import type { SpelbarInput } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
+import type { XFactor } from "@/lib/xfactor";
+import { uninterestingUndo } from "@/lib/xfactor-ui";
 import { getRound, loadRound, subscribeRounds } from "./roundStore";
 
 type LoadState = { loading: boolean; error: string | null; notFound: boolean };
@@ -33,6 +35,9 @@ export type RoundContextValue = {
   setSpelbar: (race: RaceDto, start: StartDto, want: SpelbarInput) => void;
   setBet: (race: RaceDto, start: StartDto, bet: boolean) => void;
   setOdds: (race: RaceDto, start: StartDto, unibetOdds: number | null) => void;
+  // E2.1 (6.8). Tror på och Stark känsla tänder också Intressant.
+  setXFactor: (race: RaceDto, start: StartDto, xFactor: XFactor) => void;
+  setSourceSupport: (race: RaceDto, start: StartDto, sourceSupport: number | null) => void;
   saveCoupon: (body: CouponBody) => void;
 };
 
@@ -93,12 +98,10 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
   const setInteresting = useCallback(
     (race: RaceDto, start: StartDto, interesting: boolean) => {
       changeMark(race, start, { interesting });
-      // Spelbar är en delmängd av Intressant (6.1): den försvinner med, med Ångra.
-      const m = start.mark;
-      if (!interesting && m?.spelbar) {
-        const undo: MarkChange = m.spelbarOverride === "ON" ? { interesting: true, spelbar: "on" } : { interesting: true };
-        toast({ text: "Spelbar togs också bort", action: { label: "Ångra", onClick: () => changeMark(race, start, undo) } });
-      }
+      // Spelbar och X-faktorn kräver Intressant (6.1, 6.8): de försvinner med,
+      // och Ångra återställer allt med en enda PUT.
+      const lost = !interesting && start.mark ? uninterestingUndo(start.mark) : null;
+      if (lost) toast({ text: lost.text, action: { label: "Ångra", onClick: () => changeMark(race, start, lost.undo) } });
     },
     [changeMark, toast],
   );
@@ -109,6 +112,8 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
   );
   const setBet = useCallback((race: RaceDto, start: StartDto, bet: boolean) => changeMark(race, start, { bet }), [changeMark]);
   const setOdds = useCallback((race: RaceDto, start: StartDto, unibetOdds: number | null) => changeMark(race, start, { unibetOdds }), [changeMark]);
+  const setXFactor = useCallback((race: RaceDto, start: StartDto, xFactor: XFactor) => changeMark(race, start, { xFactor }), [changeMark]);
+  const setSourceSupport = useCallback((race: RaceDto, start: StartDto, sourceSupport: number | null) => changeMark(race, start, { sourceSupport }), [changeMark]);
 
   const saveCoupon = useCallback(
     (body: CouponBody) => addToOutbox({ method: "PUT", url: `/api/rounds/${roundId}/coupon`, body, meta: { kind: "coupon", roundId } }),
@@ -128,8 +133,8 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
   );
 
   const value = useMemo<RoundContextValue>(
-    () => ({ roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, saveCoupon }),
-    [roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, saveCoupon],
+    () => ({ roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, setXFactor, setSourceSupport, saveCoupon }),
+    [roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, setXFactor, setSourceSupport, saveCoupon],
   );
   return <RoundContext.Provider value={value}>{children}</RoundContext.Provider>;
 }

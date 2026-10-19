@@ -1,6 +1,6 @@
 # Spelvärde – spec
 
-Status: godkänd för bygge, typen är **Omfattande**. Gäller hela appen och är uppdelad i fem etapper. Etapp 1 byggs först.
+Status: godkänd för bygge, typen är **Omfattande**. Gäller hela appen och är uppdelad i fem etapper. Etapp 1 byggs först. Tillägget **X-faktor** (E2.1, 6.8) beslutades 2026-10-19 och byggs utan mockup, på Mikaels beslut.
 
 **Underlag**
 - Mikaels spec `BettingBBW/bettingbbw.docx` och hans beslut efter flödesmockupen (2026-10-19).
@@ -18,6 +18,7 @@ Status: godkänd för bygge, typen är **Omfattande**. Gäller hela appen och ä
 |---|---|
 | E1 | Grund: projekt, inloggning, datamodell, Hämta omgång, Omgången, Avdelningen, hästkortet (5 senaste, galopp), Intressant, egna kommentarer, avdelningens statistik från ATG och travstatistik.se |
 | E2 | Riktodds v1, Unibet-odds (knappsats 4B), Spelbar, Bet, Spelförslag (platsspel och V85-rad) |
+| E2.1 | X-faktor: Mikaels egen krydda som sänker riktoddset, källstöd i hästkortet och faktorerna i Inställningar (6.8) |
 | E3 | Fredagens utgångsläge (cron), lördag live, larm |
 | E4 | Under loppet (snabbkommentarer), automatisk placering, Omgången klar, Statistik |
 | E5 | Källor och Hämta tips med Claude-API:t (sidan och datamodellen byggs i E1, läsningen i E5) |
@@ -37,8 +38,11 @@ Status: godkänd för bygge, typen är **Omfattande**. Gäller hela appen och ä
 | **Start** | En häst i en avdelning med startnummer, kusk, tränare och eventuellt resultat. |
 | **Intressant (I)** | Mikaels markering av en häst han tror på. Kan sättas på flera hästar per avdelning. |
 | **Riktodds** | Appens uträknade "rättvisa" odds för **plats** (topp 3): `1 / sannolikhet för topp 3`. Lågt riktodds betyder stor chans. |
+| **X-faktor (X)** | Mikaels egen krydda: känsla, och att flera källor pekar ut samma häst. Tre lägen per häst: **Ingen**, **Tror på** (÷1,25) och **Stark känsla** (÷1,50). Faktorerna går att ändra i S10. Appen sätter aldrig X-faktorn själv. Se 6.8. |
+| **Riktodds med X-faktor** | `max(1,01, round2(riktodds / faktor))`. Är X-faktorn Ingen är det samma som riktoddset. Det är det här värdet som Spelbar räknas mot. |
+| **Källstöd** | "n av m källor pekar ut hästen", där m är antal påslagna källor i Källor och n fylls i av Mikael (från E5 kan Hämta tips föreslå n). Bara information, påverkar inget. |
 | **Unibet-odds** | Unibets fasta platsodds som Mikael själv för in. |
-| **Spelbar (S)** | Appen föreslår Spelbar när hästen är Intressant och Unibet-oddset är **högre** än riktoddset. Mikael kan alltid ta bort flaggan eller sätta den själv. |
+| **Spelbar (S)** | Appen föreslår Spelbar när hästen är Intressant och Unibet-oddset är **högre** än riktoddset med X-faktor. Mikael kan alltid ta bort flaggan eller sätta den själv. |
 | **Riktlinje 2,00** | Unibet-odds under 2,00 får en informativ tagg. Ingenting blockeras. |
 | **Bet (B)** | Mikael markerar att han har spelat hästen på plats hos Unibet, med oddset han fick. Kan sättas när som helst fram till loppets start. |
 | **Streck** | Andel av V85-insatsen på hästen i procent (ATG `betDistribution`). |
@@ -51,8 +55,8 @@ Status: godkänd för bygge, typen är **Omfattande**. Gäller hela appen och ä
 
 ## 3. Veckoflödet
 1. **Söndag kväll eller senare:** Mikael trycker på **Hämta omgång** (S1). Appen hittar nästa V85, hämtar startlista, hästarnas senaste starter och statistik och räknar riktodds (från E2). Ett nytt tryck på **Hämta igen** uppdaterar strykningar, kuskbyten och streck. Mikaels markeringar, odds och kommentarer finns kvar.
-2. **Måndag–torsdag (Analys):** han går igenom en avdelning i taget (S2), öppnar hästkort (S3), tänder **Intressant** och skriver kommentarer. En avdelning räknas som genomgången när den har minst en Intressant eller när han har tryckt **Inga intressanta här**.
-3. **Torsdag kväll (Odds):** han för in Unibets platsodds med knappsatsen (S4). Spelbar sätts direkt som förslag. När alla odds är ifyllda visas en lätt sammanfattning där han kan ta bort förslag.
+2. **Måndag–torsdag (Analys):** han går igenom en avdelning i taget (S2), öppnar hästkort (S3), tänder **Intressant** och skriver kommentarer. Känns en häst extra stark sätter han **X-faktor** och fyller i källstödet i hästkortet (E2.1). En avdelning räknas som genomgången när den har minst en Intressant eller när han har tryckt **Inga intressanta här**.
+3. **Torsdag kväll (Odds):** han för in Unibets platsodds med knappsatsen (S4). X-faktorn kan ändras i samma vy utan att flödet bryts. Spelbar sätts direkt som förslag. När alla odds är ifyllda visas en lätt sammanfattning där han kan ta bort förslag.
 4. **Fredag kväll:** ett cron-jobb sparar streck som **utgångsläge** (E3). Mikael gör ingenting.
 5. **Lördag från 12:00 (Live):** med appen öppen uppdateras strecket var femte minut (S5). Larm visas i appen.
 6. **Lördag före start:** i Spelförslag (S6) markerar han **Bet** på platsspelen, rättar oddset om det har ändrats och bygger **V85-raden** inom sin budget. Raden kopieras och spelas hos ATG.
@@ -69,7 +73,7 @@ Fasen räknas i Europe/Stockholm. `D` är omgångens datum (lördag).
 | **Live** | `D 12:00`, eller tidigare om något lopp har startat, tills alla 8 lopp har resultat | Larm som inte är kvitterade, annars "Avd n startar hh:mm" som leder till Under loppet |
 | **Klart** | Alla 8 lopp har resultat, eller alla startade lopp har resultat och resten är inställda | "Se statistik", och "Hämta nästa omgång" när nästa V85 finns |
 
-Faserna styr bara vad som föreslås. Alla vyer går alltid att öppna via fasraden. Allt som rör en start (I, S, B, odds) låses vid **loppets starttid**. Kommentarer går att skriva även efter start.
+Faserna styr bara vad som föreslås. Alla vyer går alltid att öppna via fasraden. Allt som rör en start (I, S, B, X-faktor, källstöd, odds) låses vid **loppets starttid**. Kommentarer går att skriva även efter start.
 
 ### 3.2 Nästa steg [E1, utökas i E2–E4]
 Bara **ett** kort visas. Välj det första som stämmer i listan:
@@ -101,7 +105,7 @@ Bottenmeny i mobilen och toppmeny på desktop har tre delar: **Omgång**, **Käl
 | `/omgang/[roundId]/lopp/[nr]` | S7 Under loppet och resultat | E4 |
 | `/kallor` | S8 Källor | E1 (sidan), E5 (Hämta tips) |
 | `/statistik` | S9 Statistik | E4 |
-| `/installningar` | S10 Inställningar | E1 (tema), E2 (riktlinje, radpris, modell), E3 (larmgräns) |
+| `/installningar` | S10 Inställningar | E1 (tema), E2 (riktlinje, radpris, modell), E2.1 (X-faktorer), E3 (larmgräns) |
 
 - Tillbaka-knappen i vyrubriken går till föräldern (Häst → Avdelning → Omgång), inte till webbläsarens historik.
 - Avdelningsflikarna 1–8 i S2, S5 och S7 byter avdelning **utan att sidan laddas om**. All omgångsdata ligger i klientens cache (se 9), och URL:en uppdateras med `router.replace`.
@@ -139,7 +143,7 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 | Offline | Banderoll `warn` med "Ingen uppkoppling. Du ser senast sparade läge." Hämta-knapparna är avstängda. |
 | Ny V85 finns medan nuvarande är klar | Nästa steg visar "Hämta omgång – V85 <bana> <datum>". |
 
-### S2 Avdelningen [E1, kolumnen riktodds från E2]
+### S2 Avdelningen [E1, kolumnen riktodds från E2, X-faktor från E2.1]
 **Innehåll**
 1. **Vyrubrik:** "Avd 7 · 17:13" och underraden med loppnamnet.
 2. **Avdelningsflikar** 1–8. Fliken för en genomgången avdelning har en liten bock under siffran, och fliken med olarmat larm har en röd prick (E3).
@@ -149,10 +153,10 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 4. **Kolumnrubrik:** "Nr · Häst · kusk · Form · Rikt · Intr." I E1 visas Rikt som "–".
 5. **Täta rader** (44 px), en per start i startnummerordning, med:
    - startnummer
-   - namn med märkena G/GD och, från E2, S och B
+   - namn med märkena G/GD och, från E2, S och B, och från E2.1 X-märket (6.8)
    - kusk, där kuskbyte visas som "↻ Ny: <kusk>" i `--accent`
    - formen för de 5 senaste
-   - riktodds
+   - riktodds, från E2.1 **riktodds med X-faktor** när hästen har X (visning i 6.8)
    - lampan Intressant.
 6. **Längst ned:** knappen **Inga intressanta här**. Den visas bara om ingen häst i avdelningen är Intressant och avdelningen inte redan är markerad som genomgången. Efter tryck står "Genomgången · Ångra".
 
@@ -161,6 +165,7 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 - Lampan sparas optimistiskt (se 9.3). Efter loppets start är lampan avstängd med `aria-disabled` och tooltipen "Loppet har startat".
 - Avdelningsflikar: tryck eller piltangenterna ←/→ byter avdelning direkt från cachen. På mobil går det också att svepa vågrätt på listan (tröskel 60 px, vågrät rörelse ska dominera).
 - **Loppstatistik** öppnar S2b.
+- X-faktorn sätts inte i mobilens rad (ingen plats för ett reglage till). Den sätts i hästkortet, i S4 och med tangenten **X** på desktop.
 
 **Lägen**
 - **Laddar:** skelettrader (12 st).
@@ -172,9 +177,9 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 
 **Desktop:** tre kolumner.
 - Vänster: avdelningslista med fasrad och räknare I/S/B per avdelning.
-- Mitten: loppremsa på tavlan med fyra statistikrutor, och sedan en tabell med kolumnerna Nr, Häst (namn, ålder, kön, rekord, märken), Kusk/tränare, Form, Vinst %, Plats %, Spår %, Rikt och Intressant.
+- Mitten: loppremsa på tavlan med fyra statistikrutor, och sedan en tabell med kolumnerna Nr, Häst (namn, ålder, kön, rekord, märken), Kusk/tränare, Form, Vinst %, Plats %, Spår %, Rikt och Intressant. Rikt visar två rader när hästen har X (6.8).
 - Höger: hästkortet S3 för vald rad. Klick på en rad byter häst i panelen utan att sidan laddas om.
-- Tangentbord: ↑/↓ flyttar vald rad, Enter öppnar hästkortet och **I** växlar Intressant på vald rad.
+- Tangentbord: ↑/↓ flyttar vald rad, Enter öppnar hästkortet, **I** växlar Intressant och **X** stegar X-faktorn (Ingen → Tror på → Stark känsla → Ingen) på vald rad.
 
 ### S2b Loppstatistik [E1]
 Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Innehåll:
@@ -184,36 +189,38 @@ Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Inneh�
 - **Källa och tid** för varje block ("travstatistik.se · hämtat sön 21:15").
 - **Lägen:** "Ingen statistik för den här distansen" och, om hämtningen misslyckades, "Kunde inte hämta statistiken" med Försök igen.
 
-### S3 Hästkortet [E1, riktodds E2, tips E5]
+### S3 Hästkortet [E1, riktodds E2, X-faktor E2.1, tips E5]
 **Innehåll, uppifrån och ned**
 1. **Tavelhuvud** med startnummer (stort), namn, "ålder kön · rekord" och "kusk · tr tränare".
 2. **Galoppvarning**, om den gäller: "Galopp i 1 av 5 senaste starterna, 13 sep på Åby". För GD står i stället "Galopp med diskning 13 sep på Åby", med starkare ram.
 3. **Handlingar:** `LampToggle labeled` (Intressant), `SpelbarToggle` (E2) och `BetToggle labeled` (E2). Har Spelbar ändrats för hand står det i underraden, till exempel "Satt av dig".
-4. **Riktodds plats** (E2): `RiktoddsBox` med riktodds, Unibet-odds om det finns och en mening om läget:
+4. **X-faktor och källstöd** (E2.1): blocket `XFactorBlock` enligt 6.8, direkt under handlingarna så att effekten syns i riktoddsrutan strax under.
+5. **Riktodds plats** (E2): `RiktoddsBox` med riktodds, Unibet-odds om det finns och en mening om läget:
    - "Spelbar: Unibet ger 0,90 mer än riktoddset"
    - "Inte spelbar: Unibet ger 0,10 mindre än riktoddset"
    - "Fyll i Unibet-odds för att se om hästen är spelbar"
    - Under 2,00 läggs riktlinjetaggen till: "Under 2,00".
+   - Med X-faktor (E2.1) visar rutan båda värdena och meningen jämför mot riktoddset med X-faktor, se 6.8.
 
-   Under rutan kommer `WhyList` med högst 3 rader "Talar för" och 3 rader "Talar emot" (se 7.4) och beräkningsraden: "Chans till topp 3 ≈ 31 % → 1 / 0,31 = 3,20". Är riktoddset osäkert står det överst: "Osäkert: färre än 5 starter".
-5. **Statistik:** vinst % och plats % i år och i fjol, spår % på distansen, kuskens och tränarens form.
-6. **5 senaste starter:** tabell med Datum, Bana, Distans och startmetod, Spår, Placering och Km-tid. Galopp ger röd rad och plaketten "g", och diskning "d". Länken "Visa fler" visar de 10 senaste.
-7. **Fakta från tips** (E5): lista med källa och tid. Före E5 visas inte blocket.
-8. **Mina kommentarer:** alla Mikaels kommentarer om hästen från tidigare och aktuell omgång, nyast först, med datum, omgång, avdelning, resultat, snabbvalstaggar och text. Varje kommentar kan redigeras och tas bort (med Ångra).
-9. **Ny kommentar:** textfält med etiketten "Kommentar inför loppet". Kommentaren sparas med knappen Spara eller automatiskt 1 s efter att Mikael slutat skriva, och följer hästen.
+   Under rutan kommer `WhyList` med högst 3 rader "Talar för" och 3 rader "Talar emot" (se 7.4) och beräkningsraden: "Chans till topp 3 ≈ 31 % → 1 / 0,31 = 3,20". Med X-faktor förlängs raden med X-steget (6.8). Är riktoddset osäkert står det överst: "Osäkert: färre än 5 starter".
+6. **Statistik:** vinst % och plats % i år och i fjol, spår % på distansen, kuskens och tränarens form.
+7. **5 senaste starter:** tabell med Datum, Bana, Distans och startmetod, Spår, Placering och Km-tid. Galopp ger röd rad och plaketten "g", och diskning "d". Länken "Visa fler" visar de 10 senaste.
+8. **Fakta från tips** (E5): lista med källa och tid. Före E5 visas inte blocket.
+9. **Mina kommentarer:** alla Mikaels kommentarer om hästen från tidigare och aktuell omgång, nyast först, med datum, omgång, avdelning, resultat, snabbvalstaggar och text. Varje kommentar kan redigeras och tas bort (med Ångra).
+10. **Ny kommentar:** textfält med etiketten "Kommentar inför loppet". Kommentaren sparas med knappen Spara eller automatiskt 1 s efter att Mikael slutat skriva, och följer hästen.
 
-**Lägen:** laddar (skelett per block) och "Senaste starter kunde inte hämtas" med Försök igen. En häst helt utan tidigare starter visar "Debuterar". En struken häst visar banderollen "Struken <tid>". Efter start är handlingarna låsta och det står "Loppet har startat".
+**Lägen:** laddar (skelett per block) och "Senaste starter kunde inte hämtas" med Försök igen. En häst helt utan tidigare starter visar "Debuterar". En struken häst visar banderollen "Struken <tid>". Efter start är handlingarna, X-faktorn och källstödet låsta och det står "Loppet har startat. Intressant, Spelbar, Bet, X-faktor och källstöd är låsta."
 
-### S4 Unibets platsodds [E2]
+### S4 Unibets platsodds [E2, X-faktor E2.1]
 **Beslut: 4B, egen knappsats, en häst i taget.**
 
-**Kö:** alla Intressant och alla med Bet i omgången, i avdelnings- och startnummerordning. Hästar som redan har odds ligger sist, så att en ny körning börjar med det som saknas. Struken häst och lopp som har startat hoppas över.
+**Kö:** alla Intressant och alla med Bet i omgången, i avdelnings- och startnummerordning. Hästar som redan har odds ligger sist, så att en ny körning börjar med det som saknas. Struken häst och lopp som har startat hoppas över. (En häst med X-faktor är alltid Intressant, 6.8, och kommer därför med.)
 
 **Innehåll**
 - Vyrubrik "Unibets platsodds" med underraden "Häst 9 av 13", och en förloppslist.
-- Hästkort: startnummer, namn, avdelning, starttid och kusk.
-- Två tavelrutor: **Riktodds** och **Unibet plats** (LED-display).
-- Resultatrad: "0,70 över riktoddset · föreslås som Spelbar", "0,10 under riktoddset · inte spelbar" eller "Under 2,00 (riktlinje)".
+- Hästkort: startnummer, namn, avdelning, starttid och kusk. Till höger i kortet knappen **X-faktor** (`XCycleButton`, 6.8) från E2.1.
+- Två tavelrutor: **Riktodds** och **Unibet plats** (LED-display). Med X-faktor visar riktoddsrutan riktoddset med X-faktor stort och det vanliga under, se 6.8.
+- Resultatrad: "0,70 över riktoddset · föreslås som Spelbar", "0,10 under riktoddset · inte spelbar" eller "Under 2,00 (riktlinje)". Med X-faktor jämförs mot riktoddset med X-faktor och det står "riktoddset med X" i stället för "riktoddset".
 - Knapparna **‹ Föregående** och **Hoppa över**.
 - Knappsatsen: 1–9, Radera, 0 och **Nästa ›**.
 
@@ -221,10 +228,11 @@ Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Inneh�
 - Siffrorna tolkas med två decimaler: 3-1-0 blir 3,10, 1-2-5-0 blir 12,50, och 2 blir 0,02 tills fler siffror kommer. Högst 4 siffror. Godkänt intervall är 1,01–99,99.
 - Vid **tre siffror** och ett odds på 1,01–9,99 sparas oddset och appen går vidare till nästa häst efter 350 ms. Under den tiden syns resultatraden, och ett nytt tryck avbryter övergången. Med fyra siffror krävs Nästa.
 - Radera tar bort en siffra. Radera på en tom display tar bort sparat odds efter frågan "Ta bort oddset för <häst>?" (Ja/Avbryt).
-- På desktop: siffertangenterna, Backsteg, Enter (= Nästa), ← (Föregående) och Tab (Hoppa över). Komma och punkt ignoreras, så "3,10" och "310" ger samma resultat.
+- På desktop: siffertangenterna, Backsteg, Enter (= Nästa), ← (Föregående), Tab (Hoppa över) och **X** (stegar X-faktorn, E2.1). Komma och punkt ignoreras, så "3,10" och "310" ger samma resultat.
 - Varje odds sparas direkt och optimistiskt (9.3). Spelbar räknas om direkt (6.1).
+- **X-faktorn och 350 ms-hoppet (E2.1):** X-knappen påverkar inte siffrorna. Trycks den innan siffrorna skrivs gäller den bara för hästen och flödet är oförändrat. Trycks den under 350 ms-fönstret räknas det som ett nytt tryck: hoppet avbryts, oddset står kvar sparat, resultatraden räknas om med den nya X-faktorn, och Mikael går vidare med **Nästa**. Trycks den inte alls är flödet exakt som förut.
 
-**Avslut: sammanfattning i stället för 4C.** När kön är slut öppnas ett ark "Klart – 13 odds ifyllda" med listorna "Spelbara (6)" och "Inte spelbara (7)". Varje rad har Unibet, riktodds och skillnad. På de spelbara finns knappen **Ta bort Spelbar** och på de övriga **Gör spelbar**. Arkets enda primärknapp är **Klar**. Arket är ingen bekräftelse: förslagen gäller redan, och arket går att stänga direkt.
+**Avslut: sammanfattning i stället för 4C.** När kön är slut öppnas ett ark "Klart – 13 odds ifyllda" med listorna "Spelbara (6)" och "Inte spelbara (7)". Varje rad har Unibet, riktodds och skillnad. Med X-faktor visas X-märket efter namnet och riktoddset i kort form, "rikt 3,00 → X 2,40", och skillnaden räknas mot riktoddset med X-faktor (6.8). På de spelbara finns knappen **Ta bort Spelbar** och på de övriga **Gör spelbar**. Arkets enda primärknapp är **Klar**. Arket är ingen bekräftelse: förslagen gäller redan, och arket går att stänga direkt.
 - **Varför:** Mikael vill att förslaget sätts och att han avmarkerar. En tvingande granskningsskärm vore ett extra steg varje torsdag. En sammanfattning direkt efter inmatningen ger ändå överblick när han har siffrorna i huvudet.
 - Samma ändringar kan göras senare i Spelförslag och i hästkortet.
 
@@ -239,7 +247,7 @@ Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Inneh�
   - Tappar: "<nr> <häst> (Spelbar) har tappat −10,4 pe sedan fredag (18,0 → 7,6 %)."
   - Knappar: **Visa hästen** (S3) och **Kvittera**. Ett kvitterat larm blir en rad med "Larm kvitterat 14:06" och Ångra.
 - **Kolumnrubrik:** "Nr · Häst · Nu % · Sedan fre".
-- **Grupp "Dina hästar"** (I, S eller B), sorterad efter startnummer, och **grupp "Övriga"**, sorterad efter störst absolut rörelse. Varje rad (44 px) har startnummer, namn med märken, underraden "Fre 5,0 %", streck nu och rörelse.
+- **Grupp "Dina hästar"** (I, S eller B), sorterad efter startnummer, och **grupp "Övriga"**, sorterad efter störst absolut rörelse. Varje rad (44 px) har startnummer, namn med märken (även X), underraden "Fre 5,0 %", streck nu och rörelse.
 - **Fotnot:** "Jämfört med utgångsläget fre 21:00".
 
 **Lägen**
@@ -253,18 +261,19 @@ Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Inneh�
 | Lopp har startat | Raden visar "Startat" i stället för rörelse och sedan placeringen när den finns. Larm för avdelningen stängs. |
 | Omgången klar | Live visar slutläget och banderollen "Omgången är klar" med länk till S1. |
 
-**Desktop:** tre kolumner. Avdelningar till vänster med röda prickar. I mitten tabellen Nr, Häst, Fre 21:00, Nu, Sedan fre, Rörelse (stapel från mitten, 5 px per pe, högst 65 px), Rikt och Unibet, grupperad som i mobilen. Till höger `UpdatedLine`, larmkort och "Händelser i dag", alltså en logg med tid, avdelning, häst och rörelse för varje larm och för de största rörelserna, nyast först.
+**Desktop:** tre kolumner. Avdelningar till vänster med röda prickar. I mitten tabellen Nr, Häst, Fre 21:00, Nu, Sedan fre, Rörelse (stapel från mitten, 5 px per pe, högst 65 px), Rikt och Unibet, grupperad som i mobilen. Rikt visas som i S2 desktop (med X-faktor när den finns). Till höger `UpdatedLine`, larmkort och "Händelser i dag", alltså en logg med tid, avdelning, häst och rörelse för varje larm och för de största rörelserna, nyast först.
 
 ### S6 Spelförslag [E2]
 Segmentkontroll: **Platsspel | V85-rad** (`?flik=plats|rad`).
 
 **S6a Platsspel**
 - Hjälptext: "Markera Bet på det du spelar hos Unibet. Rätta oddset om det har ändrats."
-- **Spelbara (n):** rader med startnummer, namn, "Avd n · rikt 2,40", fält för Unibet-odds och `BetToggle`. Ändras oddset står "Ändrat från 4,10 kl. 14:18". Hamnar det under riktoddset varnar raden med "Under riktoddset nu, inte längre föreslagen". Har Mikael satt Spelbar för hand står den flaggan kvar.
+- **Spelbara (n):** rader med startnummer, namn, "Avd n · rikt 2,40", fält för Unibet-odds och `BetToggle`. Med X-faktor (E2.1) får namnet X-märket och underraden blir "Avd n · rikt 3,00 → X 2,40". Ändras oddset står "Ändrat från 4,10 kl. 14:18". Hamnar det under riktoddset (med X-faktor, om sådan finns) varnar raden med "Under riktoddset nu, inte längre föreslagen". Har Mikael satt Spelbar för hand står den flaggan kvar.
 - **Med Bet men inte spelbara:** egen grupp om sådana finns.
 - **Intressant men inte spelbara (n):** en hopfälld rad med namn som länkar till S4.
 - **Fältet för Unibet-odds:** `inputmode="decimal"` och samma tolkning som i S4. Sparas vid blur eller Enter. Fel ger "Oddset ska ligga mellan 1,01 och 99,99."
 - **Bet-tangenten** sätter `bet = true` och `betOdds` = aktuellt Unibet-odds. Rättas oddset efter Bet ändras både `unibetOdds` och `betOdds`, om inte Mikael har satt dem olika.
+- X-faktorn ändras inte i S6a. Ett tryck på namnet öppnar hästkortet, där den kan ändras.
 
 **S6b V85-rad**
 - **Budgetruta på tavlan:** budget i kr (reglage 20–1 000 i steg om 10 och ett fält för exakt belopp), rader, kostnad och "Kvar" eller "Över budget". Radpriset 0,50 kr står under rutan med **Ändra** (sparas i inställningar).
@@ -277,7 +286,7 @@ Segmentkontroll: **Platsspel | V85-rad** (`?flik=plats|rad`).
   - Omgången har startat: banderollen "V85 har startat – raden kan inte längre spelas", men raden finns kvar för statistiken.
 - Raden sparas automatiskt vid varje ändring, en per användare och omgång.
 
-**Desktop:** Platsspel och V85-rad sida vid sida. Tabellen för platsspel har kolumnerna Nr, Häst, Rikt, Unibet (fält), Skillnad och Bet.
+**Desktop:** Platsspel och V85-rad sida vid sida. Tabellen för platsspel har kolumnerna Nr, Häst, Rikt, Unibet (fält), Skillnad och Bet. Rikt visas som i S2 desktop, och Skillnad räknas mot riktoddset med X-faktor.
 
 ### S7 Under loppet och resultat [E4]
 **Mål: blixtsnabbt.** All data för omgången finns redan i klienten (9.1). Att byta häst är bara ett lokalt tillstånd, utan nätverksanrop och utan omladdning. Kommentarer sparas optimistiskt i bakgrunden och läggs i kö om nätet försvinner (9.3).
@@ -331,6 +340,7 @@ Segmentkontroll: **Platsspel | V85-rad** (`?flik=plats|rad`).
 - **Fel:**
   - Ogiltig adress ger "Det här ser inte ut som en webbadress. Den ska börja med https://."
   - En dubblett ger "Källan finns redan."
+- Antalet påslagna källor är m i hästkortets källstöd (6.8). Stängs en källa av eller tas bort ändras m direkt i hästkorten för lopp som inte har startat.
 
 **E5**
 - **Hämta tips** läser alla påslagna källor för aktuell omgång (11).
@@ -343,6 +353,7 @@ Segmentkontroll: **Platsspel | V85-rad** (`?flik=plats|rad`).
 **Innehåll**
 - **Period:** Säsong (kalenderår), 10 senaste omgångarna eller Allt.
 - **Jämförelse på tavlan:** topp 3-andel för **Intressant**, **Spelbar** och **Bet**, som staplar med procent och bråktal ("41 % · 36 / 88").
+- **X-faktor:** en egen ruta som visar om hästar med X-faktor gick bättre än riktoddset trodde (6.7).
 - **Dela upp på:** Häst, Kusk, Spår (startnummer), Distans (Kort ≤ 1 700 m, Medel 1 701–2 400 m, Lång ≥ 2 401 m, var för sig för auto och volte) eller Klass.
 - **Tabell** med kolumnerna Intressant, Spelbar och Bet träff (bråktal och procent under). Häst och Kusk visar de 20 med flest markeringar och sedan "Visa alla".
 
@@ -356,25 +367,32 @@ Statistiken räknar bara träff eller miss, inga kronor.
 | Tema: System, Ljust eller Mörkt | System | E1 |
 | Riktlinje för Unibet-odds | 2,00 | E2 |
 | Radpris V85 | 0,50 kr | E2 |
+| X-faktor Tror på (1,05–3,00) | 1,25 | E2.1 |
+| X-faktor Stark känsla (1,05–3,00, större än Tror på) | 1,50 | E2.1 |
 | Larmgräns i pe (1,0–30,0 i steg om 0,5) | 10,0 | E3 |
 | Riktoddsmodell: aktiv version, vikter och "Räkna om omgången" (bara ADMIN) | v1 | E2 |
 | Konto: byt lösenord, logga ut | – | E1 |
 
 Vikterna redigeras i en enkel tabell, ett nummerfält per vikt. Att spara skapar en **ny** modellversion (v1.1 och så vidare), som blir aktiv. Gamla versioner finns kvar.
 
+X-faktorerna ligger i avsnittet "Odds och V85-rad" under radpriset, med samma fältmönster som riktlinjen (`NumberSetting` i `components/settings/GameSettings.tsx`). Texter och regler står i 6.8.
+
 ---
 
 ## 6. Regler
 
-### 6.1 Spelbar [E2]
-- `forslag = intressant && unibetOdds != null && riktodds != null && unibetOdds > riktodds`
+### 6.1 Spelbar [E2, X-faktor E2.1]
+- `riktoddsX = xFactor === "NONE" ? riktodds : max(1,01, round2(riktodds / faktor))`, där `faktor` är användarens faktor för läget (6.8). Är `riktodds` null är `riktoddsX` null.
+- `forslag = intressant && unibetOdds != null && riktoddsX != null && unibetOdds > riktoddsX`
 - `spelbar = override === "ON" ? true : override === "OFF" ? false : forslag`
 - `override` är `NONE` (följer förslaget), `ON` (satt av dig) eller `OFF` (borttagen av dig). Knappen i hästkortet växlar mellan på och av.
   - Ett tryck som ger samma värde som förslaget sätter `NONE`.
   - Ett annat värde än förslaget sätter `ON` eller `OFF`.
   - "Återställ till förslag" finns i hästkortet när override inte är `NONE`.
-- Sätts Spelbar för hand på en häst som inte är Intressant blir den också Intressant, eftersom Spelbar alltid är en delmängd av Intressant. Tas Intressant bort nollställs `override` till `NONE`, och toasten "Spelbar togs också bort · Ångra" visas.
-- Riktlinjen 2,00: `unibetOdds < riktlinje` ger taggen "Under 2,00" på Spelbar-rader och i S4. Den påverkar inte förslaget.
+  - Ändras X-faktorn räknas förslaget om. Ett `override` som är `ON` eller `OFF` står kvar, och X-faktorn ändrar det aldrig.
+- Sätts Spelbar för hand på en häst som inte är Intressant blir den också Intressant, eftersom Spelbar alltid är en delmängd av Intressant. Tas Intressant bort nollställs `override` till `NONE` och X-faktorn till Ingen (6.8), och toasten "Spelbar togs också bort · Ångra" visas (texterna med X-faktor står i 6.8).
+- Riktlinjen 2,00: `unibetOdds < riktlinje` ger taggen "Under 2,00" på Spelbar-rader och i S4. Den gäller fortfarande Unibet-oddset, inte riktoddset med X-faktor, och påverkar inte förslaget.
+- Skillnaden som visas ("0,70 över riktoddset", kolumnen Skillnad) är `unibetOdds − riktoddsX`.
 - Spelbar räknas fram vid läsning och lagras inte som eget fält. Vid loppets start fryses värdet i `Outcome` (6.4).
 
 ### 6.2 Galopp [E1]
@@ -405,11 +423,11 @@ Vikterna redigeras i en enkel tabell, ett nummerfält per vikt. Att spara skapar
 - `disqualified` visas som "Diskad" och räknas som "5 eller sämre".
 - **Träff** = placering 1–3. Gäller Bet, och topp 3 för I och S.
 - **Struken** (`scratched`) räknas inte alls: ingen `Outcome`, och hästen syns inte i statistiken.
-- **Låsning vid loppets starttid:** därefter avvisar servern ändringar av I, S, B, Unibet-odds och bet-odds med 409 och "Loppet har startat". Vid starttiden fryses en `Outcome`-rad per användare och start där minst en av I, S eller B gäller. Placering och träff fylls i när resultatet kommer.
+- **Låsning vid loppets starttid:** därefter avvisar servern ändringar av I, S, B, X-faktor, källstöd, Unibet-odds och bet-odds med 409 och "Loppet har startat". Vid starttiden fryses en `Outcome`-rad per användare och start där minst en av I, S eller B gäller. Den innehåller också X-läget, faktorn, riktoddset med X-faktor och källstödet (8.2). Placering och träff fylls i när resultatet kommer.
 
 ### 6.5 V85-rad [E2]
 - `rader = Π antal valda per avdelning` och `kostnad = rader × radpris`. Radpriset är 0,50 kr.
-- **Ordning för förslag per avdelning:** Spelbar (lägst riktodds först), sedan övriga Intressant (lägst riktodds först) och sist resten efter högst streck. Saknas riktodds sorteras på streck.
+- **Ordning för förslag per avdelning:** Spelbar (lägst riktodds först), sedan övriga Intressant (lägst riktodds först) och sist resten efter högst streck. Saknas riktodds sorteras på streck. Från E2.1 sorteras på riktoddset med X-faktor.
 - **Föreslå inom budget**, en girig algoritm:
   - Börja med 1 häst i varje avdelning som inte är låst.
   - Gå sedan varv efter varv igenom avdelningarna, sorterade efter **lägst streck för favoriten** (mest öppna lopp först), och lägg till nästa häst i ordningen om kostnaden ryms i budgeten.
@@ -436,7 +454,7 @@ Följande kortkommandon gäller på desktop.
 | Utvändigt utan rygg | U | | Diskad | X |
 | Dödens | D | | | |
 
-Listan ligger i en konstant (`lib/quick-tags.ts`) och kan ändras utan migrering. Taggarna sparas som text.
+Listan ligger i en konstant (`lib/quick-tags.ts`) och kan ändras utan migrering. Taggarna sparas som text. (I S7 betyder X alltså Diskad. Tangenten X för X-faktor gäller bara i S2, S3 och S4, och X-faktorn är ändå låst när loppet har startat.)
 
 ### 6.7 Statistik [E4]
 - **Underlag:** `Outcome` för användaren i omgångar där loppet har resultat. Strukna och inställda lopp räknas inte.
@@ -446,11 +464,100 @@ Listan ligger i en konstant (`lib/quick-tags.ts`) och kan ändras utan migrering
   - Häst (`horseId`), Kusk (`driverId` vid start) och Spår (startnummer).
   - Distans: grupp och startmetod.
   - Klass: `Race.classLabel`, se 10.3.
+- **X-faktor:** för hästar med X-läge Tror på respektive Stark känsla (och, som jämförelse, Intressant utan X) visas antal, faktisk topp 3-andel, väntad andel enligt riktoddset (medel av `1 / riktodds`) och väntad andel enligt riktoddset med X-faktor (medel av `1 / riktoddsX`). Exempel: "Tror på: 9 av 20 topp 3 (45 %) · riktoddset väntade 34 % · med X 42 %". Underlaget är de frysta värdena i `Outcome`, så att en senare ändring av faktorerna i S10 inte skriver om historiken. Källstödet kan läggas till som uppdelning ("2 eller fler källor") när det finns data.
+
+### 6.8 X-faktor och källstöd [E2.1]
+**Syfte.** X-faktorn är Mikaels egen krydda: känsla, och att flera källor pekar ut samma häst. Den sänker riktoddset, alltså ger hästen större chans, och påverkar därmed förslaget på Spelbar. Appen sätter aldrig X-faktorn själv. Källstödet är information som hjälper honom att bestämma sig.
+
+**Lägen och beräkning**
+| Läge (`xFactor`) | Text | Standardfaktor | Märke |
+|---|---|---|---|
+| `NONE` | Ingen | 1 (ändras inte) | – |
+| `TROR` | Tror på | 1,25 | "X" |
+| `STARK` | Stark känsla | 1,50 | "X+" |
+
+- `riktoddsX = max(1,01, round2(riktodds / faktor))`. Exempel med standardfaktorerna: riktodds 3,00 ger 2,40 (Tror på) och 2,00 (Stark känsla). Riktodds 3,20 ger 2,56 och 2,13. Riktodds 1,20 med Stark känsla ger 0,80, som blir 1,01.
+- Räknas vid läsning, i klienten för direkt visning och på servern för `forslag`/`spelbar`, med samma rena funktion (`lib/xfactor.ts`). Lagras bara i `Outcome` vid start.
+- Osäkert riktodds (asterisk) gäller också riktoddset med X-faktor.
+- Saknas riktodds kan X-faktorn ändå sättas. Den sparas och används när riktoddset finns.
+- Ändras faktorerna i S10 gäller de direkt för alla lopp som inte har startat. Lopp som har startat har sina värden frysta i `Outcome`.
+
+**Koppling till Intressant – beslut**
+- **X-faktor Tror på eller Stark känsla sätter Intressant automatiskt**, precis som Spelbar gör. Skäl: en häst Mikael har en extra känsla för är per definition intressant. Dessutom tar S4 bara med Intressant och Bet, och förslaget kräver Intressant, så en X-faktor på en häst som inte är Intressant skulle inte göra någonting och bara förvirra.
+- **Tas Intressant bort nollställs X-faktorn till Ingen**, i samma ändring som `override` nollställs. Skäl: X utan Intressant har ingen verkan, och ett dolt läge som plötsligt slår igenom när lampan tänds igen vore överraskande. Ångra återställer allt.
+  - Bara X-faktor togs bort: toasten "X-faktor togs också bort · Ångra".
+  - Både Spelbar och X-faktor: "Spelbar och X-faktor togs också bort · Ångra".
+  - Ångra skickar en enda PUT med `interesting: true`, tidigare `spelbar` och tidigare `xFactor`.
+- **Källstödet påverkas inte** av Intressant. Det är en uppgift om hästen, inte en markering, och ligger kvar.
+- X-faktor Ingen tänder eller släcker aldrig Intressant.
+
+**Källstöd**
+- Texten är "n av m källor pekar ut hästen". `m` = antal påslagna källor (`Source.enabled`) för användaren just nu. `n` (`Mark.sourceSupport`) fylls i av Mikael, 0–20, eller är tomt (`null`).
+- Från E5 kan Hämta tips föreslå `n` (antal olika källor med minst ett faktum om hästen i omgången). Förslaget visas som "Hämta tips räknade 3" med knappen **Använd**. Mikaels ifyllda värde ändras aldrig automatiskt.
+- Källstödet påverkar inte riktoddset eller Spelbar. Det sparas i `Outcome` vid start för statistiken.
+
+**Komponenter** (nya, byggda av befintliga mönster)
+
+`XFactorBlock` – sektion i hästkortet (S3 punkt 4), `section.hk-sec` med rubriken `h3` "X-faktor".
+- **Hjälptext** (`.help`): "Din egen känsla. Sänker riktoddset, så att hästen lättare blir spelbar. Appen sätter aldrig X-faktorn."
+- **Lägesväljare:** segmentkontroll med tre lika breda segment (befintlig `.seg full`, som temaväljaren i `components/settings/SettingsView.tsx`), men med semantiken `role="radiogroup"` och `aria-labelledby` på rubriken. Varje segment har två rader: läget i Barlow Condensed versaler och faktorn i mono 11 px ("Ingen" / "÷1,00", "Tror på" / "÷1,25", "Stark känsla" / "÷1,50"). Höjd 52 px, ryms i tre kolumner på 360 px.
+  - Valt segment: `--ink` som bakgrund som i `Segmented`, plus "✓" före texten, så att valet inte bärs av färg.
+  - Fokus: 3 px `--focus`. Hover på desktop: `--surface-3`.
+  - Avstängd (loppet startat eller hästen struken): `aria-disabled="true"` på gruppen, platt `--surface-3`, och raden "Loppet har startat" respektive "Hästen är struken" under.
+- **Effektrad** under väljaren (`aria-live="polite"`), bara när läget inte är Ingen: "Riktodds 3,00 · med X-faktor 2,40". Ändrar valet förslaget läggs " · nu föreslagen som Spelbar" eller " · inte längre föreslagen" till. Saknas riktodds: "Riktodds saknas. X-faktorn används när riktoddset finns."
+- **Källstöd:** etiketten "Källstöd", meningen "2 av 4 källor pekar ut hästen" och en stegare (befintlig `.stp` från `components/spel/RadPanel.tsx`: − och + på 40 × 44 med `output` emellan).
+  - Tomt värde: meningen "Inte ifyllt · 4 påslagna källor" och `output` "–". + ger 1 och − ger 0.
+  - − är avstängd vid 0 och + vid m (och vid 20). Är det sparade värdet större än m (en källa har stängts av) visas det ändå, med tillägget "Fler än dina påslagna källor nu", och − fungerar.
+  - Länken **Rensa** (ghost, `linkish`) sätter tomt. Den visas bara när ett värde finns.
+  - Inga påslagna källor (m = 0): ingen stegare, i stället "Inga påslagna källor. Lägg till källor" med länk till `/kallor`.
+  - Avstängd efter start som lägesväljaren.
+- **Sparning:** som övriga markeringar, optimistiskt via utkorgen (9.3). Hästkortets statusrad visar "Sparas …", "I kö (n)" eller "Sparat".
+
+`XCycleButton` – knapp i S4:s hästkort (`.kcard`), högerställd.
+- En sekundärknapp (`.btn secondary sm`, minst 44 × 44) med texten "X · Ingen", "X · Tror på" eller "X · Stark känsla". Med X satt har knappen bärnstensgul kant (`--fill`) och märket "X"/"X+" i stället för ordet "X".
+- Ett tryck stegar Ingen → Tror på → Stark känsla → Ingen. Ett tryck i 350 ms-fönstret avbryter hoppet (se S4).
+- `aria-label` "X-faktor för <häst>: <läge>. Tryck för att byta." Nytt läge läses upp i resultatradens `aria-live`.
+- Avstängd (`aria-disabled`) när hästen är låst, som knappsatsen.
+- Fokus: står fokus på knappen och Mikael trycker Enter stegas läget (vanlig knapp), inte Nästa. Det följer befintlig regel i `components/odds/OddsEntry.tsx` att Enter på en knapp trycker på knappen.
+
+`Badge` får två nya slag, `x` och `xp`:
+- 17 × 17 px (`xp` får bredden av texten, högst 22 px) med `--head` som bakgrund och `--head-ink` som text, det vill säga "lysande" tavelstil. Det skiljer sig från I (ring), S (fylld bärnsten) och B (inverterad) utan att bara bäras av färg, eftersom texten är "X" och "X+".
+- `role="img"`, `aria-label` "X-faktor: Tror på" och "X-faktor: Stark känsla". `wide`-varianten skriver "Tror på" och "Stark känsla".
+- Märket ligger efter S och B (`MarkBadges` i `components/round/parts.tsx`) och visas därmed överallt där S och B visas: S2, S5, S6, S7 och sammanfattningsarket i S4.
+
+**Visning per vy**
+| Var | Visning med X-faktor |
+|---|---|
+| S2 mobil, kolumnen Rikt (38 px) | Riktoddset med X-faktor (som alltid är lägre, så det får plats), i `--accent`. Färgen är inte ensam: X-märket står i samma rad. `title` och skärmläsartext: "Riktodds 3,00, med X-faktor 2,40". Osäkert-asterisken behålls. Raden är fortfarande 44 px, så avd 7 med 12 hästar får plats utan skroll. |
+| S2, S5 och S6a desktop, kolumnen Rikt | Två rader i cellen: riktoddset med X-faktor (13,5 px, `--accent`) och under det "3,00 utan X" (11 px, `--ink-2`). |
+| S3 `RiktoddsBox` | Stora siffran är riktoddset med X-faktor med etiketten "Med X-faktor". Bredvid, i samma storlek som Unibet, "Riktodds 3,00". Under rutan "÷1,25 · Tror på". Meningen jämför mot riktoddset med X-faktor: "Spelbar: Unibet ger 0,70 mer än riktoddset med X-faktor". |
+| S3 beräkningsraden | Förlängs med X-steget: "Chans till topp 3 ≈ 31 % → 1 / 0,31 = 3,20 → ÷ 1,25 (Tror på) = 2,56". Raden byggs av serverns rad och ett X-steg som klienten lägger till, så att den ändras direkt när läget byts. |
+| S4 tavelrutan Riktodds | Etiketten "Riktodds med X", siffran = riktoddset med X-faktor, och under den i `--head-ink-2` "utan X 3,00". |
+| S4 resultatraden | "0,70 över riktoddset med X · föreslås som Spelbar". |
+| S4 sammanfattningsarket och S6a mobil (underraden) | Kort form: "rikt 3,00 → X 2,40". Skillnaden räknas mot 2,40. |
+
+**Tangentbord (desktop)**
+- **X** i S2 (vald rad), i S3 (när fokus inte står i ett textfält) och i S4: stegar Ingen → Tror på → Stark känsla → Ingen. **Shift + X** stegar baklänges.
+- Tangenten gör ingenting när hästen är låst, och läser då upp "Loppet har startat" i den befintliga `aria-live`-regionen.
+- Hjälptexten i S4 blir: "Tangentbord: siffror, Backsteg, Enter = Nästa, ← = Föregående, Tab = Hoppa över och X = X-faktor. Komma och punkt behövs inte."
+- Kortkommandon är avstängda i textfält och när ett ark eller en dialog är öppen, som i dag.
+
+**Låsning, offline och fel**
+- **Efter loppets start** avvisar servern `xFactor` och `sourceSupport` med 409, som övriga fält (6.4). Utkorgen rullar tillbaka och visar "<häst>: loppet hade redan startat, ändringen sparades inte." (9.3).
+- **Offline:** ändringen syns direkt och ligger i utkorgen. `PUT /api/marks/[startId]` med hela tillståndet för de fält som skickas är idempotent, så omsändning gör ingen skada. Flera snabba tryck på X för samma häst slås ihop till den sista posten i utkorgen.
+- **Ogiltigt värde** (400): "Okänt läge för X-faktor." eller "Källstödet ska vara ett heltal mellan 0 och 20." Posten tas bort och felet visas som toast.
+
+**Faktorerna i S10**
+- Två fält i avsnittet "Odds och V85-rad", samma mönster som riktlinjen (`NumberSetting`):
+  - "X-faktor Tror på", hjälptext: "Riktoddset delas med faktorn. 1,25 gör 3,00 till 2,40. Mellan 1,05 och 3,00."
+  - "X-faktor Stark känsla", hjälptext: "Riktoddset delas med faktorn. 1,50 gör 3,00 till 2,00. Mellan 1,05 och 3,00 och större än Tror på."
+- Fel: "Faktorn ska ligga mellan 1,05 och 3,00." och "Stark känsla ska vara större än Tror på."
+- Sparas vid blur eller Enter som i dag. Efter sparning uppdateras omgångens cache med de nya faktorerna (som riktlinjen i `refreshCurrentRound`), och förslagen räknas om.
 
 ---
 
 ## 7. Riktoddsmodell v1 [E2]
-Modellen gäller bara **plats** (topp 3). Den är märkt **v1, okalibrerad**. Kalibrering mot historiska omgångar görs i en senare etapp, se 7.6.
+Modellen gäller bara **plats** (topp 3). Den är märkt **v1, okalibrerad**. Kalibrering mot historiska omgångar görs i en senare etapp, se 7.6. X-faktorn (6.8) ligger utanför modellen och läggs på efteråt. Den ändrar aldrig `Riktodds`-raden.
 
 ### 7.1 Indata per start
 | Nyckel | Indata | Källa | Saknas |
@@ -489,7 +596,7 @@ Vikterna lagras i `ModelVersion.weights` (JSON) och går att justera i S10 utan 
   - `galopp`: "Galopp i 1 av 5 senaste"
   - `kusk`: "Kusken vinner 21 % i år"
 - Bidrag under 0,15 i absolut värde visas inte.
-- Beräkningsraden visar P3 i hela procent och riktoddset.
+- Beräkningsraden visar P3 i hela procent och riktoddset. Med X-faktor läggs X-steget till (6.8).
 
 ### 7.5 När riktoddset räknas
 Riktodds räknas efter varje hämtningssteg som ändrar indata (startlista, starter, statistik), när en häst stryks (fältet ändras) och vid "Räkna om omgången" i S10. Resultatet sparas per start och modellversion. Den aktiva versionen visas.
@@ -529,24 +636,26 @@ Prisma mot Postgres i Supabase, med samma inställningar som Tabellgissningen (`
 | Entitet | Fält (urval) | Relationer och unikhet |
 |---|---|---|
 | **User** | Som i Tabellgissningen: `email`, `name`, `passwordHash`, `role` (USER/ADMIN), `status` (APPROVED …) | Mikael skapas med ett seed-skript och rollen ADMIN. Ingen registrering i gränssnittet |
-| **UserSettings** | `userId` (pk), `rushThresholdPe` (10,0), `rowPrice` (0,50), `spelbarGuideline` (2,00) | 1–1 med User |
-| **Mark** | `userId`, `startId`, `interesting`, `interestingAt`, `spelbarOverride` (`NONE`/`ON`/`OFF`), `bet`, `betAt`, `betOdds?`, `unibetOdds?`, `unibetOddsAt?`, `unibetOddsPrev?` (för "Ändrat från"), `updatedAt` | `(userId, startId)` unik |
+| **UserSettings** | `userId` (pk), `rushThresholdPe` (10,0), `rowPrice` (0,50), `spelbarGuideline` (2,00), från E2.1 `xFactorTror` (`Decimal(4,2)`, 1,25) och `xFactorStark` (`Decimal(4,2)`, 1,50). Båda 1,05–3,00 och `xFactorStark > xFactorTror`, kontrolleras i API:t | 1–1 med User |
+| **Mark** | `userId`, `startId`, `interesting`, `interestingAt`, `spelbarOverride` (`NONE`/`ON`/`OFF`), `bet`, `betAt`, `betOdds?`, `unibetOdds?`, `unibetOddsAt?`, `unibetOddsPrev?` (för "Ändrat från"), från E2.1 `xFactor` (enum `XFactor`: `NONE`/`TROR`/`STARK`, standard `NONE`), `xFactorAt?`, `sourceSupport?` (Int 0–20, null = inte ifyllt), `updatedAt` | `(userId, startId)` unik |
 | **RaceReview** | `userId`, `raceId`, `reviewedAt`, `noneInteresting` | `(userId, raceId)` unik |
 | **HorseComment** | `userId`, `horseId`, `startId?`, `roundId?`, `kind` (`NOTE` = inför loppet, `RACE` = under loppet), `tags` (String[]), `text`, `clientId` (uuid från klienten), `createdAt`, `updatedAt`, `deletedAt?` | `(userId, clientId)` unik. Högst en `RACE`-kommentar per `(userId, startId)` |
 | **Coupon** | `userId`, `roundId`, `budget` (kr, Int), `rowPrice`, `selections` (JSON: `{ "1": [3,10], … }`), `lockedLegs` (Int[]), `updatedAt` | `(userId, roundId)` unik |
 | **LiveAlarm** | `userId`, `startId`, `kind` (`RUSH`/`DROP`), `firstSeenAt`, `deltaAtFirst`, `lastDelta`, `ackAt?`, `rearmedAt?` | Index `(userId, startId, kind)` |
-| **Outcome** | `userId`, `startId`, `roundId`, `interesting`, `spelbar`, `bet`, `unibetOdds?`, `betOdds?`, `riktodds?`, `frozenAt`, `place?`, `disqualified`, `hit?` | `(userId, startId)` unik. Skapas vid loppets start (6.4) |
+| **Outcome** | `userId`, `startId`, `roundId`, `interesting`, `spelbar`, `bet`, `unibetOdds?`, `betOdds?`, `riktodds?`, från E2.1 `xFactor` (`XFactor`), `xFactorValue` (`Decimal(4,2)`, 1,00 för `NONE`), `riktoddsX?`, `sourceSupport?`, `sourceTotal?` (m vid start), `frozenAt`, `place?`, `disqualified`, `hit?` | `(userId, startId)` unik. Skapas vid loppets start (6.4) |
 | **Source** | `userId`, `name`, `url`, `enabled`, `sortOrder`, `lastReadAt?`, `lastStatus?`, `lastError?`, `lastFactCount?` | `(userId, url)` unik |
 | **TipFact** [E5] | `userId`, `sourceId`, `roundId`, `startId?`, `horseId`, `text`, `kind` (`FACT`/`PATTERN`), `quote?`, `fetchedAt` | Visas i S3 |
 
 **Princip:** gemensam ATG-data skrivs bara av hämtning, synk och cron. Allt Mikael gör skrivs med `userId` från sessionen, och varje fråga filtrerar på den.
+
+**Migrering E2.1:** enum `XFactor`, de nya fälten på `Mark`, `UserSettings` och `Outcome`. Alla har standardvärden eller är nullbara, så befintliga rader behöver ingen omräkning. `Outcome`-rader som frystes före E2.1 får `xFactor = NONE`, `xFactorValue = 1,00` och `riktoddsX = riktodds`.
 
 ---
 
 ## 9. Klientdata, synk och offline
 
 ### 9.1 Omgången i klienten [E1]
-- `GET /api/rounds/[id]` ger allt som behövs för S1–S7 i ett svar: alla avdelningar, starter med häst, kusk och tränare, form, märken, aktivt riktodds, användarens Mark, RaceReview, Coupon och senaste streck.
+- `GET /api/rounds/[id]` ger allt som behövs för S1–S7 i ett svar: alla avdelningar, starter med häst, kusk och tränare, form, märken, aktivt riktodds, användarens Mark, RaceReview, Coupon och senaste streck. Från E2.1 också X-faktorerna i `settings` och antalet påslagna källor (12).
 - Svaret är cirka 100 starter, under 200 kB komprimerat. Det hålls i en klientcache, ett React-sammanhang `RoundProvider` med `rev`, och sparas i `localStorage` (`sv-round-<id>`) så att appen startar direkt och fungerar offline.
 - Hästkortets tunga delar (alla tidigare starter, kommentarer och statistik) hämtas med `GET /api/starts/[id]`. Det sker när kortet öppnas och förhandsladdas för grannhästarna i S2 och S7 när det finns tid över (`requestIdleCallback`).
 - Avdelningsbyte och hästbyte gör aldrig nätverksanrop.
@@ -571,7 +680,7 @@ En hook `useLivePolling`, byggd som `useRoundLive.ts`:
 5. Ändrades något annat (`rev`) hämtar klienten hela omgången igen, som i Tabellgissningen.
 
 ### 9.3 Optimistisk sparning och kö [E1 för Mark och kommentarer, krav i E4]
-- Alla användaråtgärder (Intressant, Spelbar, Bet, odds, kommentarer, granskning och kupong) uppdaterar cachen direkt och läggs i en **utkorg** i `localStorage` (`sv-outbox`). Varje post har `{id: uuid, method, url, body, createdAt, tries}`.
+- Alla användaråtgärder (Intressant, Spelbar, Bet, X-faktor, källstöd, odds, kommentarer, granskning och kupong) uppdaterar cachen direkt och läggs i en **utkorg** i `localStorage` (`sv-outbox`). Varje post har `{id: uuid, method, url, body, createdAt, tries}`.
 - **Utkorgen** skickar posterna i ordning, en i taget. Den körs direkt, vid `online`, vid `visibilitychange` och var 10:e sekund så länge något finns kvar.
 - **Idempotens:**
   - Kommentarer använder `PUT /api/comments/[clientId]`.
@@ -661,7 +770,7 @@ Avvikelser skrivs in i `lib/atg.ts`, inte i den här specen.
 | `GET /api/cron/results` | `0 22 * * 6`, vilket blir lördag 00:00 eller 23:00 lokal tid | Hämtar resultat för omgångar med datum i dag eller i går som inte är klara, fryser saknade `Outcome` och sätter `finishedAt` när alla lopp har resultat. Säkerställer statistiken även om appen inte var öppen. | E4 |
 
 - Hämta omgång har **inget** schemalagt jobb, enligt Mikaels beslut. Undantaget är baseline-jobbet, som hämtar spelet om det saknas, eftersom utgångsläget annars inte går att spara.
-- `Outcome` fryses vid loppets start av den första läsning som sker efter starttiden: live-rutten, `GET /api/rounds/[id]` eller cron. Den skrivs med `upsert` och värden från Mark som gällde vid starttiden. Ändringar efter start avvisas (6.4), så värdena är desamma.
+- `Outcome` fryses vid loppets start av den första läsning som sker efter starttiden: live-rutten, `GET /api/rounds/[id]` eller cron. Den skrivs med `upsert` och värden från Mark som gällde vid starttiden. Ändringar efter start avvisas (6.4), så värdena är desamma. X-faktorns värde tas från användarens inställningar vid frysningen. (Ändrar Mikael faktorerna i S10 efter starttiden men före första läsningen används de nya. Det är en accepterad förenkling.)
 
 ---
 
@@ -675,6 +784,7 @@ Avvikelser skrivs in i `lib/atg.ts`, inte i den här specen.
   - tak på antal token per körning, som en miljövariabel
   - fel per källa sparas i `Source.lastStatus/lastError`.
 - **Lägen:** "Inga tips för omgången ännu" när modellen returnerar en tom lista, och "Kunde inte läsas: <orsak>".
+- **Källstöd:** efter körningen räknas per häst antalet olika källor med minst ett faktum. Det visas som förslag i hästkortets källstöd (6.8) och skrivs aldrig över Mikaels ifyllda värde. X-faktorn sätts aldrig av Hämta tips.
 - Mikael har inte bestämt vilka källor det blir. Mallen för instruktionen och fältlistan fastställs i E5.
 
 ## 12. API-rutter
@@ -690,10 +800,10 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 | `POST /api/rounds/[id]/fetch/races/[leg]` | E1 | Steg 2–9 |
 | `POST /api/rounds/[id]/fetch/stats` | E1 | Steg 10 |
 | `POST /api/rounds/[id]/riktodds` | E2 | Steg 11, och "Räkna om omgången" |
-| `GET /api/rounds/[id]` | E1 | Hela omgången för klienten (9.1) |
+| `GET /api/rounds/[id]` | E1 | Hela omgången för klienten (9.1). Från E2.1 med `settings.xFactorTror`, `settings.xFactorStark` och `sourcesEnabled` (antal påslagna källor) |
 | `GET /api/rounds/[id]/races/[leg]/stats` | E1 | Loppstatistik S2b |
-| `GET /api/starts/[id]` | E1 | Hästkort: alla tidigare starter, kommentarer, statistik, riktoddsbidrag och tips (E5) |
-| `PUT /api/marks/[startId]` | E1 (interesting), E2 (övrigt) | Body med något av `{interesting, spelbar: "on"\|"off"\|"auto", bet, unibetOdds, betOdds}`. Svarar med Mark och beräknad `spelbar`/`forslag`. 409 efter start |
+| `GET /api/starts/[id]` | E1 | Hästkort: alla tidigare starter, kommentarer, statistik, riktoddsbidrag och tips (E5). `calcLine` är oförändrad, utan X-steget, som klienten lägger till (6.8) |
+| `PUT /api/marks/[startId]` | E1 (interesting), E2 (övrigt), E2.1 (X-faktor, källstöd) | Body med något av `{interesting, spelbar: "on"\|"off"\|"auto", bet, unibetOdds, betOdds, xFactor: "NONE"\|"TROR"\|"STARK", sourceSupport: number\|null}`. Svarar med Mark och beräknad `spelbar`/`forslag`/`riktoddsX`. 409 efter start. Regler för E2.1 nedan |
 | `PUT /api/races/[id]/review` | E1 | `{reviewed: boolean, noneInteresting: boolean}` |
 | `GET /api/horses/[id]/comments` | E1 | Användarens kommentarer om hästen |
 | `PUT /api/comments/[clientId]`, `DELETE /api/comments/[clientId]` | E1 | Idempotent upsert och mjuk borttagning. Body `{horseId, startId?, roundId?, kind, tags, text}` |
@@ -701,12 +811,30 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 | `POST /api/rounds/[id]/live/refresh` | E3 | Uppdatera nu: tvingat claim, högst var 60:e sekund |
 | `POST /api/alarms/[id]/ack`, `DELETE /api/alarms/[id]/ack` | E3 | Kvittera och ångra |
 | `GET /api/rounds/[id]/coupon`, `PUT /api/rounds/[id]/coupon` | E2 | V85-raden |
-| `GET /api/stats?period=season\|last10\|all&by=horse\|driver\|post\|distance\|class` | E4 | Statistik |
-| `GET /api/settings`, `PUT /api/settings` | E1–E3 | Inställningar |
+| `GET /api/stats?period=season\|last10\|all&by=horse\|driver\|post\|distance\|class` | E4 | Statistik. Svaret har också blocket `xFactor` (6.7) |
+| `GET /api/settings`, `PUT /api/settings` | E1–E3 | Inställningar. Från E2.1 också `xFactorTror` och `xFactorStark` |
 | `GET /api/admin/model`, `PUT /api/admin/model` | E2 | Aktiv modell. PUT skapar en ny version |
 | `GET /api/sources`, `POST /api/sources`, `PATCH /api/sources/[id]`, `DELETE /api/sources/[id]` | E1 | Källor |
 | `POST /api/sources/fetch-tips` | E5 | Svarar 501 med "Kommer i en senare version" före E5 |
 | `GET /api/cron/baseline`, `GET /api/cron/results` | E3, E4 | Cron |
+
+**`PUT /api/marks/[startId]` i E2.1**
+- `xFactor` `TROR` eller `STARK` sätter också `interesting = true` (och `interestingAt` om den var släckt) och `xFactorAt = now`.
+- `interesting: false` sätter också `xFactor = NONE` och `spelbarOverride = NONE`, även om `xFactor` inte skickas. Skickas både `interesting: false` och ett `xFactor` som inte är `NONE` svarar servern 400 med "X-faktor kräver Intressant."
+- `sourceSupport`: heltal 0–20 eller `null`. Annat ger 400 med "Källstödet ska vara ett heltal mellan 0 och 20." Okänt `xFactor` ger 400 med "Okänt läge för X-faktor."
+- Efter loppets start, eller när hästen är struken, ger `xFactor` och `sourceSupport` 409 som övriga fält.
+- Idempotent: samma body två gånger ger samma tillstånd.
+
+**DTO-fält som frontend behöver (E2.1)**
+| Typ (`lib/types.ts`) | Nya fält |
+|---|---|
+| `MarkDto` | `xFactor: "NONE" \| "TROR" \| "STARK"`, `xFactorAt: string \| null`, `xFactorValue: number` (1 för `NONE`, annars användarens faktor), `riktoddsX: number \| null` (null när riktodds saknas), `sourceSupport: number \| null`. Befintliga `riktodds` är oförändrat riktoddset utan X. `forslag` och `spelbar` räknas mot `riktoddsX` |
+| `SettingsDto` och `RoundResponse.settings` | `xFactorTror: number`, `xFactorStark: number` |
+| `RoundResponse` | `sourcesEnabled: number` |
+| `StartDetailResponse` | Från E5: `tipSourceCount: number \| null` (förslaget till källstöd) |
+| Statistik (E4) | `xFactor: { level: "TROR" \| "STARK" \| "NONE_INTERESTING", count, hits, expectedRikt, expectedRiktX }[]` |
+
+Utan `Mark` (häst som aldrig har markerats) räknar klienten med `xFactor = NONE`, `sourceSupport = null` och `riktoddsX = riktodds`.
 
 ## 13. Projekt och teknik [E1]
 - **Struktur som `tabellgissningen-app`:**
@@ -718,6 +846,7 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 - **Rena funktioner med vitest-tester:**
   - `lib/phase.ts` (fas och Nästa steg)
   - `lib/spelbar.ts`
+  - `lib/xfactor.ts` (E2.1: faktor per läge, `riktoddsX` med golvet 1,01, nästa läge vid X och Shift + X, X-steget i beräkningsraden, kontroll av faktorer och källstöd)
   - `lib/gallop.ts` (G/GD och formrutor)
   - `lib/alarms.ts` (villkor och livscykel)
   - `lib/riktodds.ts` (z-värden, softmax, Harville, avrundning och förklaring)
@@ -763,6 +892,22 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 - [ ] Bet kan sättas på vilken häst som helst fram till loppets start och sparar bet-odds.
 - [ ] S6b: rader, kostnad och kvar räknas om direkt med radpris 0,50. Föreslå inom budget följer 6.5 och respekterar låsta avdelningar. Kopiera rad ger texten i 6.5.
 
+### E2.1 – X-faktor och källstöd
+- [ ] `riktoddsX = max(1,01, round2(riktodds / faktor))`: med standardfaktorerna ger riktodds 3,00 värdet 2,40 (Tror på) och 2,00 (Stark känsla), 3,20 ger 2,56 och 2,13, och 1,20 med Stark känsla ger 1,01. Testat i `lib/xfactor.test.ts`.
+- [ ] Spelbar räknas mot riktoddset med X-faktor: en Intressant häst med riktodds 3,20 och Unibet 2,80 föreslås inte utan X men föreslås med Tror på (2,56). Ett `override` ON eller OFF står kvar när X ändras.
+- [ ] Riktlinjen 2,00 gäller fortfarande Unibet-oddset: Unibet 1,90 får taggen "Under 2,00" även om riktoddset med X-faktor är lägre.
+- [ ] Att sätta Tror på eller Stark känsla på en häst som inte är Intressant tänder Intressant. Att släcka Intressant sätter X-faktor till Ingen, visar "X-faktor togs också bort · Ångra" (eller "Spelbar och X-faktor togs också bort · Ångra"), och Ångra återställer Intressant, Spelbar och X-faktor i ett anrop. Källstödet ligger kvar.
+- [ ] Hästkortet visar `XFactorBlock` med tre lägen, effektraden "Riktodds 3,00 · med X-faktor 2,40", `RiktoddsBox` med båda värdena och beräkningsraden med X-steget. Allt ändras direkt när läget byts, utan nätverksanrop för visningen.
+- [ ] Källstödet visar "n av m källor pekar ut hästen" där m är antal påslagna källor. Stegaren går 0–m, Rensa ger "Inte ifyllt", och utan påslagna källor visas länken till Källor.
+- [ ] S2 mobil: X-märket efter namnet och riktoddset med X-faktor i kolumnen Rikt. Avd 7 med 12 hästar får fortfarande plats utan skroll på 390 × 844 och raderna är 44 px. Desktop visar två rader i Rikt.
+- [ ] S4: X-knappen i hästkortet stegar läget. Utan tryck på X är flödet och 350 ms-hoppet oförändrat. Tryck på X under 350 ms-fönstret avbryter hoppet, oddset står kvar, resultatraden räknas om och Nästa krävs.
+- [ ] Tangenten X (och Shift + X) fungerar i S2 desktop, S3 och S4, men inte i textfält, i öppna ark eller i S7.
+- [ ] S6a och sammanfattningsarket visar "rikt 3,00 → X 2,40" och skillnaden räknas mot riktoddset med X-faktor.
+- [ ] S10: faktorerna kan ändras inom 1,05–3,00, Stark känsla måste vara större än Tror på, felmeddelandena i 6.8 visas vid fältet, och förslagen i aktuell omgång räknas om direkt.
+- [ ] X-faktor och källstöd sparas optimistiskt, överlever omladdning och offline (utkorgen, utan dubbletter) och avvisas med 409 efter loppets start eller när hästen är struken. Låsta reglage är avstängda med förklaring.
+- [ ] `Outcome` fryser `xFactor`, `xFactorValue`, `riktoddsX`, `sourceSupport` och `sourceTotal` vid loppets start. En senare ändring av faktorerna i S10 ändrar inte frysta rader.
+- [ ] Skärmläsare: lägesväljaren är en `radiogroup` med piltangenter, X-märket läses som "X-faktor: Tror på", och riktoddset i S2 läses som "Riktodds 3,00, med X-faktor 2,40". Kontrasten för märket och `--accent`-siffran håller i båda teman.
+
 ### E3 – Utgångsläge, live och larm
 - [ ] Cron-jobbet på fredagen sparar exakt en BASELINE per omgång, även om omgången inte var hämtad. Det kan köras om utan dubbletter.
 - [ ] Från lördag 12:00 uppdateras S5 var 5:e minut medan sidan syns, och pausas när den inte syns. Flera öppna flikar ger högst en ATG-hämtning per 4 min (claim).
@@ -778,10 +923,12 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 - [ ] Ändringar av I, S, B och odds avvisas efter start, och `Outcome` fryses vid start.
 - [ ] Omgången blir Klar när alla lopp har resultat, och S1 visar summeringen.
 - [ ] S9 visar topp 3-andel för I, S och B per period och uppdelning. Strukna och inställda lopp räknas inte.
+- [ ] S9 visar X-faktorrutan enligt 6.7: faktisk topp 3-andel mot väntad enligt riktoddset och enligt riktoddset med X-faktor, från de frysta värdena.
 
 ### E5 – Hämta tips
 - [ ] Hämta tips läser påslagna källor och lägger fakta på rätt hästar i aktuell omgång. Status per källa visas, och fel stoppar inte övriga källor.
 - [ ] Spärrarna i 11 gäller. Tomt resultat ger "Inga tips för omgången ännu".
+- [ ] Hästkortet föreslår källstöd från tipsen ("Hämta tips räknade 3" med Använd) utan att skriva över Mikaels värde.
 
 ## 15. Utanför omfånget
 - Att spela hos ATG eller Unibet från appen, eller att hämta Unibet-odds automatiskt.
@@ -791,6 +938,7 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 - Andra spelformer än V85, och vinnarodds.
 - Kalibrering av riktoddsmodellen och backtest-körningar (bara förberett, se 7.6).
 - Egen mobilapp. Webbappen ska fungera i mobilens webbläsare och kan sparas på hemskärmen (manifest som i Tabellgissningen).
+- Att appen sätter X-faktorn själv, eller att källstödet påverkar riktoddset.
 
 ## 16. Beslut som tagits i specen
 1. **4C är borttagen som egen skärm** och ersatt av ett sammanfattningsark när S4-kön är klar. Arket går att stänga direkt. Skälet står i S4.
@@ -803,6 +951,10 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 8. **Larm har en återställning med 2 pe marginal**, så att en häst som pendlar kring gränsen inte larmar om och om igen.
 9. **Riktoddset v1 använder inte strecket** (vikt 0), så att det blir oberoende av marknaden. Det kan ändras med en vikt.
 10. **"Spår" i statistiken är startnumret**, samma mått som travstatistik.se använder.
+11. **X-faktor är en delmängd av Intressant**, som Spelbar. Att sätta X tänder I, och att släcka I nollställer X (med Ångra). X utan I skulle inte ha någon verkan.
+12. **X-faktorn räknas fram och lagras bara som läge.** `riktoddsX` räknas vid läsning från riktoddset och användarens faktor, och fryses i `Outcome` vid start. Då slår en ändrad faktor igenom direkt på kommande lopp utan omräkning, medan historiken står fast.
+13. **X-faktorn sätts i hästkortet, i S4 och med tangenten X på desktop**, inte i mobilens S2-rad. Raden har ingen plats för ett reglage till, och hästkortet är ett tryck bort. I S4 är X en egen knapp utanför knappsatsen, så att 350 ms-hoppet är oförändrat för den som inte trycker på den.
+14. **S2 visar riktoddset med X-faktor i kolumnen**, eftersom det är det värdet Spelbar räknas mot. Det vanliga riktoddset syns i hästkortet, på desktop och i skärmläsartexten.
 
 ## 17. Öppna frågor
 1. **Var ska koden ligga** (`BettingBBW/` eller en ny mapp `spelvarde-app/`), och ska det vara ett nytt Supabase-projekt och ett nytt Vercel-projekt? Förslag: nya projekt med namnet `spelvarde`.
@@ -815,3 +967,6 @@ Alla rutter utom `/api/auth/login` och `/api/cron/*` kräver inloggning (middlew
 8. **Inställda lopp och omstarter:** hur ska de visas utöver att de inte räknas? ATG:s fält verifieras i E1.
 9. **E5:** vilka källor, och vilken kostnad per körning för Claude-API:t är rimlig?
 10. **Mockupfilerna** ligger i en tillfällig mapp och behöver flyttas till `BettingBBW/docs/mockups/` (se DESIGN.md).
+11. **X-faktor och V85-raden:** specen låter 6.5 sortera på riktoddset med X-faktor, så att X-hästar hamnar före i förslaget. Vill Mikael hellre att V85-raden bara följer det vanliga riktoddset?
+12. **Källstöd utan X-faktor:** källstödet går att fylla i på alla hästar, även de som inte är Intressant. Räcker det, eller ska det bara visas för Intressant?
+13. **X-märkets form:** "X" och "X+" på tavelfärg är ett förslag utan mockup. Mikael får se det i förhandsvisningen efter bygget och kan be om ändring.

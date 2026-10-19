@@ -32,6 +32,23 @@ describe("utkorgens rena logik (9.3)", () => {
     const inFlight = enqueue(q, item("d", "/api/marks/s1", { interesting: true }), "a");
     expect(inFlight.map((x) => x.id)).toEqual(["a", "b", "d"]);
   });
+  it("Mark: flera tryck på X slås ihop till det sista, och släck + tänd ger ingen 400-kropp (E2.1)", () => {
+    let q = enqueue([], item("a", "/api/marks/s1", { xFactor: "TROR" }));
+    q = enqueue(q, item("b", "/api/marks/s1", { xFactor: "STARK" }));
+    q = enqueue(q, item("c", "/api/marks/s1", { xFactor: "NONE" }));
+    expect(q).toHaveLength(1);
+    expect(q[0].body).toEqual({ xFactor: "NONE" });
+    let r = enqueue([], item("a", "/api/marks/s1", { interesting: false }));
+    r = enqueue(r, item("b", "/api/marks/s1", { xFactor: "TROR" }));
+    expect(r[0].body).toEqual({ xFactor: "TROR", spelbar: "auto" });
+    let t = enqueue([], item("a", "/api/marks/s1", { xFactor: "TROR", sourceSupport: 2 }));
+    t = enqueue(t, item("b", "/api/marks/s1", { interesting: false }));
+    expect(t[0].body).toEqual({ sourceSupport: 2, interesting: false });
+    // Andra adresser slås ihop som förut.
+    let u = enqueue([], item("a", "/api/rounds/R/coupon", { interesting: false }));
+    u = enqueue(u, item("b", "/api/rounds/R/coupon", { xFactor: "TROR" }));
+    expect(u[0].body).toEqual({ interesting: false, xFactor: "TROR" });
+  });
   it("slår inte ihop förbi en DELETE mot samma adress", () => {
     let q = enqueue([], item("a", "/api/comments/c1", { text: "x" }));
     q = enqueue(q, item("b", "/api/comments/c1", undefined, "DELETE"));

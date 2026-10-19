@@ -52,7 +52,7 @@ export function Sheet({ open, onClose, title, sub, children }: { open: boolean; 
       {open && (
         <div className="sheet-in">
           <div className="grab" aria-hidden="true" />
-          <button type="button" className="btn icon x" aria-label="Stäng" onClick={onClose}>
+          <button type="button" className="btn icon sheet-x" aria-label="Stäng" onClick={onClose}>
             <IconX />
           </button>
           <h2 id={titleId}>{title}</h2>

@@ -29,6 +29,12 @@ describe("validering", () => {
     expect(parseSettingsBody({}).ok).toBe(false);
     expect(parseSettingsBody({ userId: "x" }).ok).toBe(false);
   });
+  it("inställningar: X-faktorerna 1,05–3,00 (E2.1)", () => {
+    expect(parseSettingsBody({ xFactorTror: 1.3, xFactorStark: 1.6 })).toEqual({ ok: true, value: { xFactorTror: 1.3, xFactorStark: 1.6 } });
+    expect(parseSettingsBody({ xFactorTror: 1.05 }).ok).toBe(true);
+    expect(parseSettingsBody({ xFactorStark: 3 }).ok).toBe(true);
+    for (const bad of [1.04, 3.01, 1.255, "1,25", null]) expect(parseSettingsBody({ xFactorTror: bad })).toEqual({ ok: false, error: "Faktorn ska ligga mellan 1,05 och 3,00." });
+  });
   it("källor: bara https, inga interna adresser", () => {
     expect(normalizeSourceUrl("https://www.travronden.se/v85#x")).toEqual({ ok: true, value: "https://www.travronden.se/v85" });
     for (const bad of ["http://travronden.se", "travronden.se", "https://localhost/x", "https://10.0.0.1/", "https://user:pw@site.se/", "javascript:alert(1)", 42]) {

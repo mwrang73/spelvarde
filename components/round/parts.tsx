@@ -5,11 +5,13 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { Badge } from "@/components/ui/board";
+import { Badge, XBadge } from "@/components/ui/board";
 import { IconChev } from "@/components/ui/icons";
 import { odds, shortRaceName } from "@/lib/format";
 import type { PhaseStep } from "@/lib/phase";
 import type { RaceDto, StartDto } from "@/lib/types";
+import type { XFactor } from "@/lib/xfactor";
+import { riktLabel, riktX, xOf } from "@/lib/xfactor-ui";
 
 // ---- PhaseRail --------------------------------------------------------------------------
 
@@ -120,33 +122,73 @@ export function Counts({ interesting, spelbar, bet }: { interesting: number; spe
   );
 }
 
-// Märkena S och B efter hästnamnet (I syns som kant och namnfärg).
+// Märkena S, B och X/X+ efter hästnamnet (I syns som kant och namnfärg).
 export function MarkBadges({ s }: { s: StartDto }) {
   return (
     <>
       {s.mark?.spelbar && <Badge kind="s" />}
       {s.mark?.bet && <Badge kind="b" />}
+      <XBadge x={xOf(s.mark)} />
     </>
   );
 }
 
-// Riktoddset i raderna, "osäkert" med asterisk (S2, Lägen).
-export function RiktCell({ s, className = "rk num" }: { s: StartDto; className?: string }) {
+// Riktoddset i raderna, "osäkert" med asterisk (S2, Lägen). Med X-faktor
+// (6.8) visas riktoddset med X-faktor i --accent (X-märket står i samma rad).
+// two = desktop: två rader i cellen, med "3,00 utan X" under.
+export function RiktCell({ s, className = "rk num", two }: { s: StartDto; className?: string; two?: boolean }) {
   if (s.riktodds === null || s.scratched)
     return (
       <span className={className}>
         –<span className="sr"> riktodds saknas</span>
       </span>
     );
-  const text = odds(s.riktodds);
+  const x = xOf(s.mark);
+  const rx = riktX(s);
+  const withX = x !== "NONE" && rx !== null;
+  const text = odds(withX ? rx : s.riktodds);
+  const unc = s.uncertain && (
+    <>
+      <sup aria-hidden="true">*</sup>
+      <span className="sr">, osäkert</span>
+    </>
+  );
+  if (!withX)
+    return (
+      <span className={`${className}${text.length > 4 ? " w" : ""}`} title={s.uncertain ? "Osäkert riktodds" : undefined}>
+        <span className="sr">Riktodds </span>
+        {text}
+        {unc}
+      </span>
+    );
+  const label = riktLabel(s.riktodds, x, rx);
   return (
-    <span className={`${className}${text.length > 4 ? " w" : ""}`} title={s.uncertain ? "Osäkert riktodds" : undefined}>
-      <span className="sr">Riktodds </span>
-      {text}
-      {s.uncertain && (
+    <span className={`${className} x${text.length > 4 ? " w" : ""}${two ? " two" : ""}`} title={`${label}${s.uncertain ? " (osäkert)" : ""}`}>
+      <span className="sr">{label}</span>
+      <span className="rkx" aria-hidden="true">
+        {text}
+      </span>
+      {unc}
+      {two && (
+        <span className="rk0" aria-hidden="true">
+          {odds(s.riktodds)} utan X
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Kort form i sammanfattningsarket (S4) och S6a mobil: "rikt 3,00 → X 2,40"
+// med siffrorna i fetstil (texten är riktShort i lib/xfactor-ui.ts).
+export function RiktShort({ riktodds, x, rx }: { riktodds: number | null; x: XFactor; rx: number | null }) {
+  const withX = x !== "NONE" && riktodds !== null && rx !== null;
+  return (
+    <span className="rshort">
+      rikt <b>{odds(riktodds)}</b>
+      {withX && (
         <>
-          <sup aria-hidden="true">*</sup>
-          <span className="sr">, osäkert</span>
+          {" → X "}
+          <b className="rkx">{odds(rx)}</b>
         </>
       )}
     </span>

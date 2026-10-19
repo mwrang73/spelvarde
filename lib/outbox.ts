@@ -15,11 +15,15 @@
 //   PUT/DELETE /api/comments/[clientId], PUT /api/races/[id]/review,
 //   PUT …/coupon). Två PUT mot samma adress slås ihop till en (den senare
 //   kroppen läggs över den tidigare), så länge den tidigare inte skickas just
-//   nu och ingen annan metod mot samma adress ligger emellan.
+//   nu och ingen annan metod mot samma adress ligger emellan. Mark-kroppar
+//   (/api/marks/…) slås ihop med mergeMarkBodies i lib/marks.ts, så att
+//   "släck Intressant" följt av "X-faktor på" inte blir en 400-kropp.
 // - Svar: 2xx tar bort posten. 409 tar bort, rullar tillbaka och visar
 //   "<häst>: loppet hade redan startat, ändringen sparades inte." 401 pausar
 //   kön ("Logga in igen"). Övriga 4xx tar bort och visar felet. 5xx och
 //   nätverksfel försöker igen efter 2, 5, 10 och sedan 30 s.
+
+import { mergeMarkBodies } from "@/lib/marks";
 
 export const OUTBOX_STORAGE_KEY = "sv-outbox";
 export const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000];
@@ -69,7 +73,9 @@ export function enqueue(queue: OutboxItem[], item: OutboxItem, inFlightId: strin
       const q = queue[i];
       if (q.url !== item.url) continue;
       if (q.method !== "PUT" || q.id === inFlightId) break;
-      const body = isPlainObject(q.body) && isPlainObject(item.body) ? { ...q.body, ...item.body } : item.body;
+      // Mark-kroppar slås ihop med reglerna för Intressant/X-faktor (lib/marks.ts).
+      const body =
+        isPlainObject(q.body) && isPlainObject(item.body) ? (item.url.startsWith("/api/marks/") ? mergeMarkBodies(q.body, item.body) : { ...q.body, ...item.body }) : item.body;
       const merged: OutboxItem = { ...q, body, meta: { ...(q.meta ?? {}), ...(item.meta ?? {}) } };
       return queue.map((x, j) => (j === i ? merged : x));
     }

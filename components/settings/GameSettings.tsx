@@ -1,7 +1,8 @@
 "use client";
 
-// S10, E2-delen: riktlinjen för Unibet-odds och radpriset (alla), och
-// riktoddsmodellen med vikter, versioner och "Räkna om omgången" (bara ADMIN).
+// S10, E2-delen: riktlinjen för Unibet-odds och radpriset (alla), från E2.1
+// X-faktorerna Tror på och Stark känsla (6.8), och riktoddsmodellen med
+// vikter, versioner och "Räkna om omgången" (bara ADMIN).
 
 import { useEffect, useId, useState } from "react";
 import { apiGet, apiRequest } from "@/components/api";
@@ -11,6 +12,9 @@ import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
 import { INPUT_KEYS, type InputKey } from "@/lib/riktodds";
+import { applySettings } from "@/lib/round-overlay";
+import { X_FACTOR_ORDER_ERROR, X_FACTOR_RANGE_ERROR } from "@/lib/xfactor";
+import { parseFactorText } from "@/lib/xfactor-ui";
 import type { CurrentRoundResponse, ModelDto, ModelResponse, RiktoddsStepResponse, SettingsDto } from "@/lib/types";
 
 // ---- Riktlinje och radpris ------------------------------------------------------------------
@@ -18,8 +22,9 @@ import type { CurrentRoundResponse, ModelDto, ModelResponse, RiktoddsStepRespons
 function refreshCurrentRound(s: SettingsDto) {
   const id = getCurrentId();
   if (!id) return;
-  patchRound(id, (r) => ({ ...r, settings: { spelbarGuideline: s.spelbarGuideline, rowPrice: s.rowPrice } }));
-  // Taggen "Under 2,00" räknas på servern: hämta omgången i bakgrunden.
+  // Riktlinje, radpris och X-faktorer in i cachen; förslagen räknas om direkt.
+  patchRound(id, (r) => applySettings(r, s));
+  // Hämta omgången i bakgrunden ändå, så att allt stämmer med servern.
   loadRound(id).catch(() => {});
 }
 
@@ -30,6 +35,7 @@ function NumberSetting({
   unit,
   parse,
   error,
+  validate,
   onSave,
 }: {
   label: string;
@@ -38,6 +44,8 @@ function NumberSetting({
   unit?: string;
   parse: (t: string) => number | null;
   error: string;
+  // Kontroll mot andra inställningar (t.ex. Stark känsla > Tror på). Ger felet eller null.
+  validate?: (v: number) => string | null;
   onSave: (v: number) => Promise<void>;
 }) {
   const id = useId();
@@ -50,8 +58,10 @@ function NumberSetting({
   const commit = async () => {
     const v = parse(text);
     if (v === null) return setErr(error);
-    setErr(null);
     setText(odds(v));
+    const bad = validate?.(v) ?? null;
+    if (bad) return setErr(bad);
+    setErr(null);
     if (v === value) return;
     setState("saving");
     try {
@@ -130,6 +140,24 @@ export function GameSettings({ settings, onChange }: { settings: SettingsDto | n
         onSave={(v) => save({ spelbarGuideline: v })}
       />
       <NumberSetting label="Radpris V85" help="Används för kostnaden i V85-raden." value={settings?.rowPrice ?? null} unit="kr" parse={parseRowPrice} error={ROW_PRICE_ERROR} onSave={(v) => save({ rowPrice: v })} />
+      <NumberSetting
+        label="X-faktor Tror på"
+        help="Riktoddset delas med faktorn. 1,25 gör 3,00 till 2,40. Mellan 1,05 och 3,00."
+        value={settings?.xFactorTror ?? null}
+        parse={parseFactorText}
+        error={X_FACTOR_RANGE_ERROR}
+        validate={(v) => (settings && !(settings.xFactorStark > v) ? X_FACTOR_ORDER_ERROR : null)}
+        onSave={(v) => save({ xFactorTror: v })}
+      />
+      <NumberSetting
+        label="X-faktor Stark känsla"
+        help="Riktoddset delas med faktorn. 1,50 gör 3,00 till 2,00. Mellan 1,05 och 3,00 och större än Tror på."
+        value={settings?.xFactorStark ?? null}
+        parse={parseFactorText}
+        error={X_FACTOR_RANGE_ERROR}
+        validate={(v) => (settings && !(v > settings.xFactorTror) ? X_FACTOR_ORDER_ERROR : null)}
+        onSave={(v) => save({ xFactorStark: v })}
+      />
     </section>
   );
 }

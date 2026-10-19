@@ -22,6 +22,8 @@ export type CouponStart = {
   scratched: boolean;
   spelbar: boolean;
   interesting: boolean;
+  // Riktoddset som ordningen följer: från E2.1 riktoddset med X-faktor
+  // (MarkDto.riktoddsX), annars det vanliga.
   riktodds: number | null;
   // Streck i procent.
   streck: number | null;
@@ -39,7 +41,8 @@ export function rowCount(selections: Selections): number {
 
 export const couponCost = (rows: number, rowPrice: number) => r2(rows * rowPrice);
 
-// Ordningen för förslag i en avdelning: Spelbar (lägst riktodds först),
+// Ordningen för förslag i en avdelning: Spelbar (lägst riktodds först, från
+// E2.1 riktoddset med X-faktor, se CouponStart.riktodds),
 // övriga Intressant (lägst riktodds först), sist resten efter högst streck.
 // Saknas riktodds sorteras hästen på streck, efter dem som har riktodds.
 // Strukna är inte med.

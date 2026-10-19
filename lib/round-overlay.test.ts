@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { OutboxItem } from "@/lib/outbox";
-import { applyCommentDone, applyDone, applyPending, applyPendingComments, conflictText, retryText } from "@/lib/round-overlay";
+import type { Mark } from "@prisma/client";
+import { markDto } from "@/lib/dto";
+import { applyMarkChange, EMPTY_MARK, type MarkChange, type MarkState } from "@/lib/marks";
+import { applyCommentDone, applyDone, applyPending, applyPendingComments, applySettings, conflictText, markDtoOf, retryText, xFactorsOf } from "@/lib/round-overlay";
 import type { CommentDto, RaceDto, RoundResponse, StartDto } from "@/lib/types";
 
 const NOW = new Date("2026-10-19T12:00:00Z");
@@ -23,7 +26,7 @@ function start(id: string, number: number, interesting = false): StartDto {
     probTop3: null,
     uncertain: true,
     mark: interesting
-      ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", forslag: false, spelbar: false, riktodds: null, belowGuideline: false }
+      ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", xFactor: "NONE", xFactorAt: null, xFactorValue: 1, sourceSupport: null, forslag: false, spelbar: false, riktodds: null, riktoddsX: null, belowGuideline: false }
       : null,
     result: null,
     quick: { winPct: null, placePct: null, postPct: null },
@@ -69,7 +72,8 @@ function round(): RoundResponse {
     latestStreck: null,
     coupon: null,
     model: null,
-    settings: { spelbarGuideline: 2, rowPrice: 0.5 },
+    settings: { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5 },
+    sourcesEnabled: 0,
   };
 }
 
@@ -186,5 +190,67 @@ describe("E2: Spelbar, Bet, odds och kupong i det optimistiska läget", () => {
     expect(retryText(put("a", { bet: true }))).toBe("Kunde inte spara Bet för Häst. Försöker igen.");
     expect(retryText(put("a", { unibetOdds: 3.1 }))).toBe("Kunde inte spara oddset för Häst. Försöker igen.");
     expect(conflictText(item({ kind: "coupon", roundId: "R" }))).toBe("V85-raden: en avdelning hade redan startat, ändringen sparades inte.");
+  });
+});
+
+describe("E2.1: X-faktor i det optimistiska läget", () => {
+  const withRikt = (rikt = 3.2): RoundResponse => {
+    const d = round();
+    d.races[0].starts[0].riktodds = rikt;
+    d.nextStep = { kind: "ALL_REVIEWED", title: "", text: "", action: null };
+    return d;
+  };
+  const put = (startId: string, body: Record<string, unknown>, createdAt = NOW.getTime()) => item({ kind: "mark", roundId: "R", raceId: "r1", startId, horseName: "Häst" }, { body, createdAt });
+
+  it("X tänder Intressant, riktoddsX och förslaget räknas direkt (3,20 / Unibet 2,80)", () => {
+    const base = applyPending(withRikt(), [put("a", { interesting: true, unibetOdds: 2.8 })], NOW);
+    expect(base.races[0].starts[0].mark).toMatchObject({ riktodds: 3.2, riktoddsX: 3.2, xFactor: "NONE", xFactorValue: 1, forslag: false });
+    const x = applyPending(withRikt(), [put("a", { unibetOdds: 2.8 }), put("a", { xFactor: "TROR" })], NOW);
+    expect(x.races[0].starts[0].mark).toMatchObject({ interesting: true, xFactor: "TROR", xFactorValue: 1.25, riktodds: 3.2, riktoddsX: 2.56, forslag: true, spelbar: true });
+    expect(x.races[0].counts).toMatchObject({ interesting: 1, spelbar: 1 });
+    // Riktlinjen gäller Unibet-oddset: 1,90 får taggen även om riktoddsX är lägre.
+    const low = applyPending(withRikt(1.5), [put("a", { unibetOdds: 1.9, xFactor: "STARK" })], NOW);
+    expect(low.races[0].starts[0].mark).toMatchObject({ riktoddsX: 1.01, forslag: true, belowGuideline: true });
+  });
+  it("släckt Intressant tar med X men inte källstödet", () => {
+    const out = applyPending(withRikt(), [put("a", { xFactor: "STARK", sourceSupport: 2 }), put("a", { interesting: false })], NOW);
+    expect(out.races[0].starts[0].mark).toMatchObject({ interesting: false, xFactor: "NONE", xFactorAt: null, sourceSupport: 2, riktoddsX: 3.2 });
+  });
+  it("användarens faktorer ur settings, och standard för en gammal cache utan dem", () => {
+    const d = withRikt();
+    d.settings = { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.6, xFactorStark: 2 };
+    const out = applyPending(d, [put("a", { xFactor: "TROR" })], NOW);
+    expect(out.races[0].starts[0].mark).toMatchObject({ xFactorValue: 1.6, riktoddsX: 2 });
+    expect(xFactorsOf({ spelbarGuideline: 2, rowPrice: 0.5 })).toEqual({ xFactorTror: 1.25, xFactorStark: 1.5 });
+  });
+  it("nya faktorer i S10 räknar om förslagen i cachen direkt", () => {
+    const d = applyDone(withRikt(), put("a", {}), {
+      mark: markDtoOf("a", applyMarkChange(EMPTY_MARK, { unibetOdds: 2.8, xFactor: "TROR" }, { now: NOW, riktodds: 3.2 }), 3.2, 2, NOW.toISOString()),
+    });
+    expect(d.races[0].starts[0].mark).toMatchObject({ forslag: true });
+    const out = applySettings(d, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.2, xFactorStark: 1.5 }, NOW);
+    expect(out.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.2, xFactorStark: 1.5 });
+    expect(out.races[0].starts[0].mark).toMatchObject({ xFactorValue: 1.2, riktoddsX: 2.67, forslag: true, spelbar: true });
+    const out2 = applySettings(d, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.05, xFactorStark: 1.5 }, NOW);
+    expect(out2.races[0].starts[0].mark).toMatchObject({ riktoddsX: 3.05, forslag: false, spelbar: false });
+    expect(out2.races[0].counts.spelbar).toBe(0);
+  });
+  it("overlay = server: markDtoOf ger samma MarkDto som markDto för samma tillstånd", () => {
+    const F = { xFactorTror: 1.3, xFactorStark: 1.7 };
+    const changes: MarkChange[][] = [
+      [{ interesting: true, unibetOdds: 2.8 }],
+      [{ unibetOdds: 2.8, xFactor: "TROR" }],
+      [{ unibetOdds: 2.8, xFactor: "STARK", spelbar: "off" }],
+      [{ unibetOdds: 1.2, xFactor: "STARK", sourceSupport: 4 }, { bet: true }],
+      [{ xFactor: "TROR", spelbar: "on" }, { interesting: false }],
+    ];
+    for (const rikt of [3.2, 1.2, null]) {
+      for (const list of changes) {
+        let st: MarkState = EMPTY_MARK;
+        for (const c of list) st = applyMarkChange(st, c, { now: NOW, riktodds: rikt, factors: F });
+        const row = { id: "m", userId: "u", startId: "a", createdAt: NOW, updatedAt: NOW, ...st } as unknown as Mark;
+        expect(markDtoOf("a", st, rikt, 2, NOW.toISOString(), F)).toEqual(markDto(row, rikt, 2, F));
+      }
+    }
   });
 });

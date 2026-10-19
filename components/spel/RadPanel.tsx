@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { BUDGET_SLIDER, couponText, DEFAULT_BUDGET, suggestCoupon, type CouponLeg, type Selections } from "@/lib/coupon";
 import { BUDGET_ERROR, couponBody, couponLegs, couponSummary, legMax, parseBudget, parseRowPrice, ROW_PRICE_ERROR, selectionsOf, stepLeg, toggleNumber } from "@/lib/coupon-ui";
 import { hhmm, odds, pct, shortRaceName, thousands } from "@/lib/format";
-import type { CouponBody } from "@/lib/round-overlay";
+import { applySettings, type CouponBody } from "@/lib/round-overlay";
 import type { RaceDto, RoundResponse, SettingsDto } from "@/lib/types";
 
 const SAVE_DELAY_MS = 600;
@@ -121,7 +121,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
           change((d) => ({ ...d, rowPrice: p }));
           try {
             const s = await apiRequest<SettingsDto>("PUT", "/api/settings", { rowPrice: p });
-            patchRound(roundId, (r) => ({ ...r, settings: { spelbarGuideline: s.spelbarGuideline, rowPrice: s.rowPrice } }));
+            patchRound(roundId, (r) => applySettings(r, s));
           } catch {
             toast({ text: "Radpriset gäller för raden men kunde inte sparas i inställningarna." });
           }

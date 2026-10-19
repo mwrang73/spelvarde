@@ -1,4 +1,4 @@
-// PUT /api/marks/[startId] (specen 12, 6.1 och S6a): tolkning av kroppen och
+// PUT /api/marks/[startId] (specen 12, 6.1, 6.8 och S6a): tolkning av kroppen och
 // hur en ändring läggs på en Mark. Rena funktioner, så att servern och
 // klientens optimistiska läge kan använda samma regler. Testade i
 // lib/marks.test.ts.
@@ -6,11 +6,15 @@
 // Kroppen är hela tillståndet för fälten som skickas (idempotent: samma kropp
 // två gånger ger samma Mark). Utkorgen slår ihop två PUT mot samma start
 // genom att lägga den senare kroppen över den tidigare, därför tillämpas
-// fälten i en fast ordning: unibetOdds, interesting, spelbar, bet, betOdds.
+// fälten i en fast ordning: unibetOdds, interesting, xFactor, spelbar, bet,
+// betOdds, sourceSupport. (xFactor före spelbar, så att ett tryck på Spelbar
+// jämförs med förslaget mot riktoddset med den nya X-faktorn.) Se också
+// mergeMarkBodies för hur utkorgen slår ihop två kroppar.
 
 import { isValidOdds, ODDS_RANGE_ERROR } from "@/lib/odds-input";
 import { applyInteresting, applySpelbar, type Override, type SpelbarInput } from "@/lib/spelbar";
 import type { Result } from "@/lib/validate";
+import { DEFAULT_X_FACTORS, isXFactor, parseSourceSupport, riktoddsX, X_FACTOR_ERROR, X_NEEDS_INTERESTING, xTurnsOnInteresting, type XFactor, type XFactorSettings } from "@/lib/xfactor";
 
 export type MarkChange = {
   interesting?: boolean;
@@ -18,6 +22,9 @@ export type MarkChange = {
   bet?: boolean;
   unibetOdds?: number | null;
   betOdds?: number | null;
+  // E2.1 (6.8)
+  xFactor?: XFactor;
+  sourceSupport?: number | null;
 };
 
 export type MarkState = {
@@ -30,6 +37,9 @@ export type MarkState = {
   unibetOdds: number | null;
   unibetOddsAt: Date | null;
   unibetOddsPrev: number | null;
+  xFactor: XFactor;
+  xFactorAt: Date | null;
+  sourceSupport: number | null;
 };
 
 export const EMPTY_MARK: MarkState = {
@@ -42,9 +52,12 @@ export const EMPTY_MARK: MarkState = {
   unibetOdds: null,
   unibetOddsAt: null,
   unibetOddsPrev: null,
+  xFactor: "NONE",
+  xFactorAt: null,
+  sourceSupport: null,
 };
 
-const KEYS = ["interesting", "spelbar", "bet", "unibetOdds", "betOdds"] as const;
+const KEYS = ["interesting", "spelbar", "bet", "unibetOdds", "betOdds", "xFactor", "sourceSupport"] as const;
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
@@ -71,17 +84,32 @@ export function parseMarkChange(body: Record<string, unknown>): Result<MarkChang
     else if (isValidOdds(v)) out[k] = r2(v);
     else return fail(ODDS_RANGE_ERROR);
   }
+  if ("xFactor" in body) {
+    if (!isXFactor(body.xFactor)) return fail(X_FACTOR_ERROR);
+    out.xFactor = body.xFactor;
+  }
+  if ("sourceSupport" in body) {
+    const p = parseSourceSupport(body.sourceSupport);
+    if (!p.ok) return p;
+    out.sourceSupport = p.value;
+  }
+  // X-faktorn är en delmängd av Intressant: båda i samma kropp går inte ihop.
+  if (out.interesting === false && out.xFactor !== undefined && out.xFactor !== "NONE") return fail(X_NEEDS_INTERESTING);
   if (!Object.keys(out).length) return fail("Inget att ändra.");
   return { ok: true, value: out };
 }
 
-// Sätter det här ändringen något "på" (Intressant, Spelbar, Bet)? Avvisas för strukna hästar.
+// Sätter det här ändringen något "på" (Intressant, Spelbar, Bet, X-faktor
+// eller ett källstöd)? Avvisas för strukna hästar. Att släcka eller rensa går.
 export function turnsSomethingOn(c: MarkChange): boolean {
-  return c.interesting === true || c.spelbar === "on" || c.bet === true;
+  return c.interesting === true || c.spelbar === "on" || c.bet === true || (c.xFactor !== undefined && c.xFactor !== "NONE") || (c.sourceSupport !== undefined && c.sourceSupport !== null);
 }
 
-export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: { now: Date; riktodds: number | null }): MarkState {
+export type MarkCtx = { now: Date; riktodds: number | null; factors?: XFactorSettings };
+
+export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: MarkCtx): MarkState {
   const now = ctx.now;
+  const factors = ctx.factors ?? DEFAULT_X_FACTORS;
   const next: MarkState = { ...prev };
 
   // 1. Unibet-odds. Ett nytt värde sparar det gamla för "Ändrat från … kl …".
@@ -91,23 +119,44 @@ export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: { now: Date
     next.unibetOddsPrev = c.unibetOdds === null ? null : prev.unibetOdds;
   }
 
-  // 2. Intressant. Tas den bort nollställs override.
+  // 2. Intressant. Tas den bort nollställs override och X-faktorn (6.1, 6.8).
+  // Källstödet ligger kvar.
   if (c.interesting !== undefined) {
     next.interesting = c.interesting;
     next.interestingAt = c.interesting ? (prev.interesting ? prev.interestingAt ?? now : now) : null;
     next.spelbarOverride = applyInteresting(next.spelbarOverride, c.interesting);
+    if (!c.interesting) {
+      next.xFactor = "NONE";
+      next.xFactorAt = null;
+    }
   }
 
-  // 3. Spelbar. "on" gör hästen Intressant. Kommer Intressant = false i samma
-  // kropp vinner den (Spelbar kräver Intressant).
+  // 3. X-faktor. Tror på och Stark känsla tänder Intressant. Ingen släcker
+  // aldrig Intressant. override står kvar (förslaget räknas om vid läsning).
+  // interesting: false + X ≠ Ingen i samma kropp avvisas redan i parseMarkChange.
+  if (c.xFactor !== undefined && !(c.interesting === false && c.xFactor !== "NONE")) {
+    if (xTurnsOnInteresting(c.xFactor) && !next.interesting) {
+      next.interesting = true;
+      next.interestingAt = now;
+    }
+    if (c.xFactor !== next.xFactor) {
+      next.xFactor = c.xFactor;
+      next.xFactorAt = c.xFactor === "NONE" ? null : now;
+    }
+  }
+
+  // 4. Spelbar. "on" gör hästen Intressant. Kommer Intressant = false i samma
+  // kropp vinner den (Spelbar kräver Intressant). Förslaget räknas mot
+  // riktoddset med X-faktor.
   if (c.spelbar !== undefined && !(c.interesting === false && c.spelbar === "on")) {
-    const s = applySpelbar({ interesting: next.interesting, unibetOdds: next.unibetOdds, riktodds: ctx.riktodds }, c.spelbar);
+    const rx = riktoddsX(ctx.riktodds, next.xFactor, factors);
+    const s = applySpelbar({ interesting: next.interesting, unibetOdds: next.unibetOdds, riktodds: rx }, c.spelbar);
     if (s.interesting && !next.interesting) next.interestingAt = now;
     next.interesting = s.interesting;
     next.spelbarOverride = next.interesting ? s.override : "NONE";
   }
 
-  // 4. Bet. Bet-tangenten sätter betOdds = aktuellt Unibet-odds. Rättas
+  // 5. Bet. Bet-tangenten sätter betOdds = aktuellt Unibet-odds. Rättas
   // oddset efter Bet följer betOdds med, om de inte har satts olika.
   const followed = prev.betOdds === null || prev.betOdds === prev.unibetOdds;
   if (c.bet !== undefined) {
@@ -125,9 +174,32 @@ export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: { now: Date
     next.betOdds = next.unibetOdds;
   }
 
-  // 5. Uttryckligt bet-odds (bara när hästen har Bet).
+  // 6. Uttryckligt bet-odds (bara när hästen har Bet).
   if (c.betOdds !== undefined && next.bet) next.betOdds = c.betOdds;
+
+  // 7. Källstöd (0–20 eller null). Påverkas inte av Intressant.
+  if (c.sourceSupport !== undefined) next.sourceSupport = c.sourceSupport;
   return next;
+}
+
+// Utkorgen slår ihop två PUT mot samma start (lib/outbox.ts, enqueue). En ren
+// överläggning ({ ...a, ...b }) ger fel när den senare kroppen tänder eller
+// släcker Intressant i förhållande till den tidigare:
+// - a släcker Intressant och b tänder den igen (X-faktor eller Spelbar på):
+//   kombinationen { interesting: false, xFactor: "TROR" } vore 400, och
+//   { interesting: false, spelbar: "on" } skulle tappa Spelbar. I stället
+//   skickas det som släckningen gjorde (override och X nollställda) plus b.
+// - b släcker Intressant: X-faktorn från a gäller inte längre.
+export function mergeMarkBodies(a: Record<string, unknown>, b: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...a, ...b };
+  const bTurnsOn = !("interesting" in b) && ((b.xFactor !== undefined && b.xFactor !== "NONE") || b.spelbar === "on");
+  if (a.interesting === false && bTurnsOn) {
+    delete merged.interesting;
+    if (!("spelbar" in b)) merged.spelbar = "auto";
+    if (!("xFactor" in b)) merged.xFactor = "NONE";
+  }
+  if (b.interesting === false && !("xFactor" in b)) delete merged.xFactor;
+  return merged;
 }
 
 export function sameMark(a: MarkState, b: MarkState): boolean {
@@ -141,6 +213,9 @@ export function sameMark(a: MarkState, b: MarkState): boolean {
     a.betOdds === b.betOdds &&
     a.unibetOdds === b.unibetOdds &&
     t(a.unibetOddsAt) === t(b.unibetOddsAt) &&
-    a.unibetOddsPrev === b.unibetOddsPrev
+    a.unibetOddsPrev === b.unibetOddsPrev &&
+    a.xFactor === b.xFactor &&
+    t(a.xFactorAt) === t(b.xFactorAt) &&
+    a.sourceSupport === b.sourceSupport
   );
 }

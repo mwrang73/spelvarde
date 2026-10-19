@@ -287,7 +287,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
 dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .sheet-in { position: relative; max-height: 80dvh; overflow-y: auto; overscroll-behavior: contain; background: var(--surface); border-radius: 18px 18px 0 0; border-top: 3px solid var(--fill); padding: 8px 14px calc(20px + env(safe-area-inset-bottom)); box-shadow: 0 -12px 40px rgba(0, 0, 0, .35); }
 .grab { width: 42px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: 2px auto 8px; }
-.sheet-in .x { position: absolute; top: 6px; right: 6px; }
+.sheet-in .sheet-x { position: absolute; top: 6px; right: 6px; }
 .sheet-in h2 { margin: 0 44px 2px 0; font: 700 21px/1.1 var(--f-name); text-transform: uppercase; letter-spacing: .02em; }
 .sheet-in .sub { margin: 0 0 10px; font-size: 13px; color: var(--ink-2); }
 @keyframes sheetUp { from { transform: translateY(100%); } }
@@ -706,6 +706,45 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .spel .vfoot { padding: 12px 20px; }
   .twrap .ptbl { margin-bottom: 4px; }
 }
+
+/* ============ E2.1: X-faktor och källstöd (6.8) ============ */
+/* Märket X/X+: "lysande" tavelstil, skiljer sig från I (ring), S (fylld) och B (inverterad). */
+.bdg.x, .bdg.xp { background: var(--head); color: var(--head-ink); box-shadow: inset 0 0 0 1px var(--head-line); }
+.bdg.xp { padding: 0 2px; max-width: 22px; letter-spacing: 0; }
+.bdg.x.wide, .bdg.xp.wide { max-width: none; padding: 0 6px; letter-spacing: .06em; }
+/* Riktoddset med X-faktor i raderna: --accent, och på desktop två rader. */
+.rk.x .rkx, .prow .pm b.rkx, .brow .pm b.rkx { color: var(--accent); }
+.rshort { white-space: nowrap; }
+.rk.two { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.rk.two .rk0 { font: 500 11px/1 var(--f-num); color: var(--ink-2); letter-spacing: 0; }
+/* XFactorBlock i hästkortet. */
+.xblock > .help { margin: -2px 0 0; }
+.xseg { margin-top: 8px; }
+.xseg button { min-height: 52px; flex-direction: column; gap: 4px; padding: 0 4px; }
+.xseg button:focus-visible { outline-offset: -3px; }
+.xseg .xl { font: 700 13.5px/1 var(--f-label); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+.xseg .xf { font: 500 11px/1 var(--f-num); letter-spacing: 0; text-transform: none; }
+.xseg button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.xseg[aria-disabled="true"] button { background: var(--surface-3); color: var(--ink-2); cursor: not-allowed; }
+.xseg[aria-disabled="true"] button[aria-checked="true"] { color: var(--ink); }
+.xlock { margin: 6px 0 0; }
+.xeff { margin: 0; }
+.xeff-t { display: block; margin-top: 8px; font-size: 13.5px; font-weight: 600; }
+.xsrc { margin-top: 14px; display: grid; gap: 6px; }
+.xsrc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.xsrc-t { margin: 0; flex: 1 1 170px; font-size: 14.5px; }
+.xsrc-over { color: var(--accent); font-weight: 600; }
+.xsrc .stp output { min-width: 28px; }
+.xsrc-clr { min-height: 44px; }
+/* RiktoddsBox med X-faktor: Med X-faktor, Riktodds och Unibet sida vid sida. */
+.rbox.x { grid-template-columns: auto auto auto 1fr; gap: 4px 14px; }
+.xunder { margin: 6px 0 0; }
+/* S4: XCycleButton i hästkortet och "utan X" under riktoddset. */
+.kcard.x { grid-template-columns: auto minmax(0, 1fr) auto; }
+.xcyc { min-height: 44px; min-width: 44px; padding: 0 10px; gap: 6px; font-size: 13px; align-self: center; }
+.xcyc.on { border-color: var(--fill); box-shadow: 0 3px 0 var(--fill-deep); }
+.xcyc .bdg { height: 20px; min-width: 20px; font-size: 12px; }
+.kcmp .rv0 { display: block; margin-top: 5px; font: 500 12px/1 var(--f-num); color: var(--head-ink-2); }
 
 /* ============ Minskad rörelse ============ */
 @media (prefers-reduced-motion: reduce) {

@@ -7,9 +7,12 @@ import { withUser } from "@/lib/route";
 export const dynamic = "force-dynamic";
 
 // Idempotent: kroppen är hela tillståndet för fälten som skickas, något av
-// { interesting, spelbar: "on" | "off" | "auto", bet, unibetOdds, betOdds }.
-// Svarar { mark } med beräknade spelbar/forslag. Efter loppets starttid:
-// 409 "Loppet har startat". Reglerna ligger i lib/marks.ts och lib/e2-server.ts.
+// { interesting, spelbar: "on" | "off" | "auto", bet, unibetOdds, betOdds,
+//   xFactor: "NONE" | "TROR" | "STARK", sourceSupport: 0–20 | null }.
+// Svarar { mark } med beräknade spelbar/forslag/riktoddsX. X ≠ NONE tänder
+// Intressant, interesting: false nollställer X och override (båda i samma
+// kropp: 400). Efter loppets starttid: 409 "Loppet har startat". Struken häst:
+// 422 om något sätts på. Reglerna ligger i lib/marks.ts och lib/e2-server.ts.
 export const PUT = withUser<{ startId: string }>("marks/[startId]", async ({ req, params, user }) => {
   if (!isId(params.startId)) return badRequest("Ogiltig start.");
   const body = await readJson(req, 2_000);

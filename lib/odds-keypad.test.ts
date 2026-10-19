@@ -136,3 +136,24 @@ describe("kön i S4", () => {
     expect(buildOddsQueue(races, now)).toEqual(["a7", "b5", "b1"]);
   });
 });
+
+describe("X-faktorn under 350 ms-fönstret (E2.1)", () => {
+  it("hold avbryter hoppet men behåller siffrorna, och Nästa går vidare utan ny sparning", () => {
+    let s = initialKeypad(3);
+    for (const key of ["3", "1"] as const) s = keypadReduce(s, { type: "key", key }, { savedOdds: null }).state;
+    const r = keypadReduce(s, { type: "key", key: "0" }, { savedOdds: null });
+    expect(r.effect).toEqual({ type: "save", index: 0, odds: 3.1 });
+    const token = r.state.advance!;
+    const held = keypadReduce(r.state, { type: "hold" }, { savedOdds: 3.1 }).state;
+    expect(held).toMatchObject({ index: 0, digits: "310", advance: null });
+    // Timern som redan gick ut gör ingenting.
+    expect(keypadReduce(held, { type: "advance", token }, { savedOdds: 3.1 }).state.index).toBe(0);
+    const next = keypadReduce(held, { type: "key", key: "next" }, { savedOdds: 3.1 });
+    expect(next.state.index).toBe(1);
+    expect(next.effect).toBeNull();
+  });
+  it("hold utan väntande hopp ändrar inget", () => {
+    const s = initialKeypad(2);
+    expect(keypadReduce(s, { type: "hold" }, { savedOdds: null }).state).toBe(s);
+  });
+});

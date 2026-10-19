@@ -5,6 +5,10 @@
 // häst inte flyttar sig i kön när den får odds. Varje odds sparas direkt och
 // optimistiskt via utkorgen, och Spelbar räknas om direkt (6.1). När kön är
 // slut öppnas sammanfattningsarket, som går att stänga direkt.
+//
+// X-faktorn (E2.1, 6.8): knappen i hästkortet och tangenten X stegar läget.
+// Den rör inte siffrorna. Trycks den under 350 ms-fönstret avbryts hoppet
+// (hold), oddset står kvar sparat och Nästa krävs.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,14 +17,19 @@ import { DESKTOP_QUERY, useIsDesktop, useNow, useOnline } from "@/components/hoo
 import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
 import { AppHeader } from "@/components/shell/AppHeader";
-import { Banner, EmptyState, FlapNumber, Skeleton } from "@/components/ui/board";
+import { RiktShort } from "@/components/round/parts";
+import { XCycleButton, xLockReason } from "@/components/round/XFactor";
+import { Banner, EmptyState, FlapNumber, Skeleton, XBadge } from "@/components/ui/board";
 import { IconCheckThin, IconFlag, IconWarn } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { hhmm, odds } from "@/lib/format";
 import { AUTO_ADVANCE_MS, digitsToOdds, displayDigits, isValidOdds } from "@/lib/odds-input";
 import { buildOddsQueue, guidelineTag, initialKeypad, isDone, keyFromKeyboard, keypadReduce, keypadVerdict, type KeypadAction, type KeypadKey, type KeypadState } from "@/lib/odds-keypad";
 import { oddsDiff } from "@/lib/spelbar";
+import { xFactorsOf } from "@/lib/round-overlay";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
+import { nextXFactor, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
+import { riktX, xOf } from "@/lib/xfactor-ui";
 
 type Item = { race: RaceDto; start: StartDto };
 
@@ -92,7 +101,7 @@ function OddsQueue({ data }: { data: RoundResponse }) {
 }
 
 function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
-  const { setOdds, setSpelbar } = useRound();
+  const { setOdds, setSpelbar, setXFactor } = useRound();
   const router = useRouter();
   const online = useOnline();
   const { queue } = useOutbox();
@@ -101,6 +110,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
   const roundId = data.round.id;
   const base = `/omgang/${roundId}`;
   const guideline = data.settings?.spelbarGuideline ?? 2;
+  const factors = xFactorsOf(data.settings);
   const total = items.length;
 
   const [st, setSt] = useState<KeypadState>(() => initialKeypad(total));
@@ -128,6 +138,27 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
     [setOdds],
   );
   const press = useCallback((key: KeypadKey) => dispatch({ type: "key", key }), [dispatch]);
+
+  // X-faktorn för hästen som visas. Uppläsningen sker i resultatradens aria-live.
+  const [xSay, setXSay] = useState("");
+  const cycleX = useCallback(
+    (backwards: boolean) => {
+      const cur = stRef.current;
+      const item = itemsRef.current[cur.index];
+      if (!item || cur.confirmDelete) return;
+      const locked = xLockReason(item.race, item.start);
+      if (locked) {
+        setXSay(locked);
+        return;
+      }
+      const next = nextXFactor(xOf(item.start.mark), backwards);
+      // Ett tryck under 350 ms-fönstret avbryter hoppet; Nästa krävs.
+      dispatch({ type: "hold" });
+      setXFactor(item.race, item.start, next);
+      setXSay(`X-faktor för ${item.start.horse.name}: ${X_LABEL[next]}`);
+    },
+    [dispatch, setXFactor],
+  );
   // Tryck med musen på desktop: fokus tillbaka till knappsatsen, så att Tab
   // (Hoppa över) och Enter fortsätter att gälla.
   const tap = (key: KeypadKey) => {
@@ -173,6 +204,11 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
         }
         return;
       }
+      if (e.key === "x" || e.key === "X") {
+        e.preventDefault();
+        cycleX(e.shiftKey);
+        return;
+      }
       const key = keyFromKeyboard(e);
       if (!key) return;
       const onPad = t === padRef.current;
@@ -185,9 +221,17 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [dispatch, press]);
+  }, [dispatch, press, cycleX]);
 
   const cur = done ? null : items[st.index];
+  const curX = cur ? xOf(cur.start.mark) : "NONE";
+  const curRx = cur ? riktX(cur.start, factors) : null;
+  const withX = !!cur && curX !== "NONE" && cur.start.riktodds !== null && curRx !== null;
+  // Uppläsningen gäller bara hästen den gjordes för.
+  const curId = cur?.start.id;
+  useEffect(() => {
+    setXSay("");
+  }, [curId]);
   const saved = cur?.start.mark?.unibetOdds ?? null;
   const typed = st.digits ? digitsToOdds(st.digits) : null;
   const shown = st.digits ? (typed !== null && isValidOdds(typed) ? typed : null) : saved;
@@ -209,7 +253,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
         )}
         {cur ? (
           <div className="kpw" ref={padRef} tabIndex={0} role="group" aria-label={`Oddsinmatning för ${cur.start.number} ${cur.start.horse.name}`}>
-            <div className="kcard">
+            <div className="kcard x">
               <FlapNumber n={cur.start.number} size="lg" />
               <div>
                 <div className="km">
@@ -218,14 +262,25 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
                 <h2 className="kn">{cur.start.horse.name}</h2>
                 <div className="km">{cur.start.driver?.name ?? "Kusk saknas"}</div>
               </div>
+              <XCycleButton
+                x={curX}
+                horseName={cur.start.horse.name}
+                locked={!!xLockReason(cur.race, cur.start, now)}
+                onCycle={(e) => {
+                  cycleX(false);
+                  // Musklick på desktop: fokus tillbaka till knappsatsen. Enter på knappen behåller fokus.
+                  if (e.detail > 0 && window.matchMedia(DESKTOP_QUERY).matches) padRef.current?.focus({ preventScroll: true });
+                }}
+              />
             </div>
             <div className="kcmp">
               <div className="brd">
-                <span className="k">Riktodds</span>
+                <span className="k">{withX ? "Riktodds med X" : "Riktodds"}</span>
                 <span className="rv num">
-                  {odds(cur.start.riktodds)}
+                  {odds(withX ? curRx : cur.start.riktodds)}
                   {cur.start.uncertain && cur.start.riktodds !== null && <sup aria-label="osäkert">*</sup>}
                 </span>
+                {withX && <span className="rv0 num">utan X {odds(cur.start.riktodds)}</span>}
               </div>
               <div className="brd">
                 <span className="k">Unibet plats{!st.digits && saved !== null ? " · sparat" : ""}</span>
@@ -235,6 +290,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
               </div>
             </div>
             <div className="kres" aria-live="polite">
+              {xSay && <span className="sr">{xSay}. </span>}
               {st.confirmDelete ? (
                 <div className="kconfirm" role="group" aria-labelledby="kc-q">
                   <p id="kc-q">Ta bort oddset för {cur.start.horse.name}?</p>
@@ -257,7 +313,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
               ) : st.digits && shown === null ? (
                 <p className="help">Fortsätt skriva …</p>
               ) : (
-                <ResultLine odds={shown} start={cur.start} guideline={guideline} />
+                <ResultLine odds={shown} start={cur.start} guideline={guideline} factors={factors} />
               )}
             </div>
             <div className="knav">
@@ -284,7 +340,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
                 Nästa ›
               </button>
             </div>
-            <p className="help kkeys d-only">Tangentbord: siffror, Backsteg, Enter = Nästa, ← = Föregående och Tab = Hoppa över. Komma och punkt behövs inte.</p>
+            <p className="help kkeys d-only">Tangentbord: siffror, Backsteg, Enter = Nästa, ← = Föregående, Tab = Hoppa över och X = X-faktor. Komma och punkt behövs inte.</p>
           </div>
         ) : (
           <section className="kend" aria-labelledby="kend-h">
@@ -308,6 +364,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
         open={sheetOpen}
         items={items}
         guideline={guideline}
+        factors={factors}
         now={now}
         onClose={() => setSheetOpen(false)}
         onDone={() => {
@@ -320,9 +377,11 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
   );
 }
 
-function ResultLine({ odds: value, start, guideline }: { odds: number | null; start: StartDto; guideline: number }) {
+function ResultLine({ odds: value, start, guideline, factors }: { odds: number | null; start: StartDto; guideline: number; factors: XFactorSettings }) {
   const m = start.mark;
-  const v = keypadVerdict({ odds: value, riktodds: start.riktodds, interesting: !!m?.interesting, override: m?.spelbarOverride ?? "NONE", guideline });
+  // Med X-faktor jämförs mot riktoddset med X-faktor (6.8).
+  const withX = xOf(m) !== "NONE" && start.riktodds !== null;
+  const v = keypadVerdict({ odds: value, riktodds: riktX(start, factors), interesting: !!m?.interesting, override: m?.spelbarOverride ?? "NONE", guideline, ref: withX ? "riktoddset med X" : undefined });
   if (v.tone === "help") return <p className="help">{v.text}</p>;
   return (
     <div className="kverd">
@@ -344,6 +403,7 @@ function Summary({
   open,
   items,
   guideline,
+  factors,
   now,
   onClose,
   onDone,
@@ -352,6 +412,7 @@ function Summary({
   open: boolean;
   items: Item[];
   guideline: number;
+  factors: XFactorSettings;
   now: number;
   onClose: () => void;
   onDone: () => void;
@@ -363,7 +424,10 @@ function Summary({
   const no = sorted.filter((i) => !i.start.mark?.spelbar);
   const row = (it: Item, spelbar: boolean) => {
     const m = it.start.mark;
-    const d = oddsDiff(m?.unibetOdds ?? null, it.start.riktodds);
+    const x = xOf(m);
+    const rx = riktX(it.start, factors);
+    // Skillnaden räknas mot riktoddset med X-faktor (6.8).
+    const d = oddsDiff(m?.unibetOdds ?? null, rx);
     const locked = raceStarted(it.race, now) || it.start.scratched;
     return (
       <li key={it.start.id} className="prow">
@@ -371,10 +435,11 @@ function Summary({
         <div className="pmain">
           <div className="pn">
             {it.start.horse.name}
+            <XBadge x={x} />
             {m?.belowGuideline && <span className="tag gl">{guidelineTag(guideline)}</span>}
           </div>
           <div className="pm">
-            Avd {it.race.leg} · Unibet <b>{odds(m?.unibetOdds ?? null)}</b> · rikt <b>{odds(it.start.riktodds)}</b> · <span className={`diff ${d !== null && d > 0 ? "up" : "dn"}`}>{diffText(d)}</span>
+            Avd {it.race.leg} · Unibet <b>{odds(m?.unibetOdds ?? null)}</b> · <RiktShort riktodds={it.start.riktodds} x={x} rx={rx} /> · <span className={`diff ${d !== null && d > 0 ? "up" : "dn"}`}>{diffText(d)}</span>
           </div>
         </div>
         {!locked &&

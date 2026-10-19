@@ -4,6 +4,7 @@ import type { HorseStats, PersonStats, YearStats } from "@/lib/atg";
 import { asSelections, couponCost, rowCount } from "@/lib/coupon";
 import { explain, parseParams, parseWeights, type InputKey, type StoredInputs } from "@/lib/riktodds";
 import { belowGuideline, DEFAULT_GUIDELINE, forslag, spelbar } from "@/lib/spelbar";
+import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
 import type { CommentDto, CouponDto, MarkDto, ModelDto, PersonDto, RiktoddsDetailDto, RoundDto, SettingsDto, SourceDto, ThemeSetting, YearStatsDto } from "@/lib/types";
 
 export const dec = (d: Prisma.Decimal | null | undefined): number | null => (d === null || d === undefined ? null : Number(d));
@@ -31,10 +32,12 @@ export function personDto(p: Person | null | undefined): PersonDto | null {
   return { id: p.id, name: `${p.firstName} ${p.lastName}`.trim(), firstName: p.firstName, lastName: p.lastName, shortName: p.shortName };
 }
 
-// riktodds = aktivt riktodds för starten, guideline = användarens riktlinje.
-export function markDto(m: Mark, riktodds: number | null = null, guideline: number = DEFAULT_GUIDELINE): MarkDto {
+// riktodds = aktivt riktodds för starten, guideline = användarens riktlinje,
+// factors = användarens X-faktorer. Förslaget räknas mot riktoddset med X-faktor (6.1).
+export function markDto(m: Mark, riktodds: number | null = null, guideline: number = DEFAULT_GUIDELINE, factors: XFactorSettings = DEFAULT_X_FACTORS): MarkDto {
   const unibetOdds = dec(m.unibetOdds);
-  const base = { interesting: m.interesting, unibetOdds, riktodds, override: m.spelbarOverride };
+  const rx = riktoddsX(riktodds, m.xFactor, factors);
+  const base = { interesting: m.interesting, unibetOdds, riktodds: rx, override: m.spelbarOverride };
   return {
     startId: m.startId,
     interesting: m.interesting,
@@ -47,9 +50,14 @@ export function markDto(m: Mark, riktodds: number | null = null, guideline: numb
     unibetOddsAt: iso(m.unibetOddsAt),
     unibetOddsPrev: dec(m.unibetOddsPrev),
     updatedAt: m.updatedAt.toISOString(),
+    xFactor: m.xFactor,
+    xFactorAt: iso(m.xFactorAt),
+    xFactorValue: factorFor(m.xFactor, factors),
+    sourceSupport: m.sourceSupport,
     forslag: forslag(base),
     spelbar: spelbar(base),
     riktodds,
+    riktoddsX: rx,
     belowGuideline: belowGuideline(unibetOdds, guideline),
   };
 }
@@ -132,6 +140,8 @@ export function settingsDto(s: UserSettings | null): SettingsDto {
     rushThresholdPe: s ? Number(s.rushThresholdPe) : 10,
     rowPrice: s ? Number(s.rowPrice) : 0.5,
     spelbarGuideline: s ? Number(s.spelbarGuideline) : 2,
+    xFactorTror: s ? Number(s.xFactorTror) : DEFAULT_X_FACTORS.xFactorTror,
+    xFactorStark: s ? Number(s.xFactorStark) : DEFAULT_X_FACTORS.xFactorStark,
   };
 }
 

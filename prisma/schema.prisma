@@ -90,6 +90,15 @@ enum SpelbarOverride {
   @@schema("spelvarde")
 }
 
+// X-faktor (6.8, E2.1): Ingen, Tror på, Stark känsla.
+enum XFactor {
+  NONE
+  TROR
+  STARK
+
+  @@schema("spelvarde")
+}
+
 enum CommentKind {
   NOTE
   RACE
@@ -146,6 +155,9 @@ model UserSettings {
   rushThresholdPe  Decimal     @default(10.0) @db.Decimal(6, 2)
   rowPrice         Decimal     @default(0.50) @db.Decimal(6, 2)
   spelbarGuideline Decimal     @default(2.00) @db.Decimal(6, 2)
+  // X-faktorerna (6.8, E2.1). 1,05–3,00 och Stark > Tror (check i migreringen).
+  xFactorTror      Decimal     @default(1.25) @db.Decimal(4, 2)
+  xFactorStark     Decimal     @default(1.50) @db.Decimal(4, 2)
   updatedAt        DateTime    @updatedAt
 
   @@schema("spelvarde")
@@ -255,9 +267,9 @@ model Person {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  drivenStarts     Start[]        @relation("StartDriver")
-  trainedStarts    Start[]        @relation("StartTrainer")
-  prevDrivenStarts Start[]        @relation("StartPrevDriver")
+  drivenStarts     Start[]       @relation("StartDriver")
+  trainedStarts    Start[]       @relation("StartTrainer")
+  prevDrivenStarts Start[]       @relation("StartPrevDriver")
   aliases          PersonAlias[]
 
   @@schema("spelvarde")
@@ -323,13 +335,13 @@ model Start {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  streck    StreckValue[]
-  riktodds  Riktodds[]
-  marks     Mark[]
-  comments  HorseComment[]
-  alarms    LiveAlarm[]
-  outcomes  Outcome[]
-  tipFacts  TipFact[]
+  streck   StreckValue[]
+  riktodds Riktodds[]
+  marks    Mark[]
+  comments HorseComment[]
+  alarms   LiveAlarm[]
+  outcomes Outcome[]
+  tipFacts TipFact[]
 
   @@unique([raceId, horseId])
   @@unique([raceId, number])
@@ -486,6 +498,10 @@ model Mark {
   unibetOdds      Decimal?        @db.Decimal(6, 2)
   unibetOddsAt    DateTime?
   unibetOddsPrev  Decimal?        @db.Decimal(6, 2)
+  // E2.1 (6.8): X-faktor (kräver Intressant) och källstöd 0–20 (null = inte ifyllt).
+  xFactor         XFactor         @default(NONE)
+  xFactorAt       DateTime?
+  sourceSupport   Int?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -573,23 +589,32 @@ model LiveAlarm {
 }
 
 model Outcome {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startId      String
-  start        Start    @relation(fields: [startId], references: [id], onDelete: Cascade)
-  roundId      String
-  round        Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  interesting  Boolean
-  spelbar      Boolean
-  bet          Boolean
-  unibetOdds   Decimal? @db.Decimal(6, 2)
-  betOdds      Decimal? @db.Decimal(6, 2)
-  riktodds     Decimal? @db.Decimal(6, 2)
-  frozenAt     DateTime @default(now())
-  place        Int?
-  disqualified Boolean  @default(false)
-  hit          Boolean?
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startId       String
+  start         Start    @relation(fields: [startId], references: [id], onDelete: Cascade)
+  roundId       String
+  round         Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  interesting   Boolean
+  spelbar       Boolean
+  bet           Boolean
+  unibetOdds    Decimal? @db.Decimal(6, 2)
+  betOdds       Decimal? @db.Decimal(6, 2)
+  riktodds      Decimal? @db.Decimal(6, 2)
+  // E2.1 (6.8). Skrivs av frysningen i E4 med värdena vid loppets start:
+  // xFactor från Mark, xFactorValue = användarens faktor då (1,00 för NONE),
+  // riktoddsX = riktoddset med X-faktor, sourceSupport från Mark och
+  // sourceTotal = antal påslagna källor då.
+  xFactor       XFactor  @default(NONE)
+  xFactorValue  Decimal  @default(1.00) @db.Decimal(4, 2)
+  riktoddsX     Decimal? @db.Decimal(6, 2)
+  sourceSupport Int?
+  sourceTotal   Int?
+  frozenAt      DateTime @default(now())
+  place         Int?
+  disqualified  Boolean  @default(false)
+  hit           Boolean?
 
   @@unique([userId, startId])
   @@index([userId, roundId])

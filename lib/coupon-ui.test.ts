@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CouponLeg } from "@/lib/coupon";
-import { couponBody, couponSummary, parseBudget, parseGuideline, parseRowPrice, stepLeg, toggleNumber } from "@/lib/coupon-ui";
+import { couponBody, couponLegs, couponSummary, parseBudget, parseGuideline, parseRowPrice, stepLeg, toggleNumber } from "@/lib/coupon-ui";
+import type { MarkDto, RoundResponse } from "@/lib/types";
 
 const leg: CouponLeg = {
   leg: 7,
@@ -48,5 +49,29 @@ describe("V85-raden i S6b", () => {
     expect(parseRowPrice("0")).toBeNull();
     expect(parseGuideline("2,00")).toBe(2);
     expect(parseGuideline("1")).toBeNull();
+  });
+});
+
+describe("V85-raden med X-faktor (6.5, E2.1)", () => {
+  // Två Spelbara: nr 10 har riktodds 3,20 men Stark känsla (2,13) och går före nr 5 (2,40 utan X).
+  const mark = (riktodds: number, riktoddsX: number): Partial<MarkDto> => ({ interesting: true, spelbar: true, riktodds, riktoddsX });
+  const data = {
+    races: [
+      {
+        leg: 7,
+        started: false,
+        starts: [
+          { number: 5, scratched: false, streck: 12, riktodds: 2.4, mark: mark(2.4, 2.4) },
+          { number: 10, scratched: false, streck: 8, riktodds: 3.2, mark: mark(3.2, 2.13) },
+          { number: 1, scratched: false, streck: 30, riktodds: 5, mark: null },
+        ],
+      },
+    ],
+  } as unknown as RoundResponse;
+  it("sorterar på riktoddset med X-faktor, och utan Mark på riktoddset", () => {
+    const [leg] = couponLegs(data);
+    expect(leg.starts.map((s) => s.riktodds)).toEqual([2.4, 2.13, 5]);
+    expect(stepLeg(leg, [], 1)).toEqual([10]);
+    expect(stepLeg(leg, [10], 1)).toEqual([5, 10]);
   });
 });

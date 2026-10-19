@@ -1,18 +1,19 @@
-// Skrivande serverlogik för E2: PUT /api/marks/[startId], GET/PUT
-// /api/rounds/[id]/coupon och GET/PUT /api/admin/model. Rutterna är tunna
+// Skrivande serverlogik för E2 och E2.1: PUT /api/marks/[startId], GET/PUT
+// /api/rounds/[id]/coupon, GET/PUT /api/admin/model och PUT /api/settings. Rutterna är tunna
 // omslag; här ligger reglerna, så att de testas mot en riktig Postgres i
 // lib/e2.db.test.ts. Allt användarägt skrivs och läses med userId från
 // sessionen, aldrig från kroppen.
 
 import type { Prisma, PrismaClient, Role } from "@prisma/client";
 import { asSelections, DEFAULT_BUDGET, parseCouponBody, sameNumbers } from "@/lib/coupon";
-import { couponDto, dec, markDto, modelDto, settingsDto } from "@/lib/dto";
+import { couponDto, dec, markDto, modelDto, settingsDto, THEME_FROM_API } from "@/lib/dto";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, sameMark, turnsSomethingOn, type MarkState } from "@/lib/marks";
 import { INPUT_KEYS, nextModelKey, parseParams, parseWeights, type ModelParams, type Weights } from "@/lib/riktodds";
 import { riktoddsStep } from "@/lib/riktodds-server";
 import { currentRoundId } from "@/lib/round-server";
-import type { CouponResponse, MarkResponse, ModelResponse } from "@/lib/types";
-import type { Result } from "@/lib/validate";
+import type { CouponResponse, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
+import { parseSettingsBody, type Result } from "@/lib/validate";
+import { checkFactors } from "@/lib/xfactor";
 
 type Db = PrismaClient;
 export type Reply<T = unknown> = { status: number; body: T | { error: string } };
@@ -31,8 +32,9 @@ export async function saveMark(db: Db, userId: string, startId: string, body: Re
 
   const start = await db.start.findUnique({ where: { id: startId }, select: { id: true, scratched: true, race: { select: { startAt: true } } } });
   if (!start) return err(404, "Starten finns inte.");
-  // Allt som rör en start låses vid loppets starttid (3.1, 6.4).
+  // Allt som rör en start låses vid loppets starttid (3.1, 6.4), även X-faktor och källstöd.
   if (start.race.startAt.getTime() <= now.getTime()) return err(409, RACE_STARTED);
+  // Struken: inget får sättas på (I, S, B, X-faktor, källstöd). Släcka och rensa går.
   if (start.scratched && turnsSomethingOn(change)) return err(422, "Hästen är struken.");
 
   const [existing, model, settings] = await Promise.all([
@@ -42,7 +44,8 @@ export async function saveMark(db: Db, userId: string, startId: string, body: Re
   ]);
   const rikt = model ? await db.riktodds.findUnique({ where: { startId_modelVersionId: { startId, modelVersionId: model.id } }, select: { odds: true } }) : null;
   const riktodds = rikt ? Number(rikt.odds) : null;
-  const guideline = settingsDto(settings).spelbarGuideline;
+  const st = settingsDto(settings);
+  const guideline = st.spelbarGuideline;
 
   const prev: MarkState = existing
     ? {
@@ -55,18 +58,50 @@ export async function saveMark(db: Db, userId: string, startId: string, body: Re
         unibetOdds: dec(existing.unibetOdds),
         unibetOddsAt: existing.unibetOddsAt,
         unibetOddsPrev: dec(existing.unibetOddsPrev),
+        xFactor: existing.xFactor,
+        xFactorAt: existing.xFactorAt,
+        sourceSupport: existing.sourceSupport,
       }
     : EMPTY_MARK;
-  const next = applyMarkChange(prev, change, { now, riktodds });
+  const next = applyMarkChange(prev, change, { now, riktodds, factors: st });
   // Samma kropp en gång till (utkorgen skickar om): ingen skrivning.
-  if (existing && sameMark(prev, next)) return ok({ mark: markDto(existing, riktodds, guideline) });
+  if (existing && sameMark(prev, next)) return ok({ mark: markDto(existing, riktodds, guideline, st) });
 
   const mark = await db.mark.upsert({
     where: { userId_startId: { userId, startId } },
     create: { userId, startId, ...next },
     update: next,
   });
-  return ok({ mark: markDto(mark, riktodds, guideline) });
+  return ok({ mark: markDto(mark, riktodds, guideline, st) });
+}
+
+// ---- Inställningar (PUT /api/settings) ---------------------------------------------------------
+
+// Bara fälten som skickas ändras. X-faktorerna kontrolleras tillsammans med
+// det sparade värdet för den som inte skickas (Stark känsla > Tror på).
+// Databasen har samma villkor (migreringen 20261021120000_xfactor).
+export async function saveSettings(db: Db, userId: string, body: Record<string, unknown>): Promise<Reply<SettingsDto>> {
+  const parsed = parseSettingsBody(body);
+  if (!parsed.ok) return err(400, parsed.error);
+  const { theme, rowPrice, spelbarGuideline, xFactorTror, xFactorStark } = parsed.value;
+  const cur = settingsDto(await db.userSettings.findUnique({ where: { userId } }));
+  const factors = { xFactorTror: xFactorTror ?? cur.xFactorTror, xFactorStark: xFactorStark ?? cur.xFactorStark };
+  if (xFactorTror !== undefined || xFactorStark !== undefined) {
+    const f = checkFactors(factors);
+    if (!f.ok) return err(400, f.error);
+  }
+  const data = {
+    ...(theme ? { theme: THEME_FROM_API[theme] } : {}),
+    ...(rowPrice !== undefined ? { rowPrice } : {}),
+    ...(spelbarGuideline !== undefined ? { spelbarGuideline } : {}),
+    ...(xFactorTror !== undefined ? { xFactorTror } : {}),
+    ...(xFactorStark !== undefined ? { xFactorStark } : {}),
+  };
+  // create får alltid båda faktorerna: upsert blir INSERT … ON CONFLICT, och
+  // Postgres prövar villkoret Stark > Tror på INSERT-raden (med standardvärdet
+  // för den faktor som inte skickas) innan konflikten avgörs.
+  const s = await db.userSettings.upsert({ where: { userId }, create: { userId, ...data, ...factors }, update: data });
+  return ok(settingsDto(s));
 }
 
 // ---- Kupong --------------------------------------------------------------------------------

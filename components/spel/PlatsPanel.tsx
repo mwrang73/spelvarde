@@ -12,13 +12,15 @@ import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useIsDesktop } from "@/components/hooks";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
-import { Badge, BetToggle, FlapNumber } from "@/components/ui/board";
+import { RiktCell, RiktShort } from "@/components/round/parts";
+import { Badge, BetToggle, FlapNumber, XBadge } from "@/components/ui/board";
 import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
 import { oddsDiff } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
+import { riktX, xOf } from "@/lib/xfactor-ui";
 
 type Item = { race: RaceDto; start: StartDto };
 
@@ -124,7 +126,9 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
   const started = raceStarted(race, now);
   const locked = started ? "Loppet har startat" : start.scratched ? "Hästen är struken" : null;
   const unibet = m?.unibetOdds ?? null;
-  const d = oddsDiff(unibet, start.riktodds);
+  // Med X-faktor (E2.1) räknas skillnaden och varningen mot riktoddset med X-faktor.
+  const x = xOf(m);
+  const d = oddsDiff(unibet, riktX(start));
   const under = d !== null && d <= 0;
   const changed = m?.unibetOddsPrev != null && m.unibetOddsAt ? `Ändrat från ${odds(m.unibetOddsPrev)} kl. ${hhmm(m.unibetOddsAt)}` : null;
   const name = (
@@ -132,6 +136,7 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
       <span className="hn">{start.horse.name}</span>
       {m?.spelbar && <Badge kind="s" />}
       {m?.bet && <Badge kind="b" />}
+      <XBadge x={x} />
       {m?.belowGuideline && <span className="tag gl">{guidelineTag(guideline)}</span>}
       {started && <span className="tag">Startat</span>}
       {start.scratched && <span className="tag scr-tag">Struken</span>}
@@ -163,7 +168,9 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
           </span>
           <span className="notes">{notes}</span>
         </td>
-        <td className="r num">{odds(start.riktodds)}</td>
+        <td className="r">
+          <RiktCell s={start} className="rk num dk" two />
+        </td>
         <td className="r">
           <OddsField item={item} disabled={!!locked} />
         </td>
@@ -179,7 +186,7 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
       <div className="pmain">
         {name}
         <span className="pm">
-          Avd {race.leg} · rikt <b>{odds(start.riktodds)}</b>
+          Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={riktX(start)} />
         </span>
         {notes}
       </div>
