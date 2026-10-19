@@ -1,0 +1,463 @@
+// Backtest av riktoddsmodellen (specen 7.6). Rena delar utan nätverk och
+// databas: tolkning av gamla ATG-spel till indata som de såg ut före loppet,
+// måtten (Brier, log loss, kalibreringshinkar, favoritträff, avkastning) och
+// sökningen efter β och vikter. Hämtningen och rapporten ligger i
+// scripts/backtest.ts. Testas i lib/backtest.test.ts.
+//
+// Modellen räknas alltid med lib/riktodds.ts (computeRace). Vid sökningen
+// räknas z-värdena en gång per lopp med computeRace och styrkan Σ w·z, softmax
+// och Harville görs sedan med samma funktioner som modellen (p3FromZ), så att
+// sökningen går fort utan att modellen skrivs en gång till.
+
+import { parseGame, parseStartDetail, type ParsedRecord, type ParsedStartDetail, type YearStats } from "@/lib/atg";
+import {
+  computeRace,
+  harvilleTop3,
+  INPUT_KEYS,
+  oddsFromP3,
+  softmax,
+  type Counts,
+  type InputKey,
+  type ModelParams,
+  type StartFacts,
+  type Weights,
+} from "@/lib/riktodds";
+
+// ---- Underlag -------------------------------------------------------------------------
+
+export type BtStart = {
+  number: number;
+  scratched: boolean;
+  // Utfall: placering 1–3 och inte diskad.
+  top3: boolean;
+  place: number | null;
+  disqualified: boolean;
+  // Hästens starter i år och i fjol före loppet. statsSource anger varifrån.
+  thisYear: Counts | null;
+  lastYear: Counts | null;
+  lifeStarts: number | null;
+  statsSource: "poster" | "ogonblick" | "saknas";
+  // Om båda källorna fanns: stämde posterna med ögonblicksbilden?
+  statsAgree: boolean | null;
+  statsLeak: boolean | null;
+  // Tidigare starter före loppdatumet, nyast först (högst 5).
+  records: { date: string; place: number | null; galloped: boolean; disqualified: boolean }[];
+  driver: { starts: number; wins: number } | null;
+  trainer: { starts: number; wins: number } | null;
+  // Streck i procent ur V-poolen (12.3 = 12,3 %). null = ingen V-pool.
+  streck: number | null;
+  // Vinnarodds vid start (decimaltal).
+  winOdds: number | null;
+  // Marknadens platsodds (ATG:s platspool, minOdds efter loppet).
+  placeOdds: number | null;
+  // Utbetalt platsodds om hästen gav plats i platspoolen, annars 0.
+  placePayout: number;
+};
+
+export type BtRace = {
+  key: string;
+  date: string;
+  gameType: string;
+  gameId: string;
+  leg: number;
+  // Antal platser som betalas i platspoolen (2 eller 3). null = ingen platspool.
+  placesPaid: number | null;
+  starts: BtStart[];
+};
+
+export type CalendarEntry = { id: string; gameType: string; status: string | null };
+
+type Obj = Record<string, unknown>;
+const isObj = (x: unknown): x is Obj => typeof x === "object" && x !== null && !Array.isArray(x);
+const obj = (x: unknown): Obj | null => (isObj(x) ? x : null);
+const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : []);
+const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
+
+// Spelen i kalendern för de valda spelformerna (V85, V75, V86, GS75 …).
+export function calendarGames(json: unknown, types: string[]): CalendarEntry[] {
+  const games = obj(obj(json)?.games);
+  if (!games) return [];
+  const out: CalendarEntry[] = [];
+  for (const t of types) {
+    for (const g of arr(games[t])) {
+      const id = typeof obj(g)?.id === "string" ? (obj(g)!.id as string) : null;
+      if (id) out.push({ id, gameType: t, status: typeof obj(g)?.status === "string" ? (obj(g)!.status as string) : null });
+    }
+  }
+  return out;
+}
+
+// Läckageskyddet: bara riktiga starter (inte strukna) med datum FÖRE loppdagen,
+// nyast först. Lopp samma dag räknas inte, inte heller loppet självt.
+export function recordsBefore<T extends Pick<ParsedRecord, "date" | "scratched">>(records: T[], raceDate: string): T[] {
+  return records.filter((r) => !r.scratched && r.date < raceDate).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+// Starter, segrar och placeringar (1–3) ett visst år ur posterna.
+export function countsFromRecords(records: Pick<ParsedRecord, "date" | "place" | "disqualified" | "scratched">[], year: string): Counts {
+  const inYear = records.filter((r) => !r.scratched && r.date.startsWith(year));
+  return {
+    starts: inYear.length,
+    wins: inYear.filter((r) => !r.disqualified && r.place === 1).length,
+    placed: inYear.filter((r) => !r.disqualified && r.place !== null && r.place >= 1 && r.place <= 3).length,
+  };
+}
+
+const countsOf = (y: YearStats | undefined | null): Counts | null => (y ? { starts: y.starts, wins: y.wins, placed: y.wins + y.seconds + y.thirds } : null);
+const sameCounts = (a: Counts | null, b: Counts | null) => (a?.starts ?? 0) === (b?.starts ?? 0) && (a?.wins ?? 0) === (b?.wins ?? 0) && (a?.placed ?? 0) === (b?.placed ?? 0);
+
+// Hästens år och fjol före loppet. Standard är ögonblicksbilden i games/<id>,
+// som är från loppdagen (före loppet, se rapporten). Med source = "poster"
+// räknas de från posterna före loppdatumet när posterna räcker bakåt till
+// fjolårets början. Den andra källan används när den valda saknas.
+// statsAgree: båda fanns och gav samma tal. statsLeak: ögonblicksbilden räknar
+// med starter på eller efter loppdagen (skulle vara läckage).
+export type StatsSource = "ogonblick" | "poster";
+export function horseYears(
+  detail: Pick<ParsedStartDetail, "records"> | null,
+  snapshot: { years: Record<string, YearStats>; life: YearStats | null } | null,
+  raceDate: string,
+  source: StatsSource = "ogonblick",
+): Pick<BtStart, "thisYear" | "lastYear" | "lifeStarts" | "statsSource" | "statsAgree" | "statsLeak"> {
+  const year = raceDate.slice(0, 4);
+  const lastYear = String(Number(year) - 1);
+  const snapThis = countsOf(snapshot?.years[year]);
+  const snapLast = countsOf(snapshot?.years[lastYear]);
+  const lifeStarts = snapshot?.life ? snapshot.life.starts : null;
+  const all = detail?.records ?? [];
+  const oldest = all.reduce<string | null>((min, r) => (min === null || r.date < min ? r.date : min), null);
+  const covered = oldest !== null && oldest < `${lastYear}-01-01`;
+  const before = recordsBefore(all, raceDate);
+  const recThis = covered ? countsFromRecords(before, year) : null;
+  const recLast = covered ? countsFromRecords(before, lastYear) : null;
+  const statsAgree = covered && snapshot ? sameCounts(recThis, snapThis) && sameCounts(recLast, snapLast) : null;
+  const inYearAll = countsFromRecords(all, year).starts;
+  const inYearBefore = countsFromRecords(before, year).starts;
+  const statsLeak = snapshot && inYearAll > inYearBefore ? (snapThis?.starts ?? 0) >= inYearAll : null;
+  const fromSnap = { thisYear: snapThis, lastYear: snapLast, lifeStarts, statsSource: "ogonblick" as const, statsAgree, statsLeak };
+  const fromRec = { thisYear: recThis, lastYear: recLast, lifeStarts, statsSource: "poster" as const, statsAgree, statsLeak };
+  if (source === "poster" && covered) return fromRec;
+  if (snapshot) return fromSnap;
+  if (covered) return fromRec;
+  return { thisYear: null, lastYear: null, lifeStarts, statsSource: "saknas", statsAgree, statsLeak };
+}
+
+// Platspoolens utbetalning: { nummer: odds } och hur många platser som betalades.
+export function placeWinners(racePools: unknown): { paid: Map<number, number>; places: number } | null {
+  const plats = obj(obj(racePools)?.plats);
+  const winners = obj(obj(plats?.result)?.winners);
+  if (!winners) return null;
+  const paid = new Map<number, number>();
+  let places = 0;
+  for (const k of ["first", "second", "third"]) {
+    const list = arr(winners[k]);
+    if (list.length) places++;
+    for (const w of list) {
+      const n = num(obj(w)?.number);
+      const o = num(obj(w)?.odds);
+      if (n !== null && o !== null && o > 0) paid.set(n, o / 100);
+    }
+  }
+  return places ? { paid, places } : null;
+}
+
+// Ett spel med resultat → lopp med indata före loppet. details: startdetaljer
+// per lopp-id och startnummer (races/<id>/start/<nr>), null om de saknas.
+export function buildRaces(
+  gameJson: unknown,
+  gameType: string,
+  details: (raceId: string, number: number) => unknown | null,
+  source: StatsSource = "ogonblick",
+): BtRace[] {
+  const game = parseGame(gameJson);
+  if (!game) return [];
+  const rawRaces = arr(obj(gameJson)?.races);
+  const out: BtRace[] = [];
+  game.races.forEach((race, i) => {
+    if (race.cancelled || !race.hasResult) return;
+    const raw = obj(rawRaces[i]);
+    const date = typeof raw?.date === "string" ? (raw.date as string) : game.date;
+    const rawStarts = arr(raw?.starts).map(obj);
+    const winners = placeWinners(raw?.pools);
+    const year = date.slice(0, 4);
+    const starts: BtStart[] = race.starts.map((s) => {
+      const rs = rawStarts.find((x) => num(x?.number) === s.number) ?? null;
+      const pools = obj(rs?.pools);
+      const bd = num(obj(pools?.[gameType])?.betDistribution);
+      const minOdds = num(obj(pools?.plats)?.minOdds);
+      const detail = s.scratched ? null : parseStartDetail(details(race.atgRaceId, s.number));
+      const before = recordsBefore(detail?.records ?? [], date).slice(0, 5);
+      const res = s.result;
+      const d = s.driver?.stats?.[year];
+      const t = s.trainer?.stats?.[year];
+      return {
+        number: s.number,
+        scratched: s.scratched,
+        top3: !s.scratched && !!res && !res.disqualified && res.place !== null && res.place >= 1 && res.place <= 3,
+        place: res?.place ?? null,
+        disqualified: res?.disqualified ?? false,
+        ...horseYears(detail, s.horseStats, date, source),
+        records: before.map((r) => ({ date: r.date, place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
+        driver: d ? { starts: d.starts, wins: d.wins } : null,
+        trainer: t ? { starts: t.starts, wins: t.wins } : null,
+        streck: bd !== null && bd >= 0 ? bd / 100 : null,
+        winOdds: res?.finalOdds ?? s.winOdds,
+        placeOdds: minOdds !== null && minOdds > 0 ? minOdds / 100 : null,
+        placePayout: winners?.paid.get(s.number) ?? 0,
+      };
+    });
+    out.push({ key: race.atgRaceId, date, gameType, gameId: game.atgGameId, leg: race.leg, placesPaid: winners?.places ?? null, starts });
+  });
+  return out;
+}
+
+// Indata till computeRace. Spår finns inte historiskt (post = null → spar 0).
+// Streck tas med bara om withStreck (v1 har vikten 0).
+export function toFacts(race: BtRace, withStreck = false): StartFacts[] {
+  return race.starts.map((s) => ({
+    startId: `${race.key}:${s.number}`,
+    number: s.number,
+    scratched: s.scratched,
+    horse: { thisYear: s.thisYear, lastYear: s.lastYear, lifeStarts: s.lifeStarts },
+    records: s.records.map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
+    driver: s.driver,
+    trainer: s.trainer,
+    post: null,
+    streck: withStreck ? s.streck : null,
+  }));
+}
+
+// ---- Förutsägelser --------------------------------------------------------------------
+
+export type Pred = {
+  raceKey: string;
+  date: string;
+  p: number;
+  y: 0 | 1;
+  // Modellens odds 1 / P3 (med marginal).
+  odds: number;
+  placeOdds: number | null;
+  placePayout: number;
+  // Platspoolen fanns för loppet.
+  hasPlacePool: boolean;
+};
+
+const running = (r: BtRace) => r.starts.filter((s) => !s.scratched);
+
+function predsFor(race: BtRace, p3: number[], marginal: number): Pred[] {
+  return running(race).map((s, i) => ({
+    raceKey: race.key,
+    date: race.date,
+    p: p3[i],
+    y: s.top3 ? 1 : 0,
+    odds: oddsFromP3(p3[i], marginal),
+    placeOdds: s.placeOdds,
+    placePayout: s.placePayout,
+    hasPlacePool: race.placesPaid !== null,
+  }));
+}
+
+// Modellen via computeRace (samma som i drift).
+export function modelPreds(races: BtRace[], weights: Weights, params: ModelParams): Pred[] {
+  const out: Pred[] = [];
+  for (const race of races) {
+    const res = computeRace(toFacts(race), weights, params);
+    if (!res.length) continue;
+    out.push(...predsFor(race, res.map((r) => r.probTop3), params.marginal));
+  }
+  return out;
+}
+
+// Marknaden: vinstsannolikhet ur streck (eller vinnarodds) → samma Harville.
+export function marketPreds(races: BtRace[], source: "streck" | "vinnarodds"): Pred[] {
+  const out: Pred[] = [];
+  for (const race of races) {
+    const st = running(race);
+    if (st.length < 4) continue;
+    const raw = st.map((s) => (source === "streck" ? s.streck : s.winOdds && s.winOdds > 0 ? 1 / s.winOdds : null));
+    if (raw.some((x) => x === null)) continue;
+    const vals = raw.map((x) => Math.max(x as number, 1e-4));
+    const sum = vals.reduce((a, b) => a + b, 0);
+    out.push(...predsFor(race, harvilleTop3(vals.map((v) => v / sum)), 0));
+  }
+  return out;
+}
+
+// Naiv modell: alla hästar lika (P3 = 3 / N).
+export function naivePreds(races: BtRace[]): Pred[] {
+  const out: Pred[] = [];
+  for (const race of races) {
+    const n = running(race).length;
+    if (n < 4) continue;
+    out.push(...predsFor(race, harvilleTop3(Array(n).fill(1 / n)), 0));
+  }
+  return out;
+}
+
+// z-värden per lopp (rad per startande) från computeRace, för snabb sökning.
+export type ZRace = { race: BtRace; z: Record<InputKey, number>[] };
+export function zRaces(races: BtRace[], params: ModelParams, weights: Weights, withStreck = false): ZRace[] {
+  const out: ZRace[] = [];
+  for (const race of races) {
+    const res = computeRace(toFacts(race, withStreck), weights, params);
+    if (res.length) out.push({ race, z: res.map((r) => r.inputs.z) });
+  }
+  return out;
+}
+
+// Samma steg som computeRace efter z: S = Σ w·z, softmax med β, Harville.
+export function p3FromZ(z: Record<InputKey, number>[], weights: Weights, beta: number): number[] {
+  const s = z.map((zi) => INPUT_KEYS.reduce((a, k) => a + (weights[k] ?? 0) * zi[k], 0));
+  return harvilleTop3(softmax(s, beta));
+}
+
+export function zPreds(zr: ZRace[], weights: Weights, beta: number, marginal = 0): Pred[] {
+  return zr.flatMap(({ race, z }) => predsFor(race, p3FromZ(z, weights, beta), marginal));
+}
+
+// ---- Mått ------------------------------------------------------------------------------
+
+export const EPS = 1e-6;
+const clampP = (p: number) => Math.min(1 - EPS, Math.max(EPS, p));
+
+export function brier(preds: Pick<Pred, "p" | "y">[]): number {
+  if (!preds.length) return NaN;
+  return preds.reduce((a, x) => a + (x.p - x.y) ** 2, 0) / preds.length;
+}
+
+export function logLoss(preds: Pick<Pred, "p" | "y">[]): number {
+  if (!preds.length) return NaN;
+  return -preds.reduce((a, x) => a + (x.y ? Math.log(clampP(x.p)) : Math.log(1 - clampP(x.p))), 0) / preds.length;
+}
+
+export type Bucket = { lo: number; hi: number; n: number; expected: number; actual: number };
+
+// 10 lika breda hinkar på P3: 0–10 %, 10–20 % … 90–100 % (1,0 hamnar i sista).
+export function calibration(preds: Pick<Pred, "p" | "y">[], buckets = 10): Bucket[] {
+  const out = Array.from({ length: buckets }, (_, i) => ({ lo: i / buckets, hi: (i + 1) / buckets, n: 0, sp: 0, sy: 0 }));
+  for (const x of preds) {
+    const i = Math.min(buckets - 1, Math.max(0, Math.floor(x.p * buckets)));
+    out[i].n++;
+    out[i].sp += x.p;
+    out[i].sy += x.y;
+  }
+  return out.map((b) => ({ lo: b.lo, hi: b.hi, n: b.n, expected: b.n ? b.sp / b.n : NaN, actual: b.n ? b.sy / b.n : NaN }));
+}
+
+// Andel lopp där hästen med lägst odds (högst P3) kom topp 3. Lika: första.
+export function favouriteHitRate(preds: Pick<Pred, "raceKey" | "p" | "y">[]): { races: number; hits: number; rate: number } {
+  const best = new Map<string, { p: number; y: number }>();
+  for (const x of preds) {
+    const b = best.get(x.raceKey);
+    if (!b || x.p > b.p) best.set(x.raceKey, { p: x.p, y: x.y });
+  }
+  const races = best.size;
+  const hits = [...best.values()].filter((b) => b.y === 1).length;
+  return { races, hits, rate: races ? hits / races : NaN };
+}
+
+export type RoiRow = { label: string; bets: number; hits: number; hitRate: number; staked: number; returned: number; roi: number };
+
+export const ODDS_BANDS: [number, number][] = [
+  [1, 1.5],
+  [1.5, 2],
+  [2, 3],
+  [3, 5],
+  [5, 10],
+  [10, Infinity],
+];
+
+const roiRow = (label: string, bets: Pick<Pred, "placePayout">[]): RoiRow => {
+  const hits = bets.filter((b) => b.placePayout > 0).length;
+  const returned = bets.reduce((a, b) => a + b.placePayout, 0);
+  return { label, bets: bets.length, hits, hitRate: bets.length ? hits / bets.length : NaN, staked: bets.length, returned, roi: bets.length ? returned / bets.length - 1 : NaN };
+};
+
+const bandLabel = ([lo, hi]: [number, number]) => (hi === Infinity ? `${String(lo).replace(".", ",")}+` : `${String(lo).replace(".", ",")}–${String(hi).replace(".", ",")}`);
+
+// Regeln "spela plats när marknadens platsodds > riktodds × ratio" med 1 kr per
+// spel. Bara starter med platspool och känt platsodds. Uppdelat i oddsintervall
+// efter marknadens platsodds.
+export function roiRule(preds: Pred[], ratio = 1): { total: RoiRow; bands: RoiRow[]; all: RoiRow } {
+  const eligible = preds.filter((x) => x.hasPlacePool && x.placeOdds !== null);
+  const bets = eligible.filter((x) => (x.placeOdds as number) > x.odds * ratio);
+  return {
+    total: roiRow("Alla spel", bets),
+    bands: ODDS_BANDS.map((band) => roiRow(bandLabel(band), bets.filter((x) => (x.placeOdds as number) >= band[0] && (x.placeOdds as number) < band[1]))),
+    // Referens: spela på alla hästar med platsodds.
+    all: roiRow("Alla hästar", eligible),
+  };
+}
+
+export type Metrics = { starts: number; races: number; brier: number; logLoss: number; favourite: { races: number; hits: number; rate: number }; meanP: number; rate: number };
+
+export function metrics(preds: Pred[]): Metrics {
+  return {
+    starts: preds.length,
+    races: new Set(preds.map((x) => x.raceKey)).size,
+    brier: brier(preds),
+    logLoss: logLoss(preds),
+    favourite: favouriteHitRate(preds),
+    meanP: preds.length ? preds.reduce((a, x) => a + x.p, 0) / preds.length : NaN,
+    rate: preds.length ? preds.reduce((a, x) => a + x.y, 0) / preds.length : NaN,
+  };
+}
+
+// ---- Kalibrering ---------------------------------------------------------------------------
+
+export function betaGrid(lo = 0.1, hi = 1.5, step = 0.05): number[] {
+  const out: number[] = [];
+  for (let b = lo; b <= hi + 1e-9; b += step) out.push(Math.round(b * 100) / 100);
+  return out;
+}
+
+export function searchBeta(zr: ZRace[], weights: Weights, grid = betaGrid()): { beta: number; logLoss: number; curve: { beta: number; logLoss: number }[] } {
+  const curve = grid.map((beta) => ({ beta, logLoss: logLoss(zPreds(zr, weights, beta)) }));
+  const best = curve.reduce((a, b) => (b.logLoss < a.logLoss ? b : a));
+  return { beta: best.beta, logLoss: best.logLoss, curve };
+}
+
+// Koordinatvis sökning (mönstersökning) på log loss med β fast. Bara nycklarna
+// i `keys` ändras. Stegen halveras när inget steg förbättrar.
+export function fitWeights(
+  zr: ZRace[],
+  start: Weights,
+  beta: number,
+  keys: InputKey[],
+  steps = [0.4, 0.2, 0.1, 0.05, 0.025],
+  maxRounds = 20,
+): { weights: Weights; logLoss: number; evaluations: number } {
+  let w = { ...start };
+  let best = logLoss(zPreds(zr, w, beta));
+  let evaluations = 1;
+  for (const step of steps) {
+    for (let round = 0; round < maxRounds; round++) {
+      let improved = false;
+      for (const k of keys) {
+        for (const dir of [1, -1]) {
+          const cand = { ...w, [k]: Math.round((w[k] + dir * step) * 1000) / 1000 };
+          const ll = logLoss(zPreds(zr, cand, beta));
+          evaluations++;
+          if (ll < best - 1e-9) {
+            best = ll;
+            w = cand;
+            improved = true;
+            break;
+          }
+        }
+      }
+      if (!improved) break;
+    }
+  }
+  return { weights: w, logLoss: best, evaluations };
+}
+
+// Tidsmässig delning: de äldsta `share` av loppen till träning, resten test.
+export function timeSplit<T extends { date: string; key: string }>(races: T[], share = 0.7): { train: T[]; test: T[]; cut: string } {
+  const sorted = [...races].sort((a, b) => (a.date === b.date ? a.key.localeCompare(b.key) : a.date < b.date ? -1 : 1));
+  const n = Math.round(sorted.length * share);
+  // Hela dagar på samma sida.
+  let i = n;
+  while (i > 0 && i < sorted.length && sorted[i].date === sorted[i - 1].date) i++;
+  return { train: sorted.slice(0, i), test: sorted.slice(i), cut: sorted[i]?.date ?? "" };
+}
