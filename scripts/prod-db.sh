@@ -7,8 +7,9 @@
 #   bash BettingBBW/scripts/prod-db.sh status   # prisma migrate status
 #   bash BettingBBW/scripts/prod-db.sh deploy   # prisma migrate deploy
 #   bash BettingBBW/scripts/prod-db.sh seed     # skapar adminkontot (se seed.mjs)
+#   bash BettingBBW/scripts/prod-db.sh sources  # listar källorna, läser bara
 #
-# Bara dessa tre kommandon finns; migrate dev, reset och db push går inte att köra.
+# Bara dessa fyra kommandon finns; migrate dev, reset och db push går inte att köra.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -42,5 +43,6 @@ case "${1:-}" in
     SEED_ADMIN_PASSWORD=$(cat "$PW_FILE"); export SEED_ADMIN_PASSWORD
     node scripts/seed.mjs
     ;;
-  *) echo "Användning: prod-db.sh status|deploy|seed" >&2; exit 2 ;;
+  sources) node scripts/list-sources.mjs ;;
+  *) echo "Användning: prod-db.sh status|deploy|seed|sources" >&2; exit 2 ;;
 esac
