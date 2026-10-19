@@ -78,7 +78,7 @@ function OddsQueue({ data }: { data: RoundResponse }) {
   if (!items.length) {
     return (
       <>
-        <AppHeader title="Unibets platsodds" sub={`V85 · ${data.round.trackName}`} back={{ href: base, label: "Tillbaka till omgången" }} />
+        <AppHeader title="Unibets platsodds" sub={`${data.round.gameType} · ${data.round.trackName}`} back={{ href: base, label: "Tillbaka till omgången" }} />
         <main className="page" id="main">
           {anyMarked ? (
             <EmptyState icon={<IconFlag />} title="Inga odds att fylla i" text="Loppen för dina intressanta hästar har startat, eller hästarna är strukna.">

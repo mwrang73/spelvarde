@@ -16,11 +16,12 @@ import {
   parseCalendarDay,
   parseGame,
   parseStartDetail,
-  pickNextV85,
+  pickNextGame,
   type AtgFetch,
   type CalendarGame,
   type ParsedPerson,
 } from "@/lib/atg";
+import { DEFAULT_GAME_TYPE, GAME_ID_RE, legsFor, type GameType } from "@/lib/game-type";
 import { matchPerson, normalizeName, parseShortName } from "@/lib/names";
 import { raceClass } from "@/lib/race-class";
 import { computeRoundRiktodds } from "@/lib/riktodds-server";
@@ -38,7 +39,7 @@ export type FetchDeps = {
 
 export const ATG_CONCURRENCY = 6;
 export const RECORDS_FRESH_MS = 12 * 3600_000;
-export const GAME_ID_RE = /^V85_\d{4}-\d{2}-\d{2}_\d{1,3}_\d{1,2}$/;
+export { GAME_ID_RE };
 
 export class FetchStepError extends Error {
   constructor(message: string, readonly status = 502, readonly details: Record<string, unknown> = {}) {
@@ -53,8 +54,9 @@ const json = (x: unknown) => (x === null || x === undefined ? undefined : (x as 
 
 // ---- Kalendern ----------------------------------------------------------------------
 
-// Första V85 i dag eller de 7 närmaste dagarna vars första start är senare än nu − 12 h.
-export async function findNextV85(atg: AtgFetch, now: Date, warn?: (m: string) => void): Promise<CalendarGame | null> {
+// Första spelet av spelformen i dag eller de 7 närmaste dagarna vars första
+// start är senare än nu − 12 h.
+export async function findNextGame(atg: AtgFetch, now: Date, gameType: GameType = DEFAULT_GAME_TYPE, warn?: (m: string) => void): Promise<CalendarGame | null> {
   const today = stockholmDateString(now);
   for (let i = 0; i <= 7; i++) {
     let data: unknown;
@@ -64,7 +66,7 @@ export async function findNextV85(atg: AtgFetch, now: Date, warn?: (m: string) =
       if (e instanceof AtgError && e.status === 404) continue;
       throw e;
     }
-    const pick = pickNextV85(parseCalendarDay(data, warn), now);
+    const pick = pickNextGame(parseCalendarDay(data, warn, gameType), now);
     if (pick) return pick;
   }
   return null;
@@ -98,7 +100,7 @@ async function upsertPerson(db: PrismaClient, p: ParsedPerson, now: Date): Promi
   return row.id;
 }
 
-export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | null; userId: string | null }): Promise<GameStepResult | null> {
+export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | null; userId: string | null; gameType?: GameType }): Promise<GameStepResult | null> {
   const { db, atg } = deps;
   const now = deps.now?.() ?? new Date();
   const warnings: string[] = [];
@@ -111,7 +113,7 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
   let gameId = input.gameId ?? null;
   if (gameId && !GAME_ID_RE.test(gameId)) throw new FetchStepError("Ogiltigt spel-id.", 400);
   if (!gameId) {
-    const next = await findNextV85(atg, now, warn);
+    const next = await findNextGame(atg, now, input.gameType ?? DEFAULT_GAME_TYPE, warn);
     if (!next) return null;
     gameId = next.id;
   }
@@ -128,6 +130,7 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
     where: { atgGameId: parsed.atgGameId },
     create: {
       atgGameId: parsed.atgGameId,
+      gameType: parsed.gameType,
       date: dateOnly(parsed.date),
       trackId: parsed.trackId,
       trackName: parsed.trackName,
@@ -299,7 +302,7 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
 
   // Alla lopp har resultat (eller är inställda): omgången är klar. Cron-jobbet
   // för resultat (E4) gör samma sak när appen inte är öppen.
-  const finished = parsed.races.length === 8 && parsed.races.every((r) => r.hasResult || r.cancelled) && parsed.races.some((r) => r.hasResult);
+  const finished = parsed.races.length === legsFor(parsed.gameType) && parsed.races.every((r) => r.hasResult || r.cancelled) && parsed.races.some((r) => r.hasResult);
   await db.round.update({
     where: { id: round.id },
     data: { fetchedAt: now, rev: { increment: 1 }, finishedAt: finished ? (round.finishedAt ?? now) : null },
@@ -481,7 +484,7 @@ export async function fetchStatsStep(deps: FetchDeps, input: { roundId: string; 
     });
   }
 
-  const allRaces = round.races.length === 8 && round.races.every((r) => r.recordsFetchedAt);
+  const allRaces = round.races.length === legsFor(round.gameType) && round.races.every((r) => r.recordsFetchedAt);
   const ok = networkFailures === 0;
   const fetchStatus = ok && allRaces ? "COMPLETE" : "PARTIAL";
   await db.round.update({ where: { id: round.id }, data: { fetchStatus, rev: { increment: 1 } } });

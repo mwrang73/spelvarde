@@ -34,6 +34,7 @@ import { loadRaceStats, useRaceStats } from "./raceStatsStore";
 import { useRound } from "./RoundProvider";
 import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
+import { pctSignal, signalClass, signalSr } from "@/lib/signals";
 
 const PATH_RE = /^\/omgang\/([^/]+)\/avd\/(\d+)(?:\/hast\/([^/]+))?\/?$/;
 
@@ -289,7 +290,7 @@ function Workspace({
           deskTitle={false}
           deskMeta={
             <>
-              V85 · {data.round.trackName} · {dayDate(data.round.date)} {data.round.date.slice(0, 4)}
+              {data.round.gameType} · {data.round.trackName} · {dayDate(data.round.date)} {data.round.date.slice(0, 4)}
               <br />
               Fas: {PHASE_LABELS[data.phase].toLowerCase()}
             </>
@@ -319,9 +320,16 @@ function Workspace({
                         Spår {race.statsLine.bestNumber.number} vinner <b>{pct(race.statsLine.bestNumber.pct)}</b>
                       </span>
                     )}
-                    <span>
-                      Spår 1 <b>{pct(race.statsLine.number1Pct)}</b>
-                    </span>
+                    {race.statsLine.bestPlace && (
+                      <span>
+                        Spår {race.statsLine.bestPlace.number} plats <b>{pct(race.statsLine.bestPlace.pct)}</b>
+                      </span>
+                    )}
+                    {!race.statsLine.bestPlace && (
+                      <span>
+                        Spår 1 <b>{pct(race.statsLine.number1Pct)}</b>
+                      </span>
+                    )}
                     <span>
                       Favorit vinner <b>{pct(race.statsLine.favoriteWinPct)}</b>
                     </span>
@@ -398,11 +406,11 @@ function Workspace({
                 Loppstatistik {statsOpen ? "‹" : "›"}
               </button>
             </div>
-            {race.statsLine.ok ? <DeskStats race={race} roundId={roundId} /> : <div className="statline d-miss">{missingStats}</div>}
+            {race.statsLine.ok ? <DeskStats race={race} roundId={roundId} gameType={data.round.gameType} /> : <div className="statline d-miss">{missingStats}</div>}
           </section>
           {isDesktop && statsOpen && (
             <section className="dpanel d-only" id="dstats-panel" aria-label="Loppstatistik">
-              <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} />
+              <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
             </section>
           )}
           <div className="twrap d-only">
@@ -425,7 +433,10 @@ function Workspace({
                     Plats
                   </th>
                   <th scope="col" className="r">
-                    Spår %
+                    <abbr title="Startnumrets vinst % på distansen och startmetoden">Spår v.</abbr>
+                  </th>
+                  <th scope="col" className="r">
+                    <abbr title="Startnumrets plats % (topp 3) på distansen och startmetoden">Spår pl.</abbr>
                   </th>
                   <th scope="col" className="r">
                     Rikt
@@ -462,7 +473,7 @@ function Workspace({
       </main>
 
       <Sheet open={statsOpen && !isDesktop} onClose={() => setStatsOpen(false)} title="Loppstatistik" sub={`Avd ${leg} · ${race.distance} m ${methodLabel(race.startMethod)} · ${data.round.trackName}`}>
-        <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} />
+        <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
       </Sheet>
     </>
   );
@@ -541,9 +552,10 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
       <td className="c">
         <FormStrip boxes={s.form.boxes} ariaLabel={s.form.ariaLabel} />
       </td>
-      <td className="r num">{pct(s.quick.winPct, 0)}</td>
-      <td className="r num">{pct(s.quick.placePct, 0)}</td>
-      <td className="r num">{pct(s.quick.postPct)}</td>
+      <QuickPct kind="win" v={s.quick.winPct} starts={s.quick.lifeStarts} />
+      <QuickPct kind="place" v={s.quick.placePct} starts={s.quick.lifeStarts} />
+      <td className="r num">{pct(s.quick.postPct, 0)}</td>
+      <td className="r num">{pct(s.quick.postPlacePct, 0)}</td>
       <td className="r">
         <RiktCell s={s} className="rk num dk" two />
       </td>
@@ -554,7 +566,18 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
   );
 }
 
-function DeskStats({ race, roundId }: { race: RaceDto; roundId: string }) {
+// Vinst % och plats % i livet, gröna över gränserna (lib/signals.ts).
+function QuickPct({ kind, v, starts }: { kind: "win" | "place"; v: number | null; starts: number | null }) {
+  const sg = pctSignal(kind, v, starts);
+  return (
+    <td className={`r num${sg ? ` ${signalClass(sg)}` : ""}`}>
+      {pct(v, 0)}
+      <span className="sr">{signalSr(sg)}</span>
+    </td>
+  );
+}
+
+function DeskStats({ race, roundId, gameType }: { race: RaceDto; roundId: string; gameType: string }) {
   const stats = useRaceStats(roundId, race.leg);
   const line = race.statsLine;
   const top = stats.data?.drivers.rows.filter((r) => r.league).sort((a, b) => (b.league?.wins ?? 0) - (a.league?.wins ?? 0))[0] ?? null;
@@ -564,20 +587,28 @@ function DeskStats({ race, roundId }: { race: RaceDto; roundId: string }) {
       <div>
         <small>{line.bestNumber ? `Spår ${line.bestNumber.number} · ${m}` : `Bästa spår · ${m}`}</small>
         <b className="num">{pct(line.bestNumber?.pct ?? null)}</b>
-        <span>bästa spåret</span>
+        <span>bästa spåret för vinst</span>
       </div>
-      <div>
-        <small>Spår 1 · {m}</small>
-        <b className="num">{pct(line.number1Pct)}</b>
-        <span>vinst</span>
-      </div>
+      {line.bestPlace ? (
+        <div>
+          <small>Spår {line.bestPlace.number} · {m}</small>
+          <b className="num">{pct(line.bestPlace.pct)}</b>
+          <span>bästa spåret för plats</span>
+        </div>
+      ) : (
+        <div>
+          <small>Spår 1 · {m}</small>
+          <b className="num">{pct(line.number1Pct)}</b>
+          <span>vinst</span>
+        </div>
+      )}
       <div>
         <small>Favorit vinner</small>
         <b className="num">{pct(line.favoriteWinPct)}</b>
-        <span>av V85-loppen</span>
+        <span>av {gameType}-loppen</span>
       </div>
       <div>
-        <small>Kuskligan V85</small>
+        <small>Kuskligan {gameType}</small>
         <b className="num">{top?.league ? top.league.wins : "–"}</b>
         <span>{top ? top.rawName ?? top.name : stats.loading ? "hämtar …" : "ingen i ligan"}</span>
       </div>

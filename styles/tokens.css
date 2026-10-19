@@ -36,6 +36,12 @@
   --glow: rgba(242, 154, 0, .40);
   --up: #0E7A3B;
   --up-soft: #DDF3E5;
+  /* Positiva signaler: ettor (fylld) och tvåor (ljus) i formen, plats % och vinst % över gränsen. */
+  --sig: #0E7A3B;
+  --sig-fill: #17853F;
+  --sig-fill-ink: #FFFFFF;
+  --sig-fill-2: #BFE6CB;
+  --sig-fill-2-ink: #0A4721;
   --down: #C42B1F;
   --down-soft: #FBE1DD;
   --gal: #C42B1F;
@@ -133,6 +139,11 @@
   --glow: rgba(255, 178, 46, .55);
   --up: #46D37E;
   --up-soft: rgba(70, 211, 126, .14);
+  --sig: #46D37E;
+  --sig-fill: #2FBF6B;
+  --sig-fill-ink: #04210F;
+  --sig-fill-2: rgba(70, 211, 126, .30);
+  --sig-fill-2-ink: #C8F7DA;
   --down: #FF6B5A;
   --down-soft: rgba(255, 107, 90, .15);
   --gal: #FF5A45;

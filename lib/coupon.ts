@@ -1,11 +1,13 @@
-// V85-raden (specen 6.5 och S6b): rader, kostnad, ordningen för förslag,
+// Raden för omgångens spel, V85 eller V75 (specen 6.5 och S6b): rader, kostnad, ordningen för förslag,
 // "Föreslå inom budget" och texten för Kopiera rad. Rena funktioner, testade
 // i lib/coupon.test.ts. Förslaget räknas i klienten; servern sparar bara
 // kupongen (PUT /api/rounds/[id]/coupon) och kontrollerar den.
 
+import { legsFor } from "@/lib/game-type";
 import { stockholmParts } from "@/lib/stockholm-time";
 import type { Result } from "@/lib/validate";
 
+// Avdelningarna som kupongen kan ha (högst 8). Spelformens antal i lib/game-type.ts.
 export const LEGS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 export const DEFAULT_ROW_PRICE = 0.5;
 export const DEFAULT_BUDGET = 100;
@@ -33,9 +35,10 @@ export type CouponLeg = { leg: number; starts: CouponStart[]; started?: boolean 
 
 const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
 
-export function rowCount(selections: Selections): number {
+// Rader över spelets avdelningar 1..legs (8 för V85, 7 för V75).
+export function rowCount(selections: Selections, legs = 8): number {
   let rows = 1;
-  for (const leg of LEGS) rows *= selections[leg]?.length ?? 0;
+  for (let leg = 1; leg <= legs; leg++) rows *= selections[leg]?.length ?? 0;
   return rows;
 }
 
@@ -122,10 +125,11 @@ export function couponDateLabel(date: string): string {
 const krText = (x: number) => `${x.toFixed(2).replace(".", ",")} kr`;
 
 // Texten för Kopiera rad (6.5).
-export function couponText(round: { trackName: string; date: string }, selections: Selections, rowPrice: number): string {
-  const rows = rowCount(selections);
-  const lines = [`V85 ${round.trackName} ${couponDateLabel(round.date)}`];
-  for (const leg of LEGS) {
+export function couponText(round: { trackName: string; date: string; gameType: string }, selections: Selections, rowPrice: number): string {
+  const legs = legsFor(round.gameType);
+  const rows = rowCount(selections, legs);
+  const lines = [`${round.gameType} ${round.trackName} ${couponDateLabel(round.date)}`];
+  for (let leg = 1; leg <= legs; leg++) {
     const nums = [...(selections[leg] ?? [])].sort((a, b) => a - b);
     lines.push(`Avd ${leg}: ${nums.length ? nums.join(", ") : "–"}`);
   }

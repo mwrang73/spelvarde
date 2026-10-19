@@ -14,6 +14,7 @@ import { currentRoundId } from "@/lib/round-server";
 import type { CouponResponse, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
 import { parseSettingsBody, type Result } from "@/lib/validate";
 import { checkFactors } from "@/lib/xfactor";
+import { legsFor } from "@/lib/game-type";
 
 type Db = PrismaClient;
 export type Reply<T = unknown> = { status: number; body: T | { error: string } };
@@ -83,7 +84,7 @@ export async function saveMark(db: Db, userId: string, startId: string, body: Re
 export async function saveSettings(db: Db, userId: string, body: Record<string, unknown>): Promise<Reply<SettingsDto>> {
   const parsed = parseSettingsBody(body);
   if (!parsed.ok) return err(400, parsed.error);
-  const { theme, rowPrice, spelbarGuideline, xFactorTror, xFactorStark } = parsed.value;
+  const { theme, rowPrice, spelbarGuideline, xFactorTror, xFactorStark, gameType } = parsed.value;
   const cur = settingsDto(await db.userSettings.findUnique({ where: { userId } }));
   const factors = { xFactorTror: xFactorTror ?? cur.xFactorTror, xFactorStark: xFactorStark ?? cur.xFactorStark };
   if (xFactorTror !== undefined || xFactorStark !== undefined) {
@@ -96,6 +97,7 @@ export async function saveSettings(db: Db, userId: string, body: Record<string, 
     ...(spelbarGuideline !== undefined ? { spelbarGuideline } : {}),
     ...(xFactorTror !== undefined ? { xFactorTror } : {}),
     ...(xFactorStark !== undefined ? { xFactorStark } : {}),
+    ...(gameType ? { gameType } : {}),
   };
   // create får alltid båda faktorerna: upsert blir INSERT … ON CONFLICT, och
   // Postgres prövar villkoret Stark > Tror på INSERT-raden (med standardvärdet
@@ -107,13 +109,13 @@ export async function saveSettings(db: Db, userId: string, body: Record<string, 
 // ---- Kupong --------------------------------------------------------------------------------
 
 export async function getCoupon(db: Db, userId: string, roundId: string): Promise<Reply<CouponResponse>> {
-  const round = await db.round.findUnique({ where: { id: roundId }, select: { id: true } });
+  const round = await db.round.findUnique({ where: { id: roundId }, select: { id: true, gameType: true } });
   if (!round) return err(404, "Omgången finns inte.");
   const [coupon, settings] = await Promise.all([
     db.coupon.findUnique({ where: { userId_roundId: { userId, roundId } } }),
     db.userSettings.findUnique({ where: { userId } }),
   ]);
-  return ok({ coupon: coupon ? couponDto(coupon) : null, defaults: { budget: DEFAULT_BUDGET, rowPrice: settingsDto(settings).rowPrice } });
+  return ok({ coupon: coupon ? couponDto(coupon, legsFor(round.gameType)) : null, defaults: { budget: DEFAULT_BUDGET, rowPrice: settingsDto(settings).rowPrice } });
 }
 
 // Hela kupongen (idempotent). Valet i en avdelning som har startat kan inte ändras (409).
@@ -123,7 +125,7 @@ export async function saveCoupon(db: Db, userId: string, roundId: string, body: 
   const input = parsed.value;
   const round = await db.round.findUnique({
     where: { id: roundId },
-    select: { id: true, races: { select: { leg: true, startAt: true, starts: { select: { number: true } } } } },
+    select: { id: true, gameType: true, races: { select: { leg: true, startAt: true, starts: { select: { number: true } } } } },
   });
   if (!round) return err(404, "Omgången finns inte.");
   for (const [leg, nums] of Object.entries(input.selections)) {
@@ -145,7 +147,7 @@ export async function saveCoupon(db: Db, userId: string, roundId: string, body: 
   const selections = Object.fromEntries(Object.entries(input.selections).map(([k, v]) => [k, v])) as Prisma.InputJsonValue;
   const data = { budget: input.budget, rowPrice, selections, lockedLegs: input.lockedLegs };
   const coupon = await db.coupon.upsert({ where: { userId_roundId: { userId, roundId } }, create: { userId, roundId, ...data }, update: data });
-  return ok({ coupon: couponDto(coupon), defaults: { budget: DEFAULT_BUDGET, rowPrice: settingsDto(settings).rowPrice } });
+  return ok({ coupon: couponDto(coupon, legsFor(round.gameType)), defaults: { budget: DEFAULT_BUDGET, rowPrice: settingsDto(settings).rowPrice } });
 }
 
 // ---- Modell (bara ADMIN) ---------------------------------------------------------------------

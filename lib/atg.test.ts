@@ -10,7 +10,7 @@ import {
   parseGame,
   parseRecord,
   parseStartDetail,
-  pickNextV85,
+  pickNextGame,
 } from "@/lib/atg";
 
 const fx = (f: string) => JSON.parse(readFileSync(path.join(__dirname, "..", "test", "fixtures", "atg", f), "utf8"));
@@ -186,11 +186,41 @@ describe("kalendern", () => {
   });
   it("väljer första V85 vars start är senare än nu − 12 h", () => {
     const games = parseCalendarDay(calendar);
-    expect(pickNextV85(games, new Date("2026-10-19T19:00:00Z"))?.id).toBe("V85_2026-10-24_7_5");
+    expect(pickNextGame(games, new Date("2026-10-19T19:00:00Z"))?.id).toBe("V85_2026-10-24_7_5");
     // Lördag kväll: dagens omgång gäller fortfarande.
-    expect(pickNextV85(games, new Date("2026-10-24T20:00:00Z"))?.id).toBe("V85_2026-10-24_7_5");
+    expect(pickNextGame(games, new Date("2026-10-24T20:00:00Z"))?.id).toBe("V85_2026-10-24_7_5");
     // Söndag kväll: den är för gammal.
-    expect(pickNextV85(games, new Date("2026-10-25T19:00:00Z"))).toBeNull();
+    expect(pickNextGame(games, new Date("2026-10-25T19:00:00Z"))).toBeNull();
+  });
+});
+
+describe("V75 (spelformen som ersätter V85 i slutet av november)", () => {
+  // Fixturen V85 omgjord till V75: nytt id, sju lopp och streck i pools.V75.
+  const v75 = structuredClone(bettable);
+  v75.id = "V75_2026-11-28_5_5";
+  v75.races = v75.races.slice(0, 7);
+  for (const r of v75.races) for (const s of r.starts) if (s.pools?.V85) (s.pools.V75 = s.pools.V85), delete s.pools.V85;
+
+  it("ger spelform, datum ur id:t och streck ur V75-poolen", () => {
+    const warns: string[] = [];
+    const g = parseGame(v75, (m) => warns.push(m))!;
+    expect(g.gameType).toBe("V75");
+    expect(g.date).toBe("2026-11-28");
+    expect(g.races).toHaveLength(7);
+    expect(g.hasStreck).toBe(true);
+    expect(warns.some((w) => w.includes("i stället för"))).toBe(false);
+  });
+  it("V85-poolen räknas inte som streck i ett V75-spel", () => {
+    const wrong = structuredClone(bettable);
+    wrong.id = "V75_2026-11-28_5_5";
+    expect(parseGame(wrong)!.hasStreck).toBe(false);
+  });
+  it("kalendern letar efter den valda spelformen", () => {
+    const cal = structuredClone(calendar);
+    cal.games.V75 = [{ ...cal.games.V85[0], id: "V75_2026-10-24_7_5" }];
+    expect(parseCalendarDay(cal, undefined, "V75").map((g) => g.id)).toEqual(["V75_2026-10-24_7_5"]);
+    expect(parseCalendarDay(cal, undefined, "V85").map((g) => g.id)).toEqual(["V85_2026-10-24_7_5"]);
+    expect(parseCalendarDay(calendar, undefined, "V86")).toEqual([]);
   });
 });
 

@@ -79,10 +79,22 @@ describe("Kopiera rad", () => {
   it("textformatet i 6.5", () => {
     const sel = { 1: [10, 3], 2: [5], 3: [1, 2], 4: [4, 6], 5: [7, 8], 6: [1, 2, 3], 7: [1, 2, 3], 8: [1, 2] };
     expect(couponDateLabel("2026-10-24")).toBe("lör 24 okt 2026");
-    expect(couponText({ trackName: "Jägersro", date: "2026-10-24" }, sel, 0.5)).toBe(
+    expect(couponText({ trackName: "Jägersro", date: "2026-10-24", gameType: "V85" }, sel, 0.5)).toBe(
       ["V85 Jägersro lör 24 okt 2026", "Avd 1: 3, 10", "Avd 2: 5", "Avd 3: 1, 2", "Avd 4: 4, 6", "Avd 5: 7, 8", "Avd 6: 1, 2, 3", "Avd 7: 1, 2, 3", "Avd 8: 1, 2", "288 rader · 144,00 kr"].join("\n"),
     );
-    expect(couponText({ trackName: "Jägersro", date: "2026-10-24" }, { 1: [3] }, 0.5).split("\n").at(-1)).toBe("0 rader · 0,00 kr");
+    expect(couponText({ trackName: "Jägersro", date: "2026-10-24", gameType: "V85" }, { 1: [3] }, 0.5).split("\n").at(-1)).toBe("0 rader · 0,00 kr");
+  });
+});
+
+describe("Kopiera rad för V75", () => {
+  it("sju avdelningar och V75 i rubriken", () => {
+    const sel = { 1: [1], 2: [2], 3: [3], 4: [4], 5: [5], 6: [6], 7: [7, 8] };
+    const text = couponText({ trackName: "Solvalla", date: "2026-11-28", gameType: "V75" }, sel, 0.5).split("\n");
+    expect(text[0]).toBe("V75 Solvalla lör 28 nov 2026");
+    expect(text).toHaveLength(9);
+    expect(text.at(-1)).toBe("2 rader · 1,00 kr");
+    expect(rowCount(sel, 7)).toBe(2);
+    expect(rowCount(sel, 8)).toBe(0);
   });
 });
 

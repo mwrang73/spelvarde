@@ -15,7 +15,8 @@ export type GallopFlag = "G" | "GD" | null;
 export type FormBox = {
   // "1"–"9", "0", "d" eller "g".
   char: string;
-  tone: "win" | "gal" | "plain";
+  // win = etta, second = tvåa (gröna i formen), gal = galopp, plain = övrigt.
+  tone: "win" | "second" | "gal" | "plain";
   // Skärmläsartext för rutan, t.ex. "1:a" eller "galopp oplacerad".
   label: string;
 };
@@ -44,7 +45,7 @@ export function formBox(r: FormRecord): FormBox {
     return { char: "g", tone: "gal", label: "galopp oplacerad" };
   }
   if (r.disqualified) return { char: "d", tone: "plain", label: "diskad" };
-  if (placed) return { char: String(r.place), tone: r.place === 1 ? "win" : "plain", label: `${r.place}:a` };
+  if (placed) return { char: String(r.place), tone: r.place === 1 ? "win" : r.place === 2 ? "second" : "plain", label: `${r.place}:a` };
   return { char: "0", tone: "plain", label: "oplacerad" };
 }
 

@@ -19,6 +19,7 @@ describe("gallop och formrutor (6.2)", () => {
   });
   it("formrutor: siffra, 0, d och g med rätt ton", () => {
     expect(formBox(rec("x", 1))).toEqual({ char: "1", tone: "win", label: "1:a" });
+    expect(formBox(rec("x", 2))).toEqual({ char: "2", tone: "second", label: "2:a" });
     expect(formBox(rec("x", 4))).toEqual({ char: "4", tone: "plain", label: "4:a" });
     expect(formBox(rec("x", 0))).toEqual({ char: "0", tone: "plain", label: "oplacerad" });
     expect(formBox(rec("x", null))).toMatchObject({ char: "0" });

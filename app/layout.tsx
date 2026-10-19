@@ -16,7 +16,7 @@ const jetbrains = JetBrains_Mono({ subsets: ["latin"], weight: ["500", "700"], d
 
 export const metadata: Metadata = {
   title: "Spelvärde",
-  description: "V85-analys för platsspel.",
+  description: "Travanalys för platsspel och V-spel.",
   appleWebApp: { capable: true, title: "Spelvärde", statusBarStyle: "black" },
 };
 

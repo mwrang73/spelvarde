@@ -41,7 +41,7 @@ export function CurrentRound() {
   if (current && !current.round) return <NoRound current={current} />;
   return (
     <>
-      <AppHeader brand title="Omgången" sub="V85" actions={<HeaderActions roundId={null} gameId={null} />} />
+      <AppHeader brand title="Omgången" sub={current?.gameType ?? ""} actions={<HeaderActions roundId={null} gameId={null} />} />
       <main className="page" id="main">
         {checked && error ? (
           <Banner tone="err" className="m10" actions={<button type="button" className="btn secondary sm" onClick={() => window.location.reload()}>Försök igen</button>}>
@@ -57,7 +57,7 @@ export function CurrentRound() {
 
 // Ingen omgång hämtad (EmptyState) och lägena för första hämtningen. Nästa
 // steg (3.2 punkt 1) är här samma sak som tomt läge, så bara EmptyState
-// visas, med nästa V85 från ATG:s kalender när den är känd.
+// visas, med nästa spel från ATG:s kalender när den är känd.
 function NoRound({ current }: { current: CurrentRoundResponse }) {
   const chain = useFetchChain();
   const online = useOnline();
@@ -67,13 +67,13 @@ function NoRound({ current }: { current: CurrentRoundResponse }) {
   const game = current.nextAvailable?.game ?? null;
   return (
     <>
-      <AppHeader brand title="Omgången" sub="V85 · ingen omgång hämtad" actions={<HeaderActions roundId={null} gameId={null} />} />
+      <AppHeader brand title="Omgången" sub={`${current.gameType} · ingen omgång hämtad`} actions={<HeaderActions roundId={null} gameId={null} />} />
       <main className="page" id="main">
         <FetchBanners onRetry={(from, rid) => runChain(from, gameId, rid)} />
-        <EmptyState icon={<IconFlag />} title="Ingen omgång hämtad" text="Hämta veckans V85 från ATG. Startlistan brukar finnas från söndag kväll.">
+        <EmptyState icon={<IconFlag />} title="Ingen omgång hämtad" text={`Hämta veckans ${current.gameType} från ATG. Startlistan brukar finnas från söndag kväll.`}>
           {game && (
             <p className="help">
-              Nästa: V85 {game.trackName ?? ""} {dayDate(game.date)}, första start {hhmm(game.firstStartAt)}
+              Nästa: {game.gameType} {game.trackName ?? ""} {dayDate(game.date)}, första start {hhmm(game.firstStartAt)}
             </p>
           )}
           <button type="button" className="btn primary" disabled={!online || running} onClick={() => runChain({ step: "GAME" }, gameId, null)}>

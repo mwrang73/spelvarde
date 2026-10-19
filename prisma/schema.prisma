@@ -158,6 +158,8 @@ model UserSettings {
   // X-faktorerna (6.8, E2.1). 1,05–3,00 och Stark > Tror (check i migreringen).
   xFactorTror      Decimal     @default(1.25) @db.Decimal(4, 2)
   xFactorStark     Decimal     @default(1.50) @db.Decimal(4, 2)
+  // Spelformen som Hämta omgång letar efter: V75, V85, V86 eller GS75 (lib/game-type.ts).
+  gameType         String      @default("V85")
   updatedAt        DateTime    @updatedAt
 
   @@schema("spelvarde")
@@ -169,6 +171,8 @@ model UserSettings {
 model Round {
   id           String      @id @default(cuid())
   atgGameId    String      @unique
+  // V75, V85, V86 eller GS75 (prefixet i atgGameId).
+  gameType     String      @default("V85")
   // Omgångens lokala datum (lördag), utan tid.
   date         DateTime    @db.Date
   trackId      Int
@@ -206,7 +210,7 @@ model Race {
   roundId          String
   round            Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
   atgRaceId        String      @unique
-  // Avdelning 1–8 i V85-ordning.
+  // Avdelning 1–8 i spelets ordning (7 för V75 och GS75).
   leg              Int
   // Loppnummer på banan.
   raceNumber       Int
@@ -666,5 +670,59 @@ model TipFact {
   @@index([roundId])
   @@index([startId])
   @@index([horseId])
+  @@schema("spelvarde")
+}
+
+
+// ---------------------------------------------------------------------------
+// Statistikbasen: alla svenska travlopp från ATG (lib/hist.ts). Gemensam
+// data, skrivs bara av inläsningen (S10 och cron-jobbet). Används för
+// vinst % och plats % per startnummer i stället för travstatistik.se.
+
+// En dag i ATG:s kalender som är inläst. Dagar utan svenska travlopp får
+// races = 0, så att de inte läses igen.
+model HistDay {
+  date       DateTime @id @db.Date
+  races      Int
+  importedAt DateTime @default(now())
+
+  @@schema("spelvarde")
+}
+
+model HistRace {
+  // ATG:s lopp-id, t.ex. "2026-10-10_5_1".
+  id          String      @id
+  date        DateTime    @db.Date
+  trackId     Int
+  trackName   String
+  raceNumber  Int
+  // Loppets grunddistans (utan tillägg).
+  distance    Int
+  startMethod StartMethod
+  // Startande (utan strukna).
+  starters    Int
+
+  starts HistStart[]
+
+  @@index([startMethod, distance, date])
+  @@index([trackId, date])
+  @@schema("spelvarde")
+}
+
+model HistStart {
+  raceId       String
+  race         HistRace @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  number       Int
+  postPosition Int?
+  // Distans med tillägg.
+  distance     Int
+  scratched    Boolean  @default(false)
+  // ATG:s placering: 1–3 … eller 0 = oplacerad, null = ingen placering (diskad, struken).
+  place        Int?
+  disqualified Boolean  @default(false)
+  galloped     Boolean  @default(false)
+  finalOdds    Decimal? @db.Decimal(6, 2)
+
+  @@id([raceId, number])
   @@schema("spelvarde")
 }

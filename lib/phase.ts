@@ -2,6 +2,7 @@
 
 import { FEATURES, type Features } from "@/lib/features";
 import { addDaysToDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
+import { DEFAULT_GAME_TYPE, gameTypeOfId } from "@/lib/game-type";
 
 export type Phase = "ANALYS" | "ODDS" | "LIVE" | "KLART";
 export const PHASES: Phase[] = ["ANALYS", "ODDS", "LIVE", "KLART"];
@@ -86,7 +87,7 @@ export type NextStepKind =
 export type NextStepAction =
   // Länk till en vy.
   | { type: "link"; label: string; href: string }
-  // Starta Hämta omgång (kedjan i 10.1). gameId saknas = välj nästa V85.
+  // Starta Hämta omgång (kedjan i 10.1). gameId saknas = välj nästa spel av spelformen.
   | { type: "fetch"; label: string; gameId: string | null }
   // Fortsätt kedjan från steget som misslyckades.
   | { type: "resume"; label: string; roundId: string };
@@ -97,13 +98,17 @@ export type NextStepRace = PhaseRace & { reviewed: boolean };
 
 export type NextStepInput = {
   now: Date;
+  // Användarens spelform (S10). Saknas = V85.
+  gameType?: string;
   round: {
     id: string;
     date: string;
+    // Omgångens spelform. Saknas = V85.
+    gameType?: string;
     fetchStatus: "COMPLETE" | "PARTIAL" | "FAILED";
     races: NextStepRace[];
   } | null;
-  // Nästa V85 i ATG:s kalender (null = ingen eller okänd).
+  // Nästa spel av spelformen i ATG:s kalender (null = ingen eller okänd).
   nextAvailable: { gameId: string; trackName: string | null; date: string; fetched: boolean } | null;
   // E2/E3: räknare som är 0 i E1.
   interestingWithoutOdds?: number;
@@ -113,24 +118,29 @@ export type NextStepInput = {
   features?: Features;
 };
 
-function fetchStep(next: NextStepInput["nextAvailable"]): NextStep {
-  const label = next ? `V85 ${next.trackName ?? ""} ${dayDateLabel(next.date)}`.replace(/\s+/g, " ") : null;
+function fetchStep(next: NextStepInput["nextAvailable"], gameType: string): NextStep {
+  const gt = (next && gameTypeOfId(next.gameId)) ?? gameType;
+  const label = next ? `${gt} ${next.trackName ?? ""} ${dayDateLabel(next.date)}`.replace(/\s+/g, " ") : null;
   return {
     kind: "FETCH_ROUND",
     title: label ? `Hämta omgång – ${label}` : "Hämta omgång",
-    text: "Hämta veckans V85 från ATG. Startlistan brukar finnas från söndag kväll.",
+    text: `Hämta veckans ${gt} från ATG. Startlistan brukar finnas från söndag kväll.`,
     action: { type: "fetch", label: "Hämta omgång", gameId: next?.gameId ?? null },
   };
 }
 
+const LEG_WORDS: Record<number, string> = { 7: "sju", 8: "åtta" };
+
 export function nextStep(input: NextStepInput): NextStep {
   const f = input.features ?? FEATURES;
   const { round, now, nextAvailable } = input;
+  const gameType = input.gameType ?? DEFAULT_GAME_TYPE;
 
-  // 1. Ingen omgång, eller nästa V85 finns men är inte hämtad.
-  if (!round) return fetchStep(nextAvailable);
+  // 1. Ingen omgång, eller nästa spel finns men är inte hämtat.
+  if (!round) return fetchStep(nextAvailable, gameType);
   const phase = computePhase(round.date, round.races, now);
-  if (phase === "KLART" && nextAvailable && !nextAvailable.fetched) return fetchStep(nextAvailable);
+  if (phase === "KLART" && nextAvailable && !nextAvailable.fetched) return fetchStep(nextAvailable, gameType);
+  const roundGame = round.gameType ?? DEFAULT_GAME_TYPE;
 
   // 2. Hämtningen ofullständig.
   if (round.fetchStatus !== "COMPLETE") {
@@ -198,7 +208,7 @@ export function nextStep(input: NextStepInput): NextStep {
     if (f.coupon && !input.hasCoupon) {
       return {
         kind: "BUILD_COUPON",
-        title: "Bygg V85-raden",
+        title: `Bygg ${roundGame}-raden`,
         text: "Välj hästar per avdelning inom din budget.",
         action: { type: "link", label: "Bygg raden", href: `${base}/spel?flik=rad` },
       };
@@ -216,12 +226,12 @@ export function nextStep(input: NextStepInput): NextStep {
         action: { type: "link", label: `Till avd ${todo.leg}`, href: `${base}/avd/${todo.leg}` },
       };
     }
-    return { kind: "ALL_REVIEWED", title: "Allt genomgånget – odds fylls i torsdag kväll", text: "Alla åtta avdelningar är genomgångna.", action: null };
+    return { kind: "ALL_REVIEWED", title: "Allt genomgånget – odds fylls i torsdag kväll", text: `Alla ${LEG_WORDS[races.length] ?? races.length} avdelningar är genomgångna.`, action: null };
   }
 
   // 9. Klart.
   if (f.stats) {
     return { kind: "SEE_STATS", title: "Se statistik", text: "Omgången är klar.", action: { type: "link", label: "Se statistik", href: "/statistik" } };
   }
-  return { kind: "ROUND_DONE", title: "Omgången är klar", text: "Nästa V85 kan hämtas när ATG har publicerat den.", action: null };
+  return { kind: "ROUND_DONE", title: "Omgången är klar", text: `Nästa ${gameType} kan hämtas när ATG har publicerat den.`, action: null };
 }

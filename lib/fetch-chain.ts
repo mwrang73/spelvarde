@@ -21,8 +21,8 @@ export type ChainProgress = {
 
 export type ChainResult =
   | { ok: true; roundId: string }
-  // ATG har ingen V85 de närmaste 7 dagarna (404 NO_V85).
-  | { ok: false; kind: "NO_V85"; message: string; roundId: null; resumeFrom: null }
+  // ATG har inget spel av spelformen de närmaste 7 dagarna (404 NO_GAME).
+  | { ok: false; kind: "NO_GAME"; message: string; roundId: null; resumeFrom: null }
   // Steg 1 misslyckades (ingen omgång sparad eller ATG nåddes inte).
   | { ok: false; kind: "FAILED"; message: string; roundId: string | null; resumeFrom: ResumePoint }
   // Ett senare steg misslyckades. Det som hämtats är sparat.
@@ -63,8 +63,8 @@ export async function runFetchChain(
     } catch {
       return { ok: false, kind: "FAILED", message: ATG_UNREACHABLE, roundId, resumeFrom: { step: "GAME" } };
     }
-    if (res.status === 404 && codeOf(res.data) === "NO_V85") {
-      return { ok: false, kind: "NO_V85", message: errorOf(res.data) ?? "ATG har ingen V85 de närmaste 7 dagarna än. Försök igen senare.", roundId: null, resumeFrom: null };
+    if (res.status === 404 && codeOf(res.data) === "NO_GAME") {
+      return { ok: false, kind: "NO_GAME", message: errorOf(res.data) ?? "ATG har inget spel de närmaste 7 dagarna än. Försök igen senare.", roundId: null, resumeFrom: null };
     }
     if (res.status < 200 || res.status >= 300) {
       return { ok: false, kind: "FAILED", message: res.status >= 500 || res.status === 0 ? ATG_UNREACHABLE : errorOf(res.data) ?? ATG_UNREACHABLE, roundId, resumeFrom: { step: "GAME" } };

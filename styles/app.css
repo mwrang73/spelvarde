@@ -124,7 +124,8 @@ h1, h2, h3 { margin: 0; }
 
 .form { display: flex; gap: 1px; justify-self: center; }
 .form i { display: grid; place-items: center; width: 9.6px; height: 18px; font: 700 11px/1 var(--f-num); font-style: normal; background: var(--surface-3); color: var(--ink); border-radius: 2px; }
-.form i.w { background: var(--fill); color: var(--fill-ink); }
+.form i.w { background: var(--sig-fill); color: var(--sig-fill-ink); }
+.form i.w2 { background: var(--sig-fill-2); color: var(--sig-fill-2-ink); }
 .form i.gx { background: var(--gal); color: var(--gal-ink); }
 .form.lg i { width: 18px; height: 22px; font-size: 13px; }
 
@@ -308,6 +309,19 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .bar-r.hi .tr i { background: var(--fill); box-shadow: 0 0 8px var(--glow); }
 .bar-r.out { color: var(--ink-2); }
 .bar-r .v { text-align: right; font: 700 12.5px var(--f-num); }
+.pbars { display: grid; gap: 4px; margin-top: 4px; font-size: 13px; }
+.pb-h, .pb-r { display: grid; grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; }
+.pb-h { font: 600 11px/1 var(--f-label); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.pb-h span:first-child, .pb-r .bn { text-align: right; }
+.pb-r .bn { font-weight: 700; }
+.pb-r.out { color: var(--ink-2); }
+.pb-c { display: grid; grid-template-columns: minmax(0, 1fr) 48px; gap: 6px; align-items: center; }
+.pb-c .tr { height: 12px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.pb-c .tr i { display: block; height: 100%; background: var(--line-strong); }
+.pb-r.hi .pb-c .tr i { background: var(--fill); }
+.pb-r.hi .pb-c.best .tr i { background: var(--sig-fill); }
+.pb-c .v { text-align: right; font: 700 12.5px var(--f-num); }
+.pb-r.hi .pb-c.best .v { color: var(--sig); }
 .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 14px; margin: 0; }
 .kv dt { color: var(--ink-2); }
 .kv dd { margin: 0; font: 700 14px var(--f-num); text-align: right; }
@@ -346,7 +360,11 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .starts .r { text-align: right; }
 .starts tr.gal td { background: var(--down-soft); }
 .plc { display: inline-grid; place-items: center; min-width: 22px; height: 20px; border-radius: 3px; font: 700 12px/1 var(--f-num); background: var(--surface-3); }
-.plc.w { background: var(--fill); color: var(--fill-ink); }
+.plc.w { background: var(--sig-fill); color: var(--sig-fill-ink); }
+.plc.w2 { background: var(--sig-fill-2); color: var(--sig-fill-2-ink); }
+/* Positiv signal (lib/signals.ts): grön och fet. För få starter: dämpad. */
+.sig { color: var(--sig); font-weight: 700; }
+.few { color: var(--ink-2); opacity: .75; }
 .plc.g { background: var(--gal); color: var(--gal-ink); }
 .cmts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .cmt { padding: 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); display: grid; gap: 6px; }
@@ -750,3 +768,11 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+.hist-prog { height: 8px; border-radius: 4px; background: var(--surface-3); overflow: hidden; margin: 8px 0 0; }
+.hist-prog i { display: block; height: 100%; background: var(--fill); transition: width .3s; }
+/* S6a: värdet mot riktoddset och de gröna signalerna. */
+.val { font: 700 12px var(--f-num); }
+.val.up { color: var(--sig); }
+.val.dn { color: var(--ink-2); }
+.sigs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.sigs .tag { font-size: 11px; }

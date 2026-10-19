@@ -7,7 +7,7 @@ function fakePost(fail: (url: string) => number | "throw" | null): { post: Chain
     calls.push(url);
     const f = fail(url);
     if (f === "throw") throw new Error("nät");
-    if (f) return { status: f, data: { error: "fel", code: f === 404 ? "NO_V85" : undefined } };
+    if (f) return { status: f, data: { error: "fel", code: f === 404 ? "NO_GAME" : undefined } };
     return { status: 200, data: url === "/api/rounds/fetch" ? { roundId: "R1" } : {} };
   };
   return { post, calls };
@@ -39,7 +39,7 @@ describe("runFetchChain", () => {
   it("ingen V85 och nätverksfel", async () => {
     expect((await runFetchChain(fakePost(() => 404).post, { from: { step: "GAME" }, gameId: null, roundId: null })).ok).toBe(false);
     const res = await runFetchChain(fakePost(() => 404).post, { from: { step: "GAME" }, gameId: null, roundId: null });
-    expect(res).toMatchObject({ kind: "NO_V85" });
+    expect(res).toMatchObject({ kind: "NO_GAME" });
     const net = await runFetchChain(fakePost(() => "throw").post, { from: { step: "GAME" }, gameId: null, roundId: null });
     expect(net).toMatchObject({ kind: "FAILED", message: ATG_UNREACHABLE });
   });

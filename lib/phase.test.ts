@@ -60,6 +60,12 @@ describe("Nästa steg (3.2)", () => {
     expect(s.action).toEqual({ type: "fetch", label: "Hämta omgång", gameId: "V85_2026-10-24_7_5" });
     expect(nextStep({ now, round: null, nextAvailable: null }).title).toBe("Hämta omgång");
   });
+  it("1. med spelformen V75: texterna säger V75", () => {
+    const s = nextStep({ now, gameType: "V75", round: null, nextAvailable: { ...next, gameId: "V75_2026-11-28_5_5", date: "2026-11-28", trackName: "Solvalla" } });
+    expect(s.title).toBe("Hämta omgång – V75 Solvalla lör 28 nov");
+    expect(s.text).toBe("Hämta veckans V75 från ATG. Startlistan brukar finnas från söndag kväll.");
+    expect(nextStep({ now, gameType: "V75", round: null, nextAvailable: null }).text).toContain("veckans V75");
+  });
   it("2. ofullständig hämtning går före allt annat", () => {
     expect(nextStep({ now, round: round(races(), "PARTIAL"), nextAvailable: null }).kind).toBe("RESUME_FETCH");
   });

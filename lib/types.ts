@@ -4,6 +4,8 @@
 // Felsvar har alltid formen ApiError.
 
 import type { FormSummary, GallopWarning } from "@/lib/gallop";
+import type { GameType } from "@/lib/game-type";
+import type { PostTable } from "@/lib/hist";
 import type { NextStep, Phase, PhaseStep } from "@/lib/phase";
 import type { InputKey } from "@/lib/riktodds";
 import type { Bucket, LeagueRow, StartnrGroup, StartnrLeg } from "@/lib/travstatistik";
@@ -17,6 +19,7 @@ export type ThemeSetting = "system" | "light" | "dark";
 export type SpelbarOverride = "NONE" | "ON" | "OFF";
 export type CommentKind = "NOTE" | "RACE";
 export type { XFactor } from "@/lib/xfactor";
+export type { GameType } from "@/lib/game-type";
 
 // ---- Hämtning -------------------------------------------------------------------
 
@@ -49,7 +52,7 @@ export type FetchGameResponse = {
   hasStreck: boolean;
   warnings: number;
 };
-// 404 { error, code: "NO_V85" } när ATG inte har någon V85 de närmaste 7 dagarna.
+// 404 { error, code: "NO_GAME" } när ATG inte har något spel av spelformen de närmaste 7 dagarna.
 
 // POST /api/rounds/[id]/fetch/races/[leg] (502 med samma fält + error när någon start misslyckades)
 export type FetchRaceResponse = {
@@ -80,7 +83,7 @@ export type RiktoddsStepResponse = {
 
 // GET /api/rounds/next-available
 export type NextAvailableResponse = {
-  game: { gameId: string; trackName: string | null; date: string; firstStartAt: string; status: string | null } | null;
+  game: { gameId: string; gameType: GameType; trackName: string | null; date: string; firstStartAt: string; status: string | null } | null;
   fetched: boolean;
   roundId: string | null;
   checkedAt: string;
@@ -93,6 +96,7 @@ export type NextAvailableResponse = {
 export type RoundDto = {
   id: string;
   atgGameId: string;
+  gameType: GameType;
   date: string;
   trackId: number;
   trackName: string;
@@ -171,18 +175,24 @@ export type StartDto = {
   mark: MarkDto | null;
   result: StartResultDto | null;
   // Tillägg för desktoptabellen i S2: hästens vinst % och plats % i livet
-  // (ATG) och vinst % för startnumret på loppets distans och startmetod
-  // (travstatistik.se). null när uppgiften saknas.
-  quick: { winPct: number | null; placePct: number | null; postPct: number | null };
+  // (ATG, lifeStarts = starter i livet) och vinst % och plats % för
+  // startnumret på loppets distans och startmetod (statistikbasen, annars
+  // vinst % från travstatistik.se). null när uppgiften saknas.
+  quick: { winPct: number | null; placePct: number | null; lifeStarts: number | null; postPct: number | null; postPlacePct: number | null };
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".
 export type RaceStatsLine = {
   ok: boolean;
   fetchedAt: string | null;
-  // Bästa startnummer bland loppets hästar på distansen och startmetoden.
+  // Bästa startnummer bland loppets hästar på distansen och startmetoden,
+  // för vinst och för plats (topp 3).
   bestNumber: { number: number; pct: number } | null;
+  bestPlace: { number: number; pct: number } | null;
   number1Pct: number | null;
+  number1PlacePct: number | null;
+  // "ATG 2 år" (statistikbasen) eller "travstatistik.se".
+  postSource: string | null;
   favoriteWinPct: number | null;
 };
 
@@ -258,6 +268,8 @@ export type LegSummary = {
 // GET /api/rounds/current
 export type CurrentRoundResponse = {
   serverTime: string;
+  // Användarens spelform (S10). Omgångens egen står i round.gameType.
+  gameType: GameType;
   round: RoundDto | null;
   phase: Phase | null;
   phaseRail: PhaseStep[] | null;
@@ -294,6 +306,9 @@ export type RaceStatsResponse = {
   distance: number;
   startMethod: StartMethod;
   trackName: string;
+  // Vinst % och plats % per startnummer ur statistikbasen (lib/hist.ts), alla
+  // banor och loppets bana. null = för få lopp eller basen inte inläst.
+  posts: { all: PostTable | null; track: PostTable | null; numbers: number[]; baseRaces: number };
   startnr: StatsBlockMeta & {
     // Loppets klass på distansen och startmetoden (alla banor).
     leg: StartnrLeg | null;
@@ -366,8 +381,9 @@ export type StartDetailResponse = {
     horse: { thisYear: YearStatsDto | null; lastYear: YearStatsDto | null; life: YearStatsDto | null };
     driver: YearStatsDto | null;
     trainer: YearStatsDto | null;
-    // Vinst % för startnumret på distansen och startmetoden (travstatistik.se).
-    post: { number: number; pct: number | null; races: number } | null;
+    // Vinst % och plats % för startnumret på distansen och startmetoden
+    // (statistikbasen, annars vinst % från travstatistik.se).
+    post: { number: number; pct: number | null; placePct: number | null; races: number; label: string | null } | null;
   };
   comments: CommentDto[];
   // Riktodds med förklaring (7.4). null = saknas.
@@ -437,7 +453,7 @@ export type ModelResponse = {
 };
 
 // GET/PUT /api/settings
-export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number; xFactorTror: number; xFactorStark: number };
+export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number; xFactorTror: number; xFactorStark: number; gameType: GameType };
 
 // /api/sources
 export type SourceDto = {

@@ -57,8 +57,8 @@ export function toggleNumber(current: number[], n: number): number[] {
 
 export type CouponSummary = { rows: number; cost: number; left: number; over: boolean };
 
-export function couponSummary(selections: Selections, budget: number, rowPrice: number): CouponSummary {
-  const rows = rowCount(selections);
+export function couponSummary(selections: Selections, budget: number, rowPrice: number, legs = 8): CouponSummary {
+  const rows = rowCount(selections, legs);
   const cost = couponCost(rows, rowPrice);
   const left = Math.round((budget - cost) * 100) / 100;
   return { rows, cost, left, over: left < 0 };

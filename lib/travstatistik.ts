@@ -12,7 +12,8 @@
 //   nästlade <html>/<body>. node-html-parser tappar då rader. Därför plockas
 //   varje <table>…</table> ut för sig och formateringstaggar och länkar tas
 //   bort innan tabellen tolkas.
-// - Varje sida har rubriken "V85 TRAVSTATISTIK.SE <Bana> <d> <månad> <år>",
+// - Varje sida har rubriken "V85 TRAVSTATISTIK.SE <Bana> <d> <månad> <år>"
+//   (V75 i stället för V85 när den spelformen gäller),
 //   som används för rimlighetskontrollen (bana och datum mot omgången).
 // - Tal skrivs med decimalpunkt ("15.8") och celler har ofta två värden:
 //   "37 15.8" (antal, procent), "4 S=3" (antal, varav från spets),
@@ -112,7 +113,8 @@ export type PageHeader = { trackName: string; date: string };
 
 export function parsePageHeader(html: string): PageHeader | null {
   const text = clean(html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " "));
-  const m = /V85 TRAVSTATISTIK\.SE\s+(.+?)\s+(\d{1,2})\s+([a-zåäö]+)\s+(\d{4})/i.exec(text);
+  // "V85 TRAVSTATISTIK.SE …" i dag, "V75 TRAVSTATISTIK.SE …" när V75 kommer tillbaka.
+  const m = /(?:V\d{2}|GS75) TRAVSTATISTIK\.SE\s+(.+?)\s+(\d{1,2})\s+([a-zåäö]+)\s+(\d{4})/i.exec(text);
   if (!m) return null;
   const month = MONTHS[m[3].toLowerCase()];
   if (!month) return null;

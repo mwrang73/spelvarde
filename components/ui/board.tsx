@@ -58,7 +58,7 @@ export function FormStrip({ boxes, ariaLabel, large }: { boxes: FormBox[]; ariaL
   return (
     <span className={`form${large ? " lg" : ""}`} role="img" aria-label={label}>
       {cells.map((b, i) => (
-        <i key={i} className={b.tone === "win" ? "w" : b.tone === "gal" ? "gx" : undefined} aria-hidden="true">
+        <i key={i} className={b.tone === "win" ? "w" : b.tone === "second" ? "w2" : b.tone === "gal" ? "gx" : undefined} aria-hidden="true">
           {b.char}
         </i>
       ))}

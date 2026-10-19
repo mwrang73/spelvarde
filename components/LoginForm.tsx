@@ -26,7 +26,7 @@ export function LoginForm({ next }: { next: string | null }) {
             <IconWheel />
           </span>
           <h1 className="ah-brand">SPELVÄRDE</h1>
-          <p>V85-analys för platsspel</p>
+          <p>Travanalys för platsspel och V-spel</p>
         </div>
         <form
           className="auth-form"

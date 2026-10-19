@@ -49,9 +49,10 @@ export type StartFacts = {
   // Vinster och starter i år (ATG driver/trainer.statistics). null = saknas.
   driver: { starts: number; wins: number } | null;
   trainer: { starts: number; wins: number } | null;
-  // Startnumrets vinst % på distansen och startmetoden och medel för alla
-  // startnummer (travstatistik.se). null = saknas.
-  post: { pct: number; mean: number; distance: number; method: "AUTO" | "VOLTE" } | null;
+  // Startnumrets procent på distansen och startmetoden och medel för alla
+  // startnummer. kind "plats" = topp 3 ur statistikbasen (lib/hist.ts),
+  // saknas/"vinst" = vinst % från travstatistik.se. null = saknas.
+  post: { pct: number; mean: number; distance: number; method: "AUTO" | "VOLTE"; kind?: "vinst" | "plats" } | null;
   // Streck i procent (12.3 = 12,3 %). null = saknas.
   streck: number | null;
 };
@@ -280,7 +281,7 @@ export function sentence(key: InputKey, f: StoredInputs["facts"], positive: bool
     }
     case "spar":
       if (!f.post) return "Spårstatistik saknas";
-      return `Spår ${f.number} på ${f.post.distance} m ${methodSv(f.post.method)} vinner ${positive ? "" : "bara "}${pct1(f.post.pct)}`;
+      return `Spår ${f.number} på ${f.post.distance} m ${methodSv(f.post.method)} ${f.post.kind === "plats" ? "tar plats" : "vinner"} ${positive ? "" : "bara "}${pct1(f.post.pct)}`;
     case "kusk":
       return f.driverWinPct === null ? "Kuskens statistik saknas" : `Kusken vinner ${pct0(f.driverWinPct)} i år`;
     case "tranare":

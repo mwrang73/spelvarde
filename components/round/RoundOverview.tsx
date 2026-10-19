@@ -20,8 +20,8 @@ import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
 import { useRound } from "./RoundProvider";
 
 export function roundSub(data: RoundResponse | null): string {
-  if (!data) return "V85";
-  return `V85 · ${data.round.trackName} · ${dayDate(data.round.date)} · ${hhmm(data.round.firstStartAt)}`;
+  if (!data) return "";
+  return `${data.round.gameType} · ${data.round.trackName} · ${dayDate(data.round.date)} · ${hhmm(data.round.firstStartAt)}`;
 }
 
 export function HeaderActions({ roundId, gameId }: { roundId: string | null; gameId: string | null }) {
@@ -82,7 +82,7 @@ export function RoundOverview() {
   if (!data) {
     return (
       <>
-        <AppHeader brand title="Omgången" sub="V85" actions={<HeaderActions roundId={roundId} gameId={null} />} />
+        <AppHeader brand title="Omgången" sub="" actions={<HeaderActions roundId={roundId} gameId={null} />} />
         <main className="page" id="main">
           {load.error && !load.loading ? (
             <Banner tone={load.notFound ? "info" : "err"} className="m10" actions={load.notFound ? <Link href="/">Till aktuell omgång</Link> : undefined}>

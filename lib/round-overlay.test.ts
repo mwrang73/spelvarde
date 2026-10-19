@@ -29,7 +29,7 @@ function start(id: string, number: number, interesting = false): StartDto {
       ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", xFactor: "NONE", xFactorAt: null, xFactorValue: 1, sourceSupport: null, forslag: false, spelbar: false, riktodds: null, riktoddsX: null, belowGuideline: false }
       : null,
     result: null,
-    quick: { winPct: null, placePct: null, postPct: null },
+    quick: { winPct: null, placePct: null, lifeStarts: null, postPct: null, postPlacePct: null },
   };
 }
 
@@ -52,7 +52,7 @@ function race(leg: number, starts: StartDto[]): RaceDto {
     reviewed: interesting > 0,
     review: null,
     counts: { starters: starts.length, scratched: 0, interesting, spelbar: 0, bet: 0 },
-    statsLine: { ok: false, fetchedAt: null, bestNumber: null, number1Pct: null, favoriteWinPct: null },
+    statsLine: { ok: false, fetchedAt: null, bestNumber: null, bestPlace: null, number1Pct: null, number1PlacePct: null, postSource: null, favoriteWinPct: null },
     starts,
   };
 }
@@ -61,7 +61,7 @@ function round(): RoundResponse {
   return {
     serverTime: NOW.toISOString(),
     rev: 1,
-    round: { id: "R", atgGameId: "V85_2026-10-24_7_5", date: "2026-10-24", trackId: 7, trackName: "Jägersro", firstStartAt: "", atgStatus: null, fetchedAt: null, fetchStatus: "COMPLETE", finishedAt: null, rev: 1 },
+    round: { id: "R", atgGameId: "V85_2026-10-24_7_5", gameType: "V85", date: "2026-10-24", trackId: 7, trackName: "Jägersro", firstStartAt: "", atgStatus: null, fetchedAt: null, fetchStatus: "COMPLETE", finishedAt: null, rev: 1 },
     isCurrent: true,
     currentRoundId: "R",
     phase: "ANALYS",
@@ -189,7 +189,7 @@ describe("E2: Spelbar, Bet, odds och kupong i det optimistiska läget", () => {
   it("toasttexterna säger vad som inte sparades", () => {
     expect(retryText(put("a", { bet: true }))).toBe("Kunde inte spara Bet för Häst. Försöker igen.");
     expect(retryText(put("a", { unibetOdds: 3.1 }))).toBe("Kunde inte spara oddset för Häst. Försöker igen.");
-    expect(conflictText(item({ kind: "coupon", roundId: "R" }))).toBe("V85-raden: en avdelning hade redan startat, ändringen sparades inte.");
+    expect(conflictText(item({ kind: "coupon", roundId: "R" }))).toBe("Raden: en avdelning hade redan startat, ändringen sparades inte.");
   });
 });
 

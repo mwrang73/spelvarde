@@ -1,11 +1,14 @@
 "use client";
 
-// S2b Loppstatistik (specen 5, S2b): vinst % per startnummer, favoriter
-// och kusk- och tränarform. Bottenark i mobilen, utfällbar panel på desktop.
+// S2b Loppstatistik (specen 5, S2b): vinst % och plats % per startnummer
+// (statistikbasen, lib/hist.ts), favoriter och kusk- och tränarform.
+// Bottenark i mobilen, utfällbar panel på desktop.
 
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/board";
 import { methodLabel, ordinal, pct, relTime } from "@/lib/format";
+import { legsFor } from "@/lib/game-type";
+import type { PostTable } from "@/lib/hist";
 import type { PersonFormDto, RaceDto, RaceStatsResponse, StatsBlockMeta } from "@/lib/types";
 import { refetchStats, useFetchChain } from "./fetchChain";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
@@ -21,7 +24,7 @@ function Src({ meta, now }: { meta: StatsBlockMeta; now: Date }) {
   );
 }
 
-export function RaceStatsContent({ roundId, race, trackName }: { roundId: string; race: RaceDto; trackName: string }) {
+export function RaceStatsContent({ roundId, race, trackName, gameType }: { roundId: string; race: RaceDto; trackName: string; gameType: string }) {
   const entry = useRaceStats(roundId, race.leg);
   const [scope, setScope] = useState<"all" | "track">("all");
   const chain = useFetchChain();
@@ -71,20 +74,31 @@ export function RaceStatsContent({ roundId, race, trackName }: { roundId: string
           {trackName}
         </button>
       </div>
-      {allMissing ? (
-        <>
-          <h3 className="sl tight">Vinst % per startnummer och favoriter</h3>
-          <Missing meta={d.startnr} retry={retry} />
-        </>
+      {d.posts.all ? (
+        <PostsBlock d={d} table={scope === "track" ? d.posts.track : d.posts.all} scope={scope} />
       ) : (
-        <StartnrBlock d={d} scope={scope} now={now} retry={retry} />
+        <>
+          <p className="help">
+            {d.posts.baseRaces === 0
+              ? "Statistikbasen är inte inläst än (Inställningar → Statistikbas). Visar vinst % från travstatistik.se."
+              : "För få lopp på distansen i statistikbasen. Visar vinst % från travstatistik.se."}
+          </p>
+          {allMissing ? (
+            <>
+              <h3 className="sl tight">Vinst % per startnummer och favoriter</h3>
+              <Missing meta={d.startnr} retry={retry} />
+            </>
+          ) : (
+            <StartnrBlock d={d} scope={scope} now={now} retry={retry} />
+          )}
+        </>
       )}
 
       {!allMissing && <h3 className="sl tight">Favoriter</h3>}
       {allMissing ? null : d.favorites.ok ? (
         <>
           <dl className="kv">
-            <dt>Mest streckade vinner i V85{d.favorites.msRank ? ` (loppets favoritläge ${d.favorites.msRank} av 8)` : ""}</dt>
+            <dt>Mest streckade vinner i {gameType}{d.favorites.msRank ? ` (loppets favoritläge ${d.favorites.msRank} av ${legsFor(gameType)})` : ""}</dt>
             <dd>{pct(d.favorites.favoriteWinPct)}</dd>
             <dt>Favoriten vinner, alla V85/V75-lopp sedan 2016</dt>
             <dd>{pct(d.favorites.overallWinPct)}</dd>
@@ -96,9 +110,9 @@ export function RaceStatsContent({ roundId, race, trackName }: { roundId: string
       )}
 
       <h3 className="sl tight">Kuskform</h3>
-      <People rows={d.drivers.rows} meta={d.drivers} kind="driver" now={now} />
+      <People rows={d.drivers.rows} meta={d.drivers} kind="driver" now={now} gameType={gameType} />
       <h3 className="sl tight">Tränarform</h3>
-      <People rows={d.trainers.rows} meta={d.trainers} kind="trainer" now={now} />
+      <People rows={d.trainers.rows} meta={d.trainers} kind="trainer" now={now} gameType={gameType} />
     </div>
   );
 }
@@ -111,6 +125,72 @@ function Missing({ meta, retry }: { meta: StatsBlockMeta; retry: React.ReactNode
       {meta.error && meta.error !== "Statistiken är inte hämtad" && <p className="help">{meta.error}.</p>}
       {retry}
     </div>
+  );
+}
+
+// Vinst % och plats % (topp 3) per startnummer ur statistikbasen. Loppets
+// startnummer är markerade och bästa spåret för plats bland dem är grönt.
+function PostsBlock({ d, table, scope }: { d: RaceStatsResponse; table: PostTable | null; scope: "all" | "track" }) {
+  const title = `Vinst och plats per startnummer, ${d.distance} m ${methodLabel(d.startMethod)}`;
+  if (!table)
+    return (
+      <>
+        <h3 className="sl tight">{title}</h3>
+        <p className="stat-empty">För få lopp på {d.trackName} de senaste två åren. Välj Alla banor.</p>
+      </>
+    );
+  const inRace = new Set(d.posts.numbers);
+  const rows = table.byNumber.filter((r) => r.starts > 0);
+  const bestPlace = rows.filter((r) => inRace.has(r.n) && r.placePct !== null).sort((a, b) => b.placePct! - a.placePct! || a.n - b.n)[0]?.n ?? null;
+  const bestWin = rows.filter((r) => inRace.has(r.n) && r.winPct !== null).sort((a, b) => b.winPct! - a.winPct! || a.n - b.n)[0]?.n ?? null;
+  const maxW = Math.max(...rows.map((r) => r.winPct ?? 0), 1);
+  const maxP = Math.max(...rows.map((r) => r.placePct ?? 0), 1);
+  return (
+    <>
+      <h3 className="sl tight">{title}</h3>
+      <p className="help">
+        {scope === "track" ? d.trackName : "Alla svenska banor"} · {table.exact ? `${table.distanceLabel} ${methodLabel(table.method)}` : `${table.distanceLabel}, ${methodLabel(table.method)}`} · {table.races} lopp. Starternas nummer är markerade, bästa spåret bland dem är grönt.
+      </p>
+      <div className="pbars" role="table" aria-label={title}>
+        <div className="pb-h" role="row">
+          <span role="columnheader">Nr</span>
+          <span role="columnheader">Vinst %</span>
+          <span role="columnheader">Plats %</span>
+        </div>
+        {rows.map((r) => {
+          const hi = inRace.has(r.n);
+          return (
+            <div key={r.n} role="row" className={`pb-r${hi ? " hi" : " out"}`}>
+              <span role="rowheader" className="num bn">
+                {r.n}
+                <span className="sr">{hi ? ", startar i loppet" : ""}</span>
+              </span>
+              <span role="cell" className={`pb-c${r.n === bestWin ? " best" : ""}`}>
+                <span className="tr" aria-hidden="true">
+                  <i style={{ width: `${((r.winPct ?? 0) / maxW) * 100}%` }} />
+                </span>
+                <span className="v">
+                  {pct(r.winPct)}
+                  {r.n === bestWin && <span className="sr">, bäst för vinst</span>}
+                </span>
+              </span>
+              <span role="cell" className={`pb-c${r.n === bestPlace ? " best" : ""}`}>
+                <span className="tr" aria-hidden="true">
+                  <i style={{ width: `${((r.placePct ?? 0) / maxP) * 100}%` }} />
+                </span>
+                <span className="v">
+                  {pct(r.placePct)}
+                  {r.n === bestPlace && <span className="sr">, bäst för plats</span>}
+                </span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="src">
+        ATG · {table.from} – {table.to} · plats = 1–3
+      </p>
+    </>
   );
 }
 
@@ -170,7 +250,7 @@ function StartnrBlock({ d, scope, now, retry }: { d: RaceStatsResponse; scope: "
   );
 }
 
-function People({ rows, meta, kind, now }: { rows: PersonFormDto[]; meta: StatsBlockMeta; kind: "driver" | "trainer"; now: Date }) {
+function People({ rows, meta, kind, now, gameType }: { rows: PersonFormDto[]; meta: StatsBlockMeta; kind: "driver" | "trainer"; now: Date; gameType: string }) {
   if (!rows.length) return <p className="stat-empty">Inga {kind === "driver" ? "kuskar" : "tränare"} i loppet.</p>;
   const sorted = [...rows].sort((a, b) => (b.year?.winPct ?? -1) - (a.year?.winPct ?? -1));
   return (
@@ -189,7 +269,7 @@ function People({ rows, meta, kind, now }: { rows: PersonFormDto[]; meta: StatsB
               </span>
               {p.league && (
                 <span>
-                  <span className="k">V85-ligan</span> <b className="num">{ordinal(p.league.rank)}</b> · {p.league.wins} segrar
+                  <span className="k">{gameType}-ligan</span> <b className="num">{ordinal(p.league.rank)}</b> · {p.league.wins} segrar
                 </span>
               )}
               {p.form && (
@@ -202,7 +282,7 @@ function People({ rows, meta, kind, now }: { rows: PersonFormDto[]; meta: StatsB
         ))}
       </ul>
       <p className="src">
-        ATG (vinst % i år){meta.ok ? ` · ${meta.source}${meta.fetchedAt ? ` · hämtat ${relTime(meta.fetchedAt, now)}` : ""}` : " · V85-ligan saknas just nu"}
+        ATG (vinst % i år){meta.ok ? ` · ${meta.source}${meta.fetchedAt ? ` · hämtat ${relTime(meta.fetchedAt, now)}` : ""}` : ` · ${gameType}-ligan saknas just nu`}
       </p>
     </>
   );

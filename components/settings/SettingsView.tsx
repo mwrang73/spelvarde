@@ -12,6 +12,7 @@ import { applyTheme, readThemeChoice } from "@/components/shell/theme-client";
 import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { GameSettings, ModelAdmin } from "./GameSettings";
+import { HistAdmin } from "./HistAdmin";
 import type { ThemeChoice } from "@/lib/theme";
 import type { MeResponse, SettingsDto } from "@/lib/types";
 
@@ -77,6 +78,8 @@ export function SettingsView() {
         </section>
 
         <GameSettings settings={settings} onChange={setSettings} />
+
+        {me?.role === "ADMIN" && <HistAdmin />}
 
         {me?.role === "ADMIN" && <ModelAdmin />}
 

@@ -7,6 +7,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { asHorseStats, asPersonStats, dateStr } from "@/lib/dto";
 import { computeRace, parseParams, parseWeights, V1_PARAMS, V1_WEIGHTS, type StartFacts, type StartRiktodds } from "@/lib/riktodds";
 import { lastRecordsByHorse } from "@/lib/round-server";
+import { postTablesForRaces } from "@/lib/hist";
 import type { StartnrData } from "@/lib/travstatistik";
 
 type Db = PrismaClient;
@@ -52,10 +53,11 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
   const params = parseParams(model.params);
 
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
-  const [records, snap, startnrRow] = await Promise.all([
+  const [records, snap, startnrRow, posts] = await Promise.all([
     lastRecordsByHorse(db, horseIds, round.date, 5),
     db.roundSnapshot.findFirst({ where: { roundId }, orderBy: { takenAt: "desc" }, include: { values: { select: { startId: true, value: true } } } }),
     db.statsSnapshot.findFirst({ where: { roundId, source: "startnr", ok: true }, orderBy: { fetchedAt: "desc" } }),
+    postTablesForRaces(db, round.races, round.date),
   ]);
   const streck = new Map(snap?.values.map((v) => [v.startId, v.value / 100]) ?? []);
   const startnr = (startnrRow?.data as unknown as StartnrData | null) ?? null;
@@ -67,8 +69,12 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
   const allStartIds: string[] = [];
   for (const race of round.races) {
     allStartIds.push(...race.starts.map((s) => s.id));
-    // Startnumrets vinst % på loppets distans och startmetod: loppets klass i
-    // första hand, annars hela distansgruppen.
+    // Startnumrets plats % (topp 3) på loppets distans och startmetod ur
+    // statistikbasen. Saknas den: vinst % från travstatistik.se, loppets klass
+    // i första hand, annars hela distansgruppen.
+    const table = posts.get(race.leg) ?? null;
+    const placeRows = table?.byNumber.filter((b) => b.placePct !== null) ?? [];
+    const placeMean = placeRows.length ? placeRows.reduce((a, b) => a + b.placePct!, 0) / placeRows.length : 0;
     const legRow = startnr?.legs.find((l) => l.leg === race.leg && l.distance === race.distance && l.method === race.startMethod) ?? null;
     const group = startnr?.all.find((g) => g.distance === race.distance && g.method === race.startMethod) ?? null;
     const buckets = (legRow?.byNumber.some((b) => b.pct !== null) ? legRow.byNumber : group?.byNumber) ?? [];
@@ -80,6 +86,7 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
       const d = asPersonStats(s.driver?.statsJson ?? null)?.[year];
       const t = asPersonStats(s.trainer?.statsJson ?? null)?.[year];
       const bucket = buckets.find((b) => b.n === s.number && b.pct !== null);
+      const placeRow = placeRows.find((b) => b.n === s.number);
       return {
         startId: s.id,
         number: s.number,
@@ -88,7 +95,13 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
         records: (records.get(s.horseId) ?? []).map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
         driver: d ? { starts: d.starts, wins: d.wins } : null,
         trainer: t ? { starts: t.starts, wins: t.wins } : null,
-        post: bucket && postMean > 0 ? { pct: bucket.pct!, mean: postMean, distance: race.distance, method: race.startMethod } : null,
+        post: table
+          ? placeRow && placeMean > 0
+            ? { pct: placeRow.placePct!, mean: placeMean, distance: race.distance, method: race.startMethod, kind: "plats" as const }
+            : null
+          : bucket && postMean > 0
+            ? { pct: bucket.pct!, mean: postMean, distance: race.distance, method: race.startMethod, kind: "vinst" as const }
+            : null,
         streck: streck.get(s.id) ?? null,
       };
     });

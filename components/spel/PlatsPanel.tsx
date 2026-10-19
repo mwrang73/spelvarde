@@ -6,7 +6,10 @@
 //
 // Gruppen "Spelbara" fryses när vyn öppnas (och fylls på med nya), så att en
 // häst vars odds rättas under riktoddset ligger kvar med varningen i stället
-// för att försvinna ur listan.
+// för att försvinna ur listan. Spelbara sorteras efter värdet (hur mycket
+// Unibet ligger över riktoddset), störst först. "Nära gränsen" är
+// Intressanta hästar med Unibet högst 10 % under riktoddset. Varje rad visar
+// de gröna signalerna (lib/signals.ts).
 
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -18,6 +21,7 @@ import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
+import { horseSignals, NEAR_LIMIT_PCT, valuePct } from "@/lib/signals";
 import { oddsDiff } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { riktX, xOf } from "@/lib/xfactor-ui";
@@ -25,6 +29,37 @@ import { riktX, xOf } from "@/lib/xfactor-ui";
 type Item = { race: RaceDto; start: StartDto };
 
 const byLeg = (a: Item, b: Item) => a.race.leg - b.race.leg || a.start.number - b.start.number;
+const valueOf = (i: Item) => valuePct(i.start.mark?.unibetOdds ?? null, riktX(i.start));
+// Störst värde först; utan värde sist i avdelningsordning.
+const byValue = (a: Item, b: Item) => (valueOf(b) ?? -Infinity) - (valueOf(a) ?? -Infinity) || byLeg(a, b);
+
+function Signals({ item }: { item: Item }) {
+  const { race, start } = item;
+  const chips = horseSignals({
+    placePct: start.quick.placePct,
+    winPct: start.quick.winPct,
+    starts: start.quick.lifeStarts,
+    formTones: start.form.boxes.map((b) => b.tone),
+    postPlacePct: start.quick.postPlacePct,
+    bestPlaceNumber: race.statsLine.bestPlace?.number === start.number,
+  });
+  if (!chips.length) return null;
+  return (
+    <span className="sigs" aria-label="Signaler">
+      {chips.map((c) => (
+        <span key={c.key} className="tag good">
+          {c.text}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function Value({ item }: { item: Item }) {
+  const v = valueOf(item);
+  if (v === null) return null;
+  return <span className={`val ${v > 0 ? "up" : "dn"}`}>{`${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(0)} %`}</span>;
+}
 
 export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) {
   const isDesktop = useIsDesktop();
@@ -36,13 +71,15 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
     if (add.length) setFrozen((f) => new Set([...f, ...add.map((i) => i.start.id)]));
   }, [all, frozen]);
 
-  const spelbara = all.filter((i) => frozen.has(i.start.id)).sort(byLeg);
+  const spelbara = all.filter((i) => frozen.has(i.start.id)).sort(byValue);
   const betOnly = all.filter((i) => i.start.mark?.bet && !frozen.has(i.start.id)).sort(byLeg);
-  const rest = all.filter((i) => i.start.mark?.interesting && !i.start.mark.spelbar && !i.start.mark.bet && !frozen.has(i.start.id)).sort(byLeg);
+  const others = all.filter((i) => i.start.mark?.interesting && !i.start.mark.spelbar && !i.start.mark.bet && !frozen.has(i.start.id) && !i.start.scratched);
+  const near = others.filter((i) => (valueOf(i) ?? -Infinity) >= NEAR_LIMIT_PCT).sort(byValue);
+  const rest = others.filter((i) => !near.includes(i)).sort(byLeg);
   const betCount = spelbara.filter((i) => i.start.mark?.bet).length;
   const guideline = data.settings?.spelbarGuideline ?? 2;
 
-  const group = (title: string, items: Item[], right?: string) =>
+  const group = (title: string, items: Item[], right?: string, near = false) =>
     items.length > 0 &&
     (isDesktop ? (
       <div className="twrap">
@@ -64,6 +101,9 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
               <th scope="col" className="r">
                 Skillnad
               </th>
+              <th scope="col" className="r">
+                Värde
+              </th>
               <th scope="col" className="c">
                 Bet
               </th>
@@ -71,7 +111,7 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
           </thead>
           <tbody>
             {items.map((i) => (
-              <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} desk />
+              <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} near={near} desk />
             ))}
           </tbody>
         </table>
@@ -84,7 +124,7 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
         </h3>
         <ul className="plist">
           {items.map((i) => (
-            <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} />
+            <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} near={near} />
           ))}
         </ul>
       </>
@@ -105,6 +145,8 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
       ) : (
         group(`Spelbara (${spelbara.length})`, spelbara, `Bet ${betCount}`)
       )}
+      {near.length > 0 && <p className="help spel-help">Nära gränsen: Unibet ligger högst 10 % under riktoddset. Spelbara blir de om oddset stiger eller om du sätter X-faktor.</p>}
+      {group(`Nära gränsen (${near.length})`, near, undefined, true)}
       {group(`Med Bet men inte spelbara (${betOnly.length})`, betOnly)}
       {rest.length > 0 && (
         <>
@@ -119,7 +161,9 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
   );
 }
 
-function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; guideline: number; desk?: boolean }) {
+// near = raden står under Nära gränsen: att Unibet ligger under riktoddset är
+// då väntat och visas bara som värdet (−6 %), inte som en varning.
+function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: number; guideline: number; near?: boolean; desk?: boolean }) {
   const { setBet } = useRound();
   const { race, start } = item;
   const m = start.mark;
@@ -144,7 +188,7 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
   );
   const notes = (
     <>
-      {under && (
+      {under && !(near && !m?.spelbar) && (
         <span className="note bad">
           {m?.spelbar ? "Under riktoddset nu · Spelbar satt av dig" : "Under riktoddset nu, inte längre föreslagen"}
         </span>
@@ -166,6 +210,7 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
           <span className="kt">
             Avd {race.leg} · {hhmm(race.startAt)}
           </span>
+          <Signals item={item} />
           <span className="notes">{notes}</span>
         </td>
         <td className="r">
@@ -177,6 +222,9 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
         <td className="r">
           <span className={`diff ${d !== null && d > 0 ? "up" : "dn"}`}>{d === null ? "–" : `${d > 0 ? "+" : d < 0 ? "−" : "±"}${odds(Math.abs(d))}`}</span>
         </td>
+        <td className="r">
+          <Value item={item} />
+        </td>
         <td className="c">{bet}</td>
       </tr>
     );
@@ -186,8 +234,9 @@ function PlatsRow({ item, now, guideline, desk }: { item: Item; now: number; gui
       <div className="pmain">
         {name}
         <span className="pm">
-          Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={riktX(start)} />
+          Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={riktX(start)} /> <Value item={item} />
         </span>
+        <Signals item={item} />
         {notes}
       </div>
       <OddsField item={item} disabled={!!locked} />

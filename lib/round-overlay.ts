@@ -23,6 +23,7 @@ import { nextStep, type NextStepRace } from "@/lib/phase";
 import { belowGuideline, forslag, spelbar } from "@/lib/spelbar";
 import type { CommentDto, CommentKind, CouponDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto } from "@/lib/types";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
+import { legsFor } from "@/lib/game-type";
 
 // ---- Posternas meta ------------------------------------------------------------------
 
@@ -82,7 +83,7 @@ export function retryText(item: OutboxItem): string {
   if (!m) return "Kunde inte spara ändringen. Försöker igen.";
   if (m.kind === "mark") return `Kunde inte spara ${markWhat(item)} för ${m.horseName}. Försöker igen.`;
   if (m.kind === "review") return "Kunde inte spara granskningen. Försöker igen.";
-  if (m.kind === "coupon") return "Kunde inte spara V85-raden. Försöker igen.";
+  if (m.kind === "coupon") return "Kunde inte spara raden. Försöker igen.";
   return `Kunde inte spara kommentaren om ${m.horseName}. Försöker igen.`;
 }
 
@@ -90,14 +91,14 @@ export function retryText(item: OutboxItem): string {
 export function rejectedText(item: OutboxItem, error: string): string {
   const m = metaOf(item);
   if (m?.kind === "mark") return `Kunde inte spara ${markWhat(item)} för ${m.horseName}: ${error}`;
-  if (m?.kind === "coupon") return `Kunde inte spara V85-raden: ${error}`;
+  if (m?.kind === "coupon") return `Kunde inte spara raden: ${error}`;
   return error;
 }
 
 // Toasten vid 409 (loppet hade redan startat).
 export function conflictText(item: OutboxItem): string {
   const m = metaOf(item);
-  if (m?.kind === "coupon") return "V85-raden: en avdelning hade redan startat, ändringen sparades inte.";
+  if (m?.kind === "coupon") return "Raden: en avdelning hade redan startat, ändringen sparades inte.";
   const horse = m && "horseName" in m ? m.horseName : "Hästen";
   return `${horse}: loppet hade redan startat, ändringen sparades inte.`;
 }
@@ -234,11 +235,11 @@ export function applySettings(data: RoundResponse, s: Pick<SettingsDto, "spelbar
 }
 
 // Kupongen i kön som CouponDto (rader och kostnad räknas här, som på servern).
-export function couponDtoOf(roundId: string, body: CouponBody, fallbackRowPrice: number, at: number): CouponDto {
+export function couponDtoOf(roundId: string, body: CouponBody, fallbackRowPrice: number, at: number, legs = 8): CouponDto {
   const sel: Selections = {};
   for (const [k, v] of Object.entries(body.selections)) sel[Number(k)] = v;
   const rowPrice = body.rowPrice ?? fallbackRowPrice;
-  const rows = rowCount(sel);
+  const rows = rowCount(sel, legs);
   return { roundId, budget: body.budget, rowPrice, selections: body.selections, lockedLegs: body.lockedLegs, rows, cost: couponCost(rows, rowPrice), updatedAt: new Date(at).toISOString() };
 }
 
@@ -271,7 +272,7 @@ export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date
     return recountRace({ ...race, starts, review });
   });
   const pendingCoupon = coupon as { body: CouponBody; at: number } | null;
-  const nextCoupon = pendingCoupon ? couponDtoOf(data.round.id, pendingCoupon.body, data.coupon?.rowPrice ?? data.settings?.rowPrice ?? 0.5, pendingCoupon.at) : data.coupon;
+  const nextCoupon = pendingCoupon ? couponDtoOf(data.round.id, pendingCoupon.body, data.coupon?.rowPrice ?? data.settings?.rowPrice ?? 0.5, pendingCoupon.at, legsFor(data.round.gameType)) : data.coupon;
   return withNextStep({ ...data, races, coupon: nextCoupon }, now);
 }
 

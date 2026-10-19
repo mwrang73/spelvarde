@@ -28,8 +28,9 @@
 // - Hästens statistik: horse.statistics.years["<år>"] och .life, med
 //   { starts, earnings (öre), placement, records[] }.
 // - horse.money är vinstsumman i KRONOR (inte öre som i statistics).
-// - Streck: starts[].pools.V85.betDistribution i hundradelar av procent
-//   (1924 = 19,24 %). Saknas helt innan V85-spelet har öppnat (fixturen
+// - Streck: starts[].pools.<spelform>.betDistribution (pools.V85, pools.V75 …)
+//   i hundradelar av procent (1924 = 19,24 %). Saknas helt innan spelet har
+//   öppnat (fixturen
 //   "upcoming" har inga pools alls) – då sparas ingen snapshot.
 // - pools.vinnare.odds är heltal i hundradelar (170 = 1,70).
 // - pools.plats per häst: { minOdds, maxOdds } i hundradelar. Finns både före
@@ -55,9 +56,17 @@
 //
 // Kalender (calendar/day/<d>) – verifierad med ett anrop 2026-10-19, sparad
 // som calendar-2026-10-24.json: games.V85[] = { id, status, startTime,
-// scheduledStartTime, tracks: [banId], races: [raceId…] }.
+// scheduledStartTime, tracks: [banId], races: [raceId…] }. Samma form för
+// V75, V86 och GS75. tracks[] = { id, name, sport ("trot"), countryCode
+// ("SE"), races: [{ id, number, status, startTime }] }.
+//
+// Lopp (races/<raceId>) – verifierat 2026-10-19 (2026-10-10_5_1): samma
+// loppobjekt som i games/<id>.races[] (id, date, number, distance,
+// startMethod, track { id, name, countryCode }, status, starts[]), med
+// starts[].result som ovan. Används av statistikbasen (lib/hist.ts).
 // ---------------------------------------------------------------------------
 
+import { gameTypeOfId, legsFor, type GameType } from "@/lib/game-type";
 import { parseAtgTime } from "@/lib/stockholm-time";
 
 export const ATG_BASE = "https://www.atg.se/services/racinginfo/v1/api";
@@ -143,7 +152,7 @@ export type ParsedStart = {
   driver: ParsedPerson | null;
   trainer: ParsedPerson | null;
   originalDriver: ParsedPerson | null;
-  // Hundradelar av procent, null när V85-poolen inte finns än.
+  // Hundradelar av procent, null när spelets pool inte finns än.
   streck: number | null;
   // Vinnarodds just nu (decimaltal), före loppet.
   winOdds: number | null;
@@ -177,6 +186,7 @@ export type ParsedGame = {
   firstStartAt: Date;
   races: ParsedRace[];
   hasStreck: boolean;
+  gameType: GameType;
 };
 
 export type CalendarGame = {
@@ -319,7 +329,7 @@ const toOdds = (hundredths: number | null) => (hundredths === null || hundredths
 
 // ---- Kalendern --------------------------------------------------------------
 
-export function parseCalendarDay(json: unknown, warn?: Warn): CalendarGame[] {
+export function parseCalendarDay(json: unknown, warn?: Warn, gameType: GameType = "V85"): CalendarGame[] {
   const games = obj(obj(json)?.games);
   if (!games) {
     warn?.("kalender: games saknas");
@@ -332,12 +342,12 @@ export function parseCalendarDay(json: unknown, warn?: Warn): CalendarGame[] {
     if (id !== null && name) trackNames.set(id, name);
   }
   const out: CalendarGame[] = [];
-  for (const g of arr(games.V85)) {
+  for (const g of arr(games[gameType])) {
     const o = obj(g);
     const id = str(o?.id);
     const startTime = parseAtgTime(o?.startTime) ?? parseAtgTime(o?.scheduledStartTime);
-    if (!o || !id || !id.startsWith("V85_") || !startTime) {
-      warn?.("kalender: V85-spel utan id eller starttid");
+    if (!o || !id || !id.startsWith(`${gameType}_`) || !startTime) {
+      warn?.(`kalender: ${gameType}-spel utan id eller starttid`);
       continue;
     }
     const trackIds = arr(o.tracks).map(int).filter((n): n is number => n !== null);
@@ -346,8 +356,8 @@ export function parseCalendarDay(json: unknown, warn?: Warn): CalendarGame[] {
   return out;
 }
 
-// Första V85 vars första start är senare än nu − 12 h (specen 10.1 steg 1).
-export function pickNextV85(games: CalendarGame[], now: Date): CalendarGame | null {
+// Första spelet vars första start är senare än nu − 12 h (specen 10.1 steg 1).
+export function pickNextGame(games: CalendarGame[], now: Date): CalendarGame | null {
   const limit = now.getTime() - 12 * 3600_000;
   const candidates = games.filter((g) => g.startTime.getTime() > limit).sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   return candidates[0] ?? null;
@@ -378,7 +388,7 @@ function parseResult(start: Obj, warn: Warn, where: string): ParsedResult | null
   };
 }
 
-function parseStart(x: unknown, raceDate: string, warn: Warn, where: string): ParsedStart | null {
+function parseStart(x: unknown, raceDate: string, warn: Warn, where: string, gameType: GameType = "V85"): ParsedStart | null {
   const s = obj(x);
   if (!s) return null;
   const number = int(s.number);
@@ -395,7 +405,7 @@ function parseStart(x: unknown, raceDate: string, warn: Warn, where: string): Pa
   const raceYear = parseInt(raceDate.slice(0, 4), 10);
   const pools = obj(s.pools);
   const scratched = bool(s.scratched);
-  const streck = int(obj(pools?.V85)?.betDistribution);
+  const streck = int(obj(pools?.[gameType])?.betDistribution);
   const hasResult = obj(s.result) !== null && !scratched;
   const money = int(horse.money);
   return {
@@ -432,6 +442,7 @@ export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | nu
     warn("spel: id saknas");
     return null;
   }
+  const gameType = gameTypeOfId(id) ?? "V85";
   const races: ParsedRace[] = [];
   arr(g.races).forEach((x, index) => {
     const r = obj(x);
@@ -450,7 +461,7 @@ export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | nu
     const status = str(r.status);
     const prizeText = str(r.prize);
     const starts = arr(r.starts)
-      .map((s) => parseStart(s, date, warn, where))
+      .map((s) => parseStart(s, date, warn, where, gameType))
       .filter((s): s is ParsedStart => s !== null);
     races.push({
       atgRaceId,
@@ -474,12 +485,13 @@ export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | nu
   const track = obj(first?.track);
   const trackId = int(track?.id);
   const trackName = str(track?.name);
-  const dateFromId = /^V85_(\d{4}-\d{2}-\d{2})_/.exec(id)?.[1] ?? str(first?.date);
+  const dateFromId = /^[A-Z0-9]+_(\d{4}-\d{2}-\d{2})_/.exec(id)?.[1] ?? str(first?.date);
   if (!races.length || trackId === null || !trackName || !dateFromId) {
     warn(`${id}: saknar lopp, bana eller datum`);
     return null;
   }
-  if (races.length !== 8) warn(`${id}: ${races.length} lopp i stället för 8`);
+  const legs = legsFor(gameType);
+  if (races.length !== legs) warn(`${id}: ${races.length} lopp i stället för ${legs}`);
   return {
     atgGameId: id,
     status: str(g.status),
@@ -489,6 +501,7 @@ export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | nu
     firstStartAt: races.reduce((min, r) => (r.startAt < min ? r.startAt : min), races[0].startAt),
     races,
     hasStreck: races.some((r) => r.starts.some((s) => s.streck !== null)),
+    gameType,
   };
 }
 
@@ -562,6 +575,85 @@ export function parseStartDetail(json: unknown, warn: Warn = () => {}): ParsedSt
   };
 }
 
+// ---- Statistikbasen: kalenderns lopp och hela lopp ------------------------------------
+
+// Svenska travlopp i dagens kalender (lopp-id), bara de som har resultat.
+export function swedishTrotRaceIds(json: unknown): string[] {
+  const out: string[] = [];
+  for (const t of arr(obj(json)?.tracks)) {
+    const track = obj(t);
+    if (!track || str(track.countryCode) !== "SE" || str(track.sport) !== "trot") continue;
+    for (const r of arr(track.races)) {
+      const race = obj(r);
+      const id = str(race?.id);
+      if (id && str(race?.status) === "results") out.push(id);
+    }
+  }
+  return out;
+}
+
+export type HistStartParsed = {
+  number: number;
+  postPosition: number | null;
+  distance: number;
+  scratched: boolean;
+  place: number | null;
+  disqualified: boolean;
+  galloped: boolean;
+  finalOdds: number | null;
+};
+
+export type HistRaceParsed = {
+  id: string;
+  date: string;
+  trackId: number;
+  trackName: string;
+  raceNumber: number;
+  distance: number;
+  startMethod: AtgStartMethod;
+  starts: HistStartParsed[];
+};
+
+// Ett avgjort svenskt travlopp (races/<id>). null = inte avgjort, inte
+// svenskt trav, inställt eller saknar det som statistiken behöver.
+export function parseHistRace(json: unknown): HistRaceParsed | null {
+  const r = obj(json);
+  const id = str(r?.id);
+  const date = str(r?.date);
+  const track = obj(r?.track);
+  const trackId = int(track?.id);
+  const trackName = str(track?.name);
+  const raceNumber = int(r?.number);
+  const distance = int(r?.distance);
+  const startMethod = parseStartMethod(r?.startMethod);
+  if (!r || !id || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || trackId === null || !trackName || raceNumber === null || distance === null || !startMethod) return null;
+  if (str(r.status) !== "results" || (str(r.sport) ?? "trot") !== "trot") return null;
+  const country = str(track?.countryCode);
+  if (country && country !== "SE") return null;
+  const starts: HistStartParsed[] = [];
+  for (const x of arr(r.starts)) {
+    const s = obj(x);
+    const number = int(s?.number);
+    if (!s || number === null) continue;
+    const scratched = bool(s.scratched);
+    const res = obj(s.result);
+    const odds = num(res?.finalOdds);
+    starts.push({
+      number,
+      postPosition: int(s.postPosition),
+      distance: int(s.distance) ?? distance,
+      scratched,
+      place: scratched ? null : int(res?.place),
+      disqualified: !scratched && bool(res?.disqualified),
+      galloped: !scratched && bool(res?.galloped),
+      finalOdds: !scratched && odds !== null && odds > 0 && odds < 10000 ? odds : null,
+    });
+  }
+  // Ett avgjort lopp har minst en häst med placering 1.
+  if (!starts.some((s) => s.place === 1)) return null;
+  return { id, date, trackId, trackName, raceNumber, distance, startMethod, starts };
+}
+
 // ---- Hämtning -------------------------------------------------------------------
 
 export class AtgError extends Error {
@@ -596,6 +688,7 @@ export const atgFetch: AtgFetch = async (path) => {
 
 export const atgPaths = {
   calendarDay: (date: string) => `calendar/day/${date}`,
+  race: (raceId: string) => `races/${encodeURIComponent(raceId)}`,
   game: (gameId: string) => `games/${encodeURIComponent(gameId)}`,
   start: (raceId: string, number: number) => `races/${encodeURIComponent(raceId)}/start/${number}`,
 };

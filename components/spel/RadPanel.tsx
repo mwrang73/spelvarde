@@ -18,6 +18,7 @@ import { IconCopy, IconLock, IconPen, IconWarn } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { BUDGET_SLIDER, couponText, DEFAULT_BUDGET, suggestCoupon, type CouponLeg, type Selections } from "@/lib/coupon";
+import { legsFor } from "@/lib/game-type";
 import { BUDGET_ERROR, couponBody, couponLegs, couponSummary, legMax, parseBudget, parseRowPrice, ROW_PRICE_ERROR, selectionsOf, stepLeg, toggleNumber } from "@/lib/coupon-ui";
 import { hhmm, odds, pct, shortRaceName, thousands } from "@/lib/format";
 import { applySettings, type CouponBody } from "@/lib/round-overlay";
@@ -81,7 +82,8 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   }, [flush]);
 
   const legs = useMemo(() => couponLegs(data), [data]);
-  const summary = couponSummary(current.selections, current.budget, rowPrice);
+  const gt = data.round.gameType;
+  const summary = couponSummary(current.selections, current.budget, rowPrice, legsFor(gt));
   const roundStarted = data.races.some((r) => raceStarted(r, now));
   const [sheetLeg, setSheetLeg] = useState<number | null>(null);
   const [copyFallback, setCopyFallback] = useState<string | null>(null);
@@ -92,7 +94,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   };
 
   const copy = async () => {
-    const text = couponText({ trackName: data.round.trackName, date: data.round.date }, current.selections, rowPrice);
+    const text = couponText({ trackName: data.round.trackName, date: data.round.date, gameType: gt }, current.selections, rowPrice);
     if (await copyText(text)) toast({ text: "Raden är kopierad. Klistra in hos ATG." });
     else setCopyFallback(text);
   };
@@ -103,12 +105,12 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   return (
     <>
       <div className="dsec-h">
-        <h2 id="h-rad">V85-rad</h2>
+        <h2 id="h-rad">{gt}-rad</h2>
         <span className="help d-only">Spelbara och intressanta först</span>
       </div>
       {roundStarted && (
         <Banner tone="info" className="m10">
-          V85 har startat – raden kan inte längre spelas. Den finns kvar för statistiken.
+          {gt} har startat – raden kan inte längre spelas. Den finns kvar för statistiken.
         </Banner>
       )}
       <Budget
@@ -184,7 +186,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
       </Sheet>
 
       <Sheet open={copyFallback !== null} onClose={() => setCopyFallback(null)} title="Kopiera raden" sub="Kopieringen fungerade inte i den här webbläsaren. Markera texten och kopiera den själv.">
-        <textarea className="copybox num" readOnly rows={11} value={copyFallback ?? ""} aria-label="V85-raden som text" onFocus={(e) => e.currentTarget.select()} />
+        <textarea className="copybox num" readOnly rows={11} value={copyFallback ?? ""} aria-label="Raden som text" onFocus={(e) => e.currentTarget.select()} />
       </Sheet>
     </>
   );

@@ -19,6 +19,7 @@ import { RiktoddsBox } from "./Riktodds";
 import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
 import { XFactorBlock } from "./XFactor";
+import { pctSignal, signalClass, signalSr } from "@/lib/signals";
 
 export function useDetail(startId: string) {
   return useSyncExternalStore(
@@ -147,9 +148,17 @@ function SkeletonBlock({ rows }: { rows: number }) {
   );
 }
 
-function yearLine(y: YearStatsDto | null, what: "win" | "place"): string {
+// Grönt från 50 % vinst och 75 % plats med minst 5 starter (lib/signals.ts).
+function yearLine(y: YearStatsDto | null, what: "win" | "place", signal = true): React.ReactNode {
   if (!y || !y.starts) return "–";
-  return `${pct(what === "win" ? y.winPct : y.placePct)}`;
+  const v = what === "win" ? y.winPct : y.placePct;
+  const sg = signal ? pctSignal(what, v, y.starts) : null;
+  return (
+    <span className={signalClass(sg)}>
+      {pct(v)}
+      <span className="sr">{signalSr(sg)}</span>
+    </span>
+  );
 }
 
 function StatsBlock({ d, race }: { d: StartDetailResponse; race: RaceDto }) {
@@ -165,13 +174,21 @@ function StatsBlock({ d, race }: { d: StartDetailResponse; race: RaceDto }) {
       <dt>Plats % i fjol</dt>
       <dd>{yearLine(h.lastYear, "place")}</dd>
       <dt>
-        Spår {d.start.number} på {race.distance} m {race.startMethod === "VOLTE" ? "volte" : "auto"}
+        Spår {d.start.number} på {race.distance} m {race.startMethod === "VOLTE" ? "volte" : "auto"}, vinst
       </dt>
       <dd>{d.stats.post ? pct(d.stats.post.pct) : "–"}</dd>
+      {d.stats.post?.placePct != null && (
+        <>
+          <dt>
+            Spår {d.start.number}, plats{d.stats.post.label ? ` (${d.stats.post.label}, ${d.stats.post.races} lopp)` : ""}
+          </dt>
+          <dd>{pct(d.stats.post.placePct)}</dd>
+        </>
+      )}
       <dt>Kusken vinner i år</dt>
-      <dd>{yearLine(d.stats.driver, "win")}</dd>
+      <dd>{yearLine(d.stats.driver, "win", false)}</dd>
       <dt>Tränaren vinner i år</dt>
-      <dd>{yearLine(d.stats.trainer, "win")}</dd>
+      <dd>{yearLine(d.stats.trainer, "win", false)}</dd>
     </dl>
   );
 }
@@ -236,7 +253,7 @@ function Records({ d, error, race, start, roundId }: { d: StartDetailResponse | 
           <tbody>
             {rows.map((r) => {
               const ch = placeChar(r);
-              const cls = r.galloped ? "plc g" : ch === "1" ? "plc w" : "plc";
+              const cls = r.galloped ? "plc g" : ch === "1" ? "plc w" : ch === "2" ? "plc w2" : "plc";
               return (
                 <tr key={`${r.date}-${r.trackName}`} className={r.galloped ? "gal" : undefined}>
                   <td className="num">{shortDay(r.date)}</td>
@@ -274,7 +291,7 @@ function Records({ d, error, race, start, roundId }: { d: StartDetailResponse | 
 
 function commentWhen(c: CommentDto): string {
   const parts: string[] = [shortDay((c.round?.date ?? c.createdAt).slice(0, 10))];
-  if (c.round) parts.push(`V85 ${c.round.trackName}`);
+  if (c.round) parts.push(c.round.trackName);
   if (c.leg) parts.push(`avd ${c.leg}`);
   if (c.result) parts.push(c.result.disqualified ? "diskad" : c.result.place && c.result.place >= 1 ? ordinal(c.result.place) : "oplacerad");
   return parts.join(" · ");

@@ -1,5 +1,6 @@
 // Validering av kroppar till de skrivande rutterna. Rena funktioner: ger
 // antingen { ok: true, value } eller { ok: false, error } med en svensk mening.
+import { GAME_TYPE_ERROR, isGameType, type GameType } from "@/lib/game-type";
 import type { ThemeSetting } from "@/lib/types";
 import { parseFactor } from "@/lib/xfactor";
 
@@ -50,7 +51,7 @@ export function parseCommentBody(body: Record<string, unknown>): Result<CommentI
   };
 }
 
-export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number; xFactorTror?: number; xFactorStark?: number };
+export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number; xFactorTror?: number; xFactorStark?: number; gameType?: GameType };
 
 const hundredths = (x: number) => Math.abs(x * 100 - Math.round(x * 100)) < 1e-6;
 
@@ -60,7 +61,7 @@ const hundredths = (x: number) => Math.abs(x * 100 - Math.round(x * 100)) < 1e-6
 // saveSettings (lib/e2-server.ts) när bara den ena skickas.
 export function parseSettingsBody(body: Record<string, unknown>): Result<SettingsInput> {
   if ("rushThresholdPe" in body) return fail("Den inställningen kommer i en senare version.");
-  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline", "xFactorTror", "xFactorStark"].includes(k));
+  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline", "xFactorTror", "xFactorStark", "gameType"].includes(k));
   if (unknown.length) return fail("Okänd inställning.");
   const out: SettingsInput = {};
   if ("theme" in body) {
@@ -76,6 +77,10 @@ export function parseSettingsBody(body: Record<string, unknown>): Result<Setting
     const v = body.spelbarGuideline;
     if (typeof v !== "number" || !Number.isFinite(v) || v < 1.01 || v > 99.99 || !hundredths(v)) return fail("Riktlinjen ska ligga mellan 1,01 och 99,99.");
     out.spelbarGuideline = Math.round(v * 100) / 100;
+  }
+  if ("gameType" in body) {
+    if (!isGameType(body.gameType)) return fail(GAME_TYPE_ERROR);
+    out.gameType = body.gameType;
   }
   for (const k of ["xFactorTror", "xFactorStark"] as const) {
     if (!(k in body)) continue;

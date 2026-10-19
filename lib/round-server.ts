@@ -6,6 +6,8 @@
 
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, couponDto, dateStr, dec, iso, markDto, personDto, riktoddsDetailDto, roundDto, settingsDto, yearStatsDto } from "@/lib/dto";
+import { legsFor, type GameType } from "@/lib/game-type";
+import { bestNumbers, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
 import { computePhase, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
@@ -121,7 +123,8 @@ function reviewedRace(race: FullRound["races"][number]): boolean {
   return race.reviews.length > 0 || race.starts.some((s) => s.marks[0]?.interesting);
 }
 
-export async function fetchState(db: Db, round: { id: string; fetchStatus: FetchState["status"]; fetchedAt: Date | null }, races: { leg: number; recordsFetchedAt: Date | null }[]): Promise<FetchState> {
+export async function fetchState(db: Db, round: { id: string; gameType: string; fetchStatus: FetchState["status"]; fetchedAt: Date | null }, races: { leg: number; recordsFetchedAt: Date | null }[]): Promise<FetchState> {
+  const legs = legsFor(round.gameType);
   const lastGame = await db.fetchLog.findFirst({ where: { roundId: round.id, step: "GAME", ok: true }, orderBy: { startedAt: "desc" } });
   const lastFail = await db.fetchLog.findFirst({ where: { roundId: round.id, ok: false }, orderBy: { startedAt: "desc" } });
   const lastStats = lastGame
@@ -136,7 +139,7 @@ export async function fetchState(db: Db, round: { id: string; fetchStatus: Fetch
   if (round.fetchStatus === "COMPLETE" && lastRikt && !lastRikt.ok) resumeFrom = { step: "RIKTODDS" };
   if (round.fetchStatus !== "COMPLETE") {
     const missing = [...races].sort((a, b) => a.leg - b.leg).find((r) => !r.recordsFetchedAt);
-    if (!lastGame || races.length < 8) resumeFrom = { step: "GAME" };
+    if (!lastGame || races.length < legs) resumeFrom = { step: "GAME" };
     else if (missing) resumeFrom = { step: "RACE", leg: missing.leg };
     else if (!lastStats) resumeFrom = { step: "STATS" };
     else resumeFrom = { step: "STATS" };
@@ -161,7 +164,9 @@ export async function currentRoundId(db: Db): Promise<string | null> {
 
 // ---- S2 statistikrad ---------------------------------------------------------------
 
-function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestStats>>, streck: Awaited<ReturnType<typeof latestStreck>>): Map<number, RaceStatsLine> {
+export const POST_SOURCE = "ATG 2 år";
+
+function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestStats>>, streck: Awaited<ReturnType<typeof latestStreck>>, posts: Map<number, PostTable | null>): Map<number, RaceStatsLine> {
   const favByLeg: Record<number, number | null> = {};
   for (const r of round.races) {
     const values = r.starts.filter((s) => !s.scratched).map((s) => streck?.values.get(s.id) ?? null).filter((v): v is number => v !== null);
@@ -172,22 +177,51 @@ function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestSta
   for (const r of round.races) {
     const legRow = stats.startnr?.data.legs.find((l) => l.leg === r.leg && l.distance === r.distance && l.method === r.startMethod) ?? null;
     const numbers = new Set(r.starts.filter((s) => !s.scratched).map((s) => s.number));
+    const favorite = stats.ms ? favoriteWinPct(stats.ms.data, ranks[r.leg] ?? null) : null;
+    // Statistikbasen i första hand, annars travstatistik.se (bara vinst).
+    const table = posts.get(r.leg) ?? null;
+    if (table) {
+      const b = bestNumbers(table, [...numbers]);
+      const one = table.byNumber.find((x) => x.n === 1);
+      out.set(r.leg, {
+        ok: true,
+        fetchedAt: null,
+        bestNumber: b.win ? { number: b.win.n, pct: b.win.winPct! } : null,
+        bestPlace: b.place ? { number: b.place.n, pct: b.place.placePct! } : null,
+        number1Pct: one?.winPct ?? null,
+        number1PlacePct: one?.placePct ?? null,
+        postSource: POST_SOURCE,
+        favoriteWinPct: favorite,
+      });
+      continue;
+    }
     const best = legRow?.byNumber.filter((b) => numbers.has(b.n) && b.pct !== null).sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0] ?? null;
     out.set(r.leg, {
       ok: !!legRow,
       fetchedAt: iso(stats.startnr?.fetchedAt),
       bestNumber: best ? { number: best.n, pct: best.pct! } : null,
+      bestPlace: null,
       number1Pct: legRow?.byNumber.find((b) => b.n === 1)?.pct ?? null,
-      favoriteWinPct: stats.ms ? favoriteWinPct(stats.ms.data, ranks[r.leg] ?? null) : null,
+      number1PlacePct: null,
+      postSource: legRow ? "travstatistik.se" : null,
+      favoriteWinPct: favorite,
     });
   }
   return out;
 }
 
-// Vinst % och plats % i livet och spår-% för desktoptabellen i S2.
-function quickStats(horseStatsJson: Prisma.JsonValue | null, legRow: StartnrData["legs"][number] | null, number: number): StartDto["quick"] {
+// Vinst % och plats % i livet och startnumrets vinst % och plats % för
+// desktoptabellen i S2. Statistikbasen i första hand, annars travstatistik.se.
+function quickStats(horseStatsJson: Prisma.JsonValue | null, legRow: StartnrData["legs"][number] | null, number: number, table: PostTable | null): StartDto["quick"] {
   const life = yearStatsDto("life", asHorseStats(horseStatsJson)?.life);
-  return { winPct: life?.winPct ?? null, placePct: life?.placePct ?? null, postPct: legRow?.byNumber.find((b) => b.n === number)?.pct ?? null };
+  const row = table?.byNumber.find((b) => b.n === number) ?? null;
+  return {
+    winPct: life?.winPct ?? null,
+    placePct: life?.placePct ?? null,
+    lifeStarts: life?.starts ?? null,
+    postPct: table ? row?.winPct ?? null : legRow?.byNumber.find((b) => b.n === number)?.pct ?? null,
+    postPlacePct: row?.placePct ?? null,
+  };
 }
 
 // ---- GET /api/rounds/[id] -------------------------------------------------------------
@@ -197,7 +231,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
   if (!round) return null;
   const date = dateStr(round.date);
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
-  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled] = await Promise.all([
+  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled, posts] = await Promise.all([
     lastRecordsByHorse(db, horseIds, round.date),
     latestStreck(db, round.id),
     latestStats(db, round.id),
@@ -207,12 +241,14 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     db.userSettings.findUnique({ where: { userId } }),
     db.coupon.findUnique({ where: { userId_roundId: { userId, roundId: round.id } } }),
     db.source.count({ where: { userId, enabled: true } }),
+    postTablesForRaces(db, round.races, round.date),
   ]);
   const settings = settingsDto(settingsRow);
-  const lines = statsLines(round, stats, streck);
+  const lines = statsLines(round, stats, streck, posts);
 
   const races: RaceDto[] = round.races.map((r) => {
     const legRow = stats.startnr?.data.legs.find((l) => l.leg === r.leg && l.distance === r.distance && l.method === r.startMethod) ?? null;
+    const table = posts.get(r.leg) ?? null;
     const starts: StartDto[] = r.starts.map((s) => {
       const r = rikt.byStart.get(s.id);
       const mark = s.marks[0] ? markDto(s.marks[0], riktOf(r), settings.spelbarGuideline, settings) : null;
@@ -238,7 +274,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
         result: s.resultAt
           ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) }
           : null,
-        quick: quickStats(s.horseStatsJson, legRow, s.number),
+        quick: quickStats(s.horseStatsJson, legRow, s.number, table),
       };
     });
     const review = r.reviews[0] ?? null;
@@ -283,7 +319,8 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     phaseRail: phaseRail(date, phase),
     nextStep: nextStep({
       now,
-      round: { id: round.id, date, fetchStatus: fetch.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
+      gameType: settings.gameType,
+      round: { id: round.id, date, gameType: round.gameType, fetchStatus: fetch.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
       nextAvailable: null,
       interestingWithoutOdds: open.filter((s) => s.mark?.interesting && s.mark.unibetOdds === null).length,
       spelbarWithoutBet: open.filter((s) => s.mark?.spelbar && !s.mark.bet).length,
@@ -292,7 +329,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     fetch,
     races,
     latestStreck: streck ? { kind: streck.kind, takenAt: streck.takenAt.toISOString() } : null,
-    coupon: coupon ? couponDto(coupon) : null,
+    coupon: coupon ? couponDto(coupon, legsFor(round.gameType)) : null,
     model: rikt.model ? { id: rikt.model.id, key: rikt.model.key } : null,
     settings: { spelbarGuideline: settings.spelbarGuideline, rowPrice: settings.rowPrice, xFactorTror: settings.xFactorTror, xFactorStark: settings.xFactorStark },
     sourcesEnabled,
@@ -305,18 +342,21 @@ export async function buildCurrentResponse(
   db: Db,
   userId: string,
   now: Date,
-  getNextAvailable: () => Promise<NextAvailableResponse>,
+  getNextAvailable: (gameType: GameType) => Promise<NextAvailableResponse>,
 ): Promise<CurrentRoundResponse> {
   const id = await currentRoundId(db);
-  const round = id ? await loadFullRound(db, id, userId) : null;
+  const [round, settingsRow] = await Promise.all([id ? loadFullRound(db, id, userId) : null, db.userSettings.findUnique({ where: { userId } })]);
+  const settings = settingsDto(settingsRow);
+  const gameType = settings.gameType;
   if (!round) {
-    const next = await getNextAvailable();
+    const next = await getNextAvailable(gameType);
     return {
       serverTime: now.toISOString(),
+      gameType,
       round: null,
       phase: null,
       phaseRail: null,
-      nextStep: nextStep({ now, round: null, nextAvailable: next.game ? { gameId: next.game.gameId, trackName: next.game.trackName, date: next.game.date, fetched: next.fetched } : null }),
+      nextStep: nextStep({ now, gameType, round: null, nextAvailable: next.game ? { gameId: next.game.gameId, trackName: next.game.trackName, date: next.game.date, fetched: next.fetched } : null }),
       fetch: null,
       legs: [],
       nextAvailable: next,
@@ -325,9 +365,8 @@ export async function buildCurrentResponse(
   const date = dateStr(round.date);
   const phaseRaces: NextStepRace[] = round.races.map((r) => ({ leg: r.leg, name: r.name, startAt: r.startAt, hasResult: !!r.resultAt, cancelled: r.cancelled, reviewed: reviewedRace(r) }));
   const phase = computePhase(date, phaseRaces, now);
-  const next = phase === "KLART" ? await getNextAvailable() : null;
-  const [rikt, settingsRow] = await Promise.all([activeRiktodds(db, round.id), db.userSettings.findUnique({ where: { userId } })]);
-  const settings = settingsDto(settingsRow);
+  const next = phase === "KLART" ? await getNextAvailable(gameType) : null;
+  const rikt = await activeRiktodds(db, round.id);
   const legs: LegSummary[] = round.races.map((r) => {
     const marks = r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0], riktOf(rikt.byStart.get(s.id)), settings.spelbarGuideline, settings) : null));
     return {
@@ -350,12 +389,14 @@ export async function buildCurrentResponse(
   const fetchNow = await fetchState(db, round, round.races);
   return {
     serverTime: now.toISOString(),
+    gameType,
     round: roundDto(round),
     phase,
     phaseRail: phaseRail(date, phase),
     nextStep: nextStep({
       now,
-      round: { id: round.id, date, fetchStatus: fetchNow.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
+      gameType,
+      round: { id: round.id, date, gameType: round.gameType, fetchStatus: fetchNow.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
       nextAvailable: next?.game ? { gameId: next.game.gameId, trackName: next.game.trackName, date: next.game.date, fetched: next.fetched } : null,
     }),
     fetch: fetchNow,
@@ -377,10 +418,14 @@ export async function buildRaceStats(db: Db, roundId: string, leg: number, now: 
     include: { round: true, starts: { orderBy: { number: "asc" }, include: { driver: true, trainer: true } } },
   });
   if (!race) return null;
-  const [stats, streck, roundRaces] = await Promise.all([
+  const postQuery = { method: race.startMethod, distance: race.distance, before: race.round.date };
+  const [stats, streck, roundRaces, postsAll, postsTrack, baseRaces] = await Promise.all([
     latestStats(db, roundId),
     latestStreck(db, roundId),
     db.race.findMany({ where: { roundId }, select: { leg: true, starts: { select: { id: true, scratched: true } } } }),
+    postTable(db, postQuery).catch(() => null),
+    postTable(db, { ...postQuery, trackId: race.round.trackId }).catch(() => null),
+    db.histRace.count(),
   ]);
   const year = String(new Date(race.round.date).getUTCFullYear());
   const active = race.starts.filter((s) => !s.scratched);
@@ -439,6 +484,7 @@ export async function buildRaceStats(db: Db, roundId: string, leg: number, now: 
     distance: race.distance,
     startMethod: race.startMethod,
     trackName: race.round.trackName,
+    posts: { all: postsAll, track: postsTrack, numbers: active.map((s) => s.number), baseRaces },
     startnr: { ...meta(stats.startnr), leg: legRow, group, numbers: active.map((s) => s.number), trackAvailable: false },
     favorites: {
       ...meta(stats.ms),
@@ -463,7 +509,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
   if (!s) return null;
   const roundDate = s.race.round.date;
   const date = dateStr(roundDate);
-  const [records, total, comments, stats, streck, model, settingsRow] = await Promise.all([
+  const [records, total, comments, stats, streck, model, settingsRow, table] = await Promise.all([
     db.horseRecord.findMany({ where: { horseId: s.horseId, date: { lt: roundDate }, scratched: false }, orderBy: { date: "desc" }, take: 10 }),
     db.horseRecord.count({ where: { horseId: s.horseId, date: { lt: roundDate }, scratched: false } }),
     db.horseComment.findMany({
@@ -475,6 +521,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
     latestStreck(db, s.race.roundId),
     db.modelVersion.findFirst({ where: { active: true } }),
     db.userSettings.findUnique({ where: { userId } }),
+    postTable(db, { method: s.race.startMethod, distance: s.race.distance, before: roundDate }).catch(() => null),
   ]);
   const rikt = model ? await db.riktodds.findUnique({ where: { startId_modelVersionId: { startId: s.id, modelVersionId: model.id } } }) : null;
   const formRecords: FormRecord[] = records.map((r) => ({ date: dateStr(r.date), trackName: r.trackName, place: r.place, galloped: r.galloped, disqualified: r.disqualified }));
@@ -506,7 +553,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       uncertain: rikt ? rikt.uncertain : form.fewStarts,
       mark,
       result: s.resultAt ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) } : null,
-      quick: quickStats(s.horseStatsJson, legRow, s.number),
+      quick: quickStats(s.horseStatsJson, legRow, s.number, table),
       raceId: s.raceId,
       roundId: s.race.roundId,
       leg: s.race.leg,
@@ -535,7 +582,11 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       horse: { thisYear: yearStatsDto(year, hs?.years[year]), lastYear: yearStatsDto(lastYear, hs?.years[lastYear]), life: yearStatsDto("life", hs?.life) },
       driver: yearStatsDto(year, asPersonStats(s.driver?.statsJson ?? null)?.[year]),
       trainer: yearStatsDto(year, asPersonStats(s.trainer?.statsJson ?? null)?.[year]),
-      post: legRow ? { number: s.number, pct: legRow.byNumber.find((b) => b.n === s.number)?.pct ?? null, races: legRow.races } : null,
+      post: table
+        ? { number: s.number, pct: table.byNumber.find((b) => b.n === s.number)?.winPct ?? null, placePct: table.byNumber.find((b) => b.n === s.number)?.placePct ?? null, races: table.races, label: table.distanceLabel }
+        : legRow
+          ? { number: s.number, pct: legRow.byNumber.find((b) => b.n === s.number)?.pct ?? null, placePct: null, races: legRow.races, label: null }
+          : null,
     },
     comments: comments.map(commentDto),
     riktodds: rikt && model ? riktoddsDetailDto(rikt, model) : null,

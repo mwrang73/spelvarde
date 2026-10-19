@@ -1,6 +1,6 @@
 "use client";
 
-// S6 Spelförslag (specen S6): Platsspel (S6a) och V85-rad (S6b). I mobilen
+// S6 Spelförslag (specen S6): Platsspel (S6a) och raden för V85/V75 (S6b). I mobilen
 // som två flikar (?flik=plats|rad, byts med history.replaceState utan
 // omladdning), på desktop sida vid sida. Allt läses ur omgångens cache och
 // sparas optimistiskt via utkorgen.
@@ -58,7 +58,7 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
 
   return (
     <>
-      <AppHeader title="Spelförslag" sub={`V85 · ${data.round.trackName} · ${dayDate(data.round.date)}`} back={back} />
+      <AppHeader title="Spelförslag" sub={`${data.round.gameType} · ${data.round.trackName} · ${dayDate(data.round.date)}`} back={back} />
       <main className="spel" id="main" data-tab={tab}>
         <div className="segw m-only">
           <div className="seg" role="group" aria-label="Spelförslag">
@@ -66,7 +66,7 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
               Platsspel
             </button>
             <button type="button" aria-pressed={tab === "rad"} aria-controls="p-rad" onClick={() => choose("rad")}>
-              V85-rad
+              {data.round.gameType}-rad
             </button>
           </div>
         </div>

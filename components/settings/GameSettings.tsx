@@ -9,6 +9,7 @@ import { apiGet, apiRequest } from "@/components/api";
 import { clearDetails, getCurrentId, loadRound, patchRound } from "@/components/round/roundStore";
 import { Banner } from "@/components/ui/board";
 import { IconCheckThin, IconWarn } from "@/components/ui/icons";
+import { GAME_TYPES } from "@/lib/game-type";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
 import { INPUT_KEYS, type InputKey } from "@/lib/riktodds";
@@ -127,38 +128,54 @@ export function GameSettings({ settings, onChange }: { settings: SettingsDto | n
     refreshCurrentRound(s);
   };
   return (
-    <section className="set-sec" aria-labelledby="h-spel">
-      <h2 id="h-spel" className="sl">
-        Odds och V85-rad
-      </h2>
-      <NumberSetting
-        label="Riktlinje för Unibet-odds"
-        help={`Odds under riktlinjen får taggen "Under ${odds(settings?.spelbarGuideline ?? 2)}". Ingenting blockeras, och förslaget på Spelbar påverkas inte.`}
-        value={settings?.spelbarGuideline ?? null}
-        parse={parseGuideline}
-        error={GUIDELINE_ERROR}
-        onSave={(v) => save({ spelbarGuideline: v })}
-      />
-      <NumberSetting label="Radpris V85" help="Används för kostnaden i V85-raden." value={settings?.rowPrice ?? null} unit="kr" parse={parseRowPrice} error={ROW_PRICE_ERROR} onSave={(v) => save({ rowPrice: v })} />
-      <NumberSetting
-        label="X-faktor Tror på"
-        help="Riktoddset delas med faktorn. 1,25 gör 3,00 till 2,40. Mellan 1,05 och 3,00."
-        value={settings?.xFactorTror ?? null}
-        parse={parseFactorText}
-        error={X_FACTOR_RANGE_ERROR}
-        validate={(v) => (settings && !(settings.xFactorStark > v) ? X_FACTOR_ORDER_ERROR : null)}
-        onSave={(v) => save({ xFactorTror: v })}
-      />
-      <NumberSetting
-        label="X-faktor Stark känsla"
-        help="Riktoddset delas med faktorn. 1,50 gör 3,00 till 2,00. Mellan 1,05 och 3,00 och större än Tror på."
-        value={settings?.xFactorStark ?? null}
-        parse={parseFactorText}
-        error={X_FACTOR_RANGE_ERROR}
-        validate={(v) => (settings && !(v > settings.xFactorTror) ? X_FACTOR_ORDER_ERROR : null)}
-        onSave={(v) => save({ xFactorStark: v })}
-      />
-    </section>
+    <>
+      <section className="set-sec" aria-labelledby="h-form">
+        <h2 id="h-form" className="sl">
+          Spelform
+        </h2>
+        <div className="seg full" role="group" aria-labelledby="h-form">
+          {GAME_TYPES.map((t) => (
+            <button key={t} type="button" aria-pressed={settings?.gameType === t} disabled={!settings} onClick={() => void save({ gameType: t }).catch(() => {})}>
+              {settings?.gameType === t && <IconCheckThin />}
+              {t}
+            </button>
+          ))}
+        </div>
+        <p className="help">Hämta omgång letar efter nästa spel av den här formen. V85 ersätts av V75 i slutet av november. Hämtade omgångar behåller sin spelform.</p>
+      </section>
+      <section className="set-sec" aria-labelledby="h-spel">
+        <h2 id="h-spel" className="sl">
+          Odds och rad
+        </h2>
+        <NumberSetting
+          label="Riktlinje för Unibet-odds"
+          help={`Odds under riktlinjen får taggen "Under ${odds(settings?.spelbarGuideline ?? 2)}". Ingenting blockeras, och förslaget på Spelbar påverkas inte.`}
+          value={settings?.spelbarGuideline ?? null}
+          parse={parseGuideline}
+          error={GUIDELINE_ERROR}
+          onSave={(v) => save({ spelbarGuideline: v })}
+        />
+        <NumberSetting label="Radpris" help="Används för kostnaden i raden." value={settings?.rowPrice ?? null} unit="kr" parse={parseRowPrice} error={ROW_PRICE_ERROR} onSave={(v) => save({ rowPrice: v })} />
+        <NumberSetting
+          label="X-faktor Tror på"
+          help="Riktoddset delas med faktorn. 1,25 gör 3,00 till 2,40. Mellan 1,05 och 3,00."
+          value={settings?.xFactorTror ?? null}
+          parse={parseFactorText}
+          error={X_FACTOR_RANGE_ERROR}
+          validate={(v) => (settings && !(settings.xFactorStark > v) ? X_FACTOR_ORDER_ERROR : null)}
+          onSave={(v) => save({ xFactorTror: v })}
+        />
+        <NumberSetting
+          label="X-faktor Stark känsla"
+          help="Riktoddset delas med faktorn. 1,50 gör 3,00 till 2,00. Mellan 1,05 och 3,00 och större än Tror på."
+          value={settings?.xFactorStark ?? null}
+          parse={parseFactorText}
+          error={X_FACTOR_RANGE_ERROR}
+          validate={(v) => (settings && !(v > settings.xFactorTror) ? X_FACTOR_ORDER_ERROR : null)}
+          onSave={(v) => save({ xFactorStark: v })}
+        />
+      </section>
+    </>
   );
 }
 

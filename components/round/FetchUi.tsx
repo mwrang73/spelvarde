@@ -51,7 +51,7 @@ export function FetchBanners({ onRetry }: { onRetry: (from: ResumePoint, roundId
           <b>Ingen uppkoppling.</b> Du ser senast sparade läge.
         </Banner>
       )}
-      {state.kind === "error" && state.result.kind === "NO_V85" && (
+      {state.kind === "error" && state.result.kind === "NO_GAME" && (
         <Banner tone="info" className="m10">
           {state.result.message}
         </Banner>

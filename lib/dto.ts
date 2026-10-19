@@ -2,6 +2,7 @@
 import type { Coupon, HorseComment, Mark, ModelVersion, Person, Prisma, Riktodds, Round, Source, UserSettings } from "@prisma/client";
 import type { HorseStats, PersonStats, YearStats } from "@/lib/atg";
 import { asSelections, couponCost, rowCount } from "@/lib/coupon";
+import { DEFAULT_GAME_TYPE, isGameType } from "@/lib/game-type";
 import { explain, parseParams, parseWeights, type InputKey, type StoredInputs } from "@/lib/riktodds";
 import { belowGuideline, DEFAULT_GUIDELINE, forslag, spelbar } from "@/lib/spelbar";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
@@ -15,6 +16,7 @@ export function roundDto(r: Round): RoundDto {
   return {
     id: r.id,
     atgGameId: r.atgGameId,
+    gameType: isGameType(r.gameType) ? r.gameType : DEFAULT_GAME_TYPE,
     date: dateStr(r.date),
     trackId: r.trackId,
     trackName: r.trackName,
@@ -62,10 +64,11 @@ export function markDto(m: Mark, riktodds: number | null = null, guideline: numb
   };
 }
 
-export function couponDto(c: Coupon): CouponDto {
+// legs = spelets antal avdelningar (legsFor(round.gameType)).
+export function couponDto(c: Coupon, legs = 8): CouponDto {
   const sel = asSelections(c.selections);
   const rowPrice = Number(c.rowPrice);
-  const rows = rowCount(sel);
+  const rows = rowCount(sel, legs);
   return {
     roundId: c.roundId,
     budget: c.budget,
@@ -142,6 +145,7 @@ export function settingsDto(s: UserSettings | null): SettingsDto {
     spelbarGuideline: s ? Number(s.spelbarGuideline) : 2,
     xFactorTror: s ? Number(s.xFactorTror) : DEFAULT_X_FACTORS.xFactorTror,
     xFactorStark: s ? Number(s.xFactorStark) : DEFAULT_X_FACTORS.xFactorStark,
+    gameType: s && isGameType(s.gameType) ? s.gameType : DEFAULT_GAME_TYPE,
   };
 }
 
