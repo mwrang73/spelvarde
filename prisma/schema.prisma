@@ -1,0 +1,645 @@
+// Spelvärde – datamodell för hela appen (specen avsnitt 8).
+//
+// Databasen är ett EGET schema, "spelvarde", i Tabellgissningens
+// Supabase-projekt. Två saker håller isär apparna:
+//   1. multiSchema + @@schema("spelvarde") på varje modell och enum gör att
+//      all SQL som Prisma genererar är fullt kvalificerad ("spelvarde"."X").
+//   2. ?schema=spelvarde i DATABASE_URL och DIRECT_URL gör att Prismas egen
+//      migreringstabell (_prisma_migrations) också ligger i spelvarde, och
+//      inte blandas ihop med Tabellgissningens i public.
+// Kör bara `prisma migrate deploy` mot drift, aldrig `migrate dev`/`reset`.
+//
+// Gemensamt (ATG-fakta): Round, Race, Horse, Person, PersonAlias, Start,
+// HorseRecord, RoundSnapshot, StreckValue, StatsSnapshot, ModelVersion,
+// Riktodds, FetchLog. Skrivs bara av hämtning, synk och cron.
+// Per användare: UserSettings, Mark, RaceReview, HorseComment, Coupon,
+// LiveAlarm, Outcome, Source, TipFact. Har alltid userId från sessionen.
+//
+// Tider i UTC. Odds och procent som Decimal(6,2). Villkor som Prisma inte kan
+// uttrycka (check, delvisa unika index) ligger i migreringens SQL.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["spelvarde"]
+}
+
+enum Role {
+  USER
+  ADMIN
+
+  @@schema("spelvarde")
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("spelvarde")
+}
+
+enum ThemeChoice {
+  SYSTEM
+  LIGHT
+  DARK
+
+  @@schema("spelvarde")
+}
+
+enum FetchStatus {
+  COMPLETE
+  PARTIAL
+  FAILED
+
+  @@schema("spelvarde")
+}
+
+enum StartMethod {
+  AUTO
+  VOLTE
+
+  @@schema("spelvarde")
+}
+
+enum SnapshotKind {
+  BASELINE
+  LIVE
+  FETCH
+
+  @@schema("spelvarde")
+}
+
+enum AliasSource {
+  TRAVSTATISTIK
+
+  @@schema("spelvarde")
+}
+
+enum SpelbarOverride {
+  NONE
+  ON
+  OFF
+
+  @@schema("spelvarde")
+}
+
+enum CommentKind {
+  NOTE
+  RACE
+
+  @@schema("spelvarde")
+}
+
+enum AlarmKind {
+  RUSH
+  DROP
+
+  @@schema("spelvarde")
+}
+
+enum TipKind {
+  FACT
+  PATTERN
+
+  @@schema("spelvarde")
+}
+
+// ---------------------------------------------------------------------------
+// Användare
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         Role       @default(USER)
+  status       UserStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  settings      UserSettings?
+  marks         Mark[]
+  reviews       RaceReview[]
+  comments      HorseComment[]
+  coupons       Coupon[]
+  alarms        LiveAlarm[]
+  outcomes      Outcome[]
+  sources       Source[]
+  tipFacts      TipFact[]
+  fetchLogs     FetchLog[]
+  modelVersions ModelVersion[]
+
+  @@schema("spelvarde")
+}
+
+model UserSettings {
+  userId           String      @id
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme            ThemeChoice @default(SYSTEM)
+  rushThresholdPe  Decimal     @default(10.0) @db.Decimal(6, 2)
+  rowPrice         Decimal     @default(0.50) @db.Decimal(6, 2)
+  spelbarGuideline Decimal     @default(2.00) @db.Decimal(6, 2)
+  updatedAt        DateTime    @updatedAt
+
+  @@schema("spelvarde")
+}
+
+// ---------------------------------------------------------------------------
+// Gemensamt: ATG-data
+
+model Round {
+  id           String      @id @default(cuid())
+  atgGameId    String      @unique
+  // Omgångens lokala datum (lördag), utan tid.
+  date         DateTime    @db.Date
+  trackId      Int
+  trackName    String
+  firstStartAt DateTime
+  atgStatus    String?
+  fetchedAt    DateTime?
+  fetchStatus  FetchStatus @default(PARTIAL)
+  // Claim för livesynken (E3): den som sätter fältet hämtar från ATG.
+  liveSyncAt   DateTime?
+  liveOkAt     DateTime?
+  baselineAt   DateTime?
+  finishedAt   DateTime?
+  // Räknas upp vid varje ändring av gemensam data, så att klienten vet när
+  // hela omgången ska läsas om.
+  rev          Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  races     Race[]
+  snapshots RoundSnapshot[]
+  stats     StatsSnapshot[]
+  fetchLogs FetchLog[]
+  comments  HorseComment[]
+  coupons   Coupon[]
+  outcomes  Outcome[]
+  tipFacts  TipFact[]
+
+  @@index([date])
+  @@schema("spelvarde")
+}
+
+model Race {
+  id               String      @id @default(cuid())
+  roundId          String
+  round            Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  atgRaceId        String      @unique
+  // Avdelning 1–8 i V85-ordning.
+  leg              Int
+  // Loppnummer på banan.
+  raceNumber       Int
+  name             String
+  startAt          DateTime
+  scheduledStartAt DateTime?
+  distance         Int
+  startMethod      StartMethod
+  // Förstapris i kr, tolkat ur prize-texten. Hela texten i prizeText.
+  prize            Int?
+  prizeText        String?
+  classLabel       String?
+  terms            String[]
+  atgStatus        String?
+  resultAt         DateTime?
+  cancelled        Boolean     @default(false)
+  // Steg 2–9: när alla starter i avdelningen senast hämtades utan fel.
+  recordsFetchedAt DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  starts  Start[]
+  reviews RaceReview[]
+
+  @@unique([roundId, leg])
+  @@schema("spelvarde")
+}
+
+model Horse {
+  id         String   @id @default(cuid())
+  atgHorseId Int      @unique
+  name       String
+  sex        String?
+  birthYear  Int?
+  country    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  starts   Start[]
+  records  HorseRecord[]
+  comments HorseComment[]
+  tipFacts TipFact[]
+
+  @@schema("spelvarde")
+}
+
+// Kusk eller tränare.
+model Person {
+  id          String    @id @default(cuid())
+  atgPersonId Int       @unique
+  firstName   String
+  lastName    String
+  shortName   String?
+  location    String?
+  // { "2026": { starts, wins, seconds, thirds, winPercentage, earnings }, … }
+  statsJson   Json?
+  statsAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  drivenStarts     Start[]        @relation("StartDriver")
+  trainedStarts    Start[]        @relation("StartTrainer")
+  prevDrivenStarts Start[]        @relation("StartPrevDriver")
+  aliases          PersonAlias[]
+
+  @@schema("spelvarde")
+}
+
+model PersonAlias {
+  id        String      @id @default(cuid())
+  source    AliasSource
+  // Namnet som det står på källan, t.ex. "Kihlström Ö".
+  rawName   String
+  personId  String?
+  person    Person?     @relation(fields: [personId], references: [id], onDelete: SetNull)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([source, rawName])
+  @@index([personId])
+  @@schema("spelvarde")
+}
+
+model Start {
+  id               String    @id @default(cuid())
+  raceId           String
+  race             Race      @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  horseId          String
+  horse            Horse     @relation(fields: [horseId], references: [id], onDelete: Restrict)
+  number           Int
+  postPosition     Int?
+  // Distans inklusive tillägg.
+  distance         Int
+  driverId         String?
+  driver           Person?   @relation("StartDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  trainerId        String?
+  trainer          Person?   @relation("StartTrainer", fields: [trainerId], references: [id], onDelete: SetNull)
+  // Kusken före ett kuskbyte (vår egen jämförelse eller ATG:s originalDriver).
+  prevDriverId     String?
+  prevDriver       Person?   @relation("StartPrevDriver", fields: [prevDriverId], references: [id], onDelete: SetNull)
+  scratched        Boolean   @default(false)
+  scratchedAt      DateTime?
+  age              Int?
+  // T.ex. "1.11,8aM".
+  record           String?
+  // Hästens samlade vinstsumma i kr.
+  earnings         Int?
+  horseStatsJson   Json?
+  shoes            Json?
+  sulky            Json?
+  lastFetchedAt    DateTime?
+  recordsFetchedAt DateTime?
+  // Senaste felet i steg 2–9 för just den här starten (tas om vid nästa försök).
+  recordsError     String?
+  // Resultat
+  place            Int?
+  finishOrder      Int?
+  disqualified     Boolean   @default(false)
+  galloped         Boolean   @default(false)
+  kmTime           String?
+  finalOdds        Decimal?  @db.Decimal(6, 2)
+  // Platsodds vid resultat (ATG pools.plats min/max), för backtest.
+  placeOddsMin     Decimal?  @db.Decimal(6, 2)
+  placeOddsMax     Decimal?  @db.Decimal(6, 2)
+  resultAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  streck    StreckValue[]
+  riktodds  Riktodds[]
+  marks     Mark[]
+  comments  HorseComment[]
+  alarms    LiveAlarm[]
+  outcomes  Outcome[]
+  tipFacts  TipFact[]
+
+  @@unique([raceId, horseId])
+  @@unique([raceId, number])
+  @@index([horseId])
+  @@index([driverId])
+  @@index([trainerId])
+  @@index([prevDriverId])
+  @@schema("spelvarde")
+}
+
+model HorseRecord {
+  id           String       @id @default(cuid())
+  horseId      String
+  horse        Horse        @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  date         DateTime     @db.Date
+  trackName    String
+  trackId      Int?
+  atgRaceRef   String?
+  raceNumber   Int?
+  distance     Int?
+  startMethod  StartMethod?
+  postPosition Int?
+  place        Int?
+  galloped     Boolean      @default(false)
+  disqualified Boolean      @default(false)
+  // Hästen var struken i loppet. Räknas inte som start.
+  scratched    Boolean      @default(false)
+  // "1.12,9" eller ATG:s kod ("u", "6" …) när tiden saknas.
+  kmTime       String?
+  odds         Decimal?     @db.Decimal(6, 2)
+  driverName   String?
+  firstPrize   Int?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([horseId, date, trackName])
+  @@index([horseId, date])
+  @@schema("spelvarde")
+}
+
+model RoundSnapshot {
+  id      String       @id @default(cuid())
+  roundId String
+  round   Round        @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  takenAt DateTime     @default(now())
+  kind    SnapshotKind
+
+  values StreckValue[]
+
+  @@index([roundId, kind, takenAt])
+  @@schema("spelvarde")
+}
+
+model StreckValue {
+  id         String        @id @default(cuid())
+  snapshotId String
+  snapshot   RoundSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  startId    String
+  start      Start         @relation(fields: [startId], references: [id], onDelete: Cascade)
+  // Hundradelar av procent (ATG betDistribution), 1234 = 12,34 %.
+  value      Int
+
+  @@unique([snapshotId, startId])
+  @@index([startId])
+  @@schema("spelvarde")
+}
+
+model StatsSnapshot {
+  id        String   @id @default(cuid())
+  roundId   String
+  round     Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  // Sidnyckel enligt 10.3: startnr, rank, ms, bana, kuskliga, tranarliga, form, senaste.
+  source    String
+  fetchedAt DateTime @default(now())
+  ok        Boolean
+  error     String?
+  data      Json?
+
+  @@index([roundId, source, fetchedAt])
+  @@schema("spelvarde")
+}
+
+model ModelVersion {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  weights     Json
+  params      Json
+  active      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  backtest    Json?
+
+  riktodds Riktodds[]
+
+  @@index([createdById])
+  @@schema("spelvarde")
+}
+
+model Riktodds {
+  id             String       @id @default(cuid())
+  startId        String
+  start          Start        @relation(fields: [startId], references: [id], onDelete: Cascade)
+  modelVersionId String
+  modelVersion   ModelVersion @relation(fields: [modelVersionId], references: [id], onDelete: Cascade)
+  probTop3       Decimal      @db.Decimal(8, 6)
+  odds           Decimal      @db.Decimal(6, 2)
+  uncertain      Boolean      @default(false)
+  inputs         Json
+  contributions  Json
+  computedAt     DateTime     @default(now())
+
+  @@unique([startId, modelVersionId])
+  @@index([modelVersionId])
+  @@schema("spelvarde")
+}
+
+model FetchLog {
+  id         String    @id @default(cuid())
+  roundId    String
+  round      Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  // Null när ett cron-jobb hämtade.
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // GAME, RACE_1 … RACE_8, STATS, RIKTODDS
+  step       String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  message    String?
+  // { scratched: [...], driverChanges: [...] }
+  changes    Json?
+
+  @@index([roundId, startedAt])
+  @@index([userId])
+  @@schema("spelvarde")
+}
+
+// ---------------------------------------------------------------------------
+// Per användare
+
+model Mark {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startId         String
+  start           Start           @relation(fields: [startId], references: [id], onDelete: Cascade)
+  interesting     Boolean         @default(false)
+  interestingAt   DateTime?
+  spelbarOverride SpelbarOverride @default(NONE)
+  bet             Boolean         @default(false)
+  betAt           DateTime?
+  betOdds         Decimal?        @db.Decimal(6, 2)
+  unibetOdds      Decimal?        @db.Decimal(6, 2)
+  unibetOddsAt    DateTime?
+  unibetOddsPrev  Decimal?        @db.Decimal(6, 2)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([userId, startId])
+  @@index([startId])
+  @@schema("spelvarde")
+}
+
+model RaceReview {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  raceId          String
+  race            Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  reviewedAt      DateTime @default(now())
+  noneInteresting Boolean  @default(false)
+
+  @@unique([userId, raceId])
+  @@index([raceId])
+  @@schema("spelvarde")
+}
+
+model HorseComment {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  horseId   String
+  horse     Horse       @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  startId   String?
+  start     Start?      @relation(fields: [startId], references: [id], onDelete: SetNull)
+  roundId   String?
+  round     Round?      @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  kind      CommentKind
+  tags      String[]
+  text      String      @default("")
+  // uuid som klienten skapar, så att en omsänd PUT inte ger dubbletter.
+  clientId  String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  @@unique([userId, clientId])
+  @@index([userId, horseId])
+  @@index([horseId])
+  @@index([startId])
+  @@index([roundId])
+  @@schema("spelvarde")
+}
+
+model Coupon {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roundId    String
+  round      Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  budget     Int
+  rowPrice   Decimal  @db.Decimal(6, 2)
+  // { "1": [3, 10], "2": [5], … }
+  selections Json
+  lockedLegs Int[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, roundId])
+  @@index([roundId])
+  @@schema("spelvarde")
+}
+
+model LiveAlarm {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startId      String
+  start        Start     @relation(fields: [startId], references: [id], onDelete: Cascade)
+  kind         AlarmKind
+  firstSeenAt  DateTime  @default(now())
+  deltaAtFirst Decimal   @db.Decimal(6, 2)
+  lastDelta    Decimal   @db.Decimal(6, 2)
+  ackAt        DateTime?
+  rearmedAt    DateTime?
+
+  @@index([userId, startId, kind])
+  @@index([startId])
+  @@schema("spelvarde")
+}
+
+model Outcome {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startId      String
+  start        Start    @relation(fields: [startId], references: [id], onDelete: Cascade)
+  roundId      String
+  round        Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  interesting  Boolean
+  spelbar      Boolean
+  bet          Boolean
+  unibetOdds   Decimal? @db.Decimal(6, 2)
+  betOdds      Decimal? @db.Decimal(6, 2)
+  riktodds     Decimal? @db.Decimal(6, 2)
+  frozenAt     DateTime @default(now())
+  place        Int?
+  disqualified Boolean  @default(false)
+  hit          Boolean?
+
+  @@unique([userId, startId])
+  @@index([userId, roundId])
+  @@index([startId])
+  @@index([roundId])
+  @@schema("spelvarde")
+}
+
+model Source {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  url           String
+  enabled       Boolean   @default(true)
+  sortOrder     Int       @default(0)
+  lastReadAt    DateTime?
+  lastStatus    String?
+  lastError     String?
+  lastFactCount Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tipFacts TipFact[]
+
+  @@unique([userId, url])
+  @@schema("spelvarde")
+}
+
+model TipFact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  roundId   String
+  round     Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  startId   String?
+  start     Start?   @relation(fields: [startId], references: [id], onDelete: SetNull)
+  horseId   String
+  horse     Horse    @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  text      String
+  kind      TipKind
+  quote     String?
+  fetchedAt DateTime @default(now())
+
+  @@index([userId, roundId])
+  @@index([sourceId])
+  @@index([roundId])
+  @@index([startId])
+  @@index([horseId])
+  @@schema("spelvarde")
+}

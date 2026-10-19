@@ -1,0 +1,771 @@
+<HTML>
+<HEAD>
+<TITLE>travstatistik.se</TITLE>
+<body bgcolor="#409FC3" text="#FFFFFF" link="#000000" vlink="#000000" alink="#000000">
+<link rel="stylesheet" type="text/css" href="stylesdrop3.css">
+
+</HEAD>
+<body>
+
+
+
+<ul>
+  <li><a href="https://travstatistik.se">Travstatistik.se</a></li>
+  <li><a href="https://travstatistik.se/visaveckansrankvalny.php">Rank</a></li>
+  <li><a href="https://travstatistik.se/visaveckansnr.php">Startnummer</a></li>
+  <li><a href="https://travstatistik.se/visaveckansbana.php">Travbanan</a></li>
+  <li class="dropdown">
+    <a href="#" class="dropbtn">Mest streckad</a>
+    <div class="dropdown-content">
+        <a href="https://travstatistik.se/visameststreckadavd.php?Avd=1">Klass</a>
+        <a href="https://travstatistik.se/visameststreckadavd_metod.php?Avd=1">Klass och startmetod</a>
+        <a href="https://travstatistik.se/visaveckansMS.php">Totaler</a>
+         </div>
+  </li>
+  <li><a  class="active" href="http://travstatistik.se/visasenasteomg.php">Senaste omgångarna</a></li>
+  <li class="dropdown">
+    <a href="#" class="dropbtn">Topplistor</a>
+    <div class="dropdown-content">
+        <a href="https://travstatistik.se/visahastligan.php">Hästligan</a>
+        <a href="https://travstatistik.se/visakuskligan.php">Kuskligan</a>
+        <a href="https://travstatistik.se/visatranarligan.php">Tränarligan</a>
+        <a href="https://travstatistik.se/formtoppen.php">Formtoppen 52 v</a>
+        <a href="https://travstatistik.se/formtoppen.php?Veckor=20">Formtoppen 20 v</a>
+        <a href="https://travstatistik.se/formtoppen.php?Veckor=10">Formtoppen 10 v</a>
+      </div>
+  </li>
+  </ul>
+
+
+<div style="padding:20px;margin-top:10px;">
+
+<html>
+
+<body bgcolor="#409FC3" text="#FFFFFF" link="#000000"
+vlink="#000000" alink="#000000">
+
+<div id='wrapper-GDFS'><span id='h2-GDFS'><a id='url-GDFS' href="//www.vackertvader.se/gävle" target="_blank">Vädret i Gävle</a></span><div id='load-GDFS'></div><a id='url_detail-GDFS' href="//www.vackertvader.se/gävle" target="_blank">Detaljerad väderprognos</a></div><script type="text/javascript" src="//widget.vackertvader.se/widgetv3/widget_request/2712414?bgcolor=52A8C9&border=c4c3c3&days=3&key=-GDFS&lang=&maxtemp=yes&size=x120&textcolor=363636&unit=C&wind=yes" target="_blank" charset="utf-8"></script>
+
+<p align=left> 
+<font color=#000000 size=7 face=Tahoma><strong>V85 TRAVSTATISTIK.SE</strong></font>
+<BR><font size=3 face=Verdana><strong>Gävle 17 oktober 2026 
+</p> 
+<font size=1 face=Verdana> 
+<form action="https://travstatistik.se/visasenasteomg.php" method="post">
+  Antal Omgångar:<br>
+  <input type="text" name="Omg" min="1" max="200" value="30">
+<br>
+Utdelning 7 rätt över:<br>
+  <input type="text" name="Utdover"  value="0"> kr<br>
+Utdelning 7 rätt under:<br>
+  <input type="text" name="Utdunder"  value="100000"> kr<br>
+<br>
+  <input type="checkbox" name="Ext" value="N" > Visa även extraomgångar<br> 
+  <input type="checkbox" name="Finaler" value="N" > Endast finaler<br>
+  <input type="checkbox" name="Jackpot" value="N" > Endast jackpot<br>
+  <br><br>
+  <input type="submit" value="Sök" formtarget="_self">
+</form><TABLE BORDER=0 WIDTH=800 CELLSPACING=1 CELLPADDING=1 ALIGN=LEFT>
+<TR ALIGN=CENTER VALIGN=TOP>
+<TD colspan=9 ALIGN=LEFT VALIGN=TOP>&nbsp;</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP>
+<TD colspan=9 ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>&nbsp;</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font size=2 face=Verdana> De <strong>30</strong> senaste omgångarna, Utdelning 7 rätt 0 - 100000 </TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP>&nbsp;</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>År</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Vecka</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Bana</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Datum</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Utd <br>8 rätt</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Utd <br>7 rätt</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Utd <br>6 rätt</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Utd <br>5 rätt</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Jack<br>pot</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Final</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Extra <br>omg</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Omsättning</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Inlämnade <br>system</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>Snitt kr <br>system</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>System med <br>7 rätt</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP>
+<TD colspan=4 ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>&nbsp;</TD>
+<TD colspan=9 ALIGN=LEFT VALIGN=TOP><font size=1 face=Verdana>Rank (Klass-Mest streckad)</TD>
+<TD colspan=1 ALIGN=CENTER VALIGN=TOP><font size=1 face=Verdana>RankPoang<br>Favorit%<br>Vinnar%  </TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>38</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>F</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-09-19</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>492 890</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>2 335</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>96</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>79 548 490</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 209 241</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>65,78</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>31,47</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 0<br>F% = 0<br>V% = 0</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>37</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>H</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-09-12</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>2 315 629</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>9 841</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>250</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>36</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>91 186 865</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 288 619</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70,76</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>14,31</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(S-2)</b> <b>1(G-6)</b> 2(K-1) 2(Ö-4) 3(Sto-8) 4(B-5) 5(K-3)7(I-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 25<br>F% = 330<br>V% = 153</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>35</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>B</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-08-29</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>80 838</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>486</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>21</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>6</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>104 799 672</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 672 304</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>62,67</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>529,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-1)</b> <b>1(II-3)</b> 2(S-2) 2(Sto-6) 2(K-7) 3(Ö-4) 3(III-5)11(Sto-8)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 25<br>F% = 315<br>V% = 207</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>34</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Ro</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-08-22</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5 439</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>139</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>33</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>79 481 553</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 223 576</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>64,96</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>2 849,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(I-6)</b> <b>1(B-7)</b> 2(Sto-1) 2(Ö-3) 2(S-4) 2(Sto-8) 4(G-5)5(Ö-2)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 19<br>F% = 296<br>V% = 198</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>33</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Å</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-08-15</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>137 900</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 494</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>49</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>10</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>80 206 993</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 199 344</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>66,88</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>113,40</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Ö-2)</b> <b>1(G-6)</b> <b>1(S-8)</b> 2(Ö-1) 2(Sto-7) 3(B-3) 7(Sto-4)8(I-5)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 25<br>F% = 344<br>V% = 176</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>32</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Ös</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-08-08</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>74 733</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>489</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>19</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>78 342 850</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 242 536</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>63,05</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>204,40</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-1)</b> <b>1(K-5)</b> <b>1(B-6)</b> 2(K-2) 2(K-3) 2(I-4) 3(Ö-8)7(Sto-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 19<br>F% = 331<br>V% = 208</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>31</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Rä</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-08-01</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>163 443</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 461</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>30</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>78 369 345</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 177 580</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>66,55</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>93,50</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Sto-1)</b> <b>1(G-3)</b> <b>1(I-5)</b> <b>1(II-6)</b> <b>1(III-8)</b> 5(B-7) 7(Sto-2)7(K-4)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 24<br>F% = 357<br>V% = 237</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>30</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Bs</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-07-25</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>249 241</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 249</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>43</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>9</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>98 466 199</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 587 225</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>62,04</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>177,10</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(II-2)</b> <b>1(Sto-5)</b> <b>1(III-6)</b> <b>1(K-8)</b> 3(S-1) 3(Ö-4) 4(G-3)7(K-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 21<br>F% = 317<br>V% = 183</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>29</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Ax</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-07-18</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>3 417</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>93</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>76 478 256</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 156 628</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>66,12</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>4 379,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Sto-3)</b> <b>1(Sto-4)</b> <b>1(Ö-6)</b> <b>1(I-7)</b> 2(B-1) 2(G-5) 2(Ö-8)3(S-2)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 13<br>F% = 318<br>V% = 232</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>28</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>År</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-07-11</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>267 117</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 539</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>36</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>6</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>75 115 320</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 084 782</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>69,24</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>54,83</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Sto-1)</b> <b>1(G-2)</b> <b>1(I-4)</b> <b>1(III-5)</b> 3(II-3) 5(K-8) 7(Sto-6)9(Ö-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 28<br>F% = 335<br>V% = 217</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>28</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Hd</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-07-04</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>60 823</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>605</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>22</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>76 528 682</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 113 428</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>68,73</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>248,30</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Ö-2)</b> <b>1(II-3)</b> <b>1(III-4)</b> 2(G-6) 3(S-5) 3(Sto-8) 4(Sto-1)4(Ö-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 19<br>F% = 332<br>V% = 214</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>27</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>B</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-06-27</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>47 183</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>247</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>16</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>F</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>90 225 372</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 409 264</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>64,02</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>772,50</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(S-1)</b> <b>1(Ö-6)</b> <b>1(B-8)</b> 2(III-2) 2(Sto-3) 2(II-4) 3(Sto-7)7(I-5)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 19<br>F% = 330<br>V% = 210</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>26</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Kr</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-06-21</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>34 249</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>291</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>14</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70 005 639</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 163 359</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>60,18</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>465,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-2)</b> <b>1(III-3)</b> <b>1(II-5)</b> <b>1(I-7)</b> 2(B-4) 2(I-7) 3(S-6)4(Sto-1)8(Sto-8)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 23<br>F% = 365<br>V% = 236</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>25</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Bo</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-06-13</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>3 018 050</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>3 335</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>125</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>23</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>101 544 513</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 542 349</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>65,84</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>15,82</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(II-2)</b> <b>1(S-8)</b> 2(Sto-6) 3(III-7) 4(S-3) 4(Ö-4) 5(K-5)6(G-1)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 26<br>F% = 342<br>V% = 156</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>24</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Mp</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-06-06</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>4 299</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>44</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>75 884 835</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 261 288</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>60,16</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>4 015,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Ö-2)</b> <b>1(Sto-3)</b> <b>1(I-5)</b> <b>1(S-6)</b> <b>1(B-8)</b> 2(G-7) 6(Sto-4)21(Sto-1)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 34<br>F% = 355<br>V% = 246</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>22</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>S</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-05-30</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>24 022 286</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>91 756</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 163</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>96</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>F</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>105 592 465</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 523 934</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>69,29</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Sto-1)</b> <b>1(I-5)</b> <b>1(Ö-6)</b> <b>1(II-8)</b> 2(S-2) 2(Sto-7) 7(III-3)11(B-4)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 26<br>F% = 325<br>V% = 182</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>21</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>G</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-05-23</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>719 237</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>2 548</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>91</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>16</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>100 181 976</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 495 530</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>66,99</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>58,37</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Ö-1)</b> <b>1(II-2)</b> <b>1(K-4)</b> 2(III-5) 3(G-3) 3(Sto-6) 5(K-8)7(I-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 23<br>F% = 305<br>V% = 218</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>19</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Å</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-05-09</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>48 141</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>289</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>19</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>150 396 542</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 542 448</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>97,51</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>907,10</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-3)</b> <b>1(S-5)</b> <b>1(Sto-6)</b> 2(Sto-4) 2(Ö-7) 3(Ö-1) 3(Sto-8)4(B-2)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 17<br>F% = 306<br>V% = 198</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>18</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>U</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-05-02</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>32 497</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>276</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>15</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>86 562 203</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 320 707</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>65,54</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>608,90</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Ö-1)</b> <b>1(I-3)</b> <b>1(Ö-5)</b> <b>1(K-6)</b> 2(Sto-5) 3(III-4) 4(II-2)5(Ö-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 18<br>F% = 316<br>V% = 216</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>17</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Ö</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-04-25</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>7 519 371</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>6 662</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>123</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>15</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>131 459 098</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 904 606</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>69,02</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>10,28</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Sto-2)</b> <b>1(G-3)</b> <b>1(Ö-4)</b> 2(III-8) 4(II-5) 4(Ö-6) 9(S-1)12(Sto-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 34<br>F% = 337<br>V% = 199</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>15</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-04-11</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>24 724</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>81</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>6</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>104 650 129</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 548 864</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>67,57</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 924,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Sto-1)</b> <b>1(G-2)</b> <b>1(B-3)</b> <b>1(Sto-5)</b> <b>1(I-8)</b> 2(Ö-4) 3(Sto-7)6(S-6)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 16<br>F% = 313<br>V% = 253</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>14</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Ro</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-04-05</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>141 547</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>410</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>18</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>104 461 462</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 796 281</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>58,15</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>435,60</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-1)</b> <b>1(Ö-2)</b> <b>1(Sto-4)</b> 2(III-5) 2(K-6) 3(II-3) 5(Sto-8)8(I-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 23<br>F% = 318<br>V% = 236</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>13</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>S</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-03-28</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 152 562</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>3 546</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>134</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>23</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>F</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>112 868 788</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 644 924</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>68,62</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>39,61</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(Ö-2)</b> <b>1(S-4)</b> <b>1(I-8)</b> 3(G-1) 3(B-3) 3(Sto-7) 4(III-6)5(II-5)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 21<br>F% = 326<br>V% = 162</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>12</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Å</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-03-21</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>84 069</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 481</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>146</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>87 809 767</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 296 253</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>67,74</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(II-8)</b> 2(Sto-4) 3(Sto-3) 3(III-6) 4(B-1) 4(Ö-7) 5(Sto-5)8(I-2)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 30<br>F% = 290<br>V% = 102</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>11</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Bj</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-03-14</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>103 885</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>507</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>25</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>103 351 488</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 541 353</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>67,05</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>417,70</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(I-1)</b> <b>1(II-3)</b> <b>1(III-5)</b> <b>1(B-7)</b> 2(Ö-8) 3(G-2) 5(K-4)6(Ö-6)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 20<br>F% = 338<br>V% = 218</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>10</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Hd</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-03-07</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>8 957</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>85</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>0</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>87 418 572</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 238 539</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70,58</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>2 220,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-1)</b> <b>1(B-2)</b> <b>1(Sto-4)</b> <b>1(S-5)</b> 2(III-3) 2(II-6) 6(I-7)6(Sto-8)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 20<br>F% = 341<br>V% = 277</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>9</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Ax</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-02-28</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>544 494</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 970</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>72</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>111</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>J</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>109 881 178</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 553 764</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70,72</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>88,15</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-1)</b> <b>1(Sto-2)</b> <b>1(I-4)</b> <b>1(III-8)</b> 6(Ö-5) 7(II-3) 7(Sto-6)10(Sto-7)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 34<br>F% = 343<br>V% = 223</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>8</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>B</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-02-21</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>6 434 734</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>4 271</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>98</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>13</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>84 853 646</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 206 609</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70,32</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>3,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(K-1)</b> <b>1(Sto-3)</b> <b>1(Ö-6)</b> 2(Sto-8) 5(II-4) 5(S-5) 5(III-7)11(Ö-2)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 31<br>F% = 330<br>V% = 199</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>7</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>Å</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-02-14</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>15 746</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>215</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>16</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>5</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>84 349 210</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 203 542</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70,08</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 218,00</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#5FAECD>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(G-1)</b> <b>1(I-7)</b> 2(S-4) 2(Sto-6) 3(B-2) 3(Sto-3) 3(Sto-5)4(Ö-8)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 19<br>F% = 328<br>V% = 209</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>6</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>S</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>2026-02-07</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>860 245</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>4 744</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>154</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>23</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana>F</TD>
+<TD ALIGN=CENTER VALIGN=TOP><font color=#000000 size=2 face=Verdana></TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>87 934 225</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>1 256 108</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>70,01</TD>
+<TD ALIGN=RIGHT VALIGN=TOP><font color=#000000 size=2 face=Verdana>23,25</TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#87C4DA>
+<TD colspan=4 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana>&nbsp;</TD>
+<TD colspan=10 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>1(B-2)</b> <b>1(Sto-3)</b> 2(Ö-1) 3(Sto-7) 4(I-5) 4(Sto-8) 7(II-4)7(III-6)</TD>
+<TD colspan=1 ALIGN=LEFT VALIGN=TOP><font color=#000000 size=2 face=Verdana><b>RP = 29<br>F% = 323<br>V% = 171</b></TD>
+</TR>
+<TR ALIGN=CENTER VALIGN=TOP bgcolor=#52A8C9>
+<TD colspan=14 ALIGN=CENTER VALIGN=center>
+            <a href=http://www.broline.se target=_target><font size=2 face=Arial><img src=http://www.broline.se/logga_broline_liggande.jpg alt=Broline International border=0 ></font></a> </TD>
+</TR>
+</TABLE>
+</div>
+
+</BODY>
+</HTML>

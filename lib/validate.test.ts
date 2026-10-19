@@ -1,0 +1,40 @@
+import { describe, expect, it } from "vitest";
+import { isUuid, normalizeSourceUrl, parseCommentBody, parseMarkBody, parseReviewBody, parseSettingsBody, parseSourceName, parseSourcePatch, SOURCE_URL_ERROR } from "@/lib/validate";
+
+const H = "c" + "a".repeat(24);
+describe("validering", () => {
+  it("mark: bara interesting i E1", () => {
+    expect(parseMarkBody({ interesting: true })).toEqual({ ok: true, value: { interesting: true } });
+    expect(parseMarkBody({ interesting: "ja" }).ok).toBe(false);
+    expect(parseMarkBody({ interesting: true, bet: true })).toEqual({ ok: false, error: "Bara Intressant kan sparas i den här versionen." });
+    expect(parseMarkBody({ userId: "x", interesting: true }).ok).toBe(false);
+  });
+  it("review", () => {
+    expect(parseReviewBody({ reviewed: true, noneInteresting: true })).toEqual({ ok: true, value: { reviewed: true, noneInteresting: true } });
+    expect(parseReviewBody({ reviewed: false, noneInteresting: true })).toEqual({ ok: true, value: { reviewed: false, noneInteresting: false } });
+    expect(parseReviewBody({}).ok).toBe(false);
+  });
+  it("kommentar", () => {
+    expect(parseCommentBody({ horseId: H, kind: "NOTE", tags: ["Galopp", "Galopp"], text: "Bra" })).toEqual({ ok: true, value: { horseId: H, startId: null, roundId: null, kind: "NOTE", tags: ["Galopp"], text: "Bra" } });
+    expect(parseCommentBody({ horseId: "x" }).ok).toBe(false);
+    expect(parseCommentBody({ horseId: H, kind: "RACE" }).ok).toBe(false);
+    expect(parseCommentBody({ horseId: H, text: "x".repeat(4001) }).ok).toBe(false);
+    expect(parseCommentBody({ horseId: H, tags: Array(21).fill("a") }).ok).toBe(false);
+    expect(isUuid("3b241101-e2bb-4255-8caf-4136c566a962")).toBe(true);
+    expect(isUuid("../../etc")).toBe(false);
+  });
+  it("inställningar: bara temat i E1", () => {
+    expect(parseSettingsBody({ theme: "dark" })).toEqual({ ok: true, value: { theme: "dark" } });
+    expect(parseSettingsBody({ theme: "blå" }).ok).toBe(false);
+    expect(parseSettingsBody({ theme: "dark", rowPrice: 1 }).ok).toBe(false);
+  });
+  it("källor: bara https, inga interna adresser", () => {
+    expect(normalizeSourceUrl("https://www.travronden.se/v85#x")).toEqual({ ok: true, value: "https://www.travronden.se/v85" });
+    for (const bad of ["http://travronden.se", "travronden.se", "https://localhost/x", "https://10.0.0.1/", "https://user:pw@site.se/", "javascript:alert(1)", 42]) {
+      expect(normalizeSourceUrl(bad)).toEqual({ ok: false, error: SOURCE_URL_ERROR });
+    }
+    expect(parseSourceName(undefined, "https://www.atg.se/x")).toEqual({ ok: true, value: "atg.se" });
+    expect(parseSourcePatch({ enabled: false })).toEqual({ ok: true, value: { enabled: false } });
+    expect(parseSourcePatch({}).ok).toBe(false);
+  });
+});

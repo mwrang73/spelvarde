@@ -1,0 +1,227 @@
+// Fas (3.1) och Nästa steg (3.2). Rena funktioner, all tid i Europe/Stockholm.
+
+import { FEATURES, type Features } from "@/lib/features";
+import { addDaysToDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
+
+export type Phase = "ANALYS" | "ODDS" | "LIVE" | "KLART";
+export const PHASES: Phase[] = ["ANALYS", "ODDS", "LIVE", "KLART"];
+export const PHASE_LABELS: Record<Phase, string> = { ANALYS: "Analys", ODDS: "Odds", LIVE: "Live", KLART: "Klart" };
+
+export type PhaseRace = {
+  leg: number;
+  name: string;
+  startAt: Date;
+  hasResult: boolean;
+  cancelled: boolean;
+};
+
+// D−2 18:00 och D 12:00 för omgångens datum D ("2026-10-24").
+export function phaseBounds(date: string) {
+  return {
+    oddsFrom: stockholmLocalToUtc(`${addDaysToDateString(date, -2)}T18:00`),
+    liveFrom: stockholmLocalToUtc(`${date}T12:00`),
+  };
+}
+
+export function isRoundFinished(races: PhaseRace[]): boolean {
+  if (!races.length) return false;
+  return races.every((r) => r.hasResult || r.cancelled) && races.some((r) => r.hasResult);
+}
+
+export function computePhase(date: string, races: PhaseRace[], now: Date): Phase {
+  if (isRoundFinished(races)) return "KLART";
+  const { oddsFrom, liveFrom } = phaseBounds(date);
+  const anyStarted = races.some((r) => r.startAt.getTime() <= now.getTime());
+  if (now.getTime() >= liveFrom.getTime() || anyStarted) return "LIVE";
+  if (now.getTime() >= oddsFrom.getTime()) return "ODDS";
+  return "ANALYS";
+}
+
+export type PhaseStep = { phase: Phase; label: string; state: "done" | "current" | "upcoming"; from: string | null; dayLabel: string };
+
+// Rutorna i PhaseRail. Analys gäller från hämtningen, därför from = null.
+export function phaseRail(date: string, current: Phase): PhaseStep[] {
+  const { oddsFrom, liveFrom } = phaseBounds(date);
+  const idx = PHASES.indexOf(current);
+  const day = (d: Date, withTime: boolean) => {
+    const p = stockholmParts(d);
+    return withTime ? `${p.weekdayShort} ${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}` : p.weekdayShort;
+  };
+  return PHASES.map((phase, i) => ({
+    phase,
+    label: PHASE_LABELS[phase],
+    state: i < idx ? "done" : i === idx ? "current" : "upcoming",
+    from: phase === "ODDS" ? oddsFrom.toISOString() : phase === "LIVE" ? liveFrom.toISOString() : null,
+    dayLabel: phase === "ANALYS" ? "sön–tors" : phase === "ODDS" ? day(oddsFrom, true) : phase === "LIVE" ? day(liveFrom, true) : day(liveFrom, false),
+  }));
+}
+
+// "lör 24 okt" för ett datum "2026-10-24".
+export function dayDateLabel(date: string): string {
+  const p = stockholmParts(new Date(`${date}T12:00:00Z`));
+  return `${p.weekdayShort} ${p.day} ${p.monthShort}`;
+}
+
+const hhmm = (d: Date) => {
+  const p = stockholmParts(d);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+};
+
+// ---- Nästa steg ----------------------------------------------------------------
+
+export type NextStepKind =
+  | "FETCH_ROUND"
+  | "RESUME_FETCH"
+  | "ALARM"
+  | "LIVE_NEXT_RACE"
+  | "LIVE_WAITING"
+  | "ODDS_FILL"
+  | "MARK_BET"
+  | "BUILD_COUPON"
+  | "ANALYZE_LEG"
+  | "ALL_REVIEWED"
+  | "SEE_STATS"
+  | "ROUND_DONE";
+
+export type NextStepAction =
+  // Länk till en vy.
+  | { type: "link"; label: string; href: string }
+  // Starta Hämta omgång (kedjan i 10.1). gameId saknas = välj nästa V85.
+  | { type: "fetch"; label: string; gameId: string | null }
+  // Fortsätt kedjan från steget som misslyckades.
+  | { type: "resume"; label: string; roundId: string };
+
+export type NextStep = { kind: NextStepKind; title: string; text: string; action: NextStepAction | null };
+
+export type NextStepRace = PhaseRace & { reviewed: boolean };
+
+export type NextStepInput = {
+  now: Date;
+  round: {
+    id: string;
+    date: string;
+    fetchStatus: "COMPLETE" | "PARTIAL" | "FAILED";
+    races: NextStepRace[];
+  } | null;
+  // Nästa V85 i ATG:s kalender (null = ingen eller okänd).
+  nextAvailable: { gameId: string; trackName: string | null; date: string; fetched: boolean } | null;
+  // E2/E3: räknare som är 0 i E1.
+  interestingWithoutOdds?: number;
+  spelbarWithoutBet?: number;
+  hasCoupon?: boolean;
+  unackedAlarms?: { leg: number; horseName: string; kind: "RUSH" | "DROP" }[];
+  features?: Features;
+};
+
+function fetchStep(next: NextStepInput["nextAvailable"]): NextStep {
+  const label = next ? `V85 ${next.trackName ?? ""} ${dayDateLabel(next.date)}`.replace(/\s+/g, " ") : null;
+  return {
+    kind: "FETCH_ROUND",
+    title: label ? `Hämta omgång – ${label}` : "Hämta omgång",
+    text: "Hämta veckans V85 från ATG. Startlistan brukar finnas från söndag kväll.",
+    action: { type: "fetch", label: "Hämta omgång", gameId: next?.gameId ?? null },
+  };
+}
+
+export function nextStep(input: NextStepInput): NextStep {
+  const f = input.features ?? FEATURES;
+  const { round, now, nextAvailable } = input;
+
+  // 1. Ingen omgång, eller nästa V85 finns men är inte hämtad.
+  if (!round) return fetchStep(nextAvailable);
+  const phase = computePhase(round.date, round.races, now);
+  if (phase === "KLART" && nextAvailable && !nextAvailable.fetched) return fetchStep(nextAvailable);
+
+  // 2. Hämtningen ofullständig.
+  if (round.fetchStatus !== "COMPLETE") {
+    return {
+      kind: "RESUME_FETCH",
+      title: "Slutför hämtningen",
+      text: "Något steg i hämtningen blev inte klart. Det som redan hämtats är sparat.",
+      action: { type: "resume", label: "Slutför hämtningen", roundId: round.id },
+    };
+  }
+
+  const races = [...round.races].sort((a, b) => a.leg - b.leg);
+  const base = `/omgang/${round.id}`;
+
+  if (phase === "LIVE") {
+    // 3. Olarmade larm.
+    const alarm = f.live ? input.unackedAlarms?.[0] : undefined;
+    if (alarm) {
+      return {
+        kind: "ALARM",
+        title: `${alarm.kind === "RUSH" ? "Rusning" : "Tappar"} i avd ${alarm.leg} – ${alarm.horseName}`,
+        text: "Kontrollera hästen innan loppet startar.",
+        action: { type: "link", label: "Visa larmet", href: `${base}/live?avd=${alarm.leg}` },
+      };
+    }
+    // 4. Nästa lopp som inte har startat.
+    const next = races.find((r) => !r.cancelled && r.startAt.getTime() > now.getTime());
+    if (next) {
+      return {
+        kind: "LIVE_NEXT_RACE",
+        title: `Avd ${next.leg} startar ${hhmm(next.startAt)}`,
+        text: next.name,
+        action: f.raceView ? { type: "link", label: "Till loppet", href: `${base}/lopp/${next.leg}` } : null,
+      };
+    }
+    const waiting = races.find((r) => !r.cancelled && !r.hasResult);
+    return {
+      kind: "LIVE_WAITING",
+      title: waiting ? `Väntar på resultat i avd ${waiting.leg}` : "Väntar på resultat",
+      text: "Placeringen hämtas när ATG har den.",
+      action: null,
+    };
+  }
+
+  if (phase === "ODDS") {
+    // 5–7 (E2).
+    const missing = input.interestingWithoutOdds ?? 0;
+    if (f.odds && missing > 0) {
+      return {
+        kind: "ODDS_FILL",
+        title: `Fyll i Unibets odds – ${missing} kvar`,
+        text: "Platsodds för dina intressanta hästar.",
+        action: { type: "link", label: "Fyll i odds", href: `${base}/odds` },
+      };
+    }
+    const noBet = input.spelbarWithoutBet ?? 0;
+    if (f.odds && noBet > 0) {
+      return {
+        kind: "MARK_BET",
+        title: `Markera Bet – ${noBet} spelbara`,
+        text: "Markera det du spelar hos Unibet.",
+        action: { type: "link", label: "Till platsspel", href: `${base}/spel?flik=plats` },
+      };
+    }
+    if (f.coupon && !input.hasCoupon) {
+      return {
+        kind: "BUILD_COUPON",
+        title: "Bygg V85-raden",
+        text: "Välj hästar per avdelning inom din budget.",
+        action: { type: "link", label: "Bygg raden", href: `${base}/spel?flik=rad` },
+      };
+    }
+  }
+
+  if (phase === "ANALYS" || phase === "ODDS") {
+    // 8. Första avdelning som inte är genomgången.
+    const todo = races.find((r) => !r.reviewed);
+    if (todo) {
+      return {
+        kind: "ANALYZE_LEG",
+        title: `Analysera avd ${todo.leg} – ${todo.name}`,
+        text: "Markera Intressant på hästar du tror på, eller tryck Inga intressanta här.",
+        action: { type: "link", label: `Till avd ${todo.leg}`, href: `${base}/avd/${todo.leg}` },
+      };
+    }
+    return { kind: "ALL_REVIEWED", title: "Allt genomgånget – odds fylls i torsdag kväll", text: "Alla åtta avdelningar är genomgångna.", action: null };
+  }
+
+  // 9. Klart.
+  if (f.stats) {
+    return { kind: "SEE_STATS", title: "Se statistik", text: "Omgången är klar.", action: { type: "link", label: "Se statistik", href: "/statistik" } };
+  }
+  return { kind: "ROUND_DONE", title: "Omgången är klar", text: "Nästa V85 kan hämtas när ATG har publicerat den.", action: null };
+}

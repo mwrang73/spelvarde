@@ -1,0 +1,155 @@
+/* Spelvärde – designtokens (docs/DESIGN.md, riktning B "Totalisatorn").
+   Alla färgvärden i appen finns här. Komponenter använder bara var(--…).
+   Ljust tema under :root, mörkt under :root[data-theme="dark"]. Temat sätts
+   före första ritningen av skriptet i app/layout.tsx (lib/theme.ts). */
+
+:root {
+  color-scheme: light;
+
+  --page: #BFC6CD;
+  --bg: #E4E8EC;
+  --bg-glow: rgba(255, 255, 255, .7);
+  --surface: #F9FAFB;
+  --surface-2: #EEF1F4;
+  --surface-3: #DDE2E8;
+  --ink: #0D1014;
+  --ink-2: #48505A;
+  --line: #D0D6DD;
+  --line-strong: #8E98A3;
+  --accent: #A65300;
+  --accent-soft: #FCEBD0;
+  --fill: #FFB22E;
+  --fill-ink: #1A1000;
+  --fill-deep: #A45F00;
+  --focus: #0B62D6;
+
+  /* Tavlan är mörk i båda teman. Text på tavlan använder --head-*. */
+  --head: #101317;
+  --head-ink: #FFB22E;
+  --head-ink-2: #C2C8CF;
+  --head-text: #ECE8DD;
+  --head-line: #2E343B;
+  --flap-top: #252A31;
+  --flap-bot: #1A1E23;
+
+  --led-off: #C5CCD3;
+  --glow: rgba(242, 154, 0, .40);
+  --up: #0E7A3B;
+  --up-soft: #DDF3E5;
+  --down: #C42B1F;
+  --down-soft: #FBE1DD;
+  --gal: #C42B1F;
+  --gal-ink: #FFFFFF;
+  --bet: #0D1014;
+  --bet-ink: #FFFFFF;
+  --chip-auto-bg: #DCE7F3;
+  --chip-auto-ink: #0D2A4A;
+  --chip-volte-bg: #FBDCD6;
+  --chip-volte-ink: #6E140C;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 8px 24px rgba(0, 0, 0, .08);
+
+  /* Fasta värden på tavlan, samma i båda teman. */
+  --flap-on: linear-gradient(#FFC85C 50%, #F4A51F 50%);
+  --flap-on-ink: #1A1000;
+  --matrix: radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1.3px);
+  --matrix-size: 4px;
+  --head-title: #FFFFFF;
+
+  /* Fasta värden från mockupen (riktning B) som komponenterna behöver.
+     Tavlan och tangenterna ser likadana ut i båda teman där inget annat står. */
+  --flap-ink: #C9CED4;
+  --flap-glow: rgba(255, 178, 46, .5);
+  --phase-ink: #9AA2AC;
+  --btn-fill: linear-gradient(#FFC85C, #F4A51F);
+  --btn-edge: #9A5A00;
+  --btn-line: #C47A00;
+  --btn-glow: rgba(244, 165, 31, .25);
+  --btn-glow-hover: rgba(255, 178, 46, .45);
+  --key-on: linear-gradient(#FFCB60, #F39A00);
+  --key-on-ring: #A45F00;
+  --key-on-edge: #6B3E00;
+  --key-off: linear-gradient(#FFFFFF, #E2E6EB);
+  --key-off-shadow: inset 0 0 0 1px #AEB6BF, 0 2px 0 #9AA3AD;
+  --key-dot: #B4BCC5;
+  --board-chip-line: #3A4048;
+  --board-auto: #A8D4FF;
+  --board-auto-line: #2F4A66;
+  --board-volte: #FFB8AA;
+  --board-volte-line: #6E3329;
+  --board-btn-line: #4A5058;
+  --gal-warn-bg: rgba(255, 90, 69, .14);
+  --gal-warn-ink: #FFD0C8;
+  --scrim: rgba(0, 0, 0, .5);
+  --tick: #46D37E;
+
+  /* Typsnitt. next/font sätter --font-*-variablerna i app/layout.tsx. */
+  --f-display: var(--font-doto, "Doto"), "Courier New", ui-monospace, monospace;
+  --f-name: var(--font-barlow-condensed, "Barlow Condensed"), "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-label: var(--font-barlow-condensed, "Barlow Condensed"), "Arial Narrow", sans-serif;
+  --f-body: var(--font-barlow, "Barlow"), "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --f-num: var(--font-jetbrains, "JetBrains Mono"), ui-monospace, Menlo, Consolas, monospace;
+
+  /* Mått som DESIGN.md låser. */
+  --row-h: 44px;
+  --gutter: max(16px, env(safe-area-inset-left));
+  --gutter-r: max(16px, env(safe-area-inset-right));
+  --focus-ring: 3px solid var(--focus);
+  --focus-offset: 2px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #030405;
+  --bg: #0C0E11;
+  --bg-glow: rgba(255, 178, 46, .08);
+  --surface: #13161A;
+  --surface-2: #181C21;
+  --surface-3: #222730;
+  --ink: #F3EFE4;
+  --ink-2: #A9B0BA;
+  --line: #262B33;
+  --line-strong: #3D444E;
+  --accent: #FFB22E;
+  --accent-soft: rgba(255, 178, 46, .14);
+  --fill: #FFB22E;
+  --fill-ink: #1A1000;
+  --fill-deep: #8F5200;
+  --focus: #7CC4FF;
+
+  --head: #050607;
+  --head-ink: #FFB22E;
+  --head-ink-2: #B9C0C8;
+  --head-text: #ECE8DD;
+  --head-line: #262B33;
+  --flap-top: #20242A;
+  --flap-bot: #16191D;
+
+  --led-off: #2A3038;
+  --glow: rgba(255, 178, 46, .55);
+  --up: #46D37E;
+  --up-soft: rgba(70, 211, 126, .14);
+  --down: #FF6B5A;
+  --down-soft: rgba(255, 107, 90, .15);
+  --gal: #FF5A45;
+  --gal-ink: #1A0400;
+  --bet: #F3EFE4;
+  --bet-ink: #0C0E11;
+  --chip-auto-bg: #13263A;
+  --chip-auto-ink: #A8D4FF;
+  --chip-volte-bg: #3A1610;
+  --chip-volte-ink: #FFB8AA;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 10px 30px rgba(0, 0, 0, .5);
+  --key-off: linear-gradient(#2C3138, #1C2026);
+  --key-off-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 2px 0 #000;
+  --key-dot: #4A515A;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
