@@ -436,9 +436,6 @@ function Workspace({
                     <abbr title="Startnumrets vinst % på distansen och startmetoden">Spår v.</abbr>
                   </th>
                   <th scope="col" className="r">
-                    <abbr title="Startnumrets plats % (topp 3) på distansen och startmetoden">Spår pl.</abbr>
-                  </th>
-                  <th scope="col" className="r">
                     Rikt
                   </th>
                   <th scope="col" className="c">
@@ -555,7 +552,6 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
       <QuickPct kind="win" v={s.quick.winPct} starts={s.quick.lifeStarts} />
       <QuickPct kind="place" v={s.quick.placePct} starts={s.quick.lifeStarts} />
       <td className="r num">{pct(s.quick.postPct, 0)}</td>
-      <td className="r num">{pct(s.quick.postPlacePct, 0)}</td>
       <td className="r">
         <RiktCell s={s} className="rk num dk" two />
       </td>
