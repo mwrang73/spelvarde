@@ -1,6 +1,7 @@
 // Hämta omgång (specen 10.1): stegkedjan som klienten kör, ett kort anrop per
 // steg. Steg 1 = spelet, steg 2–9 = hästarnas tidigare starter per
-// avdelning, steg 10 = travstatistik.se. Varje steg är idempotent (upsert och
+// avdelning, steg 10 = travstatistik.se (steg 11, riktodds, ligger i
+// lib/riktodds-server.ts). Varje steg är idempotent (upsert och
 // skipDuplicates), så Försök igen och Hämta igen dubblerar aldrig data.
 //
 // Gemensam data skrivs bara härifrån. userId används bara i FetchLog.
@@ -22,6 +23,7 @@ import {
 } from "@/lib/atg";
 import { matchPerson, normalizeName, parseShortName } from "@/lib/names";
 import { raceClass } from "@/lib/race-class";
+import { computeRoundRiktodds } from "@/lib/riktodds-server";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 import { TS_PAGES, TS_PAGE_KEYS, interpretPage, type LeagueData, type TsFetch } from "@/lib/travstatistik";
 import type { FetchChanges } from "@/lib/types";
@@ -286,6 +288,13 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
       r.starts.filter((s) => s.streck !== null && byKey.has(`${r.leg}:${s.number}`)).map((s) => ({ startId: byKey.get(`${r.leg}:${s.number}`)!, value: s.streck! })),
     );
     await db.roundSnapshot.create({ data: { roundId: round.id, kind: "FETCH", takenAt: now, values: { createMany: { data: values } } } });
+  }
+
+  // En strykning ändrar fältet (7.5): räkna om riktoddsen direkt, om omgången
+  // redan har riktodds. Steg 11 i kedjan räknar ändå om allt efteråt, men så
+  // blir det rätt även om kedjan stannar på vägen. Ett fel här stoppar inte steg 1.
+  if (changes.scratched.length && (await db.riktodds.count({ where: { start: { race: { roundId: round.id } } } }))) {
+    await computeRoundRiktodds(db, round.id, { now }).catch((e) => console.error("riktodds efter strykning", e));
   }
 
   // Alla lopp har resultat (eller är inställda): omgången är klar. Cron-jobbet

@@ -16,7 +16,7 @@ import type { NextStep } from "@/lib/phase";
 import type { RoundResponse } from "@/lib/types";
 import { useFetchChain } from "./fetchChain";
 import { FetchBanners, FetchSteps, runChain } from "./FetchUi";
-import { Counts, PhaseRail, firstTodoLeg } from "./parts";
+import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
 import { useRound } from "./RoundProvider";
 
 export function roundSub(data: RoundResponse | null): string {
@@ -104,7 +104,7 @@ export function RoundOverview() {
     <>
       <AppHeader brand title="Omgången" sub={roundSub(data)} actions={<HeaderActions roundId={data.round.id} gameId={data.round.atgGameId} />} />
       <main className="page" id="main">
-        <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} className="rail" />
+        <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} className="rail" />
         {!data.isCurrent && data.currentRoundId && (
           <div className="ban thin m10">
             <p>
@@ -126,6 +126,7 @@ export function RoundOverview() {
             </>
           )}
         </p>
+        <RoundLinks roundId={data.round.id} />
         <div className="sl">
           <h2 className="sl-h">Avdelningar</h2>
           {resume && <span className="todo">Hämtning ej klar</span>}
@@ -145,7 +146,7 @@ export function RoundOverview() {
                     {r.counts.scratched > 0 && ` · ${r.counts.scratched} strukna`}
                   </span>
                 </span>
-                {r.reviewed ? <Counts interesting={r.counts.interesting} /> : <span className="todo">Ej genomgången</span>}
+                {r.reviewed ? <Counts interesting={r.counts.interesting} spelbar={r.counts.spelbar} bet={r.counts.bet} /> : <span className="todo">Ej genomgången</span>}
                 <IconChev className="chev" />
               </Link>
             </li>

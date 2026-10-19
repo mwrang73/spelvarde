@@ -26,7 +26,7 @@ import { PHASE_LABELS } from "@/lib/phase";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { refetchStats, useFetchChain } from "./fetchChain";
 import { HorseCard } from "./HorseCard";
-import { Counts, PhaseRail, RaceTabs, firstTodoLeg } from "./parts";
+import { Counts, MarkBadges, PhaseRail, RaceTabs, RiktCell, RoundLinks, firstTodoLeg } from "./parts";
 import { RaceStatsContent } from "./RaceStats";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
 import { useRound } from "./RoundProvider";
@@ -319,7 +319,7 @@ function Workspace({
 
       <main className="ws" data-view={view} id="main">
         <nav className="dside d-only" aria-label="Avdelningar">
-          <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} className="rail-side" />
+          <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} className="rail-side" />
           <ul className="vlist">
             {data.races.map((r) => (
               <li key={r.id}>
@@ -339,11 +339,12 @@ function Workspace({
                       {hhmm(r.startAt)} · {r.distance} {methodLabel(r.startMethod)}
                     </small>
                   </span>
-                  {r.reviewed ? <Counts interesting={r.counts.interesting} /> : <span className="todo sm">Ej genomg.</span>}
+                  {r.reviewed ? <Counts interesting={r.counts.interesting} spelbar={r.counts.spelbar} bet={r.counts.bet} /> : <span className="todo sm">Ej genomg.</span>}
                 </a>
               </li>
             ))}
           </ul>
+          <RoundLinks roundId={roundId} className="side" />
         </nav>
 
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
@@ -415,7 +416,9 @@ function Workspace({
                 ))}
               </tbody>
             </table>
-            <p className="help">Vinst och plats: hela karriären (ATG). Spår %: startnumrets vinst % på distansen och startmetoden (travstatistik.se). Riktodds kommer i nästa version.</p>
+            <p className="help">
+              Vinst och plats: hela karriären (ATG). Spår %: startnumrets vinst % på distansen och startmetoden (travstatistik.se). Rikt: riktodds för plats, modell {data.model?.key ?? "v1"}, okalibrerad. * = osäkert.
+            </p>
           </div>
 
           <ReviewBar race={race} setReviewed={setReviewed} />
@@ -465,15 +468,14 @@ function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
         <span className="hl">
           <span className="sr">Nr {s.number}, </span>
           <span className="hn">{s.horse.name}</span>
+          <MarkBadges s={s} />
           {!s.scratched && <GallopBadge flag={s.form.gallop} />}
           {s.scratched && <span className="tag scr-tag">Struken</span>}
         </span>
         <Driver s={s} />
       </a>
       <FormStrip boxes={s.form.boxes} ariaLabel={s.form.ariaLabel} />
-      <span className="rk num" title="Riktodds kommer i nästa version">
-        –<span className="sr"> riktodds saknas</span>
-      </span>
+      <RiktCell s={s} />
       <LampToggle on={on} horseName={s.horse.name} disabledReason={started ? "Loppet har startat" : s.scratched ? "Hästen är struken" : null} onToggle={() => onToggle(s, !on)} />
     </li>
   );
@@ -499,6 +501,7 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
           <span className="hl">
             <span className="sr">Nr {s.number}, </span>
             <span className="hn">{s.horse.name}</span>
+            <MarkBadges s={s} />
             {!s.scratched && <GallopBadge flag={s.form.gallop} />}
             {s.scratched && <span className="tag scr-tag">Struken</span>}
           </span>
@@ -516,7 +519,9 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
       <td className="r num">{pct(s.quick.winPct, 0)}</td>
       <td className="r num">{pct(s.quick.placePct, 0)}</td>
       <td className="r num">{pct(s.quick.postPct)}</td>
-      <td className="r num rk">–</td>
+      <td className="r">
+        <RiktCell s={s} className="rk num dk" />
+      </td>
       <td className="c">
         <LampToggle on={on} horseName={s.horse.name} disabledReason={started ? "Loppet har startat" : s.scratched ? "Hästen är struken" : null} onToggle={() => onToggle(s, !on)} />
       </td>

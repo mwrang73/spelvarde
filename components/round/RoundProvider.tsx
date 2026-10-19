@@ -4,12 +4,18 @@
 // (localStorage), och omgången hämtas på nytt när providern monteras och
 // när sidan syns igen. Utkorgens poster läggs ovanpå (lib/round-overlay.ts),
 // så att byte av avdelning och häst aldrig behöver något nätverksanrop.
+//
+// Alla användaråtgärder (Intressant, Spelbar, Bet, odds, granskning och
+// V85-raden) läggs i utkorgen här och syns direkt.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ApiFailure } from "@/components/api";
 import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
-import { applyPending } from "@/lib/round-overlay";
+import { useToast } from "@/components/ui/Toast";
+import type { MarkChange } from "@/lib/marks";
+import { applyPending, type CouponBody } from "@/lib/round-overlay";
+import type { SpelbarInput } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { getRound, loadRound, subscribeRounds } from "./roundStore";
 
@@ -23,7 +29,15 @@ export type RoundContextValue = {
   refresh: () => Promise<void>;
   setInteresting: (race: RaceDto, start: StartDto, interesting: boolean) => void;
   setReviewed: (race: RaceDto, reviewed: boolean) => void;
+  // E2. Spelbar "on" gör också hästen Intressant (6.1).
+  setSpelbar: (race: RaceDto, start: StartDto, want: SpelbarInput) => void;
+  setBet: (race: RaceDto, start: StartDto, bet: boolean) => void;
+  setOdds: (race: RaceDto, start: StartDto, unibetOdds: number | null) => void;
+  saveCoupon: (body: CouponBody) => void;
 };
+
+// Loppet har startat enligt klockan (RaceDto.started gäller vid hämtningen).
+export const raceStarted = (race: RaceDto, now: number = Date.now()) => race.started || Date.parse(race.startAt) <= now;
 
 const RoundContext = createContext<RoundContextValue | null>(null);
 
@@ -62,15 +76,42 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
 
   const data = useMemo(() => (base ? applyPending(base, queue) : null), [base, queue]);
 
-  const setInteresting = useCallback(
-    (race: RaceDto, start: StartDto, interesting: boolean) => {
+  const toast = useToast();
+
+  const changeMark = useCallback(
+    (race: RaceDto, start: StartDto, change: MarkChange) => {
       addToOutbox({
         method: "PUT",
         url: `/api/marks/${start.id}`,
-        body: { interesting },
-        meta: { kind: "mark", roundId, raceId: race.id, startId: start.id, horseName: start.horse.name, interesting },
+        body: change,
+        meta: { kind: "mark", roundId, raceId: race.id, startId: start.id, horseName: start.horse.name },
       });
     },
+    [roundId],
+  );
+
+  const setInteresting = useCallback(
+    (race: RaceDto, start: StartDto, interesting: boolean) => {
+      changeMark(race, start, { interesting });
+      // Spelbar är en delmängd av Intressant (6.1): den försvinner med, med Ångra.
+      const m = start.mark;
+      if (!interesting && m?.spelbar) {
+        const undo: MarkChange = m.spelbarOverride === "ON" ? { interesting: true, spelbar: "on" } : { interesting: true };
+        toast({ text: "Spelbar togs också bort", action: { label: "Ångra", onClick: () => changeMark(race, start, undo) } });
+      }
+    },
+    [changeMark, toast],
+  );
+
+  const setSpelbar = useCallback(
+    (race: RaceDto, start: StartDto, want: SpelbarInput) => changeMark(race, start, want === "on" ? { interesting: true, spelbar: "on" } : { spelbar: want }),
+    [changeMark],
+  );
+  const setBet = useCallback((race: RaceDto, start: StartDto, bet: boolean) => changeMark(race, start, { bet }), [changeMark]);
+  const setOdds = useCallback((race: RaceDto, start: StartDto, unibetOdds: number | null) => changeMark(race, start, { unibetOdds }), [changeMark]);
+
+  const saveCoupon = useCallback(
+    (body: CouponBody) => addToOutbox({ method: "PUT", url: `/api/rounds/${roundId}/coupon`, body, meta: { kind: "coupon", roundId } }),
     [roundId],
   );
 
@@ -86,7 +127,10 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
     [roundId],
   );
 
-  const value = useMemo<RoundContextValue>(() => ({ roundId, data, load, refresh, setInteresting, setReviewed }), [roundId, data, load, refresh, setInteresting, setReviewed]);
+  const value = useMemo<RoundContextValue>(
+    () => ({ roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, saveCoupon }),
+    [roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, saveCoupon],
+  );
   return <RoundContext.Provider value={value}>{children}</RoundContext.Provider>;
 }
 

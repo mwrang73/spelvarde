@@ -12,13 +12,19 @@ export const GET = withUser("settings/get", async ({ user }) => {
   return NextResponse.json(settingsDto(s));
 });
 
-// I E1 bara { theme: "system" | "light" | "dark" }.
+// Något av { theme: "system" | "light" | "dark", rowPrice, spelbarGuideline }.
+// Bara fälten som skickas ändras. Svarar med alla inställningar.
 export const PUT = withUser("settings/put", async ({ req, user }) => {
   const body = await readJson(req, 1_000);
   if (!body) return badRequest("Ogiltig begäran.");
   const parsed = parseSettingsBody(body);
   if (!parsed.ok) return badRequest(parsed.error);
-  const theme = THEME_FROM_API[parsed.value.theme];
-  const s = await prisma.userSettings.upsert({ where: { userId: user.id }, create: { userId: user.id, theme }, update: { theme } });
+  const { theme, rowPrice, spelbarGuideline } = parsed.value;
+  const data = {
+    ...(theme ? { theme: THEME_FROM_API[theme] } : {}),
+    ...(rowPrice !== undefined ? { rowPrice } : {}),
+    ...(spelbarGuideline !== undefined ? { spelbarGuideline } : {}),
+  };
+  const s = await prisma.userSettings.upsert({ where: { userId: user.id }, create: { userId: user.id, ...data }, update: data });
   return NextResponse.json(settingsDto(s));
 });

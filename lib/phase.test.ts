@@ -76,7 +76,8 @@ describe("Nästa steg (3.2)", () => {
   it("5–7. Odds-steg bara när E2 är påslaget", () => {
     const oddsNow = at("2026-10-23T08:00:00Z");
     const rs = round(races({ reviewed: true }));
-    expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3 }).kind).toBe("ALL_REVIEWED");
+    const e1 = { odds: false, coupon: false, live: false, raceView: false, stats: false };
+    expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3, features: e1 }).kind).toBe("ALL_REVIEWED");
     const f = { odds: true, coupon: true, live: true, raceView: true, stats: true };
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3, features: f }).title).toBe("Fyll i Unibets odds – 3 kvar");
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, spelbarWithoutBet: 2, features: f }).title).toBe("Markera Bet – 2 spelbara");

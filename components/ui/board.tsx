@@ -2,7 +2,8 @@
 // Badge, FormStrip, LampToggle, Banner, EmptyState och Skeleton.
 
 import type { FormBox } from "@/lib/gallop";
-import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconWarn } from "./icons";
+import type { Override } from "@/lib/spelbar";
+import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconTicket, IconWarn } from "./icons";
 
 // ---- FlapNumber -----------------------------------------------------------------------
 
@@ -98,6 +99,94 @@ export function LampToggle({
       {labeled && <span>Intressant</span>}
       {disabled && !labeled && <span className="sr">, {disabledReason}</span>}
     </button>
+  );
+}
+
+// ---- BetToggle ---------------------------------------------------------------------------
+
+// Samma tangent som lampan, med biljettikon. Tänd tangent är inverterad (--bet).
+export function BetToggle({
+  on,
+  horseName,
+  labeled,
+  disabledReason,
+  onToggle,
+}: {
+  on: boolean;
+  horseName: string;
+  labeled?: boolean;
+  disabledReason?: string | null;
+  onToggle: () => void;
+}) {
+  const disabled = !!disabledReason;
+  return (
+    <button
+      type="button"
+      className={`betk${labeled ? " lab" : ""}`}
+      aria-pressed={on}
+      aria-label={labeled ? undefined : `Bet: ${horseName}`}
+      aria-disabled={disabled || undefined}
+      title={disabledReason ?? undefined}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!disabled) onToggle();
+      }}
+    >
+      <span className="lamp-i" aria-hidden="true">
+        <IconTicket />
+      </span>
+      {labeled && <span>Bet</span>}
+      {disabled && !labeled && <span className="sr">, {disabledReason}</span>}
+    </button>
+  );
+}
+
+// ---- SpelbarToggle -----------------------------------------------------------------------
+
+export function spelbarOrigin(on: boolean, override: Override): string {
+  if (override === "ON") return "Satt av dig";
+  if (override === "OFF") return "Borttagen av dig";
+  return on ? "Förslag" : "Inte föreslagen";
+}
+
+// Chip med "S Spelbar" och ursprunget som underrad (Förslag, Satt av dig,
+// Borttagen av dig).
+export function SpelbarToggle({
+  on,
+  override,
+  id,
+  disabledReason,
+  onToggle,
+}: {
+  on: boolean;
+  override: Override;
+  id: string;
+  disabledReason?: string | null;
+  onToggle: () => void;
+}) {
+  const disabled = !!disabledReason;
+  return (
+    <span className="sp-wrap">
+      <button
+        type="button"
+        className="sptg"
+        aria-pressed={on}
+        aria-describedby={`${id}-o`}
+        aria-disabled={disabled || undefined}
+        title={disabledReason ?? undefined}
+        onClick={() => {
+          if (!disabled) onToggle();
+        }}
+      >
+        <span className="bdg s" aria-hidden="true">
+          S
+        </span>
+        Spelbar
+      </button>
+      <span className="sp-orig" id={`${id}-o`}>
+        {spelbarOrigin(on, override)}
+      </span>
+    </span>
   );
 }
 

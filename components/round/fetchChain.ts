@@ -40,7 +40,7 @@ export function clearChainError() {
 
 export async function startFetchChain(opts: { from: ResumePoint; gameId: string | null; roundId: string | null }): Promise<ChainResult | null> {
   if (state.kind === "running") return null;
-  set({ kind: "running", roundId: opts.roundId, progress: { step: opts.from.step, leg: null, gameDone: opts.from.step !== "GAME", legsDone: 0, statsDone: false } });
+  set({ kind: "running", roundId: opts.roundId, progress: { step: opts.from.step, leg: null, gameDone: opts.from.step !== "GAME", legsDone: 0, statsDone: opts.from.step === "RIKTODDS", riktoddsDone: false } });
   const result = await runFetchChain(rawPost, opts, (progress) => set({ kind: "running", roundId: opts.roundId, progress }));
   const roundId = result.ok ? result.roundId : result.roundId;
   clearDetails();

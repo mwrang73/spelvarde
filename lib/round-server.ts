@@ -1,9 +1,11 @@
 // Läsning av omgången för klienten: GET /api/rounds/current, /api/rounds/[id],
 // /api/rounds/[id]/races/[leg]/stats och /api/starts/[id]. Allt
-// användarägt (Mark, RaceReview, HorseComment) filtreras på userId.
+// användarägt (Mark, RaceReview, HorseComment, Coupon, UserSettings)
+// filtreras på userId. Riktodds är gemensamt och läses för den aktiva
+// modellversionen.
 
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, dateStr, dec, iso, markDto, personDto, roundDto, yearStatsDto } from "@/lib/dto";
+import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, couponDto, dateStr, dec, iso, markDto, personDto, riktoddsDetailDto, roundDto, settingsDto, yearStatsDto } from "@/lib/dto";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
 import { computePhase, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
@@ -52,6 +54,15 @@ type FullRound = Prisma.RoundGetPayload<{ include: ReturnType<typeof roundInclud
 export async function loadFullRound(db: Db, roundId: string, userId: string): Promise<FullRound | null> {
   return db.round.findUnique({ where: { id: roundId }, include: roundInclude(userId) });
 }
+
+// Aktiv modellversion och dess riktodds per start i omgången.
+export async function activeRiktodds(db: Db, roundId: string) {
+  const model = await db.modelVersion.findFirst({ where: { active: true } });
+  const rows = model ? await db.riktodds.findMany({ where: { modelVersionId: model.id, start: { race: { roundId } } } }) : [];
+  return { model, byStart: new Map(rows.map((r) => [r.startId, r])) };
+}
+
+const riktOf = (r: { odds: Prisma.Decimal } | undefined) => (r ? Number(r.odds) : null);
 
 // De 5 senaste riktiga starterna per häst före datumet, i en fråga.
 export async function lastRecordsByHorse(db: Db, horseIds: string[], before: Date, n = 5): Promise<Map<string, FormRecord[]>> {
@@ -116,7 +127,13 @@ export async function fetchState(db: Db, round: { id: string; fetchStatus: Fetch
   const lastStats = lastGame
     ? await db.fetchLog.findFirst({ where: { roundId: round.id, step: "STATS", ok: true, startedAt: { gte: lastGame.startedAt } } })
     : null;
+  // Steg 11: misslyckades senaste riktoddsräkningen efter senaste steg 1 ska
+  // kedjan fortsätta därifrån, även om resten är klart.
+  const lastRikt = lastGame
+    ? await db.fetchLog.findFirst({ where: { roundId: round.id, step: "RIKTODDS", startedAt: { gte: lastGame.startedAt } }, orderBy: { startedAt: "desc" } })
+    : null;
   let resumeFrom: ResumePoint | null = null;
+  if (round.fetchStatus === "COMPLETE" && lastRikt && !lastRikt.ok) resumeFrom = { step: "RIKTODDS" };
   if (round.fetchStatus !== "COMPLETE") {
     const missing = [...races].sort((a, b) => a.leg - b.leg).find((r) => !r.recordsFetchedAt);
     if (!lastGame || races.length < 8) resumeFrom = { step: "GAME" };
@@ -180,19 +197,24 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
   if (!round) return null;
   const date = dateStr(round.date);
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
-  const [records, streck, stats, fetch, currentId] = await Promise.all([
+  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon] = await Promise.all([
     lastRecordsByHorse(db, horseIds, round.date),
     latestStreck(db, round.id),
     latestStats(db, round.id),
     fetchState(db, round, round.races),
     currentRoundId(db),
+    activeRiktodds(db, round.id),
+    db.userSettings.findUnique({ where: { userId } }),
+    db.coupon.findUnique({ where: { userId_roundId: { userId, roundId: round.id } } }),
   ]);
+  const settings = settingsDto(settingsRow);
   const lines = statsLines(round, stats, streck);
 
   const races: RaceDto[] = round.races.map((r) => {
     const legRow = stats.startnr?.data.legs.find((l) => l.leg === r.leg && l.distance === r.distance && l.method === r.startMethod) ?? null;
     const starts: StartDto[] = r.starts.map((s) => {
-      const mark = s.marks[0] ? markDto(s.marks[0]) : null;
+      const r = rikt.byStart.get(s.id);
+      const mark = s.marks[0] ? markDto(s.marks[0], riktOf(r), settings.spelbarGuideline) : null;
       const form = formSummary(records.get(s.horseId) ?? [], date);
       const sv = streck?.values.get(s.id);
       return {
@@ -208,8 +230,9 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
         prevDriver: personDto(s.prevDriver),
         form,
         streck: sv === undefined ? null : sv / 100,
-        riktodds: null,
-        uncertain: form.fewStarts,
+        riktodds: riktOf(r),
+        probTop3: r ? Number(r.probTop3) : null,
+        uncertain: r ? r.uncertain : form.fewStarts,
         mark,
         result: s.resultAt
           ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) }
@@ -248,6 +271,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
 
   const phaseRaces: NextStepRace[] = round.races.map((r) => ({ leg: r.leg, name: r.name, startAt: r.startAt, hasResult: !!r.resultAt, cancelled: r.cancelled, reviewed: reviewedRace(r) }));
   const phase = computePhase(date, phaseRaces, now);
+  const open = races.filter((r) => !r.started).flatMap((r) => r.starts).filter((s) => !s.scratched);
   return {
     serverTime: now.toISOString(),
     rev: round.rev,
@@ -258,14 +282,18 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     phaseRail: phaseRail(date, phase),
     nextStep: nextStep({
       now,
-      round: { id: round.id, date, fetchStatus: round.fetchStatus, races: phaseRaces },
+      round: { id: round.id, date, fetchStatus: fetch.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
       nextAvailable: null,
-      interestingWithoutOdds: races.flatMap((r) => r.starts).filter((s) => s.mark?.interesting && s.mark.unibetOdds === null && !s.scratched).length,
+      interestingWithoutOdds: open.filter((s) => s.mark?.interesting && s.mark.unibetOdds === null).length,
+      spelbarWithoutBet: open.filter((s) => s.mark?.spelbar && !s.mark.bet).length,
+      hasCoupon: !!coupon,
     }),
     fetch,
     races,
     latestStreck: streck ? { kind: streck.kind, takenAt: streck.takenAt.toISOString() } : null,
-    coupon: null,
+    coupon: coupon ? couponDto(coupon) : null,
+    model: rikt.model ? { id: rikt.model.id, key: rikt.model.key } : null,
+    settings: { spelbarGuideline: settings.spelbarGuideline, rowPrice: settings.rowPrice },
   };
 }
 
@@ -296,8 +324,9 @@ export async function buildCurrentResponse(
   const phaseRaces: NextStepRace[] = round.races.map((r) => ({ leg: r.leg, name: r.name, startAt: r.startAt, hasResult: !!r.resultAt, cancelled: r.cancelled, reviewed: reviewedRace(r) }));
   const phase = computePhase(date, phaseRaces, now);
   const next = phase === "KLART" ? await getNextAvailable() : null;
+  const rikt = await activeRiktodds(db, round.id);
   const legs: LegSummary[] = round.races.map((r) => {
-    const marks = r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0]) : null));
+    const marks = r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0], riktOf(rikt.byStart.get(s.id))) : null));
     return {
       raceId: r.id,
       leg: r.leg,
@@ -315,6 +344,7 @@ export async function buildCurrentResponse(
       hasResult: !!r.resultAt,
     };
   });
+  const fetchNow = await fetchState(db, round, round.races);
   return {
     serverTime: now.toISOString(),
     round: roundDto(round),
@@ -322,10 +352,10 @@ export async function buildCurrentResponse(
     phaseRail: phaseRail(date, phase),
     nextStep: nextStep({
       now,
-      round: { id: round.id, date, fetchStatus: round.fetchStatus, races: phaseRaces },
+      round: { id: round.id, date, fetchStatus: fetchNow.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
       nextAvailable: next?.game ? { gameId: next.game.gameId, trackName: next.game.trackName, date: next.game.date, fetched: next.fetched } : null,
     }),
-    fetch: await fetchState(db, round, round.races),
+    fetch: fetchNow,
     legs,
     nextAvailable: next,
   };
@@ -430,7 +460,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
   if (!s) return null;
   const roundDate = s.race.round.date;
   const date = dateStr(roundDate);
-  const [records, total, comments, stats, streck] = await Promise.all([
+  const [records, total, comments, stats, streck, model, settingsRow] = await Promise.all([
     db.horseRecord.findMany({ where: { horseId: s.horseId, date: { lt: roundDate }, scratched: false }, orderBy: { date: "desc" }, take: 10 }),
     db.horseRecord.count({ where: { horseId: s.horseId, date: { lt: roundDate }, scratched: false } }),
     db.horseComment.findMany({
@@ -440,7 +470,10 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
     }),
     latestStats(db, s.race.roundId),
     latestStreck(db, s.race.roundId),
+    db.modelVersion.findFirst({ where: { active: true } }),
+    db.userSettings.findUnique({ where: { userId } }),
   ]);
+  const rikt = model ? await db.riktodds.findUnique({ where: { startId_modelVersionId: { startId: s.id, modelVersionId: model.id } } }) : null;
   const formRecords: FormRecord[] = records.map((r) => ({ date: dateStr(r.date), trackName: r.trackName, place: r.place, galloped: r.galloped, disqualified: r.disqualified }));
   const form = formSummary(formRecords, date);
   const year = date.slice(0, 4);
@@ -448,7 +481,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
   const hs = asHorseStats(s.horseStatsJson);
   const legRow = stats.startnr?.data.legs.find((l) => l.leg === s.race.leg && l.distance === s.race.distance && l.method === s.race.startMethod) ?? null;
   const sv = streck?.values.get(s.id);
-  const mark = s.marks[0] ? markDto(s.marks[0]) : null;
+  const mark = s.marks[0] ? markDto(s.marks[0], riktOf(rikt ?? undefined), settingsDto(settingsRow).spelbarGuideline) : null;
 
   return {
     start: {
@@ -464,8 +497,9 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       prevDriver: personDto(s.prevDriver),
       form,
       streck: sv === undefined ? null : sv / 100,
-      riktodds: null,
-      uncertain: form.fewStarts,
+      riktodds: riktOf(rikt ?? undefined),
+      probTop3: rikt ? Number(rikt.probTop3) : null,
+      uncertain: rikt ? rikt.uncertain : form.fewStarts,
       mark,
       result: s.resultAt ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) } : null,
       quick: quickStats(s.horseStatsJson, legRow, s.number),
@@ -500,7 +534,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       post: legRow ? { number: s.number, pct: legRow.byNumber.find((b) => b.n === s.number)?.pct ?? null, races: legRow.races } : null,
     },
     comments: comments.map(commentDto),
-    riktodds: null,
+    riktodds: rikt && model ? riktoddsDetailDto(rikt, model) : null,
     tips: [],
   };
 }

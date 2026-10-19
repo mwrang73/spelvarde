@@ -81,6 +81,10 @@
   --gal-warn-ink: #FFD0C8;
   --scrim: rgba(0, 0, 0, .5);
   --tick: #46D37E;
+  /* E2: över budget, skillnad och släckt LED-display på tavlan (samma i båda teman). */
+  --head-down: #FF8A7A;
+  --head-up: #46D37E;
+  --led-dim: #5B636D;
 
   /* Typsnitt. next/font sätter --font-*-variablerna i app/layout.tsx. */
   --f-display: var(--font-doto, "Doto"), "Courier New", ui-monospace, monospace;

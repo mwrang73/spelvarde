@@ -6,8 +6,8 @@
 // Toaster visas av OutboxProvider via setOutboxNotifier().
 
 import { patchHorseComments, patchRound } from "@/components/round/roundStore";
-import { OutboxRunner, conflictMessage, type OutboxItem, type OutboxMethod, type OutboxStatus } from "@/lib/outbox";
-import { applyCommentDone, applyDone, metaOf, retryText, type ItemMeta } from "@/lib/round-overlay";
+import { OutboxRunner, type OutboxItem, type OutboxMethod, type OutboxStatus } from "@/lib/outbox";
+import { applyCommentDone, applyDone, conflictText, metaOf, rejectedText, retryText, type ItemMeta } from "@/lib/round-overlay";
 
 export type OutboxSnapshot = { queue: OutboxItem[]; status: OutboxStatus };
 
@@ -43,7 +43,7 @@ function onChange(status: OutboxStatus, queue: OutboxItem[]) {
 function onDone(item: OutboxItem, response: unknown) {
   const m = metaOf(item);
   if (!m) return;
-  if (m.kind === "mark" || m.kind === "review") patchRound(m.roundId, (data) => applyDone(data, item, response));
+  if (m.kind === "mark" || m.kind === "review" || m.kind === "coupon") patchRound(m.roundId, (data) => applyDone(data, item, response));
   if (m.kind === "comment" || m.kind === "comment-delete") patchHorseComments(m.horseId, (comments) => applyCommentDone(comments, item, response));
 }
 
@@ -66,11 +66,8 @@ function getRunner(): OutboxRunner | null {
     {
       onChange,
       onDone,
-      onConflict: (item) => notifier?.conflict(conflictMessage(item)),
-      onRejected: (item, error) => {
-        const m = metaOf(item);
-        notifier?.rejected(m?.kind === "mark" ? `Kunde inte spara Intressant för ${m.horseName}: ${error}` : error);
-      },
+      onConflict: (item) => notifier?.conflict(conflictText(item)),
+      onRejected: (item, error) => notifier?.rejected(rejectedText(item, error)),
       onAuthRequired: () => notifier?.auth(),
     },
   );

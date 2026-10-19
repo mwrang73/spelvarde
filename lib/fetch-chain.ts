@@ -8,13 +8,15 @@ import type { FetchGameResponse, ResumePoint } from "@/lib/types";
 export type ChainPost = (url: string, body?: unknown) => Promise<{ status: number; data: unknown }>;
 
 export type ChainProgress = {
-  step: "GAME" | "RACE" | "STATS";
+  step: "GAME" | "RACE" | "STATS" | "RIKTODDS";
   // Avdelningen som hämtas just nu (steg RACE).
   leg: number | null;
   gameDone: boolean;
   // Avdelningar som är klara i den här körningen eller tidigare.
   legsDone: number;
   statsDone: boolean;
+  // Steg 11 (E2).
+  riktoddsDone: boolean;
 };
 
 export type ChainResult =
@@ -37,6 +39,7 @@ export function stoppedAtRace(leg: number): string {
   return `Hämtningen stannade vid avd ${leg}: ATG svarade inte. Det som redan hämtats är sparat.`;
 }
 export const STOPPED_AT_STATS = "Hämtningen stannade vid statistiken: travstatistik.se svarade inte. Det som redan hämtats är sparat.";
+export const STOPPED_AT_RIKTODDS = "Hämtningen stannade vid riktoddsen: de kunde inte räknas. Det som redan hämtats är sparat.";
 
 export async function runFetchChain(
   post: ChainPost,
@@ -44,8 +47,9 @@ export async function runFetchChain(
   onProgress: (p: ChainProgress) => void = () => {},
 ): Promise<ChainResult> {
   let roundId = opts.roundId;
-  const startLeg = opts.from.step === "RACE" ? opts.from.leg : opts.from.step === "STATS" ? 9 : 1;
-  const p: ChainProgress = { step: opts.from.step, leg: null, gameDone: opts.from.step !== "GAME", legsDone: startLeg - 1, statsDone: false };
+  const from = opts.from.step;
+  const startLeg = opts.from.step === "RACE" ? opts.from.leg : from === "STATS" || from === "RIKTODDS" ? 9 : 1;
+  const p: ChainProgress = { step: from, leg: null, gameDone: from !== "GAME", legsDone: startLeg - 1, statsDone: from === "RIKTODDS", riktoddsDone: false };
   const emit = () => onProgress({ ...p });
 
   // Steg 1: spelet.
@@ -84,18 +88,31 @@ export async function runFetchChain(
     p.legsDone = leg;
   }
 
+  const status = async (url: string) => {
+    try {
+      return (await post(url)).status;
+    } catch {
+      return 0;
+    }
+  };
+
   // Steg 10: travstatistik.se.
-  p.step = "STATS";
+  if (from !== "RIKTODDS") {
+    p.step = "STATS";
+    p.leg = null;
+    emit();
+    const s = await status(`/api/rounds/${roundId}/fetch/stats`);
+    if (s < 200 || s >= 300) return { ok: false, kind: "PARTIAL", message: STOPPED_AT_STATS, roundId: roundId!, resumeFrom: { step: "STATS" } };
+    p.statsDone = true;
+  }
+
+  // Steg 11: riktodds med aktiv modell (7.5).
+  p.step = "RIKTODDS";
   p.leg = null;
   emit();
-  let status = 0;
-  try {
-    status = (await post(`/api/rounds/${roundId}/fetch/stats`)).status;
-  } catch {
-    status = 0;
-  }
-  if (status < 200 || status >= 300) return { ok: false, kind: "PARTIAL", message: STOPPED_AT_STATS, roundId: roundId!, resumeFrom: { step: "STATS" } };
-  p.statsDone = true;
+  const r = await status(`/api/rounds/${roundId}/riktodds`);
+  if (r < 200 || r >= 300) return { ok: false, kind: "PARTIAL", message: STOPPED_AT_RIKTODDS, roundId: roundId!, resumeFrom: { step: "RIKTODDS" } };
+  p.riktoddsDone = true;
   emit();
   return { ok: true, roundId: roundId! };
 }
@@ -105,5 +122,6 @@ export async function runFetchChain(
 export function resumeMessage(from: ResumePoint): string {
   if (from.step === "GAME") return "Hämtningen av startlistan blev inte klar. Det som redan hämtats är sparat.";
   if (from.step === "RACE") return stoppedAtRace(from.leg);
+  if (from.step === "RIKTODDS") return STOPPED_AT_RIKTODDS;
   return STOPPED_AT_STATS;
 }

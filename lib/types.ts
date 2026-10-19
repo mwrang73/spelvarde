@@ -5,6 +5,7 @@
 
 import type { FormSummary, GallopWarning } from "@/lib/gallop";
 import type { NextStep, Phase, PhaseStep } from "@/lib/phase";
+import type { InputKey } from "@/lib/riktodds";
 import type { Bucket, LeagueRow, StartnrGroup, StartnrLeg } from "@/lib/travstatistik";
 
 export type ApiError = { error: string; code?: string };
@@ -25,7 +26,7 @@ export type FetchChanges = {
 };
 
 // Var kedjan ska fortsätta. null = allt klart.
-export type ResumePoint = { step: "GAME" } | { step: "RACE"; leg: number } | { step: "STATS" };
+export type ResumePoint = { step: "GAME" } | { step: "RACE"; leg: number } | { step: "STATS" } | { step: "RIKTODDS" };
 
 export type FetchState = {
   status: FetchStatus;
@@ -63,6 +64,16 @@ export type FetchStatsResponse = {
   pages: { key: string; ok: boolean; error: string | null }[];
   aliases: { linked: number; unlinked: number };
   fetchStatus: "COMPLETE" | "PARTIAL";
+};
+
+// POST /api/rounds/[id]/riktodds (steg 11 och "Räkna om omgången")
+export type RiktoddsStepResponse = {
+  roundId: string;
+  modelKey: string;
+  // Antal starter som fick riktodds.
+  computed: number;
+  // Avdelningar utan riktodds (färre än 4 startande).
+  skippedLegs: number[];
 };
 
 // GET /api/rounds/next-available
@@ -105,9 +116,13 @@ export type MarkDto = {
   unibetOddsAt: string | null;
   unibetOddsPrev: number | null;
   updatedAt: string;
-  // Beräknade (6.1). Alltid false i E1 (inget riktodds).
+  // Beräknade (6.1) med det aktiva riktoddset.
   forslag: boolean;
   spelbar: boolean;
+  // Det aktiva riktoddset som förslaget räknades mot (null = saknas).
+  riktodds: number | null;
+  // Unibet-oddset är under riktlinjen (2,00): taggen "Under 2,00".
+  belowGuideline: boolean;
 };
 
 export type StartResultDto = {
@@ -134,8 +149,11 @@ export type StartDto = {
   form: FormSummary;
   // Senaste streck i procent med två decimaler (19.24), null innan V85 öppnat.
   streck: number | null;
-  // E2. Alltid null i E1.
+  // Aktivt riktodds (plats) och chans till topp 3 (0–1). null = saknas
+  // (struken, lopp med färre än 4 startande eller inte räknat än).
   riktodds: number | null;
+  probTop3: number | null;
+  // Riktoddset är osäkert (7.2 punkt 6). Utan riktodds: färre än 5 starter.
   uncertain: boolean;
   mark: MarkDto | null;
   result: StartResultDto | null;
@@ -192,8 +210,12 @@ export type RoundResponse = {
   fetch: FetchState;
   races: RaceDto[];
   latestStreck: { kind: "BASELINE" | "LIVE" | "FETCH"; takenAt: string } | null;
-  // E2.
-  coupon: null;
+  // Användarens V85-rad för omgången (null = inte sparad).
+  coupon: CouponDto | null;
+  // Modellversionen som riktoddsen kommer från.
+  model: { id: string; key: string } | null;
+  // Användarens inställningar som S4 och S6 behöver.
+  settings: { spelbarGuideline: number; rowPrice: number };
 };
 
 export type LegSummary = {
@@ -328,9 +350,29 @@ export type StartDetailResponse = {
     post: { number: number; pct: number | null; races: number } | null;
   };
   comments: CommentDto[];
-  // E2 och E5.
-  riktodds: null;
+  // Riktodds med förklaring (7.4). null = saknas.
+  riktodds: RiktoddsDetailDto | null;
+  // E5.
   tips: [];
+};
+
+export type WhyRowDto = { key: InputKey; text: string; contribution: number };
+
+export type RiktoddsDetailDto = {
+  modelKey: string;
+  computedAt: string;
+  odds: number;
+  probTop3: number;
+  uncertain: boolean;
+  // "Osäkert: färre än 5 starter" (visas överst), null när det inte är osäkert.
+  uncertainLine: string | null;
+  // Högst 3 + 3, bidrag under 0,15 visas inte. Störst först.
+  pros: WhyRowDto[];
+  cons: WhyRowDto[];
+  // "Chans till topp 3 ≈ 31 % → 1 / 0,31 = 3,20"
+  calcLine: string;
+  // Alla bidrag c_ij = w_j · z_ij.
+  contributions: Record<InputKey, number>;
 };
 
 // GET /api/horses/[id]/comments
@@ -343,6 +385,36 @@ export type MarkResponse = { mark: MarkDto };
 
 // PUT /api/races/[id]/review
 export type ReviewResponse = { raceId: string; reviewed: boolean; review: { reviewedAt: string; noneInteresting: boolean } | null };
+
+// GET/PUT /api/rounds/[id]/coupon
+export type CouponDto = {
+  roundId: string;
+  budget: number;
+  rowPrice: number;
+  // { "1": [3, 10], "2": [5], … }
+  selections: Record<string, number[]>;
+  lockedLegs: number[];
+  rows: number;
+  cost: number;
+  updatedAt: string;
+};
+export type CouponResponse = { coupon: CouponDto | null; defaults: { budget: number; rowPrice: number } };
+
+// GET/PUT /api/admin/model
+export type ModelDto = {
+  id: string;
+  key: string;
+  weights: Record<InputKey, number>;
+  params: { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number };
+  active: boolean;
+  createdAt: string;
+};
+export type ModelResponse = {
+  active: ModelDto | null;
+  versions: ModelDto[];
+  // PUT: omräkningen av aktuell omgång (null om ingen omgång finns).
+  recomputed?: RiktoddsStepResponse | null;
+};
 
 // GET/PUT /api/settings
 export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number };

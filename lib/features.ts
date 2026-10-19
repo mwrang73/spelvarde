@@ -13,4 +13,4 @@ export type Features = {
   stats: boolean;
 };
 
-export const FEATURES: Features = { odds: false, coupon: false, live: false, raceView: false, stats: false };
+export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: false, stats: false };

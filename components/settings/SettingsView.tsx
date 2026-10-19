@@ -1,8 +1,9 @@
 "use client";
 
-// S10 Inställningar, E1-delen: tema (System, Ljust, Mörkt) och konto (byt
-// lösenord, logga ut). Temat gäller direkt och sparas både i webbläsaren
-// (sv-theme, för att inte blinka) och i kontot (PUT /api/settings).
+// S10 Inställningar: tema (System, Ljust, Mörkt), riktlinje och radpris
+// (E2), riktoddsmodellen (E2, bara ADMIN) och konto (byt lösenord, logga
+// ut). Temat gäller direkt och sparas både i webbläsaren (sv-theme, för att
+// inte blinka) och i kontot (PUT /api/settings).
 
 import { useEffect, useId, useState } from "react";
 import { apiGet, apiRequest } from "@/components/api";
@@ -10,6 +11,7 @@ import { AppHeader } from "@/components/shell/AppHeader";
 import { applyTheme, readThemeChoice } from "@/components/shell/theme-client";
 import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
+import { GameSettings, ModelAdmin } from "./GameSettings";
 import type { ThemeChoice } from "@/lib/theme";
 import type { MeResponse, SettingsDto } from "@/lib/types";
 
@@ -22,6 +24,7 @@ const THEMES: { value: ThemeChoice; label: string }[] = [
 export function SettingsView() {
   const [theme, setTheme] = useState<ThemeChoice | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [settings, setSettings] = useState<SettingsDto | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -31,6 +34,7 @@ export function SettingsView() {
     // Har webbläsaren inget eget val gäller kontots.
     apiGet<SettingsDto>("/api/settings")
       .then((s) => {
+        setSettings(s);
         if (local === "system" && s.theme !== "system") {
           applyTheme(s.theme);
           setTheme(s.theme);
@@ -55,7 +59,7 @@ export function SettingsView() {
 
   return (
     <>
-      <AppHeader title="Inställningar" sub="Tema och konto" back={{ href: "/", label: "Tillbaka till omgången" }} />
+      <AppHeader title="Inställningar" sub="Tema, spel och konto" back={{ href: "/", label: "Tillbaka till omgången" }} />
       <main className="page" id="main">
         <section className="set-sec" aria-labelledby="h-tema">
           <h2 id="h-tema" className="sl">
@@ -71,6 +75,10 @@ export function SettingsView() {
           </div>
           <p className="help">System följer telefonens eller datorns inställning.</p>
         </section>
+
+        <GameSettings settings={settings} onChange={setSettings} />
+
+        {me?.role === "ADMIN" && <ModelAdmin />}
 
         <section className="set-sec" aria-labelledby="h-konto">
           <h2 id="h-konto" className="sl">

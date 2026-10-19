@@ -1,19 +1,22 @@
 "use client";
 
-// S3 Hästkortet (specen 5, S3) utan riktodds och tips (E2, E5). Det som
-// finns i omgångens cache (namn, kusk, form, galopp, Intressant) visas
-// direkt. Tidigare starter, statistik och kommentarer hämtas med
-// GET /api/starts/[id] när kortet öppnas (förhandsladdas för grannhästarna).
+// S3 Hästkortet (specen 5, S3) utan tips (E5). Det som finns i omgångens
+// cache (namn, kusk, form, galopp, Intressant, Spelbar, Bet, riktodds) visas
+// direkt. Tidigare starter, statistik, kommentarer och riktoddsets skäl
+// hämtas med GET /api/starts/[id] när kortet öppnas (förhandsladdas för
+// grannhästarna).
 
 import { forwardRef, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { rawPost } from "@/components/api";
 import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
-import { Badge, Banner, FlapNumber, LampToggle, Skeleton } from "@/components/ui/board";
+import { Badge, Banner, BetToggle, FlapNumber, LampToggle, Skeleton, SpelbarToggle } from "@/components/ui/board";
 import { useToast } from "@/components/ui/Toast";
-import { ageSex, distShort, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
+import { ageSex, distShort, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
 import { applyPendingComments, type CommentBody, type PendingComment } from "@/lib/round-overlay";
 import type { CommentDto, RaceDto, RoundResponse, StartDetailResponse, StartDto, YearStatsDto } from "@/lib/types";
+import { RiktoddsBox } from "./Riktodds";
+import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
 
 export function useDetail(startId: string) {
@@ -52,8 +55,13 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
 
   const d = detail.data;
   const warning = start.form.warning;
-  const locked = race.started ? "Loppet har startat" : start.scratched ? "Hästen är struken" : null;
+  const started = raceStarted(race, now.getTime());
+  const locked = started ? "Loppet har startat" : start.scratched ? "Hästen är struken" : null;
   const on = !!start.mark?.interesting;
+  const { setSpelbar, setBet } = useRound();
+  const mark = start.mark;
+  const override = mark?.spelbarOverride ?? "NONE";
+  const isSpelbar = !!mark?.spelbar;
 
   return (
     <article className="hk" aria-labelledby={`hk-${start.id}`}>
@@ -93,8 +101,22 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
 
       <div className="acts-row">
         <LampToggle labeled on={on} horseName={start.horse.name} disabledReason={locked} onToggle={() => onToggle(!on)} />
-        {race.started && <span className="help">Loppet har startat. Intressant är låst.</span>}
+        <SpelbarToggle id={`sp-${start.id}`} on={isSpelbar} override={override} disabledReason={locked} onToggle={() => setSpelbar(race, start, isSpelbar ? "off" : "on")} />
+        <span className="sp-wrap">
+          <BetToggle labeled on={!!mark?.bet} horseName={start.horse.name} disabledReason={started || (start.scratched && !mark?.bet) ? locked : null} onToggle={() => setBet(race, start, !mark?.bet)} />
+          <span className="sp-orig">{mark?.bet ? (mark.betOdds !== null ? `Odds ${odds(mark.betOdds)}` : "Utan odds") : "Inte spelad"}</span>
+        </span>
       </div>
+      {override !== "NONE" && !locked && (
+        <p className="acts-sub">
+          <button type="button" className="linkish" onClick={() => setSpelbar(race, start, "auto")}>
+            Återställ till förslag
+          </button>
+        </p>
+      )}
+      {started && <p className="acts-sub help">Loppet har startat. Intressant, Spelbar och Bet är låsta.</p>}
+
+      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} guideline={data.settings?.spelbarGuideline ?? 2} />
 
       <section className="hk-sec" aria-labelledby={`st-${start.id}`}>
         <h3 id={`st-${start.id}`}>Statistik</h3>

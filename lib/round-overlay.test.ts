@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OutboxItem } from "@/lib/outbox";
-import { applyCommentDone, applyDone, applyPending, applyPendingComments, retryText } from "@/lib/round-overlay";
+import { applyCommentDone, applyDone, applyPending, applyPendingComments, conflictText, retryText } from "@/lib/round-overlay";
 import type { CommentDto, RaceDto, RoundResponse, StartDto } from "@/lib/types";
 
 const NOW = new Date("2026-10-19T12:00:00Z");
@@ -20,9 +20,10 @@ function start(id: string, number: number, interesting = false): StartDto {
     form: { boxes: [], ariaLabel: "", gallop: null, warning: null, fewStarts: true, debut: true },
     streck: null,
     riktodds: null,
+    probTop3: null,
     uncertain: true,
     mark: interesting
-      ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", forslag: false, spelbar: false }
+      ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", forslag: false, spelbar: false, riktodds: null, belowGuideline: false }
       : null,
     result: null,
     quick: { winPct: null, placePct: null, postPct: null },
@@ -67,6 +68,8 @@ function round(): RoundResponse {
     races: [race(1, [start("a", 1), start("b", 2)]), race(2, [start("c", 1, true)])],
     latestStreck: null,
     coupon: null,
+    model: null,
+    settings: { spelbarGuideline: 2, rowPrice: 0.5 },
   };
 }
 
@@ -145,5 +148,43 @@ describe("kommentarer", () => {
   });
   it("toasttext vid nytt försök", () => {
     expect(retryText(markItem("a", true))).toBe("Kunde inte spara Intressant för Häst. Försöker igen.");
+  });
+});
+
+describe("E2: Spelbar, Bet, odds och kupong i det optimistiska läget", () => {
+  const withRikt = (): RoundResponse => {
+    const d = round();
+    d.races[0].starts[0].riktodds = 2.4;
+    d.nextStep = { kind: "ALL_REVIEWED", title: "", text: "", action: null };
+    return d;
+  };
+  const put = (startId: string, body: Record<string, unknown>, createdAt = NOW.getTime()) => item({ kind: "mark", roundId: "R", raceId: "r1", startId, horseName: "Häst" }, { body, createdAt });
+
+  it("odds över riktoddset ger förslaget Spelbar direkt, och räknaren S följer", () => {
+    const out = applyPending(withRikt(), [put("a", { interesting: true }), put("a", { unibetOdds: 3.1 })], NOW);
+    expect(out.races[0].starts[0].mark).toMatchObject({ unibetOdds: 3.1, forslag: true, spelbar: true, belowGuideline: false });
+    expect(out.races[0].counts.spelbar).toBe(1);
+  });
+  it("Spelbar för hand gör hästen Intressant, och borttagen Intressant tar med Spelbar", () => {
+    const on = applyPending(withRikt(), [put("a", { interesting: true, spelbar: "on" })], NOW);
+    expect(on.races[0].starts[0].mark).toMatchObject({ interesting: true, spelbarOverride: "ON", spelbar: true });
+    const off = applyPending(withRikt(), [put("a", { interesting: true, spelbar: "on", unibetOdds: 1.5 }), put("a", { interesting: false })], NOW);
+    expect(off.races[0].starts[0].mark).toMatchObject({ interesting: false, spelbarOverride: "NONE", spelbar: false, belowGuideline: true });
+  });
+  it("Bet tar med oddset, och Ändrat från har tiden när ändringen gjordes", () => {
+    const t = Date.parse("2026-10-24T12:18:00Z");
+    const out = applyPending(withRikt(), [put("a", { interesting: true, unibetOdds: 4.1 }), put("a", { bet: true }), put("a", { unibetOdds: 3.9 }, t)], NOW);
+    expect(out.races[0].starts[0].mark).toMatchObject({ bet: true, betOdds: 3.9, unibetOdds: 3.9, unibetOddsPrev: 4.1, unibetOddsAt: new Date(t).toISOString() });
+    expect(out.races[0].counts.bet).toBe(1);
+  });
+  it("kupongen i kön syns med rader och kostnad, och Nästa steg räknas om", () => {
+    const c = item({ kind: "coupon", roundId: "R" }, { body: { budget: 200, rowPrice: null, selections: { "1": [1, 2], "2": [1] }, lockedLegs: [2] } });
+    const out = applyPending(withRikt(), [c], NOW);
+    expect(out.coupon).toMatchObject({ budget: 200, rowPrice: 0.5, rows: 0, lockedLegs: [2] });
+  });
+  it("toasttexterna säger vad som inte sparades", () => {
+    expect(retryText(put("a", { bet: true }))).toBe("Kunde inte spara Bet för Häst. Försöker igen.");
+    expect(retryText(put("a", { unibetOdds: 3.1 }))).toBe("Kunde inte spara oddset för Häst. Försöker igen.");
+    expect(conflictText(item({ kind: "coupon", roundId: "R" }))).toBe("V85-raden: en avdelning hade redan startat, ändringen sparades inte.");
   });
 });

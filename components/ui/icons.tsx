@@ -62,3 +62,21 @@ export const IconWheel = svg(
   </>,
   "0 0 32 32",
 );
+export const IconTicket = svg(
+  <>
+    <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path d="M14 6v12" stroke="currentColor" strokeWidth="2" strokeDasharray="2 2" />
+  </>,
+);
+export const IconCopy = svg(
+  <>
+    <rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" fill="none" stroke="currentColor" strokeWidth="2" />
+  </>,
+);
+export const IconLock = svg(
+  <>
+    <rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2" />
+  </>,
+);

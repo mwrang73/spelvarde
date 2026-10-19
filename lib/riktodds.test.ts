@@ -1,0 +1,210 @@
+import { describe, expect, it } from "vitest";
+import {
+  calcLine,
+  clamp,
+  computeRace,
+  explain,
+  harvilleTop3,
+  nextModelKey,
+  oddsFromP3,
+  parseParams,
+  parseWeights,
+  round2,
+  sentence,
+  softmax,
+  V1_PARAMS,
+  V1_WEIGHTS,
+  zScores,
+  type StartFacts,
+} from "@/lib/riktodds";
+
+const NBSP = "\u00a0";
+
+// Brute force: summera sannolikheten för alla ordningar av ettan, tvåan och trean.
+function bruteTop3(pi: number[]): number[] {
+  const n = pi.length;
+  const out = pi.map(() => 0);
+  for (let a = 0; a < n; a++)
+    for (let b = 0; b < n; b++)
+      for (let c = 0; c < n; c++) {
+        if (a === b || a === c || b === c) continue;
+        const p = pi[a] * (pi[b] / (1 - pi[a])) * (pi[c] / (1 - pi[a] - pi[b]));
+        out[a] += p;
+        out[b] += p;
+        out[c] += p;
+      }
+  return out;
+}
+
+function start(i: number, o: Partial<StartFacts> = {}): StartFacts {
+  return {
+    startId: `s${i}`,
+    number: i,
+    scratched: false,
+    horse: { thisYear: { starts: 10, wins: i % 3, placed: 2 + (i % 4) }, lastYear: { starts: 8, wins: 1, placed: 3 }, lifeStarts: 30 },
+    records: [
+      { place: (i % 5) + 1, galloped: i === 3, disqualified: false },
+      { place: 2, galloped: false, disqualified: false },
+      { place: null, galloped: false, disqualified: i === 4 },
+      { place: 4, galloped: false, disqualified: false },
+      { place: 1, galloped: false, disqualified: false },
+    ],
+    driver: { starts: 200 + i * 10, wins: 20 + i * 3 },
+    trainer: { starts: 100, wins: 10 + i },
+    post: { pct: 5 + i, mean: 8, distance: 2140, method: "AUTO" },
+    streck: 3 + i,
+    ...o,
+  };
+}
+
+const field = (n: number) => Array.from({ length: n }, (_, i) => start(i + 1));
+const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+
+describe("räknedelar", () => {
+  it("z-värden har medel 0 och standardavvikelse 1, och sd = 0 ger 0", () => {
+    const z = zScores([1, 2, 3, 4]);
+    expect(sum(z)).toBeCloseTo(0, 12);
+    expect(Math.sqrt(sum(z.map((x) => x * x)) / z.length)).toBeCloseTo(1, 12);
+    expect(zScores([5, 5, 5])).toEqual([0, 0, 0]);
+  });
+  it("softmax summerar till 1 och tål stora tal", () => {
+    const p = softmax([1000, 999, 0], 1);
+    expect(sum(p)).toBeCloseTo(1, 12);
+    expect(p[0]).toBeGreaterThan(p[1]);
+  });
+  it("Harville stämmer mot brute force och Σ P3 = 3", () => {
+    for (const pi of [softmax([0.3, -1.2, 0.8, 0.1, 2.0, -0.5, 0, 0.4], 1), softmax([0, 0, 0, 0], 1), softmax([3, -3, 1, 0, -1, 2, 0.5, -0.5, 1.5, -2, 0.2, 0.9, -0.1, 0.3, 0.7], 1)]) {
+      const h = harvilleTop3(pi);
+      const b = bruteTop3(pi);
+      h.forEach((x, i) => expect(x).toBeCloseTo(b[i], 10));
+      expect(sum(h)).toBeCloseTo(3, 10);
+    }
+    // Lika chans i fyra hästar: 3/4 var.
+    harvilleTop3([0.25, 0.25, 0.25, 0.25]).forEach((x) => expect(x).toBeCloseTo(0.75, 12));
+  });
+  it("round2 och clamp till 1,01–99,99", () => {
+    expect(round2(3.205)).toBe(3.21);
+    expect(round2(1.005)).toBe(1.01);
+    expect(oddsFromP3(0.3125, 0)).toBe(3.2);
+    expect(oddsFromP3(0.999, 0)).toBe(1.01);
+    expect(oddsFromP3(0.001, 0)).toBe(99.99);
+    expect(oddsFromP3(0, 0)).toBe(99.99);
+    expect(oddsFromP3(0.5, 0.1)).toBe(2.2);
+    expect(clamp(5, 1, 3)).toBe(3);
+  });
+});
+
+describe("computeRace", () => {
+  it("räknar alla ej strukna, Σ P3 = 3 ± 0,01 och odds = 1/P3", () => {
+    for (const n of [4, 7, 12, 15]) {
+      const res = computeRace(field(n), V1_WEIGHTS, V1_PARAMS);
+      expect(res).toHaveLength(n);
+      expect(Math.abs(sum(res.map((r) => r.probTop3)) - 3)).toBeLessThan(0.01);
+      for (const r of res) expect(r.odds).toBe(oddsFromP3(r.probTop3, 0));
+    }
+  });
+  it("strukna utelämnas och räknas inte i N", () => {
+    const f = field(8);
+    f[2].scratched = true;
+    const res = computeRace(f, V1_WEIGHTS, V1_PARAMS);
+    expect(res.map((r) => r.startId)).not.toContain("s3");
+    expect(res).toHaveLength(7);
+    expect(res[0].inputs.n).toBe(7);
+    expect(sum(res.map((r) => r.probTop3))).toBeCloseTo(3, 6);
+  });
+  it("lopp med färre än 4 startande får inget", () => {
+    expect(computeRace(field(3), V1_WEIGHTS, V1_PARAMS)).toEqual([]);
+    const f = field(5);
+    f[0].scratched = true;
+    f[1].scratched = true;
+    expect(computeRace(f, V1_WEIGHTS, V1_PARAMS)).toEqual([]);
+  });
+  it("osäkert: färre än 5 starter, eller saknar 2 av plats, form och kusk", () => {
+    const f = field(6);
+    f[0] = start(1, { horse: { thisYear: { starts: 3, wins: 1, placed: 2 }, lastYear: null, lifeStarts: 3 } });
+    f[1] = start(2, { horse: { thisYear: null, lastYear: null, lifeStarts: 40 }, driver: null });
+    f[2] = start(3, { records: [], driver: null });
+    f[3] = start(4, { driver: null });
+    const res = computeRace(f, V1_WEIGHTS, V1_PARAMS);
+    expect(res[0]).toMatchObject({ uncertain: true });
+    expect(res[0].inputs.uncertainReasons).toEqual(["färre än 5 starter"]);
+    expect(res[1].uncertain).toBe(true);
+    expect(res[1].inputs.uncertainReasons).toEqual(["saknar platsstatistik och kuskstatistik"]);
+    expect(res[2].uncertain).toBe(true);
+    expect(res[3].uncertain).toBe(false);
+    expect(res[4].uncertain).toBe(false);
+  });
+  it("krympning: utan starter blir plats p0 = 3/N och vinst w0 = 1/N", () => {
+    const f = field(6);
+    f[0] = start(1, { horse: { thisYear: null, lastYear: null, lifeStarts: 0 } });
+    const r = computeRace(f, V1_WEIGHTS, V1_PARAMS)[0];
+    expect(r.inputs.values.plats).toEqual({ value: 0.5, missing: true });
+    expect(r.inputs.values.vinst.value).toBeCloseTo(1 / 6, 12);
+    // (5 placeringar på 18 starter + 6·0,5) / 24
+    const r2 = computeRace(field(6), V1_WEIGHTS, V1_PARAMS)[1];
+    expect(r2.inputs.values.plats.value).toBeCloseTo((2 + 2 + 3 + 6 * 0.5) / (18 + 6), 12);
+  });
+  it("bidragen är w·z, strecket har vikt 0 och påverkar inte riktoddset", () => {
+    const a = computeRace(field(8), V1_WEIGHTS, V1_PARAMS);
+    for (const r of a) {
+      expect(r.contributions.plats).toBeCloseTo(V1_WEIGHTS.plats * r.inputs.z.plats, 12);
+      expect(r.contributions.streck).toBe(0);
+    }
+    const f = field(8).map((s, i) => ({ ...s, streck: 50 - i * 6 }));
+    expect(computeRace(f, V1_WEIGHTS, V1_PARAMS).map((r) => r.odds)).toEqual(a.map((r) => r.odds));
+  });
+  it("bättre plats och form ger lägre riktodds", () => {
+    const f = field(6).map((s) => ({ ...s, horse: { thisYear: { starts: 10, wins: 1, placed: 3 }, lastYear: null, lifeStarts: 30 }, records: [], driver: null, trainer: null, post: null }));
+    f[0].horse = { thisYear: { starts: 10, wins: 5, placed: 9 }, lastYear: null, lifeStarts: 30 };
+    const res = computeRace(f, V1_WEIGHTS, V1_PARAMS);
+    expect(res[0].odds).toBeLessThan(res[1].odds);
+    expect(res[1].odds).toBe(res[2].odds);
+  });
+});
+
+describe("förklaring (7.4)", () => {
+  const res = computeRace(field(10), V1_WEIGHTS, V1_PARAMS);
+  it("högst 3 + 3, bara bidrag ≥ 0,15, störst först", () => {
+    for (const r of res) {
+      const e = explain(r);
+      expect(e.pros.length).toBeLessThanOrEqual(3);
+      expect(e.cons.length).toBeLessThanOrEqual(3);
+      for (const x of [...e.pros, ...e.cons]) expect(Math.abs(x.contribution)).toBeGreaterThanOrEqual(0.15);
+      for (const x of e.pros) expect(x.contribution).toBeGreaterThan(0);
+      for (const x of e.cons) expect(x.contribution).toBeLessThan(0);
+      expect(e.pros.map((x) => x.contribution)).toEqual([...e.pros.map((x) => x.contribution)].sort((a, b) => b - a));
+      expect(e.cons.map((x) => x.contribution)).toEqual([...e.cons.map((x) => x.contribution)].sort((a, b) => a - b));
+    }
+  });
+  it("mallmeningar med verkliga värden", () => {
+    const f = res[0].inputs.facts;
+    expect(sentence("kusk", { ...f, driverWinPct: 21.2 }, true)).toBe(`Kusken vinner 21${NBSP}% i år`);
+    expect(sentence("spar", { ...f, number: 10, post: { pct: 3.1, mean: 8, distance: 2640, method: "AUTO" } }, false)).toBe(`Spår 10 på 2640 m auto vinner bara 3,1${NBSP}%`);
+    expect(sentence("galopp", { ...f, gallops: 1, gallopsDq: 0, formStarts: 5 }, false)).toBe("Galopp i 1 av 5 senaste");
+    expect(sentence("galopp", { ...f, gallops: 1, gallopsDq: 1, formStarts: 5 }, false)).toBe("Galopp i 1 av 5 senaste, med diskning");
+    expect(sentence("galopp", { ...f, gallops: 0, gallopsDq: 0, formStarts: 4 }, true)).toBe("Ingen galopp i 4 senaste");
+    expect(sentence("plats", { ...f, placePct: 64 }, true)).toBe(`Plats i 64${NBSP}% av starterna i år och i fjol`);
+    expect(sentence("form", { ...f, formPlaces: [1, 3, null, 0, 2], formStarts: 5 }, true)).toBe("Form 1-3-d-0-2 i 5 senaste");
+  });
+  it("beräkningsraden och osäkert-raden", () => {
+    expect(calcLine(0.3125, 3.2)).toBe(`Chans till topp 3 ≈ 31${NBSP}% → 1 / 0,31 = 3,20`);
+    expect(calcLine(0.5, 2.1, 0.05)).toBe(`Chans till topp 3 ≈ 50${NBSP}% → 1 / 0,50 × 1,05 = 2,10`);
+    const r = { ...res[0], uncertain: true, inputs: { ...res[0].inputs, uncertainReasons: ["färre än 5 starter"] } };
+    expect(explain(r).uncertainLine).toBe("Osäkert: färre än 5 starter");
+    expect(explain(res[0]).uncertainLine).toBeNull();
+  });
+});
+
+describe("modellversioner", () => {
+  it("nästa nyckel", () => {
+    expect(nextModelKey(["v1"])).toBe("v1.1");
+    expect(nextModelKey(["v1", "v1.1", "v1.9"])).toBe("v1.10");
+    expect(nextModelKey([])).toBe("v1.1");
+    expect(nextModelKey(["v1", "v2"])).toBe("v2.1");
+  });
+  it("vikter och parametrar ur JSON faller tillbaka på v1", () => {
+    expect(parseWeights({ plats: 2, x: 9 })).toEqual({ ...V1_WEIGHTS, plats: 2 });
+    expect(parseWeights(null)).toEqual(V1_WEIGHTS);
+    expect(parseParams({ beta: 1.5, kKusk: "x" })).toEqual({ ...V1_PARAMS, beta: 1.5 });
+  });
+});

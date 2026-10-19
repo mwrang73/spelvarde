@@ -8,15 +8,7 @@ const fail = (error: string): { ok: false; error: string } => ({ ok: false, erro
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const isUuid = (x: unknown): x is string => typeof x === "string" && UUID_RE.test(x);
 
-// PUT /api/marks/[startId]. I E1 får bara `interesting` sparas.
-export function parseMarkBody(body: Record<string, unknown>): Result<{ interesting: boolean }> {
-  const later = ["spelbar", "bet", "unibetOdds", "betOdds"].filter((k) => k in body);
-  if (later.length) return fail("Bara Intressant kan sparas i den här versionen.");
-  const unknown = Object.keys(body).filter((k) => k !== "interesting");
-  if (unknown.length) return fail("Okänt fält i ändringen.");
-  if (typeof body.interesting !== "boolean") return fail("interesting ska vara true eller false.");
-  return { ok: true, value: { interesting: body.interesting } };
-}
+// PUT /api/marks/[startId]: se lib/marks.ts (parseMarkChange).
 
 // PUT /api/races/[id]/review
 export function parseReviewBody(body: Record<string, unknown>): Result<{ reviewed: boolean; noneInteresting: boolean }> {
@@ -57,12 +49,33 @@ export function parseCommentBody(body: Record<string, unknown>): Result<CommentI
   };
 }
 
-// PUT /api/settings. I E1 bara temat.
-export function parseSettingsBody(body: Record<string, unknown>): Result<{ theme: ThemeSetting }> {
-  const later = ["rushThresholdPe", "rowPrice", "spelbarGuideline"].filter((k) => k in body);
-  if (later.length) return fail("Den inställningen kommer i en senare version.");
-  if (body.theme !== "system" && body.theme !== "light" && body.theme !== "dark") return fail("Temat ska vara system, light eller dark.");
-  return { ok: true, value: { theme: body.theme } };
+export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number };
+
+const hundredths = (x: number) => Math.abs(x * 100 - Math.round(x * 100)) < 1e-6;
+
+// PUT /api/settings: tema (E1), radpris och riktlinje (E2). Larmgränsen kommer i E3.
+// Bara fälten som skickas ändras.
+export function parseSettingsBody(body: Record<string, unknown>): Result<SettingsInput> {
+  if ("rushThresholdPe" in body) return fail("Den inställningen kommer i en senare version.");
+  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline"].includes(k));
+  if (unknown.length) return fail("Okänd inställning.");
+  const out: SettingsInput = {};
+  if ("theme" in body) {
+    if (body.theme !== "system" && body.theme !== "light" && body.theme !== "dark") return fail("Temat ska vara system, light eller dark.");
+    out.theme = body.theme;
+  }
+  if ("rowPrice" in body) {
+    const v = body.rowPrice;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0.01 || v > 100 || !hundredths(v)) return fail("Radpriset ska ligga mellan 0,01 och 100,00 kr.");
+    out.rowPrice = Math.round(v * 100) / 100;
+  }
+  if ("spelbarGuideline" in body) {
+    const v = body.spelbarGuideline;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 1.01 || v > 99.99 || !hundredths(v)) return fail("Riktlinjen ska ligga mellan 1,01 och 99,99.");
+    out.spelbarGuideline = Math.round(v * 100) / 100;
+  }
+  if (!Object.keys(out).length) return fail("Inget att ändra.");
+  return { ok: true, value: out };
 }
 
 export const SOURCE_URL_ERROR = "Det här ser inte ut som en webbadress. Den ska börja med https://.";

@@ -31,6 +31,9 @@ export function FetchSteps({ state }: { state: ChainState }) {
           <li className={p.statsDone ? "ok" : p.step === "STATS" ? "cur" : undefined}>
             Statistik {p.statsDone ? <span aria-label="klar">✓</span> : p.step === "STATS" ? "…" : ""}
           </li>
+          <li className={p.riktoddsDone ? "ok" : p.step === "RIKTODDS" ? "cur" : undefined}>
+            Riktodds {p.riktoddsDone ? <span aria-label="klart">✓</span> : p.step === "RIKTODDS" ? "…" : ""}
+          </li>
         </ol>
       )}
     </div>
