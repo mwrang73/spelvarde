@@ -174,11 +174,12 @@ export type StartDto = {
   uncertain: boolean;
   mark: MarkDto | null;
   result: StartResultDto | null;
-  // Tillägg för desktoptabellen i S2: hästens vinst % och plats % i livet
-  // (ATG, lifeStarts = starter i livet) och vinst % och plats % för
+  // Tillägg för desktoptabellen i S2: hästens vinst % och plats % i år och
+  // i fjol tillsammans (ATG, samma period som riktoddset; starts = starterna
+  // under perioden) och vinst % och plats % för
   // startnumret på loppets distans och startmetod (statistikbasen, annars
   // vinst % från travstatistik.se). null när uppgiften saknas.
-  quick: { winPct: number | null; placePct: number | null; lifeStarts: number | null; postPct: number | null; postPlacePct: number | null };
+  quick: { winPct: number | null; placePct: number | null; starts: number | null; postPct: number | null; postPlacePct: number | null };
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".

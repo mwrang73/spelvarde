@@ -210,15 +210,22 @@ function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestSta
   return out;
 }
 
-// Vinst % och plats % i livet och startnumrets vinst % och plats % för
-// desktoptabellen i S2. Statistikbasen i första hand, annars travstatistik.se.
-function quickStats(horseStatsJson: Prisma.JsonValue | null, legRow: StartnrData["legs"][number] | null, number: number, table: PostTable | null): StartDto["quick"] {
-  const life = yearStatsDto("life", asHorseStats(horseStatsJson)?.life);
+// Vinst % och plats % i år och i fjol tillsammans (samma period som
+// riktoddsets plats och vinst, "Talar för") och startnumrets vinst % och
+// plats % för desktoptabellen i S2. Statistikbasen i första hand, annars
+// travstatistik.se. year = omgångens år.
+function quickStats(horseStatsJson: Prisma.JsonValue | null, legRow: StartnrData["legs"][number] | null, number: number, table: PostTable | null, year: string): StartDto["quick"] {
+  const hs = asHorseStats(horseStatsJson);
+  const ys = [hs?.years[year], hs?.years[String(Number(year) - 1)]].filter((y): y is NonNullable<typeof y> => !!y);
+  const starts = ys.reduce((a, y) => a + y.starts, 0);
+  const wins = ys.reduce((a, y) => a + y.wins, 0);
+  const placed = ys.reduce((a, y) => a + y.wins + y.seconds + y.thirds, 0);
+  const pct1 = (n: number) => (starts > 0 ? Math.round((1000 * n) / starts) / 10 : null);
   const row = table?.byNumber.find((b) => b.n === number) ?? null;
   return {
-    winPct: life?.winPct ?? null,
-    placePct: life?.placePct ?? null,
-    lifeStarts: life?.starts ?? null,
+    winPct: pct1(wins),
+    placePct: pct1(placed),
+    starts: starts > 0 ? starts : null,
     postPct: table ? row?.winPct ?? null : legRow?.byNumber.find((b) => b.n === number)?.pct ?? null,
     postPlacePct: row?.placePct ?? null,
   };
@@ -274,7 +281,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
         result: s.resultAt
           ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) }
           : null,
-        quick: quickStats(s.horseStatsJson, legRow, s.number, table),
+        quick: quickStats(s.horseStatsJson, legRow, s.number, table, date.slice(0, 4)),
       };
     });
     const review = r.reviews[0] ?? null;
@@ -553,7 +560,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       uncertain: rikt ? rikt.uncertain : form.fewStarts,
       mark,
       result: s.resultAt ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) } : null,
-      quick: quickStats(s.horseStatsJson, legRow, s.number, table),
+      quick: quickStats(s.horseStatsJson, legRow, s.number, table, year),
       raceId: s.raceId,
       roundId: s.race.roundId,
       leg: s.race.leg,

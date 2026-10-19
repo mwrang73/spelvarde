@@ -427,10 +427,12 @@ function Workspace({
                     Form
                   </th>
                   <th scope="col" className="r">
-                    Vinst
+                    <abbr title="Vinst % i år och i fjol">Vinst</abbr>
+                    <small className="thsub">i år+fjol</small>
                   </th>
                   <th scope="col" className="r">
-                    Plats
+                    <abbr title="Plats % (topp 3) i år och i fjol">Plats</abbr>
+                    <small className="thsub">i år+fjol</small>
                   </th>
                   <th scope="col" className="r">
                     <abbr title="Startnumrets vinst % på distansen och startmetoden">Spår v.</abbr>
@@ -549,8 +551,8 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
       <td className="c">
         <FormStrip boxes={s.form.boxes} ariaLabel={s.form.ariaLabel} />
       </td>
-      <QuickPct kind="win" v={s.quick.winPct} starts={s.quick.lifeStarts} />
-      <QuickPct kind="place" v={s.quick.placePct} starts={s.quick.lifeStarts} />
+      <QuickPct kind="win" v={s.quick.winPct} starts={s.quick.starts} />
+      <QuickPct kind="place" v={s.quick.placePct} starts={s.quick.starts} />
       <td className="r num">{pct(s.quick.postPct, 0)}</td>
       <td className="r">
         <RiktCell s={s} className="rk num dk" two />
@@ -577,25 +579,24 @@ function DeskStats({ race, roundId, gameType }: { race: RaceDto; roundId: string
   const stats = useRaceStats(roundId, race.leg);
   const line = race.statsLine;
   const top = stats.data?.drivers.rows.filter((r) => r.league).sort((a, b) => (b.league?.wins ?? 0) - (a.league?.wins ?? 0))[0] ?? null;
-  const m = `${race.distance} ${methodLabel(race.startMethod)}`;
   return (
     <div className="dstats">
       <div>
-        <small>{line.bestNumber ? `Spår ${line.bestNumber.number} · ${m}` : `Bästa spår · ${m}`}</small>
+        <small>Bästa spår, vinst</small>
         <b className="num">{pct(line.bestNumber?.pct ?? null)}</b>
-        <span>bästa spåret för vinst</span>
+        <span>{line.bestNumber ? `spår ${line.bestNumber.number}` : ""}</span>
       </div>
       {line.bestPlace ? (
         <div>
-          <small>Spår {line.bestPlace.number} · {m}</small>
+          <small>Bästa spår, plats</small>
           <b className="num">{pct(line.bestPlace.pct)}</b>
-          <span>bästa spåret för plats</span>
+          <span>spår {line.bestPlace.number}</span>
         </div>
       ) : (
         <div>
-          <small>Spår 1 · {m}</small>
+          <small>Spår 1, vinst</small>
           <b className="num">{pct(line.number1Pct)}</b>
-          <span>vinst</span>
+          <span />
         </div>
       )}
       <div>

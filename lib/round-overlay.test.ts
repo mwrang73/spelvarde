@@ -29,7 +29,7 @@ function start(id: string, number: number, interesting = false): StartDto {
       ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", xFactor: "NONE", xFactorAt: null, xFactorValue: 1, sourceSupport: null, forslag: false, spelbar: false, riktodds: null, riktoddsX: null, belowGuideline: false }
       : null,
     result: null,
-    quick: { winPct: null, placePct: null, lifeStarts: null, postPct: null, postPlacePct: null },
+    quick: { winPct: null, placePct: null, starts: null, postPct: null, postPlacePct: null },
   };
 }
 

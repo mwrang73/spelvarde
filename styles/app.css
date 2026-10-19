@@ -455,17 +455,19 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .vt .aname small { display: block; font-size: 12px; opacity: .8; font-weight: 500; }
   .vt .cnt { font-size: 12px; gap: 4px; }
   .vt .cnt .dim { display: none; }
-  .drace { padding: 18px 24px 14px; }
+  /* Kompakt sidhuvud, så att 12 hästar syns utan skroll på en vanlig skärm. */
+  .drace { padding: 10px 24px 10px; }
   .drace .k { font: 700 12.5px/1 var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--head-ink); }
-  .drace h1 { margin: 6px 0 10px; font: 700 34px/1.05 var(--f-name); text-transform: uppercase; letter-spacing: .02em; color: var(--head-title); }
+  .drace h1 { margin: 3px 0 6px; font: 700 26px/1.05 var(--f-name); text-transform: uppercase; letter-spacing: .02em; color: var(--head-title); }
   .drace .chips { flex-wrap: wrap; overflow: visible; }
   .drace .chip-k { display: inline-flex; line-height: 1; }
   .drace .chip-btn { margin-left: 0; }
   .d-miss { margin-top: 12px; }
-  .dstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-  .dstats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--head-line); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+  .dstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .dstats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--head-line); border-radius: 6px; padding: 5px 10px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+  .dstats div small { grid-column: 1 / -1; }
   .dstats small { display: block; font: 700 10.5px/1.2 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--head-ink-2); }
-  .dstats b { font: 700 20px/1.2 var(--f-num); color: var(--head-ink); }
+  .dstats b { font: 700 17px/1.2 var(--f-num); color: var(--head-ink); }
   .dstats span { display: block; font-size: 12px; color: var(--head-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dpanel { margin: 12px 20px 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--fill); border-radius: 10px; }
   .dpanel .rstats { max-width: 640px; }
@@ -474,7 +476,10 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .tbl { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--surface); }
   .tbl th { font: 700 11.5px/1.1 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); text-align: left; padding: 9px 6px; white-space: nowrap; border-bottom: 1.5px solid var(--line-strong); background: var(--surface-3); }
   .tbl th abbr { text-decoration: none; }
-  .tbl td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; height: 46px; }
+  .tbl td { padding: 2px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; height: 38px; line-height: 1.2; }
+  /* Lägre rader i startlistan på desktop (musen behöver inte 44 px). */
+  .tbl .lamp { height: 34px; }
+  .tbl th .thsub { display: block; font-size: 9.5px; letter-spacing: .04em; opacity: .8; }
   .tbl td:first-child, .tbl th:first-child { padding-left: 10px; }
   .tbl .kt { max-width: 150px; }
   .tbl tbody tr { cursor: pointer; }

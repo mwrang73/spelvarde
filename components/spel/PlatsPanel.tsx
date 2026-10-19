@@ -38,7 +38,7 @@ function Signals({ item }: { item: Item }) {
   const chips = horseSignals({
     placePct: start.quick.placePct,
     winPct: start.quick.winPct,
-    starts: start.quick.lifeStarts,
+    starts: start.quick.starts,
     formTones: start.form.boxes.map((b) => b.tone),
     postPlacePct: start.quick.postPlacePct,
     bestPlaceNumber: race.statsLine.bestPlace?.number === start.number,
