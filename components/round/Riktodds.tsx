@@ -78,6 +78,7 @@ export function RiktoddsBox({
         Riktodds plats <span className="mver">{modelLabel(detail?.modelKey ?? modelKey)}</span>
       </h3>
       {detail?.uncertainLine && <p className="unc">{detail.uncertainLine}</p>}
+      {detail?.noteLine && <p className="help">{detail.noteLine}</p>}
       {!detail && start.uncertain && rikt !== null && <p className="unc">Osäkert riktodds</p>}
       <div className={`rbox brd${withX ? " x" : ""}`}>
         <div>

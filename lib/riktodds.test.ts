@@ -208,3 +208,38 @@ describe("modellversioner", () => {
     expect(parseParams({ beta: 1.5, kKusk: "x" })).toEqual({ ...V1_PARAMS, beta: 1.5 });
   });
 });
+
+describe("pengar och vikterna utan streck", () => {
+  const field = (streck: (number | null)[]) =>
+    streck.map((st, i) => start(i + 1, { streck: st, earnings: { total: 100_000 * (i + 1), lifeStarts: 20 } }));
+  const weights = { ...V1_WEIGHTS, plats: 0, vinst: 0, form: 0, spar: 0, kusk: 0, tranare: 0, galopp: 0, pengar: 0, streck: 1 };
+  const noStreck = { ...weights, streck: 0, pengar: 1 };
+
+  it("intjänat per start blir indata med mening", () => {
+    const res = computeRace(field([10, 20, 30, 40]), { ...weights, streck: 0, pengar: 1 }, V1_PARAMS);
+    // Mest pengar per start ger högst chans.
+    expect(res[3].probTop3).toBeGreaterThan(res[0].probTop3);
+    expect(res[3].inputs.facts.earningsPerStart).toBe(20_000);
+    expect(sentence("pengar", res[3].inputs.facts, true)).toBe(`Tjänar 20${NBSP}tkr per start`);
+  });
+  it("utan streck i loppet används vikterna utan streck, och det syns i förklaringen", () => {
+    const params = { ...V1_PARAMS, noStreck };
+    const without = computeRace(field([null, null, null, null]), weights, params);
+    expect(without[0].inputs.noStreck).toBe(true);
+    expect(without[3].probTop3).toBeGreaterThan(without[0].probTop3);
+    expect(explain(without[0]).noteLine).toMatch(/Strecket saknas/);
+    // Med streck: de vanliga vikterna.
+    const withS = computeRace(field([40, 30, 20, 10]), weights, params);
+    expect(withS[0].inputs.noStreck).toBeUndefined();
+    expect(withS[0].probTop3).toBeGreaterThan(withS[3].probTop3);
+    // Utan vikter utan streck: oförändrat beteende (alla lika).
+    const plain = computeRace(field([null, null, null, null]), weights, V1_PARAMS);
+    expect(plain[0].probTop3).toBeCloseTo(plain[3].probTop3, 9);
+  });
+  it("parseParams läser vikterna utan streck, streck alltid 0", () => {
+    expect(parseParams({ beta: 1 }).noStreck).toBeNull();
+    expect(parseParams({ noStreck: { pengar: 0.4, streck: 2 } }).noStreck).toMatchObject({ pengar: 0.4, streck: 0, plats: 0 });
+    // Äldre versioner utan pengar får vikten 0.
+    expect(parseWeights({ plats: 1 }).pengar).toBe(0);
+  });
+});

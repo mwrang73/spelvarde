@@ -12,7 +12,7 @@ import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { GAME_TYPES } from "@/lib/game-type";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
-import { INPUT_KEYS, type InputKey } from "@/lib/riktodds";
+import { INPUT_KEYS, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
 import { applySettings } from "@/lib/round-overlay";
 import { X_FACTOR_ORDER_ERROR, X_FACTOR_RANGE_ERROR } from "@/lib/xfactor";
 import { parseFactorText } from "@/lib/xfactor-ui";
@@ -189,6 +189,7 @@ const WEIGHT_LABELS: Record<InputKey, string> = {
   kusk: "Kuskens vinstandel",
   tranare: "Tränarens vinstandel",
   galopp: "Galopp, 5 senaste",
+  pengar: "Intjänat per start",
   streck: "Streck (marknaden)",
 };
 
@@ -219,6 +220,8 @@ export function ModelAdmin() {
   const [model, setModel] = useState<ModelResponse | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [weights, setWeights] = useState<Record<InputKey, string>>({} as Record<InputKey, string>);
+  // Vikterna utan streck (används när loppet saknar streck). Alla tomma = inga.
+  const [noStreck, setNoStreck] = useState<Record<InputKey, string>>({} as Record<InputKey, string>);
   const [params, setParams] = useState<Record<ParamKey, string>>({ beta: "", marginal: "" });
   const [fieldErr, setFieldErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "recompute" | null>(null);
@@ -229,7 +232,18 @@ export function ModelAdmin() {
   const fill = (active: ModelDto | null) => {
     if (!active) return;
     setWeights(Object.fromEntries(INPUT_KEYS.map((k) => [k, numText(active.weights[k])])) as Record<InputKey, string>);
+    const ns = active.params.noStreck;
+    setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, ns && k !== "streck" ? numText(ns[k]) : ""])) as Record<InputKey, string>);
     setParams({ beta: numText(active.params.beta), marginal: numText(active.params.marginal) });
+  };
+
+  // Fyller i den rekommenderade modellen ur backtestet (sparas först med knappen).
+  const fillRecommended = () => {
+    setWeights(Object.fromEntries(INPUT_KEYS.map((k) => [k, numText(RECOMMENDED_WEIGHTS[k])])) as Record<InputKey, string>);
+    setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, k === "streck" ? "" : numText(RECOMMENDED_NO_STRECK[k])])) as Record<InputKey, string>);
+    setParams({ beta: "1", marginal: "0" });
+    setFieldErr(null);
+    setResult({ tone: "info", text: "Den rekommenderade modellen är ifylld. Tryck Spara som ny version för att använda den." });
   };
 
   useEffect(() => {
@@ -257,6 +271,17 @@ export function ModelAdmin() {
       if (v === null || Math.abs(v) > 10) return setFieldErr(`Vikten för ${WEIGHT_LABELS[k].toLowerCase()} ska vara ett tal mellan −10 och 10.`);
       w[k] = v;
     }
+    const nsFilled = INPUT_KEYS.some((k) => k !== "streck" && (noStreck[k] ?? "").trim() !== "");
+    const ns: Partial<Record<InputKey, number>> = {};
+    if (nsFilled) {
+      for (const k of INPUT_KEYS) {
+        if (k === "streck") continue;
+        const t = (noStreck[k] ?? "").trim();
+        const v = t === "" ? 0 : parseNum(t);
+        if (v === null || Math.abs(v) > 10) return setFieldErr(`Vikten utan streck för ${WEIGHT_LABELS[k].toLowerCase()} ska vara ett tal mellan −10 och 10.`);
+        ns[k] = v;
+      }
+    }
     const p: Partial<Record<ParamKey, number>> = {};
     for (const k of ["beta", "marginal"] as const) {
       const v = parseNum(params[k]);
@@ -269,7 +294,7 @@ export function ModelAdmin() {
     const roundId = await currentRoundId();
     try {
       const before = model?.active?.key;
-      const res = await apiRequest<ModelResponse>("PUT", "/api/admin/model", { weights: w, params: p, ...(roundId ? { roundId } : {}) });
+      const res = await apiRequest<ModelResponse>("PUT", "/api/admin/model", { weights: w, params: p, noStreck: nsFilled ? ns : null, ...(roundId ? { roundId } : {}) });
       setModel(res);
       fill(res.active);
       const key = res.active?.key ?? "";
@@ -335,6 +360,9 @@ export function ModelAdmin() {
                   <th scope="col" className="r">
                     Vikt
                   </th>
+                  <th scope="col" className="r">
+                    <abbr title="Används i lopp där ingen häst har streck än">Utan streck</abbr>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -354,6 +382,23 @@ export function ModelAdmin() {
                         onChange={(e) => setWeights((w) => ({ ...w, [k]: e.target.value }))}
                         aria-describedby={fieldErr ? `${id}-err` : undefined}
                       />
+                    </td>
+                    <td className="r">
+                      {k === "streck" ? (
+                        <span className="help">–</span>
+                      ) : (
+                        <input
+                          id={`${id}-ns-${k}`}
+                          className="oin"
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          aria-label={`${WEIGHT_LABELS[k]}, utan streck`}
+                          value={noStreck[k] ?? ""}
+                          onChange={(e) => setNoStreck((w) => ({ ...w, [k]: e.target.value }))}
+                          aria-describedby={fieldErr ? `${id}-err` : undefined}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -375,6 +420,7 @@ export function ModelAdmin() {
                         aria-describedby={fieldErr ? `${id}-err` : undefined}
                       />
                     </td>
+                    <td />
                   </tr>
                 ))}
               </tbody>
@@ -385,7 +431,12 @@ export function ModelAdmin() {
                 {fieldErr}
               </p>
             )}
-            <p className="help">Att spara skapar en ny version (v1.1 och så vidare) som blir aktiv, och räknar om aktuell omgång. Gamla versioner finns kvar.</p>
+            <p className="help">
+              Att spara skapar en ny version (v1.1 och så vidare) som blir aktiv, och räknar om aktuell omgång. Gamla versioner finns kvar. Kolumnen Utan streck används i lopp där ingen häst har streck än, om vikten för streck inte är 0. Lämna den tom för att alltid använda Vikt.
+            </p>
+            <button type="button" className="btn ghost" disabled={busy !== null} onClick={fillRecommended}>
+              Fyll i rekommenderad modell
+            </button>
             <div className="inline-btns">
               <button type="submit" className="btn primary" disabled={busy !== null}>
                 {busy === "save" ? "Sparar …" : "Spara som ny version"}

@@ -98,6 +98,7 @@ export function riktoddsDetailDto(r: Riktodds, model: ModelVersion): RiktoddsDet
     probTop3,
     uncertain: r.uncertain,
     uncertainLine: e.uncertainLine,
+    noteLine: e.noteLine,
     pros: e.pros.map(({ key, text, contribution }) => ({ key, text, contribution })),
     cons: e.cons.map(({ key, text, contribution }) => ({ key, text, contribution })),
     calcLine: e.calcLine,

@@ -6,18 +6,26 @@
 //
 // Modellen är märkt v1, okalibrerad. Den gäller bara plats (topp 3).
 
-import { pct } from "@/lib/format";
+import { money, pct } from "@/lib/format";
 
-export const INPUT_KEYS = ["plats", "vinst", "form", "spar", "kusk", "tranare", "galopp", "streck"] as const;
+export const INPUT_KEYS = ["plats", "vinst", "form", "spar", "kusk", "tranare", "galopp", "pengar", "streck"] as const;
 export type InputKey = (typeof INPUT_KEYS)[number];
 export type Weights = Record<InputKey, number>;
 
-// beta och marginal (7.2), k-värden för krympningen (7.1).
-export type ModelParams = { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number };
+// beta och marginal (7.2), k-värden för krympningen (7.1). noStreck = vikterna
+// som används i ett lopp där ingen häst har streck än (V-spelet har inte
+// öppnat), när modellens vikt för streck inte är 0. null = samma vikter.
+export type ModelParams = { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number; noStreck: Weights | null };
+export type NumParamKey = Exclude<keyof ModelParams, "noStreck">;
 
 // Standardvikter och parametrar v1 (7.3). Samma värden som scripts/seed.mjs.
-export const V1_WEIGHTS: Weights = { plats: 1.0, vinst: 0.5, form: 0.6, spar: 0.4, kusk: 0.3, tranare: 0.2, galopp: -0.4, streck: 0 };
-export const V1_PARAMS: ModelParams = { beta: 1.0, marginal: 0, kPlats: 6, kVinst: 6, kKusk: 20, kTranare: 20 };
+export const V1_WEIGHTS: Weights = { plats: 1.0, vinst: 0.5, form: 0.6, spar: 0.4, kusk: 0.3, tranare: 0.2, galopp: -0.4, pengar: 0, streck: 0 };
+export const V1_PARAMS: ModelParams = { beta: 1.0, marginal: 0, kPlats: 6, kVinst: 6, kKusk: 20, kTranare: 20, noStreck: null };
+
+// Rekommenderad modell ur backtestet 2026-10-20 (docs/backtest): med streck
+// log loss 0,4949 på testdelen, utan streck (noStreck) 0,5251. β = 1.
+export const RECOMMENDED_WEIGHTS: Weights = { plats: 0.1, vinst: 0, form: 0, spar: 0.03, kusk: 0, tranare: 0.03, galopp: 0, pengar: 0, streck: 0.88 };
+export const RECOMMENDED_NO_STRECK: Weights = { plats: 0.1, vinst: 0.05, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, pengar: 0.38, streck: 0 };
 
 export const MIN_STARTERS = 4;
 export const ODDS_MIN = 1.01;
@@ -55,6 +63,8 @@ export type StartFacts = {
   post: { pct: number; mean: number; distance: number; method: "AUTO" | "VOLTE"; kind?: "vinst" | "plats" } | null;
   // Streck i procent (12.3 = 12,3 %). null = saknas.
   streck: number | null;
+  // Hästens totala vinstsumma (kr) och starter i livet. null/saknas = okänt.
+  earnings?: { total: number; lifeStarts: number } | null;
 };
 
 // Det som sparas per start i Riktodds.inputs: värdet som gick in i
@@ -81,8 +91,12 @@ export type StoredInputs = {
     post: StartFacts["post"];
     streck: number | null;
     lifeStarts: number;
+    // Intjänat per start i livet (kr). Saknas i rader räknade före pengar fanns.
+    earningsPerStart?: number | null;
   };
   uncertainReasons: string[];
+  // Loppet saknade streck och räknades med modellens vikter utan streck.
+  noStreck?: boolean;
 };
 
 export type StartRiktodds = {
@@ -171,6 +185,12 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
   const trainerRates = starts.map((s) => rate(s.trainer));
   const driverMean = mean(driverRates.filter((x): x is number => x !== null));
   const trainerMean = mean(trainerRates.filter((x): x is number => x !== null));
+  const perStart = starts.map((s) => (s.earnings && s.earnings.lifeStarts > 0 ? s.earnings.total / s.earnings.lifeStarts : null));
+  const moneyRaw = perStart.map((x) => (x === null ? null : Math.log1p(Math.max(0, x))));
+  const moneyMean = mean(moneyRaw.filter((x): x is number => x !== null));
+  // Inget streck i loppet: vikterna utan streck, om modellen har sådana.
+  const noStreck = !!params.noStreck && (weights.streck ?? 0) !== 0 && starts.every((s) => s.streck === null || !(s.streck > 0));
+  const w = noStreck ? params.noStreck! : weights;
 
   const values: Record<InputKey, InputValue>[] = starts.map((s, i) => {
     const y = years(s);
@@ -183,6 +203,7 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
       kusk: driverRates[i] === null ? { value: driverMean, missing: true } : { value: shrink(s.driver!.wins, s.driver!.starts, params.kKusk, driverMean), missing: false },
       tranare: trainerRates[i] === null ? { value: trainerMean, missing: true } : { value: shrink(s.trainer!.wins, s.trainer!.starts, params.kTranare, trainerMean), missing: false },
       galopp: { value: last5.reduce((a, r) => a + (r.galloped ? (r.disqualified ? 1.5 : 1) : 0), 0), missing: last5.length === 0 },
+      pengar: moneyRaw[i] === null ? { value: moneyMean, missing: true } : { value: moneyRaw[i]!, missing: false },
       streck: s.streck !== null && s.streck > 0 ? { value: Math.log(s.streck), missing: false } : { value: 0, missing: true },
     };
   });
@@ -192,7 +213,7 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
 
   const contributions = starts.map((_, i) => {
     const c = {} as Record<InputKey, number>;
-    for (const key of INPUT_KEYS) c[key] = (weights[key] ?? 0) * z[key][i] || 0;
+    for (const key of INPUT_KEYS) c[key] = (w[key] ?? 0) * z[key][i] || 0;
     return c;
   });
   const strengths = contributions.map((c) => INPUT_KEYS.reduce((a, k) => a + c[k], 0));
@@ -236,8 +257,10 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
           post: s.post,
           streck: s.streck,
           lifeStarts,
+          earningsPerStart: perStart[i],
         },
         uncertainReasons: reasons,
+        ...(noStreck ? { noStreck: true } : {}),
       },
     };
   });
@@ -260,6 +283,8 @@ export type Explanation = {
   calcLine: string;
   // "Osäkert: färre än 5 starter" eller null.
   uncertainLine: string | null;
+  // Loppet saknar streck och räknades med vikterna utan streck, annars null.
+  noteLine: string | null;
 };
 
 const dec2 = (x: number) => x.toFixed(2).replace(".", ",");
@@ -293,6 +318,8 @@ export function sentence(key: InputKey, f: StoredInputs["facts"], positive: bool
       return `Galopp i ${f.gallops} av ${f.formStarts} senaste, ${f.gallops === 1 ? "med" : `varav ${f.gallopsDq} med`} diskning`;
     case "streck":
       return f.streck === null ? "Streck saknas" : `Streckad ${pct1(f.streck)}`;
+    case "pengar":
+      return f.earningsPerStart == null ? "Vinstsumma saknas" : `Tjänar ${positive ? "" : "bara "}${money(f.earningsPerStart)} per start`;
   }
 }
 
@@ -319,22 +346,27 @@ export function explain(r: { probTop3: number; odds: number; uncertain: boolean;
     cons,
     calcLine: calcLine(r.probTop3, r.odds, marginal),
     uncertainLine: r.uncertain ? `Osäkert: ${r.inputs.uncertainReasons.join(", ") || "för lite underlag"}` : null,
+    noteLine: r.inputs.noStreck ? "Strecket saknas än, så modellens vikter utan streck används." : null,
   };
 }
 
 // ---- Vikter och parametrar från ModelVersion (JSON) --------------------------------------
 
-export function parseWeights(x: unknown): Weights {
+// Saknade nycklar får v1:s värde (pengar, som kom senare, får 0).
+export function parseWeights(x: unknown, fallback: Weights = V1_WEIGHTS): Weights {
   const o = x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {};
   const w = {} as Weights;
-  for (const k of INPUT_KEYS) w[k] = typeof o[k] === "number" && Number.isFinite(o[k]) ? (o[k] as number) : V1_WEIGHTS[k];
+  for (const k of INPUT_KEYS) w[k] = typeof o[k] === "number" && Number.isFinite(o[k]) ? (o[k] as number) : fallback[k];
   return w;
 }
 
+const ZERO_WEIGHTS = Object.fromEntries(INPUT_KEYS.map((k) => [k, 0])) as Weights;
+
 export function parseParams(x: unknown): ModelParams {
   const o = x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {};
-  const num = (k: keyof ModelParams) => (typeof o[k] === "number" && Number.isFinite(o[k]) ? (o[k] as number) : V1_PARAMS[k]);
-  return { beta: num("beta"), marginal: num("marginal"), kPlats: num("kPlats"), kVinst: num("kVinst"), kKusk: num("kKusk"), kTranare: num("kTranare") };
+  const num = (k: NumParamKey) => (typeof o[k] === "number" && Number.isFinite(o[k]) ? (o[k] as number) : V1_PARAMS[k]);
+  const ns = o.noStreck && typeof o.noStreck === "object" && !Array.isArray(o.noStreck) ? { ...parseWeights(o.noStreck, ZERO_WEIGHTS), streck: 0 } : null;
+  return { beta: num("beta"), marginal: num("marginal"), kPlats: num("kPlats"), kVinst: num("kVinst"), kKusk: num("kKusk"), kTranare: num("kTranare"), noStreck: ns };
 }
 
 // Nästa versionsnyckel: v1 → v1.1, v1.1 → v1.2, v1.9 → v1.10.

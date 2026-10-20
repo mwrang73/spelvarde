@@ -233,6 +233,7 @@ export function toFacts(race: BtRace, withStreck = false): StartFacts[] {
     trainer: s.trainer,
     post: s.post ?? null,
     streck: withStreck ? s.streck : null,
+    earnings: s.earnings != null && (s.lifeStarts ?? 0) > 0 ? { total: s.earnings, lifeStarts: s.lifeStarts as number } : null,
   }));
 }
 
@@ -414,8 +415,9 @@ export function zPreds(zr: ZRace[], weights: Weights, beta: number, marginal = 0
 }
 
 // Prövning av intjänade pengar: z för log(1 + vinstsumma per start i livet)
-// inom loppet läggs till under nyckeln "pengar". Saknas summan blir z = 0.
-export const PENGAR = "pengar" as InputKey;
+// inom loppet under nyckeln "pengar" (samma som modellens indata pengar, men
+// saknad summa ger z = 0 i stället för fältets medel).
+export const PENGAR: InputKey = "pengar";
 export function withPengar(zr: ZRace[]): ZRace[] {
   return zr.map(({ race, z }) => {
     const run = race.starts.filter((s) => !s.scratched);

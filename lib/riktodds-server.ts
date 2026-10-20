@@ -103,6 +103,7 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
             ? { pct: bucket.pct!, mean: postMean, distance: race.distance, method: race.startMethod, kind: "vinst" as const }
             : null,
         streck: streck.get(s.id) ?? null,
+        earnings: hs?.life?.starts ? { total: hs.life.earnings ?? s.earnings ?? 0, lifeStarts: hs.life.starts } : null,
       };
     });
     const res = computeRace(facts, weights, params);

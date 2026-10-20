@@ -55,7 +55,7 @@ import {
   type StatsSource,
   type RoiRow,
 } from "@/lib/backtest";
-import { INPUT_KEYS, parseWeights, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
+import { INPUT_KEYS, parseWeights, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 
 const ROOT = process.cwd();
@@ -351,7 +351,7 @@ async function main() {
 const RATIOS = [1, 1.2, 1.5];
 
 // Modellen som rekommenderades 2026-10-20 (förenklad Anpassad + streck), β = 1.
-const V2_WEIGHTS: Weights = { plats: 0.1, vinst: 0, form: 0, spar: 0.03, kusk: 0, tranare: 0.03, galopp: 0, streck: 0.88 };
+const V2_WEIGHTS: Weights = RECOMMENDED_WEIGHTS;
 
 type PostInfo = { from: string; to: string; races: number; starts: number; withPost: number };
 
@@ -513,7 +513,7 @@ function report(r: Result): string {
   L(`Koordinatvis sökning på log loss för träningsdelen med β = 1 (β bakas in i vikterna; streck hålls utanför${r.run.post ? ", spår är med" : ", spår och streck hålls utanför"}).`);
   L();
   L("| Indata | v1 | v1 × bästa β | Anpassad | Anpassad + streck | Anpassad + pengar | Anpassad + streck + pengar |\n|---|---:|---:|---:|---:|---:|---:|");
-  for (const k of [...INPUT_KEYS, PENGAR])
+  for (const k of INPUT_KEYS)
     L(`| ${k} | ${f(r.run.weights[k] ?? 0, 2)} | ${f(r.fit.start[k] ?? 0, 2)} | ${f(r.fit.weights[k] ?? 0, 2)} | ${f(r.fit.withStreck[k] ?? 0, 2)} | ${f(r.fit.withPengar[k] ?? 0, 2)} | ${f(r.fit.withStreckPengar[k] ?? 0, 2)} |`);
   L();
   L("pengar = log(1 + hästens vinstsumma per start i livet), z inom loppet. Vinstsumman är ögonblicksbilden i games/<id>, samma som år/fjol.");

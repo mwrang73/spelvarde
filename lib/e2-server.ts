@@ -8,7 +8,7 @@ import type { Prisma, PrismaClient, Role } from "@prisma/client";
 import { asSelections, DEFAULT_BUDGET, parseCouponBody, sameNumbers } from "@/lib/coupon";
 import { couponDto, dec, markDto, modelDto, settingsDto, THEME_FROM_API } from "@/lib/dto";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, sameMark, turnsSomethingOn, type MarkState } from "@/lib/marks";
-import { INPUT_KEYS, nextModelKey, parseParams, parseWeights, type ModelParams, type Weights } from "@/lib/riktodds";
+import { INPUT_KEYS, nextModelKey, parseParams, parseWeights, type ModelParams, type NumParamKey, type Weights } from "@/lib/riktodds";
 import { riktoddsStep } from "@/lib/riktodds-server";
 import { currentRoundId } from "@/lib/round-server";
 import type { CouponResponse, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
@@ -165,7 +165,7 @@ export async function getModel(db: Db, user: { role: Role }): Promise<Reply<Mode
   return ok(await modelList(db));
 }
 
-const PARAM_LIMITS: Record<keyof ModelParams, [number, number]> = {
+const PARAM_LIMITS: Record<NumParamKey, [number, number]> = {
   beta: [0.01, 10],
   marginal: [0, 1],
   kPlats: [0, 1000],
@@ -174,31 +174,48 @@ const PARAM_LIMITS: Record<keyof ModelParams, [number, number]> = {
   kTranare: [0, 1000],
 };
 
-export type ModelInput = { weights: Partial<Weights>; params: Partial<ModelParams>; roundId: string | null };
+// noStreck: vikterna utan streck (alla nycklar utom streck), null = ta bort,
+// saknas = behåll den aktiva versionens.
+export type ModelInput = { weights: Partial<Weights>; params: Partial<Omit<ModelParams, "noStreck">>; noStreck?: Weights | null; roundId: string | null };
 
 export function parseModelBody(body: Record<string, unknown>): Result<ModelInput> {
-  const unknown = Object.keys(body).filter((k) => !["weights", "params", "roundId"].includes(k));
+  const unknown = Object.keys(body).filter((k) => !["weights", "params", "noStreck", "roundId"].includes(k));
   if (unknown.length) return { ok: false, error: "Okänt fält." };
   const obj = (x: unknown) => (x === undefined ? {} : x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : null);
   const w = obj(body.weights);
   const p = obj(body.params);
   if (!w || !p) return { ok: false, error: "weights och params ska vara objekt." };
-  const weights: Partial<Weights> = {};
-  for (const [k, v] of Object.entries(w)) {
-    if (!(INPUT_KEYS as readonly string[]).includes(k)) return { ok: false, error: `Okänd vikt: ${k}.` };
-    if (typeof v !== "number" || !Number.isFinite(v) || Math.abs(v) > 10) return { ok: false, error: `Vikten ${k} ska vara ett tal mellan −10 och 10.` };
-    weights[k as keyof Weights] = v;
+  const readWeights = (o: Record<string, unknown>): Result<Partial<Weights>> => {
+    const out: Partial<Weights> = {};
+    for (const [k, v] of Object.entries(o)) {
+      if (!(INPUT_KEYS as readonly string[]).includes(k)) return { ok: false, error: `Okänd vikt: ${k}.` };
+      if (typeof v !== "number" || !Number.isFinite(v) || Math.abs(v) > 10) return { ok: false, error: `Vikten ${k} ska vara ett tal mellan −10 och 10.` };
+      out[k as keyof Weights] = v;
+    }
+    return { ok: true, value: out };
+  };
+  const wr = readWeights(w);
+  if (!wr.ok) return wr;
+  const weights = wr.value;
+  let noStreck: Weights | null | undefined;
+  if (body.noStreck === null) noStreck = null;
+  else if (body.noStreck !== undefined) {
+    const ns = obj(body.noStreck);
+    if (!ns) return { ok: false, error: "noStreck ska vara ett objekt eller null." };
+    const nr = readWeights(ns);
+    if (!nr.ok) return nr;
+    noStreck = { ...Object.fromEntries(INPUT_KEYS.map((k) => [k, 0])), ...nr.value, streck: 0 } as Weights;
   }
-  const params: Partial<ModelParams> = {};
+  const params: Partial<Omit<ModelParams, "noStreck">> = {};
   for (const [k, v] of Object.entries(p)) {
-    const lim = PARAM_LIMITS[k as keyof ModelParams];
+    const lim = PARAM_LIMITS[k as NumParamKey];
     if (!lim) return { ok: false, error: `Okänd parameter: ${k}.` };
     if (typeof v !== "number" || !Number.isFinite(v) || v < lim[0] || v > lim[1]) return { ok: false, error: `${k} ska ligga mellan ${lim[0]} och ${lim[1]}.` };
-    params[k as keyof ModelParams] = v;
+    params[k as NumParamKey] = v;
   }
   const roundId = body.roundId ?? null;
   if (roundId !== null && !isId(roundId)) return { ok: false, error: "Ogiltig omgång." };
-  return { ok: true, value: { weights, params, roundId: roundId as string | null } };
+  return { ok: true, value: { weights, params, ...(noStreck !== undefined ? { noStreck } : {}), roundId: roundId as string | null } };
 }
 
 // Sparar vikterna som en NY modellversion (v1.1, v1.2 …) som blir aktiv. De
@@ -211,7 +228,7 @@ export async function saveModel(db: Db, user: { id: string; role: Role }, body: 
   if (parsed.value.roundId && !(await db.round.findUnique({ where: { id: parsed.value.roundId }, select: { id: true } }))) return err(404, "Omgången finns inte.");
   const active = await db.modelVersion.findFirst({ where: { active: true } });
   const weights = { ...parseWeights(active?.weights ?? null), ...parsed.value.weights };
-  const params = { ...parseParams(active?.params ?? null), ...parsed.value.params };
+  const params = { ...parseParams(active?.params ?? null), ...parsed.value.params, ...(parsed.value.noStreck !== undefined ? { noStreck: parsed.value.noStreck } : {}) };
   const same = active && JSON.stringify(parseWeights(active.weights)) === JSON.stringify(weights) && JSON.stringify(parseParams(active.params)) === JSON.stringify(params);
   if (!same) {
     const keys = (await db.modelVersion.findMany({ select: { key: true } })).map((m) => m.key);

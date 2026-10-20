@@ -411,6 +411,8 @@ export type RiktoddsDetailDto = {
   uncertain: boolean;
   // "Osäkert: färre än 5 starter" (visas överst), null när det inte är osäkert.
   uncertainLine: string | null;
+  // "Strecket saknas än, så modellens vikter utan streck används." eller null.
+  noteLine: string | null;
   // Högst 3 + 3, bidrag under 0,15 visas inte. Störst först.
   pros: WhyRowDto[];
   cons: WhyRowDto[];
@@ -450,7 +452,8 @@ export type ModelDto = {
   id: string;
   key: string;
   weights: Record<InputKey, number>;
-  params: { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number };
+  // noStreck = vikterna när loppet saknar streck (null = samma vikter).
+  params: { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number; noStreck: Record<InputKey, number> | null };
   active: boolean;
   createdAt: string;
 };

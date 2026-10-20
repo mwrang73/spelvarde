@@ -291,6 +291,14 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(((await getModel(db, admin)).body as ModelResponse).active!.key).toBe("v1.1");
   });
 
+  it("modellen: vikterna utan streck sparas som ny version och kan tas bort", async () => {
+    expect((await saveModel(db, admin, { noStreck: "nej" }, thursday)).status).toBe(400);
+    const res = (await saveModel(db, admin, { weights: { streck: 0.88 }, noStreck: { pengar: 0.38, plats: 0.1 }, roundId }, thursday)).body as ModelResponse;
+    expect(res.active).toMatchObject({ key: "v1.2", params: { noStreck: { pengar: 0.38, plats: 0.1, streck: 0, vinst: 0 } } });
+    const off = (await saveModel(db, admin, { noStreck: null, roundId }, thursday)).body as ModelResponse;
+    expect(off.active).toMatchObject({ key: "v1.3", params: { noStreck: null } });
+  });
+
   it("ett misslyckat steg 11 ger resumeFrom RIKTODDS", async () => {
     const round = await db.round.findUniqueOrThrow({ where: { id: roundId }, include: { races: true } });
     await db.round.update({ where: { id: roundId }, data: { fetchStatus: "COMPLETE" } });
