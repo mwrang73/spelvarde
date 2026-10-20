@@ -348,11 +348,12 @@ function predsFor(race: BtRace, p3: number[], marginal: number): Pred[] {
   }));
 }
 
-// Modellen via computeRace (samma som i drift).
+// Modellen via computeRace (samma som i drift, där strecket alltid skickas
+// med: med vikt 0 påverkar det inget).
 export function modelPreds(races: BtRace[], weights: Weights, params: ModelParams): Pred[] {
   const out: Pred[] = [];
   for (const race of races) {
-    const res = computeRace(toFacts(race), weights, params);
+    const res = computeRace(toFacts(race, weights.streck !== 0), weights, params);
     if (!res.length) continue;
     out.push(...predsFor(race, res.map((r) => r.probTop3), params.marginal));
   }
