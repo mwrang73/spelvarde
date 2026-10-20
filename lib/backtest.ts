@@ -9,6 +9,7 @@
 // och Harville görs sedan med samma funktioner som modellen (p3FromZ), så att
 // sökningen går fort utan att modellen skrivs en gång till.
 
+import { distanceGroup, HIST_YEARS, MIN_RACES_ALL, toRows } from "@/lib/hist";
 import { parseGame, parseStartDetail, type ParsedRecord, type ParsedStartDetail, type YearStats } from "@/lib/atg";
 import {
   computeRace,
@@ -52,6 +53,9 @@ export type BtStart = {
   placeOdds: number | null;
   // Utbetalt platsodds om hästen gav plats i platspoolen, annars 0.
   placePayout: number;
+  // Startnumrets plats % på loppets distans och startmetod ur statistikbasen,
+  // bara lopp före loppdagen (attachPosts). null = saknas.
+  post?: StartFacts["post"];
 };
 
 export type BtRace = {
@@ -60,6 +64,8 @@ export type BtRace = {
   gameType: string;
   gameId: string;
   leg: number;
+  distance: number;
+  startMethod: "AUTO" | "VOLTE";
   // Antal platser som betalas i platspoolen (2 eller 3). null = ingen platspool.
   placesPaid: number | null;
   starts: BtStart[];
@@ -206,13 +212,13 @@ export function buildRaces(
         placePayout: winners?.paid.get(s.number) ?? 0,
       };
     });
-    out.push({ key: race.atgRaceId, date, gameType, gameId: game.atgGameId, leg: race.leg, placesPaid: winners?.places ?? null, starts });
+    out.push({ key: race.atgRaceId, date, gameType, gameId: game.atgGameId, leg: race.leg, distance: race.distance, startMethod: race.startMethod, placesPaid: winners?.places ?? null, starts });
   });
   return out;
 }
 
-// Indata till computeRace. Spår finns inte historiskt (post = null → spar 0).
-// Streck tas med bara om withStreck (v1 har vikten 0).
+// Indata till computeRace. Spår ur statistikbasen när attachPosts har körts,
+// annars null (spar 0). Streck tas med bara om withStreck (v1 har vikten 0).
 export function toFacts(race: BtRace, withStreck = false): StartFacts[] {
   return race.starts.map((s) => ({
     startId: `${race.key}:${s.number}`,
@@ -222,9 +228,94 @@ export function toFacts(race: BtRace, withStreck = false): StartFacts[] {
     records: s.records.map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
     driver: s.driver,
     trainer: s.trainer,
-    post: null,
+    post: s.post ?? null,
     streck: withStreck ? s.streck : null,
   }));
+}
+
+// ---- Spår ur statistikbasen -----------------------------------------------------------------
+
+// En start i statistikbasen (HistRace + HistStart), för spårtabellerna.
+export type HistRow = { raceId: string; date: string; method: "AUTO" | "VOLTE"; distance: number; number: number; place: number | null; scratched: boolean };
+
+type Series = { dates: string[]; rows: HistRow[]; raceDates: string[] };
+
+const lowerBound = (xs: string[], x: string) => {
+  let lo = 0;
+  let hi = xs.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+};
+
+// Samma regler som postTable i lib/hist.ts, men i minnet och för valfritt
+// datum: lopp i [datum − 2 år, datum), exakt distans med minst 150 lopp,
+// annars distansgruppen, minst 15 starter per startnummer. Ger plats % per
+// startnummer eller null.
+export function makePostIndex(rows: HistRow[]): (date: string, method: "AUTO" | "VOLTE", distance: number) => Map<number, number> | null {
+  const series = new Map<string, Series>();
+  const add = (key: string, r: HistRow) => {
+    const s = series.get(key) ?? { dates: [], rows: [], raceDates: [] };
+    s.rows.push(r);
+    series.set(key, s);
+  };
+  for (const r of rows) {
+    add(`${r.method}|${r.distance}`, r);
+    add(`${r.method}|g${distanceGroup(r.distance).lo}`, r);
+  }
+  for (const s of series.values()) {
+    s.rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    s.dates = s.rows.map((r) => r.date);
+    const seen = new Set<string>();
+    for (const r of s.rows) if (!seen.has(r.raceId)) (seen.add(r.raceId), s.raceDates.push(r.date));
+  }
+  const cache = new Map<string, Map<number, number> | null>();
+  return (date, method, distance) => {
+    const key = `${method}|${distance}|${date}`;
+    if (cache.has(key)) return cache.get(key)!;
+    const from = `${Number(date.slice(0, 4)) - HIST_YEARS}${date.slice(4)}`;
+    let out: Map<number, number> | null = null;
+    for (const k of [`${method}|${distance}`, `${method}|g${distanceGroup(distance).lo}`]) {
+      const s = series.get(k);
+      if (!s) continue;
+      const races = lowerBound(s.raceDates, date) - lowerBound(s.raceDates, from);
+      if (races < MIN_RACES_ALL) continue;
+      const counts = new Map<number, { n: number; starts: number; wins: number; top3: number }>();
+      for (let i = lowerBound(s.dates, from), end = lowerBound(s.dates, date); i < end; i++) {
+        const r = s.rows[i];
+        if (r.scratched) continue;
+        const c = counts.get(r.number) ?? { n: r.number, starts: 0, wins: 0, top3: 0 };
+        c.starts++;
+        if (r.place === 1) c.wins++;
+        if (r.place !== null && r.place >= 1 && r.place <= 3) c.top3++;
+        counts.set(r.number, c);
+      }
+      out = new Map(toRows([...counts.values()]).filter((x) => x.placePct !== null).map((x) => [x.n, x.placePct!]));
+      break;
+    }
+    cache.set(key, out);
+    return out;
+  };
+}
+
+// Sätter post (plats %, medel för loppets tabell) på varje start, som
+// computeRoundRiktodds gör i drift. Ger antalet starter som fick ett värde.
+export function attachPosts(races: BtRace[], index: ReturnType<typeof makePostIndex>): number {
+  let n = 0;
+  for (const race of races) {
+    const table = index(race.date, race.startMethod, race.distance);
+    const vals = table ? [...table.values()] : [];
+    const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    for (const s of race.starts) {
+      const pct = table?.get(s.number);
+      s.post = pct !== undefined && mean > 0 ? { pct, mean, distance: race.distance, method: race.startMethod, kind: "plats" } : null;
+      if (s.post && !s.scratched) n++;
+    }
+  }
+  return n;
 }
 
 // ---- Förutsägelser --------------------------------------------------------------------

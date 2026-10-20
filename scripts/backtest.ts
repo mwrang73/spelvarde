@@ -13,8 +13,13 @@
 //   --bara-underlag     hämta och räkna underlaget, ingen utvärdering
 //   --bara-cache        hämta inget: använd bara det som finns i .backtest-cache/;
 //                       spel där någon start saknas i cachen hoppas över
+//   --utan-spar         pröva inte spåret (annars läses statistikbasen)
+//   --spar-db <url>     databasen med statistikbasen, standard DATABASE_URL
+//                       (lokalt: npm run db:local och knappen i S10)
 //
-// Ingen databas: allt hämtas från ATG och sparas i .backtest-cache/ (gitignorerad),
+// Spåret: startnumrets plats % räknas för varje lopp ur statistikbasen
+// (HistRace/HistStart), bara lopp före loppdagen (lib/backtest.ts, attachPosts).
+// I övrigt ingen databas: allt hämtas från ATG och sparas i .backtest-cache/ (gitignorerad),
 // så att en avbruten körning fortsätter där den slutade. Högst 3 anrop samtidigt
 // och en kort paus efter varje riktigt anrop. Rapporten skrivs som
 // <ut>/<datum>-v1.md och en JSON bredvid. Rena delar i lib/backtest.ts.
@@ -23,11 +28,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { AtgError, atgFetch, atgPaths, mapLimit } from "@/lib/atg";
 import {
+  attachPosts,
   betaGrid,
   buildRaces,
   calendarGames,
   calibration,
   fitWeights,
+  makePostIndex,
   marketPreds,
   metrics,
   modelPreds,
@@ -40,6 +47,7 @@ import {
   type BtRace,
   type Bucket,
   type CalendarEntry,
+  type HistRow,
   type Metrics,
   type Pred,
   type StatsSource,
@@ -73,6 +81,8 @@ function args() {
     onlyData: a.includes("--bara-underlag"),
     cacheOnly: a.includes("--bara-cache"),
     source: (get("statistik") === "poster" ? "poster" : "ogonblick") as StatsSource,
+    withPost: !a.includes("--utan-spar"),
+    postDb: get("spar-db") ?? process.env.DATABASE_URL ?? "",
     today,
   };
 }
@@ -225,6 +235,8 @@ async function main() {
   const o = args();
   const { races: loaded, games, skipped } = await loadRaces(o);
   console.log(`Klart: nät ${networkCalls} anrop, cache ${cacheHits}`);
+  const post = o.withPost ? await loadPosts(o.postDb, loaded) : null;
+  if (post) console.log(`Spår: statistikbasen ${post.from} – ${post.to}, ${post.races} lopp; plats % för ${post.withPost} av ${post.starts} starter`);
 
   // Underlaget per spelform.
   const byType = o.types.map((t) => {
@@ -279,8 +291,8 @@ async function main() {
   console.log(`Bästa β träning ${betaTrain.beta} (log loss ${f(betaTrain.logLoss, 4)}), hela ${betaAll.beta}`);
 
   // Vikter: utgå från v1 med bästa β inbakat i vikterna (β = 1), sök på träning.
-  // spar är alltid 0 (inget spår historiskt) och streck hålls utanför.
-  const fitKeys: InputKey[] = ["plats", "vinst", "form", "kusk", "tranare", "galopp"];
+  // Streck hålls utanför. spar är med när statistikbasen finns.
+  const fitKeys: InputKey[] = ["plats", "vinst", "form", ...(post ? (["spar"] as const) : []), "kusk", "tranare", "galopp"];
   const startW = Object.fromEntries(INPUT_KEYS.map((k) => [k, Math.round(o.weights[k] * betaTrain.beta * 1000) / 1000])) as Weights;
   const t0 = Date.now();
   const fit = fitWeights(zTrain, startW, 1, fitKeys);
@@ -302,7 +314,7 @@ async function main() {
   ];
 
   const result: Result = {
-    run: { at: new Date().toISOString(), from: o.from, to: o.to, types: o.types, source: o.source, cacheOnly: o.cacheOnly, skippedGames: skipped, firstRace: loaded[0]?.date ?? null, lastRace: loaded[loaded.length - 1]?.date ?? null, weights: o.weights, params: V1_PARAMS, trainShare: o.trainShare },
+    run: { at: new Date().toISOString(), from: o.from, to: o.to, types: o.types, source: o.source, cacheOnly: o.cacheOnly, skippedGames: skipped, post, firstRace: loaded[0]?.date ?? null, lastRace: loaded[loaded.length - 1]?.date ?? null, weights: o.weights, params: V1_PARAMS, trainShare: o.trainShare },
     data: { byType, sources, persons: personCheck(gameJsonOf(loaded, games)), evaluated: { races: races.length, dropped, train: train.length, test: test.length, testFrom: cut, trainTo: train[train.length - 1]?.date ?? "" } },
     beta: { train: betaTrain, all: betaAll },
     fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights },
@@ -328,6 +340,34 @@ async function main() {
 
 const RATIOS = [1, 1.2, 1.5];
 
+type PostInfo = { from: string; to: string; races: number; starts: number; withPost: number };
+
+// Statistikbasen ur databasen → plats % per startnummer på varje lopp i underlaget.
+async function loadPosts(url: string, races: BtRace[]): Promise<PostInfo | null> {
+  if (!url) {
+    console.warn("Spår: ingen databas (sätt DATABASE_URL eller --spar-db), spåret prövas inte");
+    return null;
+  }
+  const { PrismaClient } = await import("@prisma/client");
+  const db = new PrismaClient({ datasourceUrl: url });
+  try {
+    const rows = await db.$queryRawUnsafe<{ raceId: string; date: Date; method: "AUTO" | "VOLTE"; distance: number; number: number; place: number | null; scratched: boolean }[]>(
+      `SELECT s."raceId", r."date", r."startMethod"::text AS method, r."distance", s."number", s."place", s."scratched"
+       FROM "spelvarde"."HistStart" s JOIN "spelvarde"."HistRace" r ON r."id" = s."raceId"`,
+    );
+    if (!rows.length) {
+      console.warn("Spår: statistikbasen är tom, spåret prövas inte");
+      return null;
+    }
+    const hist: HistRow[] = rows.map((r) => ({ ...r, date: r.date.toISOString().slice(0, 10) }));
+    const dates = hist.map((r) => r.date).sort();
+    const withPost = attachPosts(races, makePostIndex(hist));
+    return { from: dates[0], to: dates[dates.length - 1], races: new Set(hist.map((r) => r.raceId)).size, starts: races.flatMap((r) => r.starts.filter((s) => !s.scratched)).length, withPost };
+  } finally {
+    await db.$disconnect();
+  }
+}
+
 type VariantResult = {
   name: string;
   kind: "modell" | "anpassad" | "referens";
@@ -340,7 +380,7 @@ type VariantResult = {
 };
 
 type Result = {
-  run: { at: string; from: string; to: string; types: string[]; source: StatsSource; cacheOnly: boolean; skippedGames: number; firstRace: string | null; lastRace: string | null; weights: Weights; params: typeof V1_PARAMS; trainShare: number };
+  run: { at: string; from: string; to: string; types: string[]; source: StatsSource; cacheOnly: boolean; skippedGames: number; post: PostInfo | null; firstRace: string | null; lastRace: string | null; weights: Weights; params: typeof V1_PARAMS; trainShare: number };
   data: {
     byType: { type: string; rounds: number; calendarRounds: number; races: number; starts: number; from: string | null; to: string | null }[];
     sources: Record<string, number>;
@@ -434,7 +474,10 @@ function report(r: Result): string {
   L(`- Tidigare starter: bara poster med datum före loppdagen (strukna borträknade), högst 5 för form och galopp. ${s.noRecords} starter saknar tidigare poster helt, ${s.fewRecords} har färre än 5 poster trots minst 5 starter i livet.`);
   L(`- Hästens år/fjol: ögonblicksbilden i \`games/<id>\` stämde exakt med posterna före loppet i ${s.agree} av ${s.agree + s.disagree} starter där posterna räcker bakåt (${pctOf(s.agree, s.agree + s.disagree)}); avvikelserna är kvallopp och utländska lopp som posterna och ATG räknar olika. Ögonblicksbilden räknade med senare starter i ${s.leak} av ${s.leakChecked} kontrollerbara fall. Källa: ögonblick ${s.ogonblick}, poster ${s.poster}, saknas ${s.saknas}.`);
   L(`- Kusk och tränare: ögonblicksbilden i \`games/<id>\`. Samma person på två olika dagar samma år: fler starter senare i ${d.persons.up} par, lika i ${d.persons.same}, färre i ${d.persons.down} (av ${d.persons.pairs}). Saknas: kusk ${s.driverMissing}, tränare ${s.trainerMissing} starter (= fältets medel).`);
-  L("- Spår (travstatistik.se) finns inte historiskt: `spar` = 0 för alla, så vikten för spår är inte prövad.");
+  if (r.run.post) {
+    const pi = r.run.post;
+    L(`- Spår: startnumrets plats % (topp 3) på loppets distans och startmetod ur statistikbasen (alla svenska travlopp ${pi.from} – ${pi.to}, ${pi.races} lopp), bara lopp under två år före loppdagen. Exakt distans med minst 150 lopp, annars distansgruppen. ${pi.withPost} av ${pi.starts} starter fick ett värde (${pctOf(pi.withPost, pi.starts)}); övriga har \`spar\` = 0.`);
+  } else L("- Spår: inte prövat i den här körningen (--utan-spar): `spar` = 0 för alla.");
   L("- Streck används inte i modellen (vikt 0), bara i referensen Marknaden (streck) och i den extra varianten med streck.");
   L();
   L("## Mått, testdelen");
@@ -454,7 +497,7 @@ function report(r: Result): string {
   L();
   L("## Anpassade vikter");
   L();
-  L("Koordinatvis sökning på log loss för träningsdelen med β = 1 (β bakas in i vikterna; spår och streck hålls utanför).");
+  L(`Koordinatvis sökning på log loss för träningsdelen med β = 1 (β bakas in i vikterna; streck hålls utanför${r.run.post ? ", spår är med" : ", spår och streck hålls utanför"}).`);
   L();
   L("| Indata | v1 | v1 × bästa β | Anpassad | Anpassad + streck |\n|---|---:|---:|---:|---:|");
   for (const k of INPUT_KEYS) L(`| ${k} | ${f(r.run.weights[k], 2)} | ${f(r.fit.start[k], 2)} | ${f(r.fit.weights[k], 2)} | ${f(r.fit.withStreck[k], 2)} |`);

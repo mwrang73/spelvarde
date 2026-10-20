@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  attachPosts,
   brier,
   buildRaces,
   calendarGames,
@@ -11,6 +12,7 @@ import {
   fitWeights,
   horseYears,
   logLoss,
+  makePostIndex,
   marketPreds,
   modelPreds,
   naivePreds,
@@ -25,6 +27,7 @@ import {
   zRaces,
   type BtRace,
   type BtStart,
+  type HistRow,
   type Pred,
 } from "@/lib/backtest";
 import { computeRace, V1_PARAMS, V1_WEIGHTS } from "@/lib/riktodds";
@@ -241,6 +244,8 @@ describe("modellen i backtestet", () => {
     gameType: "V85",
     gameId: "g",
     leg: 1,
+    distance: 2140,
+    startMethod: "AUTO",
     placesPaid: 3,
     starts: Array.from({ length: 8 }, (_, i) => start(i + 1, 8 - i, i < 3)),
   });
@@ -279,5 +284,32 @@ describe("modellen i backtestet", () => {
     expect(s.train.map((r) => r.key)).toEqual(["r1", "r2"]);
     expect(s.test.map((r) => r.key)).toEqual(["r3", "r4"]);
     expect(s.cut).toBe("2026-02-01");
+  });
+});
+
+describe("spår ur statistikbasen i backtestet", () => {
+  // 160 lopp 2140 m auto, ett om dagen från 2025-01-01: nr 1 vinner alltid, nr 2 tvåa, nr 3 trea.
+  const day = (i: number) => new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10);
+  const rows: HistRow[] = [];
+  for (let i = 0; i < 160; i++)
+    for (let n = 1; n <= 8; n++) rows.push({ raceId: `r${i}`, date: day(i), method: "AUTO", distance: 2140, number: n, place: n <= 3 ? n : 0, scratched: false });
+  const index = makePostIndex(rows);
+
+  it("räknar bara lopp före loppdagen", () => {
+    expect(index(day(160), "AUTO", 2140)?.get(1)).toBe(100);
+    expect(index(day(160), "AUTO", 2140)?.get(4)).toBe(0);
+    // Dag 150: bara 150 lopp före, precis gränsen.
+    expect(index(day(150), "AUTO", 2140)).not.toBeNull();
+    expect(index(day(149), "AUTO", 2140)).toBeNull();
+  });
+  it("faller tillbaka på distansgruppen och saknas för annan startmetod", () => {
+    expect(index(day(160), "AUTO", 2100)?.get(2)).toBe(100);
+    expect(index(day(160), "VOLTE", 2140)).toBeNull();
+  });
+  it("sätter post med medel som i drift", () => {
+    const r = { key: "x", date: day(160), gameType: "V85", gameId: "g", leg: 1, distance: 2140, startMethod: "AUTO" as const, placesPaid: 3, starts: [1, 4].map((n) => ({ number: n, scratched: false, records: [] }) as unknown as BtStart) };
+    expect(attachPosts([r], index)).toBe(2);
+    expect(r.starts[0].post).toMatchObject({ pct: 100, mean: 37.5, kind: "plats" });
+    expect(toFacts(r)[1].post).toMatchObject({ pct: 0 });
   });
 });
