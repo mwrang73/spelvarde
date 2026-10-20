@@ -42,6 +42,8 @@
   --sig-fill-ink: #FFFFFF;
   --sig-fill-2: #BFE6CB;
   --sig-fill-2-ink: #0A4721;
+  --sig-soft: #DDF3E5;
+  --sig-text: #0A4721;
   --down: #C42B1F;
   --down-soft: #FBE1DD;
   --gal: #C42B1F;
@@ -144,6 +146,8 @@
   --sig-fill-ink: #04210F;
   --sig-fill-2: rgba(70, 211, 126, .30);
   --sig-fill-2-ink: #C8F7DA;
+  --sig-soft: rgba(70, 211, 126, .16);
+  --sig-text: #8BEDB3;
   --down: #FF6B5A;
   --down-soft: rgba(255, 107, 90, .15);
   --gal: #FF5A45;

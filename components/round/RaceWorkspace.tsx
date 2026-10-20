@@ -638,8 +638,8 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
 function QuickPct({ kind, v, starts }: { kind: "win" | "place"; v: number | null; starts: number | null }) {
   const sg = pctSignal(kind, v, starts);
   return (
-    <td className={`r num${sg ? ` ${signalClass(sg)}` : ""}`}>
-      {pct(v, 0)}
+    <td className="r num">
+      <span className={signalClass(sg)}>{pct(v, 0)}</span>
       <span className="sr">{signalSr(sg)}</span>
     </td>
   );

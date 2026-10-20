@@ -363,7 +363,8 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .plc.w { background: var(--sig-fill); color: var(--sig-fill-ink); }
 .plc.w2 { background: var(--sig-fill-2); color: var(--sig-fill-2-ink); }
 /* Positiv signal (lib/signals.ts): grön och fet. För få starter: dämpad. */
-.sig { color: var(--sig); font-weight: 700; }
+/* Grön bricka med kant, så att den syns även mot ljus och randig bakgrund. */
+.sig { display: inline-block; padding: 1px 5px; border-radius: 4px; background: var(--sig-soft); box-shadow: inset 0 0 0 1.5px var(--sig); color: var(--sig-text); font-weight: 700; line-height: 1.35; }
 .few { color: var(--ink-2); opacity: .75; }
 .plc.g { background: var(--gal); color: var(--gal-ink); }
 .cmts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -457,7 +458,7 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .vt .cnt .dim { display: none; }
   /* Kompakt sidhuvud, så att 12 hästar syns utan skroll på en vanlig skärm. */
   /* Tavlan: rubrik och chips till vänster, statistikrutorna 2 × 2 till höger. */
-  .drace { padding: 10px 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); gap: 16px; align-items: center; }
+  .drace { padding: 10px 20px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; align-items: center; }
   .dr-l { min-width: 0; }
   .drace .k { font: 700 12.5px/1 var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--head-ink); }
   .drace h1 { margin: 4px 0 8px; font: 700 26px/1.05 var(--f-name); text-transform: uppercase; letter-spacing: .02em; color: var(--head-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -466,12 +467,12 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .drace .chip-btn { margin-left: 0; }
   .d-miss { margin-top: 12px; }
   .dstats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .dstats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--head-line); border-radius: 6px; padding: 5px 10px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+  .dstats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--head-line); border-radius: 6px; padding: 6px 12px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
   .dstats div small { grid-column: 1 / -1; }
-  .dstats small { display: block; font: 700 10.5px/1.2 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--head-ink-2); }
-  .dstats b { font: 700 17px/1.2 var(--f-num); color: var(--head-ink); }
-  .dstats span { display: block; font-size: 12px; color: var(--head-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dstats em { grid-column: 1 / -1; font-style: normal; font-size: 11px; line-height: 1.3; color: var(--head-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dstats small { display: block; font: 700 11.5px/1.2 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--head-ink-2); }
+  .dstats b { font: 700 22px/1.15 var(--f-num); color: var(--head-ink); }
+  .dstats span { display: block; font-size: 13px; color: var(--head-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dstats em { grid-column: 1 / -1; font-style: normal; font-size: 12px; line-height: 1.3; color: var(--head-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dstats em.dim { opacity: .7; }
   .dpanel { margin: 12px 20px 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--fill); border-radius: 10px; }
   .dpanel .rstats { max-width: 640px; }
