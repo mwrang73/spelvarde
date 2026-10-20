@@ -30,6 +30,9 @@ export const V1_PARAMS: ModelParams = { beta: 1.0, marginal: 0, kPlats: 6, kVins
 // vinnarodds 0,5010); utan streck (noStreck) 0,5218.
 export const RECOMMENDED_WEIGHTS: Weights = { plats: 0.08, vinst: 0, form: -0.05, spar: 0.03, kusk: 0, tranare: 0.03, galopp: -0.05, galoppVolt: 0, pengar: 0.05, barfota: 0.08, vila: -0.07, tid: 0, streck: 0.86 };
 export const RECOMMENDED_NO_STRECK: Weights = { plats: 0.1, vinst: 0.08, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, galoppVolt: 0, pengar: 0.38, barfota: 0.13, vila: -0.1, tid: 0.08, streck: 0 };
+// Versionsnamnet när den rekommenderade modellen sparas (Fyll i rekommenderad modell).
+export const RECOMMENDED_KEY = "v3";
+
 // Kalibreringen som hör till v3 (anpassad på modellen med streck).
 export const RECOMMENDED_CALIBRATION: Pick<ModelParams, "plattA" | "plattB" | "maxP3"> = { plattA: -0.055, plattB: 0.947, maxP3: 0.8 };
 

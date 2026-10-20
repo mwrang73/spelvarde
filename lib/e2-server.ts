@@ -179,10 +179,13 @@ const PARAM_LIMITS: Record<NumParamKey, [number, number]> = {
 
 // noStreck: vikterna utan streck (alla nycklar utom streck), null = ta bort,
 // saknas = behåll den aktiva versionens.
-export type ModelInput = { weights: Partial<Weights>; params: Partial<Omit<ModelParams, "noStreck">>; noStreck?: Weights | null; roundId: string | null };
+// key: önskat versionsnamn ("v3" från Fyll i rekommenderad modell). Finns det
+// redan blir det nästa lediga (v3.1 …).
+export type ModelInput = { weights: Partial<Weights>; params: Partial<Omit<ModelParams, "noStreck">>; noStreck?: Weights | null; key?: string; roundId: string | null };
 
 export function parseModelBody(body: Record<string, unknown>): Result<ModelInput> {
-  const unknown = Object.keys(body).filter((k) => !["weights", "params", "noStreck", "roundId"].includes(k));
+  const unknown = Object.keys(body).filter((k) => !["weights", "params", "noStreck", "key", "roundId"].includes(k));
+  if (body.key !== undefined && (typeof body.key !== "string" || !/^v\d{1,3}(\.\d{1,4})?$/.test(body.key))) return { ok: false, error: "Versionsnamnet ska se ut som v3 eller v3.1." };
   if (unknown.length) return { ok: false, error: "Okänt fält." };
   const obj = (x: unknown) => (x === undefined ? {} : x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : null);
   const w = obj(body.weights);
@@ -218,7 +221,7 @@ export function parseModelBody(body: Record<string, unknown>): Result<ModelInput
   }
   const roundId = body.roundId ?? null;
   if (roundId !== null && !isId(roundId)) return { ok: false, error: "Ogiltig omgång." };
-  return { ok: true, value: { weights, params, ...(noStreck !== undefined ? { noStreck } : {}), roundId: roundId as string | null } };
+  return { ok: true, value: { weights, params, ...(noStreck !== undefined ? { noStreck } : {}), ...(typeof body.key === "string" ? { key: body.key } : {}), roundId: roundId as string | null } };
 }
 
 // Sparar vikterna som en NY modellversion (v1.1, v1.2 …) som blir aktiv. De
@@ -232,10 +235,12 @@ export async function saveModel(db: Db, user: { id: string; role: Role }, body: 
   const active = await db.modelVersion.findFirst({ where: { active: true } });
   const weights = { ...parseWeights(active?.weights ?? null), ...parsed.value.weights };
   const params = { ...parseParams(active?.params ?? null), ...parsed.value.params, ...(parsed.value.noStreck !== undefined ? { noStreck: parsed.value.noStreck } : {}) };
+  const wanted = parsed.value.key ?? null;
   const same = active && JSON.stringify(parseWeights(active.weights)) === JSON.stringify(weights) && JSON.stringify(parseParams(active.params)) === JSON.stringify(params);
-  if (!same) {
+  // Ett önskat namn som skiljer sig från den aktiva versionens sparas även om vikterna är desamma.
+  if (!same || (wanted && active?.key !== wanted)) {
     const keys = (await db.modelVersion.findMany({ select: { key: true } })).map((m) => m.key);
-    const key = nextModelKey(keys);
+    const key = wanted ? (keys.includes(wanted) ? nextModelKey(keys.filter((k) => k === wanted || k.startsWith(`${wanted}.`))) : wanted) : nextModelKey(keys);
     // Det unika indexet tillåter bara en aktiv: stäng av först, i samma transaktion.
     await db.$transaction([
       db.modelVersion.updateMany({ where: { active: true }, data: { active: false } }),

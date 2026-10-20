@@ -299,6 +299,18 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(off.active).toMatchObject({ key: "v1.3", params: { noStreck: null } });
   });
 
+  it("modellen: den rekommenderade sparas som v3, även med samma vikter, och sedan v3.1 och v3.2", async () => {
+    expect((await saveModel(db, admin, { key: "tre" }, thursday)).status).toBe(400);
+    const v3 = (await saveModel(db, admin, { key: "v3", roundId }, thursday)).body as ModelResponse;
+    expect(v3.active!.key).toBe("v3");
+    const again = (await saveModel(db, admin, { key: "v3", roundId }, thursday)).body as ModelResponse;
+    expect(again.active!.key).toBe("v3");
+    const other = (await saveModel(db, admin, { key: "v3", weights: { plats: 0.5 }, roundId }, thursday)).body as ModelResponse;
+    expect(other.active!.key).toBe("v3.1");
+    const next = (await saveModel(db, admin, { weights: { plats: 0.6 }, roundId }, thursday)).body as ModelResponse;
+    expect(next.active!.key).toBe("v3.2");
+  });
+
   it("Uppdatera streck: nytt streck, riktodds räknas om och omgången förblir komplett", async () => {
     await db.round.update({ where: { id: roundId }, data: { fetchStatus: "COMPLETE" } });
     const snapsBefore = await db.roundSnapshot.count({ where: { roundId } });

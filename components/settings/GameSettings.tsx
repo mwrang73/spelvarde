@@ -12,7 +12,7 @@ import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { GAME_TYPES } from "@/lib/game-type";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
-import { INPUT_KEYS, isCalibrated, RECOMMENDED_CALIBRATION, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
+import { INPUT_KEYS, isCalibrated, RECOMMENDED_CALIBRATION, RECOMMENDED_KEY, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
 import { applySettings } from "@/lib/round-overlay";
 import { X_FACTOR_ORDER_ERROR, X_FACTOR_RANGE_ERROR } from "@/lib/xfactor";
 import { parseFactorText } from "@/lib/xfactor-ui";
@@ -230,6 +230,8 @@ export function ModelAdmin() {
   const [weights, setWeights] = useState<Record<InputKey, string>>({} as Record<InputKey, string>);
   // Vikterna utan streck (används när loppet saknar streck). Alla tomma = inga.
   const [noStreck, setNoStreck] = useState<Record<InputKey, string>>({} as Record<InputKey, string>);
+  // Versionsnamnet när den rekommenderade modellen är ifylld (v3). Nollställs vid egna ändringar.
+  const [wantedKey, setWantedKey] = useState<string | null>(null);
   const [params, setParams] = useState<Record<ParamKey, string>>({ beta: "", marginal: "", plattA: "", plattB: "", maxP3: "" });
   const [fieldErr, setFieldErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "recompute" | null>(null);
@@ -251,7 +253,8 @@ export function ModelAdmin() {
     setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, k === "streck" ? "" : numText(RECOMMENDED_NO_STRECK[k])])) as Record<InputKey, string>);
     setParams({ beta: "1", marginal: "0", plattA: numText(RECOMMENDED_CALIBRATION.plattA), plattB: numText(RECOMMENDED_CALIBRATION.plattB), maxP3: numText(RECOMMENDED_CALIBRATION.maxP3) });
     setFieldErr(null);
-    setResult({ tone: "info", text: "Den rekommenderade modellen är ifylld. Tryck Spara som ny version för att använda den." });
+    setWantedKey(RECOMMENDED_KEY);
+    setResult({ tone: "info", text: `Den rekommenderade modellen (${RECOMMENDED_KEY}) är ifylld. Tryck Spara som ny version för att använda den.` });
   };
 
   useEffect(() => {
@@ -302,7 +305,7 @@ export function ModelAdmin() {
     const roundId = await currentRoundId();
     try {
       const before = model?.active?.key;
-      const res = await apiRequest<ModelResponse>("PUT", "/api/admin/model", { weights: w, params: p, noStreck: nsFilled ? ns : null, ...(roundId ? { roundId } : {}) });
+      const res = await apiRequest<ModelResponse>("PUT", "/api/admin/model", { weights: w, params: p, noStreck: nsFilled ? ns : null, ...(wantedKey ? { key: wantedKey } : {}), ...(roundId ? { roundId } : {}) });
       setModel(res);
       fill(res.active);
       const key = res.active?.key ?? "";
@@ -392,7 +395,10 @@ export function ModelAdmin() {
                         inputMode="decimal"
                         autoComplete="off"
                         value={weights[k] ?? ""}
-                        onChange={(e) => setWeights((w) => ({ ...w, [k]: e.target.value }))}
+                        onChange={(e) => {
+                          setWantedKey(null);
+                          setWeights((w) => ({ ...w, [k]: e.target.value }));
+                        }}
                         aria-describedby={fieldErr ? `${id}-err` : undefined}
                       />
                     </td>
@@ -408,7 +414,10 @@ export function ModelAdmin() {
                           autoComplete="off"
                           aria-label={`${WEIGHT_LABELS[k]}, utan streck`}
                           value={noStreck[k] ?? ""}
-                          onChange={(e) => setNoStreck((w) => ({ ...w, [k]: e.target.value }))}
+                          onChange={(e) => {
+                            setWantedKey(null);
+                            setNoStreck((w) => ({ ...w, [k]: e.target.value }));
+                          }}
                           aria-describedby={fieldErr ? `${id}-err` : undefined}
                         />
                       )}
@@ -429,7 +438,10 @@ export function ModelAdmin() {
                         inputMode="decimal"
                         autoComplete="off"
                         value={params[k]}
-                        onChange={(e) => setParams((p) => ({ ...p, [k]: e.target.value }))}
+                        onChange={(e) => {
+                          setWantedKey(null);
+                          setParams((p) => ({ ...p, [k]: e.target.value }));
+                        }}
                         aria-describedby={fieldErr ? `${id}-err` : undefined}
                       />
                     </td>
