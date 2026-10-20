@@ -9,6 +9,9 @@
 //   --vikter            JSON med vikter som ersätter v1:s, t.ex. '{"plats":1.2}'
 //   --andel-traning     andel av loppen (äldst) till träning, standard 0.7
 //   --ut                katalog för rapporten, standard docs/backtest
+//   --namn              namn i filnamnet, standard "backtest" (<datum>-<namn>.md).
+//                       En körning skriver aldrig över en tidigare: finns filen
+//                       redan får den nya -2, -3 …
 //   --statistik         ogonblick (standard) eller poster: källa för hästens år/fjol
 //   --bara-underlag     hämta och räkna underlaget, ingen utvärdering
 //   --bara-cache        hämta inget: använd bara det som finns i .backtest-cache/;
@@ -92,6 +95,7 @@ function args() {
     weights: get("vikter") ? parseWeights({ ...V1_WEIGHTS, ...JSON.parse(get("vikter")!) }) : V1_WEIGHTS,
     trainShare: Number(get("andel-traning") ?? 0.7),
     out: get("ut") ?? "docs/backtest",
+    name: (get("namn") ?? "backtest").replace(/[^\w.-]+/g, "-"),
     onlyData: a.includes("--bara-underlag"),
     cacheOnly: a.includes("--bara-cache"),
     source: (get("statistik") === "poster" ? "poster" : "ogonblick") as StatsSource,
@@ -417,7 +421,9 @@ async function main() {
 
   const md = report(result);
   fs.mkdirSync(path.resolve(ROOT, o.out), { recursive: true });
-  const base = path.join(path.resolve(ROOT, o.out), `${o.today}-v1`);
+  const dir = path.resolve(ROOT, o.out);
+  let base = path.join(dir, `${o.today}-${o.name}`);
+  for (let i = 2; fs.existsSync(`${base}.md`) || fs.existsSync(`${base}.json`); i++) base = path.join(dir, `${o.today}-${o.name}-${i}`);
   fs.writeFileSync(`${base}.json`, JSON.stringify(result, null, 2));
   fs.writeFileSync(`${base}.md`, md);
   console.log(`Skrev ${path.relative(ROOT, base)}.md och .json`);
