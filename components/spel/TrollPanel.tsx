@@ -96,6 +96,27 @@ export function TrollPanel({ data, now }: { data: RoundResponse; now: number }) 
   );
 }
 
+// Mobil: högst så många signaltaggar på en rad, resten som "+n".
+const MOBILE_TAGS = 3;
+
+// Mobil: rutan till höger. Utan Unibet-odds: minst X. Med: Unibets odds, grönt
+// över gränsen och dämpat under, med minst X i liten text under.
+function MinBox({ it }: { it: TrollItem }) {
+  if (it.unibet === null)
+    return (
+      <span className="tmin" aria-label={`Spela om Unibet ger minst ${odds(it.minOdds)}`}>
+        <b className="num">{odds(it.minOdds)}</b>
+        <small>minst</small>
+      </span>
+    );
+  return (
+    <span className={`tmin ${it.over ? "up" : "dn"}`} aria-label={`Unibet ${odds(it.unibet)}, ${it.over ? "över" : "under"} gränsen ${odds(it.minOdds)}`}>
+      <b className="num">{odds(it.unibet)}</b>
+      <small>minst {odds(it.minOdds)}</small>
+    </span>
+  );
+}
+
 function UnibetState({ it }: { it: TrollItem }) {
   if (it.unibet === null) return <span className="help">Ej ifyllt</span>;
   return it.over ? (
@@ -169,24 +190,20 @@ function TrollRow({ item: it, index, base, now, desk }: { item: TrollItem; index
       <div className="pmain">
         {name}
         <span className="pm">
-          Avd {race.leg} · chans <b className="num">{pct(it.chance * 100, 0)}</b> · odds ≈ {odds(it.estOdds)}
-        </span>
-        <span className="pm">
-          Spela om Unibet ger minst <b className="num">{odds(it.minOdds)}</b>
-        </span>
-        <span className="pm">
-          Unibet: <UnibetState it={it} />
+          Avd {race.leg} · chans <b className="num">{pct(it.chance * 100, 0)}</b> · ≈ {odds(it.estOdds)}
         </span>
         {tags.length > 0 && (
-          <span className="sigs">
-            {tags.map((t) => (
+          <span className="sigs one">
+            {tags.slice(0, MOBILE_TAGS).map((t) => (
               <span key={t.key} className="tag good">
                 {t.text}
               </span>
             ))}
+            {tags.length > MOBILE_TAGS && <span className="tag more">+{tags.length - MOBILE_TAGS}</span>}
           </span>
         )}
       </div>
+      <MinBox it={it} />
       {lamp}
     </li>
   );

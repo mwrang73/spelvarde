@@ -867,7 +867,6 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .troll-why { margin: 4px 0 0; }
 }
 .ttbl td.num { white-space: nowrap; }
-.trow .pm { white-space: normal; }
 /* Trollspöt sticker ut: glimmande trollspö, tavlans gula ljus. */
 .wand { width: 18px; height: 18px; flex: none; overflow: visible; }
 .wand .wand-s { opacity: .25; transform-box: fill-box; transform-origin: center; animation: wandSpark 2.4s ease-in-out infinite; }
@@ -885,3 +884,17 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .qlink.troll-link small { font: 600 11px/1.1 var(--f-body); letter-spacing: 0; text-transform: none; opacity: .8; }
 .qlink.troll-link svg { color: var(--fill-ink); }
 .qlink.troll-link .wand { width: 22px; height: 22px; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .7)); }
+/* Trollspöt i mobilen: lägre rader, minst X i en ruta till höger och Intressant ytterst. */
+.brow.trow { grid-template-columns: 26px minmax(0, 1fr) 58px 44px; min-height: 0; padding-top: 7px; padding-bottom: 7px; }
+.trow .pm { white-space: nowrap; }
+.trow .sigs.one { flex-wrap: nowrap; overflow: hidden; margin-top: 2px; }
+.trow .sigs.one .tag { flex: none; }
+.tag.more { background: var(--surface-3); color: var(--ink-2); }
+.tmin { grid-row: 1; grid-column: 3; display: grid; justify-items: center; align-content: center; height: 44px; border: 1.5px solid var(--line-strong); border-radius: 8px; background: var(--surface); line-height: 1; }
+.tmin b { font: 700 15.5px/1 var(--f-num); }
+.tmin small { font: 600 10px/1.2 var(--f-label); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); margin-top: 2px; }
+.tmin.up { border-color: var(--sig); background: var(--sig-soft); }
+.tmin.up b { color: var(--sig-text); }
+.tmin.dn b { color: var(--ink-2); }
+.trow > .lamp { grid-row: 1; grid-column: 4; }
+.trow .sigs.one .tag { font-size: 10.5px; padding: 1px 5px; min-height: 19px; }
