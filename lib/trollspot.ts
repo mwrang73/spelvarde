@@ -51,6 +51,14 @@ export function marketChances(race: RaceDto): Map<string, number> {
   return out;
 }
 
+// Minst X för en enskild häst (Platsspel och listan i Unibets odds). Utan
+// streck eller riktodds: det som finns av 2,00 och riktoddset.
+export function minOddsFor(race: RaceDto, start: StartDto): number {
+  const pm = marketChances(race).get(start.id);
+  const est = pm && pm > 0 ? TROLL_K / pm : 0;
+  return round2(Math.max(TROLL_MIN_ODDS, start.riktodds ?? 0, est));
+}
+
 export function trollspot(races: RaceDto[], now: number): TrollResult {
   const hasStreck = races.some((r) => r.starts.some((s) => s.streck !== null && s.streck > 0));
   const cands: TrollItem[] = [];

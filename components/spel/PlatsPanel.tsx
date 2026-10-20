@@ -22,11 +22,12 @@ import { hhmm, odds } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
 import { NEAR_LIMIT_PCT, signalTags, valuePct } from "@/lib/signals";
+import { minOddsFor } from "@/lib/trollspot";
 import { oddsDiff } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 
-type Item = { race: RaceDto; start: StartDto };
+export type Item = { race: RaceDto; start: StartDto };
 
 const byLeg = (a: Item, b: Item) => a.race.leg - b.race.leg || a.start.number - b.start.number;
 const valueOf = (i: Item) => valuePct(i.start.mark?.unibetOdds ?? null, riktX(i.start));
@@ -73,56 +74,9 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
   const betCount = spelbara.filter((i) => i.start.mark?.bet).length;
   const guideline = data.settings?.spelbarGuideline ?? 2;
 
-  const group = (title: string, items: Item[], right?: string, near = false) =>
-    items.length > 0 &&
-    (isDesktop ? (
-      <div className="twrap">
-        <table className="tbl ptbl">
-          <caption className="cap">
-            <span>{title}</span>
-            {right && <span>{right}</span>}
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Nr</th>
-              <th scope="col">Häst</th>
-              <th scope="col" className="r">
-                Rikt
-              </th>
-              <th scope="col" className="r">
-                Unibet
-              </th>
-              <th scope="col" className="r">
-                Skillnad
-              </th>
-              <th scope="col" className="r">
-                Värde
-              </th>
-              <th scope="col" className="c">
-                Bet
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((i) => (
-              <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} near={near} desk />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    ) : (
-      <>
-        <h3 className="sl">
-          <span>{title}</span>
-          {right && <span>{right}</span>}
-        </h3>
-        <ul className="plist">
-          {items.map((i) => (
-            <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} near={near} />
-          ))}
-        </ul>
-      </>
-    ));
+  const group = (title: string, items: Item[], right?: string, near = false) => (
+    <PlatsGroup title={title} items={items} right={right} near={near} now={now} guideline={guideline} desk={isDesktop} />
+  );
 
   return (
     <>
@@ -157,6 +111,60 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
 
 // near = raden står under Nära gränsen: att Unibet ligger under riktoddset är
 // då väntat och visas bara som värdet (−6 %), inte som en varning.
+// En grupp rader: tabell på desktop, lista i mobilen. Används också av listan
+// i Unibets odds (components/odds/OddsList.tsx).
+export function PlatsGroup({ title, items, right, near, now, guideline, desk }: { title: string; items: Item[]; right?: string; near?: boolean; now: number; guideline: number; desk: boolean }) {
+  if (!items.length) return null;
+  return desk ? (
+    <div className="twrap">
+      <table className="tbl ptbl">
+        <caption className="cap">
+          <span>{title}</span>
+          {right && <span>{right}</span>}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Nr</th>
+            <th scope="col">Häst</th>
+            <th scope="col" className="r">
+              Rikt
+            </th>
+            <th scope="col" className="r">
+              Unibet
+            </th>
+            <th scope="col" className="r">
+              Skillnad
+            </th>
+            <th scope="col" className="r">
+              Värde
+            </th>
+            <th scope="col" className="c">
+              Bet
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((i) => (
+            <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} near={near} desk />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <>
+      <h3 className="sl">
+        <span>{title}</span>
+        {right && <span>{right}</span>}
+      </h3>
+      <ul className="plist">
+        {items.map((i) => (
+          <PlatsRow key={i.start.id} item={i} now={now} guideline={guideline} near={near} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: number; guideline: number; near?: boolean; desk?: boolean }) {
   const { setBet } = useRound();
   const { race, start } = item;
@@ -204,7 +212,7 @@ function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: numbe
         <td>
           {name}
           <span className="kt">
-            Avd {race.leg} · {hhmm(race.startAt)}
+            Avd {race.leg} · {hhmm(race.startAt)} · minst {odds(minOddsFor(race, start))}
           </span>
           <Signals item={item} />
           <span className="notes">{notes}</span>
@@ -230,7 +238,7 @@ function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: numbe
       <div className="pmain">
         {name}
         <span className="pm">
-          Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={riktX(start)} /> <Value item={item} />
+          Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={riktX(start)} /> · minst {odds(minOddsFor(race, start))} <Value item={item} />
         </span>
         <Signals item={item} />
         {notes}

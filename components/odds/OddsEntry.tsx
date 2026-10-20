@@ -1,7 +1,8 @@
 "use client";
 
-// S4 Unibets platsodds (specen S4, beslut 4B): egen knappsats, en häst i
-// taget. Kön byggs en gång när vyn öppnas (lib/odds-keypad.ts), så att en
+// S4 Unibets platsodds. Standard är listan (components/odds/OddsList.tsx) med
+// alla intressanta hästar och fältet i raden. "En i taget" (?lage=guide) är
+// knappsatsen (specen S4, beslut 4B), en häst i taget. Kön byggs en gång när vyn öppnas (lib/odds-keypad.ts), så att en
 // häst inte flyttar sig i kön när den får odds. Varje odds sparas direkt och
 // optimistiskt via utkorgen, och Spelbar räknas om direkt (6.1). När kön är
 // slut öppnas sammanfattningsarket, som går att stänga direkt.
@@ -31,6 +32,7 @@ import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 import { StreckRefresh } from "@/components/round/StreckRefresh";
+import { OddsList } from "./OddsList";
 
 type Item = { race: RaceDto; start: StartDto };
 
@@ -60,10 +62,29 @@ export function OddsEntry() {
         </main>
       </>
     );
-  return <OddsQueue data={data} />;
+  return <OddsModes data={data} />;
 }
 
-function OddsQueue({ data }: { data: RoundResponse }) {
+// Lista eller En i taget. Läget följer ?lage=guide och byts utan omladdning.
+function OddsModes({ data }: { data: RoundResponse }) {
+  const now = useNow(30_000).getTime();
+  const [guide, setGuide] = useState(false);
+  useEffect(() => {
+    const read = () => setGuide(new URLSearchParams(window.location.search).get("lage") === "guide");
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, []);
+  const choose = useCallback((g: boolean) => {
+    setGuide(g);
+    const url = `${window.location.pathname}${g ? "?lage=guide" : ""}`;
+    if (window.location.pathname + window.location.search !== url) window.history.replaceState(null, "", url);
+  }, []);
+  if (!guide) return <OddsList data={data} now={now} onGuide={() => choose(true)} />;
+  return <OddsQueue data={data} onList={() => choose(false)} />;
+}
+
+function OddsQueue({ data, onList }: { data: RoundResponse; onList: () => void }) {
   const roundId = data.round.id;
   const base = `/omgang/${roundId}`;
   // Kön fryses när vyn öppnas.
@@ -98,10 +119,10 @@ function OddsQueue({ data }: { data: RoundResponse }) {
       </>
     );
   }
-  return <Keypad data={data} items={items} />;
+  return <Keypad data={data} items={items} onList={onList} />;
 }
 
-function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
+function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; onList: () => void }) {
   const { setOdds, setSpelbar, setXFactor } = useRound();
   const router = useRouter();
   const online = useOnline();
@@ -247,6 +268,11 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
         <div className="prog" role="progressbar" aria-label="Förlopp" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done ? total : st.index} aria-valuetext={done ? `Alla ${total} hästar genomgångna` : `Häst ${position} av ${total}`}>
           <i style={{ width: `${((done ? total : st.index) / total) * 100}%` }} />
         </div>
+        <p className="ol-back">
+          <button type="button" className="linkish" onClick={onList}>
+            Visa alla som lista
+          </button>
+        </p>
         <StreckRefresh data={data} />
         {!online && (
           <Banner tone="warn" icon="offline" className="m10">

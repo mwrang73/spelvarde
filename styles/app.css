@@ -898,3 +898,19 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .tmin.dn b { color: var(--ink-2); }
 .trow > .lamp { grid-row: 1; grid-column: 4; }
 .trow .sigs.one .tag { font-size: 10.5px; padding: 1px 5px; min-height: 19px; }
+/* S4 Unibets odds som lista. */
+.ol-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px 0; }
+.ol-head .seg button { min-height: 38px; font-size: 13px; }
+.ol-count { margin: 0; font-size: 14px; color: var(--ink-2); }
+.ol-count b { color: var(--ink); }
+.ol-back { margin: 8px 12px 0; }
+@media (min-width: 1024px) { .odds-list { max-width: 1000px; margin: 0 auto; } }
+.ol-head .seg button { white-space: nowrap; }
+/* Samma kolumnbredder i alla avdelningar. */
+.odds-list .ptbl { table-layout: fixed; }
+.odds-list .ptbl th:nth-child(1) { width: 64px; }
+.odds-list .ptbl th:nth-child(3) { width: 90px; }
+.odds-list .ptbl th:nth-child(4) { width: 130px; }
+.odds-list .ptbl th:nth-child(5) { width: 100px; }
+.odds-list .ptbl th:nth-child(6) { width: 84px; }
+.odds-list .ptbl th:nth-child(7) { width: 70px; }
