@@ -825,3 +825,7 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .siglist li.ok .sig-i, .siglist li.ok b { color: var(--sig); }
 .siglist li.no, .siglist li.unknown { color: var(--ink-2); }
 .siglist li.unknown span:not(.sr) { font-style: italic; }
+/* Hästkortet: Intressant, Spelbar och Bet på en rad (lite mindre knappar). */
+.acts-row { gap: 6px; padding-left: 12px; padding-right: 12px; }
+.acts-row .lamp.lab, .acts-row .betk.lab, .acts-row .sptg { padding: 0 10px 0 6px; gap: 6px; font-size: 13.5px; letter-spacing: .04em; }
+.acts-row .sp-orig { white-space: nowrap; }
