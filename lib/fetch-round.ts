@@ -100,7 +100,9 @@ async function upsertPerson(db: PrismaClient, p: ParsedPerson, now: Date): Promi
   return row.id;
 }
 
-export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | null; userId: string | null; gameType?: GameType }): Promise<GameStepResult | null> {
+// skipRiktodds: räkna inte om riktoddset vid strykning här (Uppdatera streck
+// räknar om efteråt i ett eget anrop).
+export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | null; userId: string | null; gameType?: GameType; skipRiktodds?: boolean }): Promise<GameStepResult | null> {
   const { db, atg } = deps;
   const now = deps.now?.() ?? new Date();
   const warnings: string[] = [];
@@ -296,7 +298,7 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
   // En strykning ändrar fältet (7.5): räkna om riktoddsen direkt, om omgången
   // redan har riktodds. Steg 11 i kedjan räknar ändå om allt efteråt, men så
   // blir det rätt även om kedjan stannar på vägen. Ett fel här stoppar inte steg 1.
-  if (changes.scratched.length && (await db.riktodds.count({ where: { start: { race: { roundId: round.id } } } }))) {
+  if (!input.skipRiktodds && changes.scratched.length && (await db.riktodds.count({ where: { start: { race: { roundId: round.id } } } }))) {
     await computeRoundRiktodds(db, round.id, { now }).catch((e) => console.error("riktodds efter strykning", e));
   }
 
@@ -514,23 +516,31 @@ export type StreckRefreshResult = {
   needsResume: boolean;
 };
 
-// Hämtar spelet på nytt (streck, strykningar, kuskbyten) och räknar om
-// riktoddset för hela omgången. Omgången behåller "komplett" om inget som kräver
-// ny hämtning av tidigare starter har ändrats. Spelbar som användaren har satt
-// eller tagit bort ändras inte (override i Mark); bara förslagen räknas om.
+// Hämtar spelet på nytt (streck, strykningar, kuskbyten). Omgången behåller
+// "komplett" om inget som kräver ny hämtning av tidigare starter har ändrats.
+// Riktoddset räknas om i ett eget anrop efteråt (POST /api/rounds/[id]/riktodds),
+// så att inget anrop närmar sig Vercels tidsgräns. Spelbar som användaren har
+// satt eller tagit bort ändras inte (override i Mark); bara förslagen räknas om.
 export async function refreshStreck(deps: FetchDeps, input: { roundId: string; userId: string | null }): Promise<StreckRefreshResult | null> {
   const { db } = deps;
-  const now = deps.now?.() ?? new Date();
   const round = await db.round.findUnique({ where: { id: input.roundId }, select: { id: true, atgGameId: true, fetchStatus: true, races: { select: { id: true, recordsFetchedAt: true } } } });
   if (!round) return null;
-  const game = await fetchGameStep(deps, { gameId: round.atgGameId, userId: input.userId });
+  const game = await fetchGameStep(deps, { gameId: round.atgGameId, userId: input.userId, skipRiktodds: true });
   if (!game) return null;
-  // Bara avdelningar som uppdateringen själv gjorde ofullständiga räknas.
-  const had = new Set(round.races.filter((r) => r.recordsFetchedAt).map((r) => r.id));
-  const races = await db.race.findMany({ where: { roundId: round.id }, select: { id: true, recordsFetchedAt: true } });
-  const needsResume = races.some((r) => had.has(r.id) && !r.recordsFetchedAt);
+  // Bara avdelningar som uppdateringen själv gjorde ofullständiga räknas. En
+  // avdelning med enbart strykningar behöver inga nya tidigare starter och får
+  // tillbaka sin tid; kuskbyten (och nya hästar) kräver Slutför hämtningen.
+  const had = new Map(round.races.filter((r) => r.recordsFetchedAt).map((r) => [r.id, r.recordsFetchedAt!]));
+  const legsWithDriverChange = new Set(game.changes.driverChanges.map((c) => c.leg));
+  const races = await db.race.findMany({ where: { roundId: round.id }, select: { id: true, leg: true, recordsFetchedAt: true, starts: { select: { scratched: true, recordsFetchedAt: true } } } });
+  let needsResume = false;
+  for (const r of races) {
+    if (!had.has(r.id) || r.recordsFetchedAt) continue;
+    const onlyScratches = !legsWithDriverChange.has(r.leg) && r.starts.every((s) => s.scratched || s.recordsFetchedAt);
+    if (onlyScratches) await db.race.update({ where: { id: r.id }, data: { recordsFetchedAt: had.get(r.id)! } });
+    else needsResume = true;
+  }
   if (round.fetchStatus === "COMPLETE" && !needsResume) await db.round.update({ where: { id: round.id }, data: { fetchStatus: "COMPLETE" } });
-  await computeRoundRiktodds(db, round.id, { now });
   const snap = await db.roundSnapshot.findFirst({ where: { roundId: round.id }, orderBy: { takenAt: "desc" }, select: { takenAt: true } });
   return { roundId: round.id, hasStreck: game.hasStreck, streckAt: snap ? snap.takenAt.toISOString() : null, changes: game.changes, needsResume };
 }

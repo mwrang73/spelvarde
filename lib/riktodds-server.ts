@@ -114,23 +114,21 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
     results.push(...res);
   }
 
-  const keep = results.map((r) => r.startId);
+  // Tre frågor i stället för en per häst: databasen ligger långt från Vercel,
+  // och varje fråga kostar en rundresa (Uppdatera streck tog annars över 60 s).
   await db.$transaction([
-    db.riktodds.deleteMany({ where: { modelVersionId: model.id, startId: { in: allStartIds, notIn: keep } } }),
-    ...results.map((r) => {
-      const data = {
+    db.riktodds.deleteMany({ where: { modelVersionId: model.id, startId: { in: allStartIds } } }),
+    db.riktodds.createMany({
+      data: results.map((r) => ({
+        startId: r.startId,
+        modelVersionId: model.id,
         probTop3: r.probTop3,
         odds: r.odds,
         uncertain: r.uncertain,
         inputs: r.inputs as unknown as Prisma.InputJsonValue,
         contributions: r.contributions as unknown as Prisma.InputJsonValue,
         computedAt: now,
-      };
-      return db.riktodds.upsert({
-        where: { startId_modelVersionId: { startId: r.startId, modelVersionId: model.id } },
-        create: { startId: r.startId, modelVersionId: model.id, ...data },
-        update: data,
-      });
+      })),
     }),
     db.round.update({ where: { id: roundId }, data: { rev: { increment: 1 } } }),
   ]);

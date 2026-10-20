@@ -52,7 +52,9 @@ export function StreckRefresh({ data, compact }: { data: RoundResponse; compact?
     setResult(null);
     setShowAll(false);
     try {
+      // Två korta anrop: först strecket, sedan riktoddset (håller sig långt under Vercels tidsgräns).
       const res = await apiRequest<StreckRefreshResult>("POST", `/api/rounds/${data.round.id}/refresh`);
+      await apiRequest("POST", `/api/rounds/${data.round.id}/riktodds`);
       const after = await loadRound(data.round.id);
       const d = diff(data, after);
       const extra = [res.changes.scratched.length ? `${res.changes.scratched.length} strukna` : "", res.changes.driverChanges.length ? `${res.changes.driverChanges.length} kuskbyten` : ""].filter(Boolean).join(", ");
