@@ -172,6 +172,9 @@ const PARAM_LIMITS: Record<NumParamKey, [number, number]> = {
   kVinst: [0, 1000],
   kKusk: [0, 1000],
   kTranare: [0, 1000],
+  plattA: [-5, 5],
+  plattB: [0.1, 5],
+  maxP3: [0.5, 1],
 };
 
 // noStreck: vikterna utan streck (alla nycklar utom streck), null = ta bort,

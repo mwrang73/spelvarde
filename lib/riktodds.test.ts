@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  barefoot,
   calcLine,
+  calibrate,
   clamp,
   computeRace,
   explain,
@@ -241,5 +243,30 @@ describe("pengar och vikterna utan streck", () => {
     expect(parseParams({ noStreck: { pengar: 0.4, streck: 2 } }).noStreck).toMatchObject({ pengar: 0.4, streck: 0, plats: 0 });
     // Äldre versioner utan pengar får vikten 0.
     expect(parseWeights({ plats: 1 }).pengar).toBe(0);
+  });
+});
+
+describe("v3: barfota, vila, galopp vid volte, tid och kalibrering", () => {
+  it("barfota ur ATG:s skor", () => {
+    expect(barefoot({ front: { hasShoe: false }, back: { hasShoe: false } })).toBe(true);
+    expect(barefoot({ front: { hasShoe: true }, back: { hasShoe: false } })).toBe(false);
+    expect(barefoot(null)).toBeNull();
+  });
+  it("kalibreringen: standard ändrar inget, annars krymps och kapas", () => {
+    expect(calibrate([0.2, 0.95], { plattA: 0, plattB: 1, maxP3: 1 })).toEqual([0.2, 0.95]);
+    const c = calibrate([0.5, 0.95], { plattA: -0.055, plattB: 0.947, maxP3: 0.8 });
+    expect(c[0]).toBeLessThan(0.5);
+    expect(c[1]).toBe(0.8);
+  });
+  it("barfota och vila påverkar riktoddset med vikt, och meningarna", () => {
+    const w = { ...V1_WEIGHTS, plats: 0, vinst: 0, form: 0, spar: 0, kusk: 0, tranare: 0, galopp: 0, barfota: 1, vila: -1 };
+    const field = [true, false, false, false].map((b, i) =>
+      start(i + 1, { barefoot: b, raceDate: "2026-10-24", records: [{ place: 3, galloped: false, disqualified: false, date: i === 3 ? "2026-05-01" : "2026-10-10" }] }),
+    );
+    const res = computeRace(field, w, V1_PARAMS);
+    expect(res[0].probTop3).toBeGreaterThan(res[1].probTop3);
+    expect(res[3].probTop3).toBeLessThan(res[1].probTop3);
+    expect(sentence("barfota", res[0].inputs.facts, true)).toBe("Barfota runt om");
+    expect(sentence("vila", res[3].inputs.facts, false)).toBe("176 dagar sedan senaste start");
   });
 });

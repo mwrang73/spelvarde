@@ -32,7 +32,6 @@ import {
   EXTRA_KEYS,
   extraFeatures,
   fitPlatt,
-  kmReference,
   logLoss,
   withExtras,
   type Platt,
@@ -63,7 +62,8 @@ import {
   type StatsSource,
   type RoiRow,
 } from "@/lib/backtest";
-import { INPUT_KEYS, parseWeights, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
+import { kmRef } from "@/lib/kmref";
+import { INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 
 const ROOT = process.cwd();
@@ -319,17 +319,17 @@ async function main() {
 
   // Signalerna 1–6: en i taget ovanpå v2 (med streck) och modellen utan streck,
   // bara signalens vikt anpassas på träningsdelen. Sedan alla tillsammans.
-  const ref = kmReference(races);
+  const ref = kmRef;
   const signals: SignalRow[] = [];
-  const baseS = logLoss(zPreds(zTestS, RECOMMENDED_WEIGHTS, 1));
-  const baseN = logLoss(zPreds(zTest, RECOMMENDED_NO_STRECK, 1));
+  const baseS = logLoss(zPreds(zTestS, V2_WEIGHTS, 1));
+  const baseN = logLoss(zPreds(zTest, V2_NO_STRECK, 1));
   for (const k of EXTRA_KEYS) {
     const trS = withExtras(zTrainS, [k], ref);
     const teS = withExtras(zTestS, [k], ref);
     const trN = withExtras(zTrain, [k], ref);
     const teN = withExtras(zTest, [k], ref);
-    const fs = fitWeights(trS, { ...RECOMMENDED_WEIGHTS, [k]: 0 } as Weights, 1, [k as InputKey]);
-    const fn = fitWeights(trN, { ...RECOMMENDED_NO_STRECK, [k]: 0 } as Weights, 1, [k as InputKey]);
+    const fs = fitWeights(trS, { ...V2_WEIGHTS, [k]: 0 } as Weights, 1, [k as InputKey]);
+    const fn = fitWeights(trN, { ...V2_NO_STRECK, [k]: 0 } as Weights, 1, [k as InputKey]);
     const raw = test.flatMap((r) => extraFeatures(r, ref)[k]);
     signals.push({
       key: k,
@@ -342,13 +342,27 @@ async function main() {
     });
     console.log(`  ${k}: vikt ${f((fs.weights as Record<string, number>)[k], 2)} / ${f((fn.weights as Record<string, number>)[k], 2)}`);
   }
-  const allS = fitWeights(withExtras(zTrainS, EXTRA_KEYS, ref), { ...RECOMMENDED_WEIGHTS, ...Object.fromEntries(EXTRA_KEYS.map((k) => [k, 0])) } as Weights, 1, [...(INPUT_KEYS as readonly InputKey[]), ...(EXTRA_KEYS as readonly string[] as InputKey[])]);
-  const allN = fitWeights(withExtras(zTrain, EXTRA_KEYS, ref), { ...RECOMMENDED_NO_STRECK, ...Object.fromEntries(EXTRA_KEYS.map((k) => [k, 0])) } as Weights, 1, [...(INPUT_KEYS.filter((k) => k !== "streck") as InputKey[]), ...(EXTRA_KEYS as readonly string[] as InputKey[])]);
+  const allS = fitWeights(withExtras(zTrainS, EXTRA_KEYS, ref), { ...V2_WEIGHTS, ...Object.fromEntries(EXTRA_KEYS.map((k) => [k, 0])) } as Weights, 1, [...(INPUT_KEYS as readonly InputKey[]), ...(EXTRA_KEYS as readonly string[] as InputKey[])]);
+  const allN = fitWeights(withExtras(zTrain, EXTRA_KEYS, ref), { ...V2_NO_STRECK, ...Object.fromEntries(EXTRA_KEYS.map((k) => [k, 0])) } as Weights, 1, [...(INPUT_KEYS.filter((k) => k !== "streck") as InputKey[]), ...(EXTRA_KEYS as readonly string[] as InputKey[])]);
 
   // Kalibrering (Platt) av v2, anpassad på träningsdelen.
-  const platt = fitPlatt(zPreds(zTrainS, RECOMMENDED_WEIGHTS, 1));
+  const platt = fitPlatt(zPreds(zTrainS, V2_WEIGHTS, 1));
   const plattAll = fitPlatt(zPreds(withExtras(zTrainS, EXTRA_KEYS, ref), allS.weights, 1));
   console.log(`Platt v2: a ${f(platt.a, 3)} b ${f(platt.b, 3)}`);
+
+  // v3: modellens egna indata (barfota, vila, galopp vid volte och tid finns nu i
+  // computeRace). Alla vikter anpassas på träningsdelen, små vikter (< 0,03) sätts
+  // till 0 och resten avrundas, sedan kalibreras med Platt och en övre gräns.
+  const keysS = [...INPUT_KEYS] as InputKey[];
+  const keysN = INPUT_KEYS.filter((k) => k !== "streck") as InputKey[];
+  const simplify = (w: Weights) => Object.fromEntries(Object.entries(w).map(([k, v]) => [k, Math.abs(v) < 0.03 ? 0 : Math.round(v * 100) / 100])) as Weights;
+  const v3 = simplify(fitWeights(zTrainS, V2_WEIGHTS, 1, keysS).weights);
+  const v3n = simplify(fitWeights(zTrain, V2_NO_STRECK, 1, keysN).weights);
+  const plattV3 = fitPlatt(zPreds(zTrainS, v3, 1));
+  const capV3 = 0.8;
+  console.log(`v3: ${JSON.stringify(v3)}`);
+  console.log(`v3 utan streck: ${JSON.stringify(v3n)}`);
+  console.log(`v3 Platt: a ${plattV3.a.toFixed(3)} b ${plattV3.b.toFixed(3)}`);
 
   const fixed: { name: string; beta: number }[] = o.betas.map((b) => ({ name: `v1 β = ${String(b).replace(".", ",")}`, beta: b }));
   const variants: Variant[] = [
@@ -363,7 +377,12 @@ async function main() {
     { name: "v2 kalibrerad, Σ P3 = 3", kind: "anpassad", test: applyPlatt(zPreds(zTestS, V2_WEIGHTS, 1), platt, true), all: null },
     { name: "v2 + signaler", kind: "anpassad", test: zPreds(withExtras(zTestS, EXTRA_KEYS, ref), allS.weights, 1), all: null },
     { name: "v2 + signaler, kalibrerad", kind: "anpassad", test: applyPlatt(zPreds(withExtras(zTestS, EXTRA_KEYS, ref), allS.weights, 1), plattAll), all: null },
-    { name: "Utan streck (rekommenderad)", kind: "anpassad", test: zPreds(zTest, RECOMMENDED_NO_STRECK, 1), all: null },
+    { name: "Utan streck (v2)", kind: "anpassad", test: zPreds(zTest, V2_NO_STRECK, 1), all: null },
+    { name: "v3 (rekommenderad i appen)", kind: "anpassad", test: applyPlatt(zPreds(zTestS, RECOMMENDED_WEIGHTS, 1), { a: RECOMMENDED_CALIBRATION.plattA, b: RECOMMENDED_CALIBRATION.plattB }, false, RECOMMENDED_CALIBRATION.maxP3), all: null },
+    { name: "v3", kind: "anpassad", test: zPreds(zTestS, v3, 1), all: null },
+    { name: "v3 kalibrerad", kind: "anpassad", test: applyPlatt(zPreds(zTestS, v3, 1), plattV3), all: null },
+    { name: "v3 kalibrerad, högst 80 %", kind: "anpassad", test: applyPlatt(zPreds(zTestS, v3, 1), plattV3, false, capV3), all: null },
+    { name: "v3 utan streck", kind: "anpassad", test: zPreds(zTest, v3n, 1), all: null },
     { name: "Utan streck + signaler", kind: "anpassad", test: zPreds(withExtras(zTest, EXTRA_KEYS, ref), allN.weights, 1), all: null },
     { name: "Marknaden (streck)", kind: "referens", test: marketPreds(test, "streck"), all: marketPreds(races, "streck") },
     { name: "Marknaden (vinnarodds)", kind: "referens", test: marketPreds(test, "vinnarodds"), all: marketPreds(races, "vinnarodds") },
@@ -375,7 +394,7 @@ async function main() {
     data: { byType, sources, persons: personCheck(gameJsonOf(loaded, games)), evaluated: { races: races.length, dropped, train: train.length, test: test.length, testFrom: cut, trainTo: train[train.length - 1]?.date ?? "" } },
     beta: { train: betaTrain, all: betaAll },
     fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights, withPengar: fitP.weights, withStreckPengar: fitSP.weights },
-    signals: { rows: signals, baseS, baseN, allS: allS.weights, allN: allN.weights, platt, plattAll },
+    signals: { rows: signals, baseS, baseN, allS: allS.weights, allN: allN.weights, platt, plattAll, v3, v3n, plattV3, capV3 },
     variants: variants.map((v) => ({
       name: v.name,
       kind: v.kind,
@@ -399,7 +418,8 @@ async function main() {
 const RATIOS = [1, 1.2, 1.5];
 
 // Modellen som rekommenderades 2026-10-20 (förenklad Anpassad + streck), β = 1.
-const V2_WEIGHTS: Weights = RECOMMENDED_WEIGHTS;
+const V2_WEIGHTS: Weights = { ...V1_WEIGHTS, plats: 0.1, vinst: 0, form: 0, spar: 0.03, kusk: 0, tranare: 0.03, galopp: 0, pengar: 0, streck: 0.88 };
+const V2_NO_STRECK: Weights = { ...V1_WEIGHTS, plats: 0.1, vinst: 0.05, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, pengar: 0.38, streck: 0 };
 
 type SignalRow = { key: string; coverage: number; starts: number; wS: number; dS: number; wN: number; dN: number };
 
@@ -452,7 +472,7 @@ type Result = {
   };
   beta: { train: ReturnType<typeof searchBeta>; all: ReturnType<typeof searchBeta> };
   fit: { start: Weights; weights: Weights; trainLogLoss: number; withStreck: Weights; withPengar: Weights; withStreckPengar: Weights };
-  signals: { rows: SignalRow[]; baseS: number; baseN: number; allS: Weights; allN: Weights; platt: Platt; plattAll: Platt };
+  signals: { rows: SignalRow[]; baseS: number; baseN: number; allS: Weights; allN: Weights; platt: Platt; plattAll: Platt; v3: Weights; v3n: Weights; plattV3: Platt; capV3: number };
   variants: VariantResult[];
 };
 
@@ -583,6 +603,8 @@ function report(r: Result): string {
   L(`Alla tillsammans, med streck: ${ws(sg.allS)}.`);
   L();
   L(`Alla tillsammans, utan streck: ${ws(sg.allN)}.`);
+  L();
+  L(`**v3** (indata i modellen, små vikter satta till 0): med streck ${ws(sg.v3)}; utan streck ${ws(sg.v3n)}; kalibrering a ${f(sg.plattV3.a, 3)}, b ${f(sg.plattV3.b, 3)}, högst ${p1(sg.capV3)}.`);
   L();
   L(`Platt-kalibrering av v2: P3' = sigmoid(${f(sg.platt.a, 3)} + ${f(sg.platt.b, 3)} · logit(P3)). För v2 + signaler: a ${f(sg.plattAll.a, 3)}, b ${f(sg.plattAll.b, 3)}.`);
   L();

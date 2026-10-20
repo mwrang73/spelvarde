@@ -5,7 +5,7 @@
 
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { asHorseStats, asPersonStats, dateStr } from "@/lib/dto";
-import { computeRace, parseParams, parseWeights, V1_PARAMS, V1_WEIGHTS, type StartFacts, type StartRiktodds } from "@/lib/riktodds";
+import { barefoot, computeRace, parseParams, parseWeights, V1_PARAMS, V1_WEIGHTS, type StartFacts, type StartRiktodds } from "@/lib/riktodds";
 import { lastRecordsByHorse } from "@/lib/round-server";
 import { postTablesForRaces } from "@/lib/hist";
 import type { StartnrData } from "@/lib/travstatistik";
@@ -92,7 +92,10 @@ export async function computeRoundRiktodds(db: Db, roundId: string, opts: { mode
         number: s.number,
         scratched: s.scratched,
         horse: { thisYear: counts(hs?.years[year]), lastYear: counts(hs?.years[lastYear]), lifeStarts: hs?.life ? hs.life.starts : null },
-        records: (records.get(s.horseId) ?? []).map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
+        records: (records.get(s.horseId) ?? []).map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified, date: r.date, kmTime: r.kmTime, distance: r.distance, startMethod: r.startMethod })),
+        raceDate: dateStr(round.date),
+        volte: race.startMethod === "VOLTE",
+        barefoot: barefoot(s.shoes),
         driver: d ? { starts: d.starts, wins: d.wins } : null,
         trainer: t ? { starts: t.starts, wins: t.wins } : null,
         post: table

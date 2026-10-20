@@ -453,7 +453,7 @@ export type ModelDto = {
   key: string;
   weights: Record<InputKey, number>;
   // noStreck = vikterna när loppet saknar streck (null = samma vikter).
-  params: { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number; noStreck: Record<InputKey, number> | null };
+  params: { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number; plattA: number; plattB: number; maxP3: number; noStreck: Record<InputKey, number> | null };
   active: boolean;
   createdAt: string;
 };

@@ -12,6 +12,7 @@
 import { distanceGroup, HIST_YEARS, MIN_RACES_ALL, toRows } from "@/lib/hist";
 import { parseGame, parseStartDetail, type ParsedRecord, type ParsedStartDetail, type YearStats } from "@/lib/atg";
 import {
+  barefoot,
   computeRace,
   harvilleTop3,
   INPUT_KEYS,
@@ -257,7 +258,10 @@ export function toFacts(race: BtRace, withStreck = false): StartFacts[] {
     number: s.number,
     scratched: s.scratched,
     horse: { thisYear: s.thisYear, lastYear: s.lastYear, lifeStarts: s.lifeStarts },
-    records: s.records.map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
+    records: s.records.map((r) => ({ place: r.place, galloped: r.galloped, disqualified: r.disqualified, date: r.date, kmTime: r.kmTime, distance: r.distance, startMethod: r.startMethod })),
+    raceDate: race.date,
+    volte: race.startMethod === "VOLTE",
+    barefoot: barefoot(s.shoes),
     driver: s.driver,
     trainer: s.trainer,
     post: s.post ?? null,
@@ -609,8 +613,8 @@ export function fitPlatt(preds: Pick<Pred, "p" | "y">[]): Platt {
 }
 
 // Kalibrerade förutsägelser. renorm: skala per lopp så att Σ P3 = 3 (som Harville ger).
-export function applyPlatt(preds: Pred[], c: Platt, renorm = false): Pred[] {
-  const out = preds.map((x) => ({ ...x, p: sigmoid(c.a + c.b * logit(x.p)) }));
+export function applyPlatt(preds: Pred[], c: Platt, renorm = false, maxP3 = 1): Pred[] {
+  const out = preds.map((x) => ({ ...x, p: Math.min(maxP3, sigmoid(c.a + c.b * logit(x.p))) }));
   if (!renorm) return out.map((x) => ({ ...x, odds: oddsFromP3(x.p, 0) }));
   const sums = new Map<string, number>();
   for (const x of out) sums.set(x.raceKey, (sums.get(x.raceKey) ?? 0) + x.p);

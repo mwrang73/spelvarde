@@ -8,6 +8,10 @@ export type FormRecord = {
   galloped: boolean;
   disqualified: boolean;
   scratched?: boolean;
+  // För riktoddsens vila och tid (v3).
+  kmTime?: string | null;
+  distance?: number | null;
+  startMethod?: "AUTO" | "VOLTE" | null;
 };
 
 export type GallopFlag = "G" | "GD" | null;

@@ -12,7 +12,7 @@ import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { GAME_TYPES } from "@/lib/game-type";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
-import { INPUT_KEYS, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
+import { INPUT_KEYS, RECOMMENDED_CALIBRATION, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
 import { applySettings } from "@/lib/round-overlay";
 import { X_FACTOR_ORDER_ERROR, X_FACTOR_RANGE_ERROR } from "@/lib/xfactor";
 import { parseFactorText } from "@/lib/xfactor-ui";
@@ -189,14 +189,22 @@ const WEIGHT_LABELS: Record<InputKey, string> = {
   kusk: "Kuskens vinstandel",
   tranare: "Tränarens vinstandel",
   galopp: "Galopp, 5 senaste",
+  galoppVolt: "Galopp, 5 senaste, vid voltstart",
   pengar: "Intjänat per start",
+  barfota: "Barfota runt om",
+  vila: "Dagar sedan senaste start",
+  tid: "Tid, bara extrema",
   streck: "Streck (marknaden)",
 };
 
-type ParamKey = "beta" | "marginal";
+type ParamKey = "beta" | "marginal" | "plattA" | "plattB" | "maxP3";
+const PARAM_KEYS: ParamKey[] = ["beta", "marginal", "plattA", "plattB", "maxP3"];
 const PARAM_LABELS: Record<ParamKey, { label: string; help: string; min: number; max: number }> = {
   beta: { label: "β (skala på styrkan)", help: "0,01–10", min: 0.01, max: 10 },
   marginal: { label: "Marginal", help: "0–1, läggs på riktoddset", min: 0, max: 1 },
+  plattA: { label: "Kalibrering a", help: "−5–5, 0 = ingen ändring", min: -5, max: 5 },
+  plattB: { label: "Kalibrering b", help: "0,1–5, 1 = ingen ändring", min: 0.1, max: 5 },
+  maxP3: { label: "Högsta chans till topp 3", help: "0,5–1, 1 = ingen gräns", min: 0.5, max: 1 },
 };
 
 const numText = (x: number) => String(x).replace(".", ",").replace("-", "−");
@@ -222,7 +230,7 @@ export function ModelAdmin() {
   const [weights, setWeights] = useState<Record<InputKey, string>>({} as Record<InputKey, string>);
   // Vikterna utan streck (används när loppet saknar streck). Alla tomma = inga.
   const [noStreck, setNoStreck] = useState<Record<InputKey, string>>({} as Record<InputKey, string>);
-  const [params, setParams] = useState<Record<ParamKey, string>>({ beta: "", marginal: "" });
+  const [params, setParams] = useState<Record<ParamKey, string>>({ beta: "", marginal: "", plattA: "", plattB: "", maxP3: "" });
   const [fieldErr, setFieldErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "recompute" | null>(null);
   const [result, setResult] = useState<{ tone: "ok" | "err" | "info"; text: string } | null>(null);
@@ -234,14 +242,14 @@ export function ModelAdmin() {
     setWeights(Object.fromEntries(INPUT_KEYS.map((k) => [k, numText(active.weights[k])])) as Record<InputKey, string>);
     const ns = active.params.noStreck;
     setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, ns && k !== "streck" ? numText(ns[k]) : ""])) as Record<InputKey, string>);
-    setParams({ beta: numText(active.params.beta), marginal: numText(active.params.marginal) });
+    setParams(Object.fromEntries(PARAM_KEYS.map((k) => [k, numText(active.params[k])])) as Record<ParamKey, string>);
   };
 
   // Fyller i den rekommenderade modellen ur backtestet (sparas först med knappen).
   const fillRecommended = () => {
     setWeights(Object.fromEntries(INPUT_KEYS.map((k) => [k, numText(RECOMMENDED_WEIGHTS[k])])) as Record<InputKey, string>);
     setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, k === "streck" ? "" : numText(RECOMMENDED_NO_STRECK[k])])) as Record<InputKey, string>);
-    setParams({ beta: "1", marginal: "0" });
+    setParams({ beta: "1", marginal: "0", plattA: numText(RECOMMENDED_CALIBRATION.plattA), plattB: numText(RECOMMENDED_CALIBRATION.plattB), maxP3: numText(RECOMMENDED_CALIBRATION.maxP3) });
     setFieldErr(null);
     setResult({ tone: "info", text: "Den rekommenderade modellen är ifylld. Tryck Spara som ny version för att använda den." });
   };
@@ -283,7 +291,7 @@ export function ModelAdmin() {
       }
     }
     const p: Partial<Record<ParamKey, number>> = {};
-    for (const k of ["beta", "marginal"] as const) {
+    for (const k of PARAM_KEYS) {
       const v = parseNum(params[k]);
       const lim = PARAM_LABELS[k];
       if (v === null || v < lim.min || v > lim.max) return setFieldErr(`${lim.label} ska ligga mellan ${numText(lim.min)} och ${numText(lim.max)}.`);
@@ -402,7 +410,7 @@ export function ModelAdmin() {
                     </td>
                   </tr>
                 ))}
-                {(["beta", "marginal"] as const).map((k) => (
+                {PARAM_KEYS.map((k) => (
                   <tr key={k} className="ptr">
                     <th scope="row">
                       <label htmlFor={`${id}-${k}`}>{PARAM_LABELS[k].label}</label>

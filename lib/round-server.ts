@@ -70,8 +70,8 @@ const riktOf = (r: { odds: Prisma.Decimal } | undefined) => (r ? Number(r.odds) 
 export async function lastRecordsByHorse(db: Db, horseIds: string[], before: Date, n = 5): Promise<Map<string, FormRecord[]>> {
   const out = new Map<string, FormRecord[]>();
   if (!horseIds.length) return out;
-  const rows = await db.$queryRaw<{ horseId: string; date: Date; trackName: string; place: number | null; galloped: boolean; disqualified: boolean }[]>(Prisma.sql`
-    SELECT "horseId", "date", "trackName", "place", "galloped", "disqualified"
+  const rows = await db.$queryRaw<{ horseId: string; date: Date; trackName: string; place: number | null; galloped: boolean; disqualified: boolean; kmTime: string | null; distance: number | null; startMethod: "AUTO" | "VOLTE" | null }[]>(Prisma.sql`
+    SELECT "horseId", "date", "trackName", "place", "galloped", "disqualified", "kmTime", "distance", "startMethod"
     FROM (
       SELECT r.*, row_number() OVER (PARTITION BY r."horseId" ORDER BY r."date" DESC) AS rn
       FROM "spelvarde"."HorseRecord" r
@@ -81,7 +81,7 @@ export async function lastRecordsByHorse(db: Db, horseIds: string[], before: Dat
     ORDER BY "horseId", "date" DESC`);
   for (const r of rows) {
     const list = out.get(r.horseId) ?? [];
-    list.push({ date: dateStr(r.date), trackName: r.trackName, place: r.place, galloped: r.galloped, disqualified: r.disqualified });
+    list.push({ date: dateStr(r.date), trackName: r.trackName, place: r.place, galloped: r.galloped, disqualified: r.disqualified, kmTime: r.kmTime, distance: r.distance, startMethod: r.startMethod });
     out.set(r.horseId, list);
   }
   return out;

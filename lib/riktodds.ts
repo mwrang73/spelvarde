@@ -7,25 +7,31 @@
 // Modellen är märkt v1, okalibrerad. Den gäller bara plats (topp 3).
 
 import { money, pct } from "@/lib/format";
+import { bestAdjusted, timeOutliers } from "@/lib/kmref";
 
-export const INPUT_KEYS = ["plats", "vinst", "form", "spar", "kusk", "tranare", "galopp", "pengar", "streck"] as const;
+export const INPUT_KEYS = ["plats", "vinst", "form", "spar", "kusk", "tranare", "galopp", "galoppVolt", "pengar", "barfota", "vila", "tid", "streck"] as const;
 export type InputKey = (typeof INPUT_KEYS)[number];
 export type Weights = Record<InputKey, number>;
 
-// beta och marginal (7.2), k-värden för krympningen (7.1). noStreck = vikterna
+// beta och marginal (7.2), k-värden för krympningen (7.1). plattA, plattB och
+// maxP3 kalibrerar P3 efter Harville: P3' = min(maxP3, sigmoid(a + b·logit P3)),
+// standard a = 0, b = 1, maxP3 = 1 (ingen ändring). noStreck = vikterna
 // som används i ett lopp där ingen häst har streck än (V-spelet har inte
 // öppnat), när modellens vikt för streck inte är 0. null = samma vikter.
-export type ModelParams = { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number; noStreck: Weights | null };
+export type ModelParams = { beta: number; marginal: number; kPlats: number; kVinst: number; kKusk: number; kTranare: number; plattA: number; plattB: number; maxP3: number; noStreck: Weights | null };
 export type NumParamKey = Exclude<keyof ModelParams, "noStreck">;
 
 // Standardvikter och parametrar v1 (7.3). Samma värden som scripts/seed.mjs.
-export const V1_WEIGHTS: Weights = { plats: 1.0, vinst: 0.5, form: 0.6, spar: 0.4, kusk: 0.3, tranare: 0.2, galopp: -0.4, pengar: 0, streck: 0 };
-export const V1_PARAMS: ModelParams = { beta: 1.0, marginal: 0, kPlats: 6, kVinst: 6, kKusk: 20, kTranare: 20, noStreck: null };
+export const V1_WEIGHTS: Weights = { plats: 1.0, vinst: 0.5, form: 0.6, spar: 0.4, kusk: 0.3, tranare: 0.2, galopp: -0.4, galoppVolt: 0, pengar: 0, barfota: 0, vila: 0, tid: 0, streck: 0 };
+export const V1_PARAMS: ModelParams = { beta: 1.0, marginal: 0, kPlats: 6, kVinst: 6, kKusk: 20, kTranare: 20, plattA: 0, plattB: 1, maxP3: 1, noStreck: null };
 
-// Rekommenderad modell ur backtestet 2026-10-20 (docs/backtest): med streck
-// log loss 0,4949 på testdelen, utan streck (noStreck) 0,5251. β = 1.
-export const RECOMMENDED_WEIGHTS: Weights = { plats: 0.1, vinst: 0, form: 0, spar: 0.03, kusk: 0, tranare: 0.03, galopp: 0, pengar: 0, streck: 0.88 };
-export const RECOMMENDED_NO_STRECK: Weights = { plats: 0.1, vinst: 0.05, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, pengar: 0.38, streck: 0 };
+// Rekommenderad modell v3 ur backtestet 2026-10-20 (docs/backtest), β = 1.
+// Testdelen (654 lopp): med streck och kalibrering log loss 0,4893 (v2 0,4949,
+// vinnarodds 0,5010); utan streck (noStreck) 0,5218.
+export const RECOMMENDED_WEIGHTS: Weights = { plats: 0.08, vinst: 0, form: -0.05, spar: 0.03, kusk: 0, tranare: 0.03, galopp: -0.05, galoppVolt: 0, pengar: 0.05, barfota: 0.08, vila: -0.07, tid: 0, streck: 0.86 };
+export const RECOMMENDED_NO_STRECK: Weights = { plats: 0.1, vinst: 0.08, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, galoppVolt: 0, pengar: 0.38, barfota: 0.13, vila: -0.1, tid: 0.08, streck: 0 };
+// Kalibreringen som hör till v3 (anpassad på modellen med streck).
+export const RECOMMENDED_CALIBRATION: Pick<ModelParams, "plattA" | "plattB" | "maxP3"> = { plattA: -0.055, plattB: 0.947, maxP3: 0.8 };
 
 export const MIN_STARTERS = 4;
 export const ODDS_MIN = 1.01;
@@ -53,7 +59,13 @@ export type StartFacts = {
     lifeStarts: number | null;
   };
   // De 5 senaste riktiga starterna före loppet, nyast först (HorseRecord).
-  records: { place: number | null; galloped: boolean; disqualified: boolean }[];
+  // date, kmTime, distance och startMethod används av vila och tid (v3).
+  records: { place: number | null; galloped: boolean; disqualified: boolean; date?: string; kmTime?: string | null; distance?: number | null; startMethod?: string | null }[];
+  // Loppets datum ("2026-10-24") och startmetod, för vila och galopp vid volte.
+  raceDate?: string;
+  volte?: boolean;
+  // Barfota runt om (horse.shoes). null/saknas = okänt.
+  barefoot?: boolean | null;
   // Vinster och starter i år (ATG driver/trainer.statistics). null = saknas.
   driver: { starts: number; wins: number } | null;
   trainer: { starts: number; wins: number } | null;
@@ -93,6 +105,11 @@ export type StoredInputs = {
     lifeStarts: number;
     // Intjänat per start i livet (kr). Saknas i rader räknade före pengar fanns.
     earningsPerStart?: number | null;
+    // v3: barfota runt om, dagar sedan senaste start, voltstart och tidens extremvärde.
+    barefoot?: boolean | null;
+    daysSinceLast?: number | null;
+    volte?: boolean;
+    tidOutlier?: number;
   };
   uncertainReasons: string[];
   // Loppet saknade streck och räknades med modellens vikter utan streck.
@@ -107,6 +124,15 @@ export type StartRiktodds = {
   inputs: StoredInputs;
   contributions: Record<InputKey, number>;
 };
+
+// Barfota runt om ur ATG:s horse.shoes ({ front: { hasShoe }, back: { hasShoe } }). null = okänt.
+export function barefoot(shoes: unknown): boolean | null {
+  const o = shoes && typeof shoes === "object" ? (shoes as { front?: { hasShoe?: unknown }; back?: { hasShoe?: unknown } }) : null;
+  const f = o?.front?.hasShoe;
+  const b = o?.back?.hasShoe;
+  if (typeof f !== "boolean" || typeof b !== "boolean") return null;
+  return !f && !b;
+}
 
 // ---- Små räknefunktioner --------------------------------------------------------------
 
@@ -159,6 +185,19 @@ export function oddsFromP3(p3: number, marginal: number): number {
 // Krympning mot fältets medel: (x + k·x0) / (n + k).
 export const shrink = (x: number, n: number, k: number, x0: number) => (x + k * x0) / (n + k);
 
+const gallopScore = (last5: StartFacts["records"]) => last5.reduce((a, r) => a + (r.galloped ? (r.disqualified ? 1.5 : 1) : 0), 0);
+
+// Kalibreringen efter Harville (v3): sigmoid(a + b·logit P3), högst maxP3.
+// Standardvärdena (a 0, b 1, max 1) ändrar ingenting.
+export function calibrate(p3: number[], params: Pick<ModelParams, "plattA" | "plattB" | "maxP3">): number[] {
+  const { plattA: a, plattB: b, maxP3 } = params;
+  if (a === 0 && b === 1 && maxP3 >= 1) return p3;
+  return p3.map((p) => {
+    const q = Math.min(1 - 1e-6, Math.max(1e-6, p));
+    return Math.min(maxP3, 1 / (1 + Math.exp(-(a + b * Math.log(q / (1 - q))))));
+  });
+}
+
 const formPoints = (place: number | null, disqualified: boolean) => (disqualified || place === null ? 0 : FORM_POINTS[place] ?? 0);
 
 // ---- Modellen -------------------------------------------------------------------------
@@ -188,6 +227,12 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
   const perStart = starts.map((s) => (s.earnings && s.earnings.lifeStarts > 0 ? s.earnings.total / s.earnings.lifeStarts : null));
   const moneyRaw = perStart.map((x) => (x === null ? null : Math.log1p(Math.max(0, x))));
   const moneyMean = mean(moneyRaw.filter((x): x is number => x !== null));
+  const days = starts.map((s) => (s.raceDate && s.records[0]?.date ? Math.max(0, Math.round((Date.parse(`${s.raceDate}T00:00:00Z`) - Date.parse(`${s.records[0].date}T00:00:00Z`)) / 86_400_000)) : null));
+  const vilaRaw = days.map((d) => (d === null ? null : Math.log1p(d)));
+  const vilaMean = mean(vilaRaw.filter((x): x is number => x !== null));
+  const footRaw: (number | null)[] = starts.map((s) => (s.barefoot === undefined || s.barefoot === null ? null : s.barefoot ? 1 : 0));
+  const footMean = mean(footRaw.filter((x): x is number => x !== null));
+  const tid = timeOutliers(starts.map((s) => bestAdjusted(s.records)));
   // Inget streck i loppet: vikterna utan streck, om modellen har sådana.
   const noStreck = !!params.noStreck && (weights.streck ?? 0) !== 0 && starts.every((s) => s.streck === null || !(s.streck > 0));
   const w = noStreck ? params.noStreck! : weights;
@@ -202,7 +247,11 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
       spar: s.post && s.post.mean > 0 ? { value: Math.log(Math.max(s.post.pct, 0.1) / s.post.mean), missing: false } : { value: 0, missing: true },
       kusk: driverRates[i] === null ? { value: driverMean, missing: true } : { value: shrink(s.driver!.wins, s.driver!.starts, params.kKusk, driverMean), missing: false },
       tranare: trainerRates[i] === null ? { value: trainerMean, missing: true } : { value: shrink(s.trainer!.wins, s.trainer!.starts, params.kTranare, trainerMean), missing: false },
-      galopp: { value: last5.reduce((a, r) => a + (r.galloped ? (r.disqualified ? 1.5 : 1) : 0), 0), missing: last5.length === 0 },
+      galopp: { value: gallopScore(last5), missing: last5.length === 0 },
+      galoppVolt: { value: s.volte ? gallopScore(last5) : 0, missing: last5.length === 0 },
+      barfota: footRaw[i] === null ? { value: footMean, missing: true } : { value: footRaw[i]!, missing: false },
+      vila: vilaRaw[i] === null ? { value: vilaMean, missing: true } : { value: vilaRaw[i]!, missing: false },
+      tid: { value: tid[i], missing: false },
       pengar: moneyRaw[i] === null ? { value: moneyMean, missing: true } : { value: moneyRaw[i]!, missing: false },
       streck: s.streck !== null && s.streck > 0 ? { value: Math.log(s.streck), missing: false } : { value: 0, missing: true },
     };
@@ -218,7 +267,7 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
   });
   const strengths = contributions.map((c) => INPUT_KEYS.reduce((a, k) => a + c[k], 0));
   const pi = softmax(strengths, params.beta);
-  const p3 = harvilleTop3(pi);
+  const p3 = calibrate(harvilleTop3(pi), params);
 
   return starts.map((s, i) => {
     const y = years(s);
@@ -258,6 +307,10 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
           streck: s.streck,
           lifeStarts,
           earningsPerStart: perStart[i],
+          barefoot: footRaw[i] === null ? null : footRaw[i] === 1,
+          daysSinceLast: days[i],
+          volte: !!s.volte,
+          tidOutlier: tid[i],
         },
         uncertainReasons: reasons,
         ...(noStreck ? { noStreck: true } : {}),
@@ -318,6 +371,14 @@ export function sentence(key: InputKey, f: StoredInputs["facts"], positive: bool
       return `Galopp i ${f.gallops} av ${f.formStarts} senaste, ${f.gallops === 1 ? "med" : `varav ${f.gallopsDq} med`} diskning`;
     case "streck":
       return f.streck === null ? "Streck saknas" : `Streckad ${pct1(f.streck)}`;
+    case "galoppVolt":
+      return `Galopp i ${f.gallops} av ${f.formStarts} senaste, och det är voltstart`;
+    case "barfota":
+      return f.barefoot == null ? "Skor okänt" : f.barefoot ? "Barfota runt om" : "Går med skor";
+    case "vila":
+      return f.daysSinceLast == null ? "Ingen tidigare start" : `${f.daysSinceLast} dagar sedan senaste start`;
+    case "tid":
+      return positive ? "Sticker ut på tid: klart snabbast i fältet (justerat för distans)" : "En annan häst sticker ut klart på tid";
     case "pengar":
       return f.earningsPerStart == null ? "Vinstsumma saknas" : `Tjänar ${positive ? "" : "bara "}${money(f.earningsPerStart)} per start`;
   }
@@ -365,8 +426,9 @@ const ZERO_WEIGHTS = Object.fromEntries(INPUT_KEYS.map((k) => [k, 0])) as Weight
 export function parseParams(x: unknown): ModelParams {
   const o = x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {};
   const num = (k: NumParamKey) => (typeof o[k] === "number" && Number.isFinite(o[k]) ? (o[k] as number) : V1_PARAMS[k]);
+  const cal = { plattA: num("plattA"), plattB: num("plattB"), maxP3: num("maxP3") };
   const ns = o.noStreck && typeof o.noStreck === "object" && !Array.isArray(o.noStreck) ? { ...parseWeights(o.noStreck, ZERO_WEIGHTS), streck: 0 } : null;
-  return { beta: num("beta"), marginal: num("marginal"), kPlats: num("kPlats"), kVinst: num("kVinst"), kKusk: num("kKusk"), kTranare: num("kTranare"), noStreck: ns };
+  return { beta: num("beta"), marginal: num("marginal"), kPlats: num("kPlats"), kVinst: num("kVinst"), kKusk: num("kKusk"), kTranare: num("kTranare"), ...cal, noStreck: ns };
 }
 
 // Nästa versionsnyckel: v1 → v1.1, v1.1 → v1.2, v1.9 → v1.10.
