@@ -9,6 +9,7 @@
 // och Harville görs sedan med samma funktioner som modellen (p3FromZ), så att
 // sökningen går fort utan att modellen skrivs en gång till.
 
+import { bestAdjusted, timeOutliers } from "@/lib/kmref";
 import { distanceGroup, HIST_YEARS, MIN_RACES_ALL, toRows } from "@/lib/hist";
 import { parseGame, parseStartDetail, type ParsedRecord, type ParsedStartDetail, type YearStats } from "@/lib/atg";
 import {
@@ -575,6 +576,56 @@ export function withExtras(zr: ZRace[], keys: readonly ExtraKey[], ref: ReturnTy
       vals.forEach((v, i) => (add[i][k] = v === null || !(sd > 1e-12) ? 0 : (v - m) / sd));
     }
     return { race, z: add as Record<InputKey, number>[] };
+  });
+}
+
+// ---- Antal positiva signaler (backtest 2026-10-20) ----------------------------------------
+//
+// Tydliga ja/nej-gränser, samma som en spelare skulle använda:
+//   spar      startnumrets plats % minst 15 % över tabellens medel
+//   tid       sticker ut extremt på tid (lib/kmref.ts)
+//   kusk      kuskens vinst % i år bland fältets 3 bästa (minst 20 starter)
+//   tranare   tränarens vinst % i år bland fältets 3 bästa (minst 20 starter)
+//   barfota   barfota runt om
+//   plats75   plats % i år och i fjol minst 75 % (minst 5 starter)
+//   vinst50   vinst % i år och i fjol minst 50 % (minst 5 starter)
+//   form      minst 2 ettor eller tvåor i de 5 senaste
+//   pengar    intjänat per start bland fältets 3 bästa
+//   felfri    ingen galopp i de 5 senaste (minst 3 starter)
+export const SIGNAL_KEYS = ["spar", "tid", "kusk", "tranare", "barfota", "plats75", "vinst50", "form", "pengar", "felfri"] as const;
+export type SignalKey = (typeof SIGNAL_KEYS)[number];
+
+const topN = (vals: (number | null)[], n: number) => {
+  const sorted = vals.filter((v): v is number => v !== null).sort((a, b) => b - a);
+  const cut = sorted.length >= n ? sorted[n - 1] : -Infinity;
+  return vals.map((v) => v !== null && v >= cut && sorted.length > 0);
+};
+
+// Signalerna för loppets startande (samma ordning som running/predsFor).
+export function positiveSignals(race: BtRace): Record<SignalKey, boolean>[] {
+  const run = race.starts.filter((s) => !s.scratched);
+  const rate = (p: { starts: number; wins: number } | null) => (p && p.starts >= 20 ? p.wins / p.starts : null);
+  const kusk = topN(run.map((s) => rate(s.driver)), 3);
+  const tranare = topN(run.map((s) => rate(s.trainer)), 3);
+  const pengar = topN(run.map((s) => (s.earnings != null && (s.lifeStarts ?? 0) > 0 ? s.earnings / (s.lifeStarts as number) : null)), 3);
+  const tid = timeOutliers(run.map((s) => bestAdjusted(s.records)));
+  return run.map((s, i) => {
+    const st = (s.thisYear?.starts ?? 0) + (s.lastYear?.starts ?? 0);
+    const placed = (s.thisYear?.placed ?? 0) + (s.lastYear?.placed ?? 0);
+    const wins = (s.thisYear?.wins ?? 0) + (s.lastYear?.wins ?? 0);
+    const last5 = s.records.slice(0, 5);
+    return {
+      spar: !!s.post && s.post.mean > 0 && s.post.pct / s.post.mean >= 1.15,
+      tid: tid[i] > 0,
+      kusk: kusk[i],
+      tranare: tranare[i],
+      barfota: barefoot(s.shoes) === true,
+      plats75: st >= 5 && placed / st >= 0.75,
+      vinst50: st >= 5 && wins / st >= 0.5,
+      form: last5.filter((r) => !r.disqualified && (r.place === 1 || r.place === 2)).length >= 2,
+      pengar: pengar[i],
+      felfri: last5.length >= 3 && !last5.some((r) => r.galloped),
+    };
   });
 }
 

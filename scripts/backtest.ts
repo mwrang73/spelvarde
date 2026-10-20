@@ -28,6 +28,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { AtgError, atgFetch, atgPaths, mapLimit } from "@/lib/atg";
 import {
+  positiveSignals,
+  SIGNAL_KEYS,
+  toFacts,
+  type SignalKey,
   applyPlatt,
   EXTRA_KEYS,
   extraFeatures,
@@ -63,7 +67,7 @@ import {
   type RoiRow,
 } from "@/lib/backtest";
 import { kmRef } from "@/lib/kmref";
-import { INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
+import { computeRace, harvilleTop3, INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 
 const ROOT = process.cwd();
@@ -364,6 +368,9 @@ async function main() {
   console.log(`v3 utan streck: ${JSON.stringify(v3n)}`);
   console.log(`v3 Platt: a ${plattV3.a.toFixed(3)} b ${plattV3.b.toFixed(3)}`);
 
+  // Antal positiva signaler: topp 3 mot strecket (marknaden) och v3, på hela underlaget.
+  const counts = signalCountAnalysis(races, cut);
+
   const fixed: { name: string; beta: number }[] = o.betas.map((b) => ({ name: `v1 β = ${String(b).replace(".", ",")}`, beta: b }));
   const variants: Variant[] = [
     ...fixed.map((v) => ({ name: v.name, kind: "modell" as const, test: modelPreds(test, o.weights, params(v.beta)), all: modelPreds(races, o.weights, params(v.beta)) })),
@@ -395,6 +402,7 @@ async function main() {
     beta: { train: betaTrain, all: betaAll },
     fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights, withPengar: fitP.weights, withStreckPengar: fitSP.weights },
     signals: { rows: signals, baseS, baseN, allS: allS.weights, allN: allN.weights, platt, plattAll, v3, v3n, plattV3, capV3 },
+    counts,
     variants: variants.map((v) => ({
       name: v.name,
       kind: v.kind,
@@ -420,6 +428,60 @@ const RATIOS = [1, 1.2, 1.5];
 // Modellen som rekommenderades 2026-10-20 (förenklad Anpassad + streck), β = 1.
 const V2_WEIGHTS: Weights = { ...V1_WEIGHTS, plats: 0.1, vinst: 0, form: 0, spar: 0.03, kusk: 0, tranare: 0.03, galopp: 0, pengar: 0, streck: 0.88 };
 const V2_NO_STRECK: Weights = { ...V1_WEIGHTS, plats: 0.1, vinst: 0.05, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, pengar: 0.38, streck: 0 };
+
+// En grupp starter: antal, verklig topp 3-andel, strecket (marknaden) och v3:s
+// förväntade andel, och avkastningen med 1 kr på plats i ATG:s platspool.
+type Group = { label: string; n: number; top3: number; market: number; v3: number; poolN: number; roi: number };
+
+function groupOf(label: string, rows: CountRow[]): Group {
+  const n = rows.length;
+  const pool = rows.filter((r) => r.hasPool);
+  return {
+    label,
+    n,
+    top3: n ? rows.filter((r) => r.y).length / n : NaN,
+    market: n ? rows.reduce((a, r) => a + r.pMarket, 0) / n : NaN,
+    v3: n ? rows.reduce((a, r) => a + r.pV3, 0) / n : NaN,
+    poolN: pool.length,
+    roi: pool.length ? pool.reduce((a, r) => a + r.payout, 0) / pool.length - 1 : NaN,
+  };
+}
+
+type CountRow = { date: string; count: number; flags: Record<SignalKey, boolean>; y: boolean; pMarket: number; pV3: number; streckRank: number; payout: number; hasPool: boolean };
+
+function signalCountAnalysis(races: BtRace[], testFrom: string) {
+  const v3Params = { ...V1_PARAMS, beta: 1, ...RECOMMENDED_CALIBRATION };
+  const rows: CountRow[] = [];
+  for (const race of races) {
+    const run = race.starts.filter((s) => !s.scratched);
+    const flags = positiveSignals(race);
+    const st = run.map((s) => Math.max(s.streck ?? 0, 1e-4));
+    const sum = st.reduce((a, b) => a + b, 0);
+    const pm = harvilleTop3(st.map((v) => v / sum));
+    const v3 = computeRace(toFacts(race, true), RECOMMENDED_WEIGHTS, v3Params).map((r) => r.probTop3);
+    const order = [...st.keys()].sort((a, b) => st[b] - st[a]);
+    run.forEach((s, i) => {
+      rows.push({
+        date: race.date,
+        count: SIGNAL_KEYS.filter((k) => flags[i][k]).length,
+        flags: flags[i],
+        y: s.top3,
+        pMarket: pm[i],
+        pV3: v3[i] ?? NaN,
+        streckRank: order.indexOf(i) + 1,
+        payout: s.placePayout,
+        hasPool: race.placesPaid !== null && s.placeOdds !== null,
+      });
+    });
+  }
+  const byCount = [0, 1, 2, 3, 4, 5, 6].map((c) => groupOf(c === 6 ? "6+" : String(c), rows.filter((r) => (c === 6 ? r.count >= 6 : r.count === c))));
+  const bySignal = SIGNAL_KEYS.map((k) => groupOf(k, rows.filter((r) => r.flags[k])));
+  const low = (min: number, rows2: CountRow[]) => rows2.filter((r) => r.count >= min && r.streckRank >= 4);
+  const train = rows.filter((r) => r.date < testFrom);
+  const test = rows.filter((r) => r.date >= testFrom);
+  const lowStreck = [4, 5, 6].flatMap((m) => [groupOf(`minst ${m}, streck 4:e+ · träning`, low(m, train)), groupOf(`minst ${m}, streck 4:e+ · test`, low(m, test))]);
+  return { starts: rows.length, byCount, bySignal, lowStreck, all: groupOf("Alla", rows) };
+}
 
 type SignalRow = { key: string; coverage: number; starts: number; wS: number; dS: number; wN: number; dN: number };
 
@@ -473,6 +535,7 @@ type Result = {
   beta: { train: ReturnType<typeof searchBeta>; all: ReturnType<typeof searchBeta> };
   fit: { start: Weights; weights: Weights; trainLogLoss: number; withStreck: Weights; withPengar: Weights; withStreckPengar: Weights };
   signals: { rows: SignalRow[]; baseS: number; baseN: number; allS: Weights; allN: Weights; platt: Platt; plattAll: Platt; v3: Weights; v3n: Weights; plattV3: Platt; capV3: number };
+  counts: ReturnType<typeof signalCountAnalysis>;
   variants: VariantResult[];
 };
 
@@ -620,6 +683,25 @@ function report(r: Result): string {
     });
     L();
   }
+  const ct = r.counts;
+  const gTable = (gs: Group[]) => {
+    L("| Grupp | Starter | Topp 3 verklig | Strecket säger | v3 säger | Verklig / streck | ROI platspool |\n|---|---:|---:|---:|---:|---:|---:|");
+    for (const g of gs) L(`| ${g.label} | ${g.n} | ${p1(g.top3)} | ${p1(g.market)} | ${p1(g.v3)} | ${f(g.top3 / g.market, 2)} | ${signedPct(g.roi)} (${g.poolN}) |`);
+    L();
+  };
+  L("## Antal positiva signaler");
+  L();
+  L(`Hela underlaget (${ct.starts} starter). Signalerna: spår (plats % minst 15 % över medel), tid (extrem), kusk och tränare (vinst % i fältets topp 3), barfota, plats minst 75 %, vinst minst 50 %, form (minst 2 ettor/tvåor av 5), pengar (per start i fältets topp 3), felfri (ingen galopp i 5). "Strecket säger" = chans till topp 3 ur strecket (Harville). Verklig / streck över 1 betyder att marknaden underskattar gruppen.`);
+  L();
+  L("### Per antal signaler");
+  L();
+  gTable(ct.byCount);
+  L("### Per signal");
+  L();
+  gTable(ct.bySignal);
+  L("### Många signaler men lågt streck (inte bland loppets 3 mest streckade)");
+  L();
+  gTable(ct.lowStreck);
   L(`## Kalibrering, ${best.name} (testdelen)`);
   L();
   L(calibrationTable(best.calibrationTest));
