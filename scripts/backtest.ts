@@ -28,6 +28,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { AtgError, atgFetch, atgPaths, mapLimit } from "@/lib/atg";
 import {
+  applyPlatt,
+  EXTRA_KEYS,
+  extraFeatures,
+  fitPlatt,
+  kmReference,
+  logLoss,
+  withExtras,
+  type Platt,
   attachPosts,
   betaGrid,
   buildRaces,
@@ -55,7 +63,7 @@ import {
   type StatsSource,
   type RoiRow,
 } from "@/lib/backtest";
-import { INPUT_KEYS, parseWeights, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
+import { INPUT_KEYS, parseWeights, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 
 const ROOT = process.cwd();
@@ -309,6 +317,39 @@ async function main() {
   const zTest = zRaces(test, V1_PARAMS, o.weights);
   console.log(`Pengar: vikt ${f(fitP.weights[PENGAR], 2)} utan streck, ${f(fitSP.weights[PENGAR], 2)} med streck`);
 
+  // Signalerna 1–6: en i taget ovanpå v2 (med streck) och modellen utan streck,
+  // bara signalens vikt anpassas på träningsdelen. Sedan alla tillsammans.
+  const ref = kmReference(races);
+  const signals: SignalRow[] = [];
+  const baseS = logLoss(zPreds(zTestS, RECOMMENDED_WEIGHTS, 1));
+  const baseN = logLoss(zPreds(zTest, RECOMMENDED_NO_STRECK, 1));
+  for (const k of EXTRA_KEYS) {
+    const trS = withExtras(zTrainS, [k], ref);
+    const teS = withExtras(zTestS, [k], ref);
+    const trN = withExtras(zTrain, [k], ref);
+    const teN = withExtras(zTest, [k], ref);
+    const fs = fitWeights(trS, { ...RECOMMENDED_WEIGHTS, [k]: 0 } as Weights, 1, [k as InputKey]);
+    const fn = fitWeights(trN, { ...RECOMMENDED_NO_STRECK, [k]: 0 } as Weights, 1, [k as InputKey]);
+    const raw = test.flatMap((r) => extraFeatures(r, ref)[k]);
+    signals.push({
+      key: k,
+      coverage: raw.filter((v) => v !== null && v !== 0).length,
+      starts: raw.length,
+      wS: (fs.weights as Record<string, number>)[k],
+      dS: logLoss(zPreds(teS, fs.weights, 1)) - baseS,
+      wN: (fn.weights as Record<string, number>)[k],
+      dN: logLoss(zPreds(teN, fn.weights, 1)) - baseN,
+    });
+    console.log(`  ${k}: vikt ${f((fs.weights as Record<string, number>)[k], 2)} / ${f((fn.weights as Record<string, number>)[k], 2)}`);
+  }
+  const allS = fitWeights(withExtras(zTrainS, EXTRA_KEYS, ref), { ...RECOMMENDED_WEIGHTS, ...Object.fromEntries(EXTRA_KEYS.map((k) => [k, 0])) } as Weights, 1, [...(INPUT_KEYS as readonly InputKey[]), ...(EXTRA_KEYS as readonly string[] as InputKey[])]);
+  const allN = fitWeights(withExtras(zTrain, EXTRA_KEYS, ref), { ...RECOMMENDED_NO_STRECK, ...Object.fromEntries(EXTRA_KEYS.map((k) => [k, 0])) } as Weights, 1, [...(INPUT_KEYS.filter((k) => k !== "streck") as InputKey[]), ...(EXTRA_KEYS as readonly string[] as InputKey[])]);
+
+  // Kalibrering (Platt) av v2, anpassad på träningsdelen.
+  const platt = fitPlatt(zPreds(zTrainS, RECOMMENDED_WEIGHTS, 1));
+  const plattAll = fitPlatt(zPreds(withExtras(zTrainS, EXTRA_KEYS, ref), allS.weights, 1));
+  console.log(`Platt v2: a ${f(platt.a, 3)} b ${f(platt.b, 3)}`);
+
   const fixed: { name: string; beta: number }[] = o.betas.map((b) => ({ name: `v1 β = ${String(b).replace(".", ",")}`, beta: b }));
   const variants: Variant[] = [
     ...fixed.map((v) => ({ name: v.name, kind: "modell" as const, test: modelPreds(test, o.weights, params(v.beta)), all: modelPreds(races, o.weights, params(v.beta)) })),
@@ -318,6 +359,12 @@ async function main() {
     { name: "Anpassade vikter + pengar", kind: "anpassad", test: zPreds(withPengar(zTest), fitP.weights, 1), all: null },
     { name: "Anpassade vikter + streck + pengar", kind: "anpassad", test: zPreds(withPengar(zTestS), fitSP.weights, 1), all: null },
     { name: "v2 (streck 0,88 · plats 0,10 · spår 0,03 · tränare 0,03)", kind: "anpassad", test: zPreds(zTestS, V2_WEIGHTS, 1), all: null },
+    { name: "v2 kalibrerad", kind: "anpassad", test: applyPlatt(zPreds(zTestS, V2_WEIGHTS, 1), platt), all: null },
+    { name: "v2 kalibrerad, Σ P3 = 3", kind: "anpassad", test: applyPlatt(zPreds(zTestS, V2_WEIGHTS, 1), platt, true), all: null },
+    { name: "v2 + signaler", kind: "anpassad", test: zPreds(withExtras(zTestS, EXTRA_KEYS, ref), allS.weights, 1), all: null },
+    { name: "v2 + signaler, kalibrerad", kind: "anpassad", test: applyPlatt(zPreds(withExtras(zTestS, EXTRA_KEYS, ref), allS.weights, 1), plattAll), all: null },
+    { name: "Utan streck (rekommenderad)", kind: "anpassad", test: zPreds(zTest, RECOMMENDED_NO_STRECK, 1), all: null },
+    { name: "Utan streck + signaler", kind: "anpassad", test: zPreds(withExtras(zTest, EXTRA_KEYS, ref), allN.weights, 1), all: null },
     { name: "Marknaden (streck)", kind: "referens", test: marketPreds(test, "streck"), all: marketPreds(races, "streck") },
     { name: "Marknaden (vinnarodds)", kind: "referens", test: marketPreds(test, "vinnarodds"), all: marketPreds(races, "vinnarodds") },
     { name: "Naiv (alla lika)", kind: "referens", test: naivePreds(test), all: naivePreds(races) },
@@ -328,6 +375,7 @@ async function main() {
     data: { byType, sources, persons: personCheck(gameJsonOf(loaded, games)), evaluated: { races: races.length, dropped, train: train.length, test: test.length, testFrom: cut, trainTo: train[train.length - 1]?.date ?? "" } },
     beta: { train: betaTrain, all: betaAll },
     fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights, withPengar: fitP.weights, withStreckPengar: fitSP.weights },
+    signals: { rows: signals, baseS, baseN, allS: allS.weights, allN: allN.weights, platt, plattAll },
     variants: variants.map((v) => ({
       name: v.name,
       kind: v.kind,
@@ -352,6 +400,8 @@ const RATIOS = [1, 1.2, 1.5];
 
 // Modellen som rekommenderades 2026-10-20 (förenklad Anpassad + streck), β = 1.
 const V2_WEIGHTS: Weights = RECOMMENDED_WEIGHTS;
+
+type SignalRow = { key: string; coverage: number; starts: number; wS: number; dS: number; wN: number; dN: number };
 
 type PostInfo = { from: string; to: string; races: number; starts: number; withPost: number };
 
@@ -402,6 +452,7 @@ type Result = {
   };
   beta: { train: ReturnType<typeof searchBeta>; all: ReturnType<typeof searchBeta> };
   fit: { start: Weights; weights: Weights; trainLogLoss: number; withStreck: Weights; withPengar: Weights; withStreckPengar: Weights };
+  signals: { rows: SignalRow[]; baseS: number; baseN: number; allS: Weights; allN: Weights; platt: Platt; plattAll: Platt };
   variants: VariantResult[];
 };
 
@@ -520,6 +571,33 @@ function report(r: Result): string {
   L();
   L(`Bästa modellvariant på testdelen (utan streck): **${best.name}**, log loss ${f(best.test.logLoss, 4)} mot ${f(v1.test.logLoss, 4)} för ${v1.name}.`);
   L();
+  const sg = r.signals;
+  L("## Signaler (skor, vagn, kuskbyte, klass, vila, galopp vid volte, tid)");
+  L();
+  L(`En signal i taget: bara dess vikt anpassas på träningsdelen, ovanpå v2 (med streck, log loss ${f(sg.baseS, 4)}) och modellen utan streck (log loss ${f(sg.baseN, 4)}). Δ = ändring i log loss på testdelen (negativt = bättre). Andel = starter i testdelen där signalen inte är 0.`);
+  L();
+  L("| Signal | Andel | Vikt med streck | Δ med streck | Vikt utan streck | Δ utan streck |\n|---|---:|---:|---:|---:|---:|");
+  for (const x of sg.rows) L(`| ${x.key} | ${pctOf(x.coverage, x.starts)} | ${f(x.wS, 2)} | ${f(x.dS, 4)} | ${f(x.wN, 2)} | ${f(x.dN, 4)} |`);
+  L();
+  const ws = (w: Weights) => Object.entries(w).filter(([, v]) => Math.abs(v) >= 0.005).map(([k, v]) => `${k} ${f(v, 2)}`).join(" · ");
+  L(`Alla tillsammans, med streck: ${ws(sg.allS)}.`);
+  L();
+  L(`Alla tillsammans, utan streck: ${ws(sg.allN)}.`);
+  L();
+  L(`Platt-kalibrering av v2: P3' = sigmoid(${f(sg.platt.a, 3)} + ${f(sg.platt.b, 3)} · logit(P3)). För v2 + signaler: a ${f(sg.plattAll.a, 3)}, b ${f(sg.plattAll.b, 3)}.`);
+  L();
+  const cal = r.variants.find((v) => v.name === "v2 kalibrerad");
+  const v2v = r.variants.find((v) => v.name.startsWith("v2 (streck"));
+  if (cal && v2v) {
+    L("### Kalibrering, v2 före och efter (testdelen)");
+    L();
+    L("| P3-hink | Antal före | Verklig före | Antal efter | Verklig efter |\n|---|---:|---:|---:|---:|");
+    v2v.calibrationTest.forEach((b, i) => {
+      const c = cal.calibrationTest[i];
+      L(`| ${Math.round(b.lo * 100)}–${Math.round(b.hi * 100)} % | ${b.n} | ${p1(b.actual)} (förv. ${p1(b.expected)}) | ${c.n} | ${p1(c.actual)} (förv. ${p1(c.expected)}) |`);
+    });
+    L();
+  }
   L(`## Kalibrering, ${best.name} (testdelen)`);
   L();
   L(calibrationTable(best.calibrationTest));

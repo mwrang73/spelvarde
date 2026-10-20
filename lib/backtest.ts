@@ -42,7 +42,17 @@ export type BtStart = {
   statsAgree: boolean | null;
   statsLeak: boolean | null;
   // Tidigare starter före loppdatumet, nyast först (högst 5).
-  records: { date: string; place: number | null; galloped: boolean; disqualified: boolean }[];
+  records: {
+    date: string;
+    place: number | null;
+    galloped: boolean;
+    disqualified: boolean;
+    // För signalerna (extraFeatures): km-tid ("1.12,9" eller kod), distans, startmetod och kusk.
+    kmTime?: string | null;
+    distance?: number | null;
+    startMethod?: "AUTO" | "VOLTE" | null;
+    driverName?: string | null;
+  }[];
   driver: { starts: number; wins: number } | null;
   trainer: { starts: number; wins: number } | null;
   // Streck i procent ur V-poolen (12.3 = 12,3 %). null = ingen V-pool.
@@ -58,6 +68,11 @@ export type BtStart = {
   post?: StartFacts["post"];
   // Hästens totala vinstsumma i kr (horse.money i ögonblicksbilden). null = saknas.
   earnings?: number | null;
+  // Skor och vagn i ögonblicksbilden (ATG horse.shoes / horse.sulky, råa).
+  shoes?: unknown;
+  sulky?: unknown;
+  // Kuskens namn ("Förnamn Efternamn") som i posterna.
+  driverName?: string | null;
 };
 
 export type BtRace = {
@@ -68,6 +83,8 @@ export type BtRace = {
   leg: number;
   distance: number;
   startMethod: "AUTO" | "VOLTE";
+  // Förstapris i kr (null = okänt).
+  prize?: number | null;
   // Antal platser som betalas i platspoolen (2 eller 3). null = ingen platspool.
   placesPaid: number | null;
   starts: BtStart[];
@@ -205,7 +222,16 @@ export function buildRaces(
         place: res?.place ?? null,
         disqualified: res?.disqualified ?? false,
         ...horseYears(detail, s.horseStats, date, source),
-        records: before.map((r) => ({ date: r.date, place: r.place, galloped: r.galloped, disqualified: r.disqualified })),
+        records: before.map((r) => ({
+          date: r.date,
+          place: r.place,
+          galloped: r.galloped,
+          disqualified: r.disqualified,
+          kmTime: r.kmTime,
+          distance: r.distance,
+          startMethod: r.startMethod,
+          driverName: r.driverName,
+        })),
         driver: d ? { starts: d.starts, wins: d.wins } : null,
         trainer: t ? { starts: t.starts, wins: t.wins } : null,
         streck: bd !== null && bd >= 0 ? bd / 100 : null,
@@ -213,9 +239,12 @@ export function buildRaces(
         placeOdds: minOdds !== null && minOdds > 0 ? minOdds / 100 : null,
         placePayout: winners?.paid.get(s.number) ?? 0,
         earnings: s.earnings,
+        shoes: s.shoes,
+        sulky: s.sulky,
+        driverName: s.driver ? `${s.driver.firstName} ${s.driver.lastName}`.trim() : null,
       };
     });
-    out.push({ key: race.atgRaceId, date, gameType, gameId: game.atgGameId, leg: race.leg, distance: race.distance, startMethod: race.startMethod, placesPaid: winners?.places ?? null, starts });
+    out.push({ key: race.atgRaceId, date, gameType, gameId: game.atgGameId, leg: race.leg, distance: race.distance, startMethod: race.startMethod, prize: race.prize, placesPaid: winners?.places ?? null, starts });
   });
   return out;
 }
@@ -426,6 +455,168 @@ export function withPengar(zr: ZRace[]): ZRace[] {
     const m = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 0;
     const sd = known.length ? Math.sqrt(known.reduce((a, b) => a + (b - m) ** 2, 0) / known.length) : 0;
     return { race, z: z.map((zi, i) => ({ ...zi, [PENGAR]: vals[i] === null || !(sd > 1e-12) ? 0 : ((vals[i] as number) - m) / sd })) };
+  });
+}
+
+// ---- Signaler att pröva (backtest 2026-10-20, punkt 1–6) ---------------------------------
+//
+// Råa värden per startande häst, z inom loppet i withExtras. Saknas ett värde
+// får hästen fältets medel (z = 0). Alla bygger bara på data före loppet.
+//   skoAv      skor av sedan förra starten (fram och/eller bak, 0–2)
+//   barfota    barfota runt om
+//   jankNy     bytt till amerikansk vagn (jänkare) sedan förra starten
+//   vanligNy   bytt till vanlig vagn sedan förra starten
+//   kuskUpp    kuskbyte sedan förra starten × kuskens vinst % mot fältets (0 utan byte)
+//   klass      log(intjänat per start / loppets förstapris): högt = går ner i klass
+//   vila       log(1 + dagar sedan förra starten)
+//   langVila   minst 90 dagar sedan förra starten
+//   galoppVolt galopp i 5 senaste (som modellen) × voltstart (0 vid autostart)
+//   tid        bara när hästen sticker ut extremt: bästa justerade km-tid i 5
+//              senaste mot fältets median, i robusta standardavvikelser, minus 2
+//              (0 för alla som inte är minst 2 avvikelser snabbare)
+
+export const EXTRA_KEYS = ["skoAv", "barfota", "jankNy", "vanligNy", "kuskUpp", "klass", "vila", "langVila", "galoppVolt", "tid"] as const;
+export type ExtraKey = (typeof EXTRA_KEYS)[number];
+
+// "1.12,9" → 72,9 s per km. Koder ("u", "d") och saknat → null.
+export function kmSeconds(t: string | null | undefined): number | null {
+  const m = /^(\d)\.(\d{2}),(\d)$/.exec(t ?? "");
+  return m ? Number(m[1]) * 60 + Number(m[2]) + Number(m[3]) / 10 : null;
+}
+
+const distBucket = (d: number) => Math.round(d / 100) * 100;
+
+// Referenstid per startmetod och distans (100-m-hink): medianen av alla
+// giltiga km-tider i underlaget (ingen galopp, ingen diskning). Samma km-tid på
+// längre distans blir då bättre än på kortare (13,4 på 2140a > 13,4 på 1640a).
+export function kmReference(races: BtRace[]): (method: string, distance: number) => number | null {
+  const by = new Map<string, number[]>();
+  for (const race of races)
+    for (const s of race.starts)
+      for (const r of s.records) {
+        const sec = kmSeconds(r.kmTime);
+        if (sec === null || r.galloped || r.disqualified || !r.startMethod || !r.distance) continue;
+        const k = `${r.startMethod}|${distBucket(r.distance)}`;
+        (by.get(k) ?? by.set(k, []).get(k)!).push(sec);
+      }
+  const med = new Map<string, number>();
+  for (const [k, xs] of by) if (xs.length >= 50) med.set(k, median(xs));
+  return (method, distance) => med.get(`${method}|${distBucket(distance)}`) ?? null;
+}
+
+function median(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  const n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
+
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+const shoeChange = (x: unknown, side: "front" | "back") => {
+  const o = (x as Record<string, { hasShoe?: boolean; changed?: boolean } | undefined> | null)?.[side];
+  return o?.changed === true && o.hasShoe === false ? 1 : 0;
+};
+const noShoe = (x: unknown, side: "front" | "back") => (x as Record<string, { hasShoe?: boolean } | undefined> | null)?.[side]?.hasShoe === false;
+
+// Råa värden för loppets startande (samma ordning som running/predsFor).
+export function extraFeatures(race: BtRace, ref: ReturnType<typeof kmReference>): Record<ExtraKey, (number | null)[]> {
+  const run = race.starts.filter((s) => !s.scratched);
+  const rate = (s: BtStart) => (s.driver && s.driver.starts > 0 ? s.driver.wins / s.driver.starts : null);
+  const rates = run.map(rate).filter((x): x is number => x !== null);
+  const driverMean = rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0;
+  const best = run.map((s) => {
+    const adj = s.records
+      .slice(0, 5)
+      .map((r) => {
+        const sec = kmSeconds(r.kmTime);
+        const rf = r.startMethod && r.distance ? ref(r.startMethod, r.distance) : null;
+        return sec === null || rf === null || r.galloped || r.disqualified ? null : sec - rf;
+      })
+      .filter((x): x is number => x !== null);
+    return adj.length ? Math.min(...adj) : null;
+  });
+  const known = best.filter((x): x is number => x !== null);
+  const med = known.length >= 4 ? median(known) : null;
+  const mad = med !== null ? 1.4826 * median(known.map((x) => Math.abs(x - med))) : 0;
+  const out = {} as Record<ExtraKey, (number | null)[]>;
+  out.skoAv = run.map((s) => (s.shoes ? shoeChange(s.shoes, "front") + shoeChange(s.shoes, "back") : null));
+  out.barfota = run.map((s) => (s.shoes ? (noShoe(s.shoes, "front") && noShoe(s.shoes, "back") ? 1 : 0) : null));
+  const sulkyType = (s: BtStart) => (s.sulky as { type?: { code?: string; changed?: boolean } } | null)?.type ?? null;
+  out.jankNy = run.map((s) => (sulkyType(s) ? (sulkyType(s)!.changed && sulkyType(s)!.code === "AM" ? 1 : 0) : null));
+  out.vanligNy = run.map((s) => (sulkyType(s) ? (sulkyType(s)!.changed && sulkyType(s)!.code === "VA" ? 1 : 0) : null));
+  out.kuskUpp = run.map((s) => {
+    const last = s.records[0]?.driverName ?? null;
+    if (!last || !s.driverName) return null;
+    if (last.toLowerCase() === s.driverName.toLowerCase()) return 0;
+    const r = rate(s);
+    return r === null ? 0 : r - driverMean;
+  });
+  out.klass = run.map((s) => (s.earnings != null && (s.lifeStarts ?? 0) > 0 && race.prize ? Math.log((s.earnings / (s.lifeStarts as number) + 1000) / race.prize) : null));
+  out.vila = run.map((s) => (s.records[0] ? Math.log1p(Math.max(0, daysBetween(s.records[0].date, race.date))) : null));
+  out.langVila = run.map((s) => (s.records[0] ? (daysBetween(s.records[0].date, race.date) >= 90 ? 1 : 0) : null));
+  out.galoppVolt = run.map((s) => (race.startMethod === "VOLTE" ? s.records.slice(0, 5).reduce((a, r) => a + (r.galloped ? (r.disqualified ? 1.5 : 1) : 0), 0) : 0));
+  out.tid = best.map((b) => (b === null || med === null || !(mad > 0) ? 0 : Math.max(0, (med - b) / mad - 2)));
+  return out;
+}
+
+// z inom loppet för valda signaler, tillagt i z-raderna (saknat värde → z = 0).
+export function withExtras(zr: ZRace[], keys: readonly ExtraKey[], ref: ReturnType<typeof kmReference>): ZRace[] {
+  return zr.map(({ race, z }) => {
+    const raw = extraFeatures(race, ref);
+    const add = z.map((zi) => ({ ...zi }) as Record<string, number>);
+    for (const k of keys) {
+      const vals = raw[k];
+      const known = vals.filter((v): v is number => v !== null);
+      const m = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 0;
+      const sd = known.length ? Math.sqrt(known.reduce((a, b) => a + (b - m) ** 2, 0) / known.length) : 0;
+      vals.forEach((v, i) => (add[i][k] = v === null || !(sd > 1e-12) ? 0 : (v - m) / sd));
+    }
+    return { race, z: add as Record<InputKey, number>[] };
+  });
+}
+
+// ---- Kalibrering (Platt) ---------------------------------------------------------------------
+
+// p' = sigmoid(a + b · logit(p)), anpassad med Newton på log loss.
+export type Platt = { a: number; b: number };
+const logit = (p: number) => Math.log(clampP(p) / (1 - clampP(p)));
+const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+
+export function fitPlatt(preds: Pick<Pred, "p" | "y">[]): Platt {
+  let a = 0;
+  let b = 1;
+  for (let it = 0; it < 50; it++) {
+    let ga = 0, gb = 0, haa = 0, hab = 0, hbb = 0;
+    for (const x of preds) {
+      const l = logit(x.p);
+      const q = sigmoid(a + b * l);
+      const r = q - x.y;
+      const w = q * (1 - q);
+      ga += r;
+      gb += r * l;
+      haa += w;
+      hab += w * l;
+      hbb += w * l * l;
+    }
+    const det = haa * hbb - hab * hab;
+    if (!(Math.abs(det) > 1e-12)) break;
+    const da = (hbb * ga - hab * gb) / det;
+    const db = (haa * gb - hab * ga) / det;
+    a -= da;
+    b -= db;
+    if (Math.abs(da) + Math.abs(db) < 1e-9) break;
+  }
+  return { a, b };
+}
+
+// Kalibrerade förutsägelser. renorm: skala per lopp så att Σ P3 = 3 (som Harville ger).
+export function applyPlatt(preds: Pred[], c: Platt, renorm = false): Pred[] {
+  const out = preds.map((x) => ({ ...x, p: sigmoid(c.a + c.b * logit(x.p)) }));
+  if (!renorm) return out.map((x) => ({ ...x, odds: oddsFromP3(x.p, 0) }));
+  const sums = new Map<string, number>();
+  for (const x of out) sums.set(x.raceKey, (sums.get(x.raceKey) ?? 0) + x.p);
+  return out.map((x) => {
+    const p = Math.min(1 - EPS, (x.p * 3) / (sums.get(x.raceKey) as number));
+    return { ...x, p, odds: oddsFromP3(p, 0) };
   });
 }
 

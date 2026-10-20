@@ -3,6 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   attachPosts,
+  extraFeatures,
+  fitPlatt,
+  kmReference,
+  kmSeconds,
   brier,
   buildRaces,
   calendarGames,
@@ -149,7 +153,7 @@ describe("ATG-data", () => {
       },
     };
     const r = buildRaces(game, "V85", (_id, n) => (n === 1 ? detail : null))[0];
-    expect(r.starts.find((s) => s.number === 1)!.records).toEqual([{ date: "2026-10-01", place: 3, galloped: false, disqualified: false }]);
+    expect(r.starts.find((s) => s.number === 1)!.records).toMatchObject([{ date: "2026-10-01", place: 3, galloped: false, disqualified: false }]);
   });
 });
 
@@ -311,5 +315,34 @@ describe("spår ur statistikbasen i backtestet", () => {
     expect(attachPosts([r], index)).toBe(2);
     expect(r.starts[0].post).toMatchObject({ pct: 100, mean: 37.5, kind: "plats" });
     expect(toFacts(r)[1].post).toMatchObject({ pct: 0 });
+  });
+});
+
+describe("signalerna och kalibreringen", () => {
+  it("km-tid och referens: samma km-tid är bättre på längre distans", () => {
+    expect(kmSeconds("1.13,4")).toBeCloseTo(73.4, 6);
+    expect(kmSeconds("u")).toBeNull();
+    const rec = (d: number, t: string) => ({ date: "2026-01-01", place: 5, galloped: false, disqualified: false, kmTime: t, distance: d, startMethod: "AUTO" as const, driverName: null });
+    const mk = (n: number, d: number, t: string) => ({ number: n, scratched: false, records: Array.from({ length: 60 }, () => rec(d, t)) }) as unknown as BtStart;
+    const race = { key: "r", date: "2026-02-01", gameType: "V85", gameId: "g", leg: 1, distance: 2140, startMethod: "AUTO" as const, placesPaid: 3, starts: [mk(1, 1640, "1.12,0"), mk(2, 2140, "1.13,0")] };
+    const ref = kmReference([race]);
+    // 1.13,4 är 0,4 s långsammare än referensen på 2140 men 1,4 s långsammare på 1640.
+    expect(73.4 - ref("AUTO", 2140)!).toBeCloseTo(0.4, 6);
+    expect(73.4 - ref("AUTO", 1640)!).toBeCloseTo(1.4, 6);
+  });
+  it("tid blir bara skild från 0 för en häst som sticker ut extremt", () => {
+    const rec = (t: string) => ({ date: "2026-01-01", place: 5, galloped: false, disqualified: false, kmTime: t, distance: 2140, startMethod: "AUTO" as const, driverName: null });
+    const times = ["1.13,0", "1.13,2", "1.12,9", "1.13,1", "1.13,3", "1.11,0"];
+    const starts = times.map((t, i) => ({ number: i + 1, scratched: false, records: [rec(t)], driver: null }) as unknown as BtStart);
+    const race = { key: "r", date: "2026-02-01", gameType: "V85", gameId: "g", leg: 1, distance: 2140, startMethod: "AUTO" as const, placesPaid: 3, starts };
+    const tid = extraFeatures(race, () => 73).tid;
+    expect(tid.slice(0, 5).every((x) => x === 0)).toBe(true);
+    expect(tid[5]).toBeGreaterThan(0);
+  });
+  it("Platt: redan kalibrerat ger ungefär a = 0, b = 1, och överkonfident krymps", () => {
+    const preds = Array.from({ length: 2000 }, (_, i) => ({ p: 0.1 + 0.8 * (i / 2000), y: (i * 7919) % 2000 < 0.1 * 2000 + 0.8 * i ? 1 : 0 }) as { p: number; y: 0 | 1 });
+    const c = fitPlatt(preds);
+    expect(Math.abs(c.a)).toBeLessThan(0.2);
+    expect(Math.abs(c.b - 1)).toBeLessThan(0.2);
   });
 });
