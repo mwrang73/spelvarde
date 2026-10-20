@@ -14,7 +14,7 @@ import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, Skeleton } from "@/components/ui/board";
 import { dayDate } from "@/lib/format";
 import { StreckRefresh } from "@/components/round/StreckRefresh";
-import { IconWand } from "@/components/ui/icons";
+import { WandSpark } from "@/components/ui/WandSpark";
 import { PlatsPanel } from "./PlatsPanel";
 import { RadPanel } from "./RadPanel";
 import { TrollPanel } from "./TrollPanel";
@@ -68,7 +68,8 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
       <main className="spel" id="main" data-tab={tab}>
         <div className="segw m-only">
           <div className="seg" role="group" aria-label="Spelförslag">
-            <button type="button" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
+            <button type="button" className="troll-btn" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
+              <WandSpark />
               Trollspöt
             </button>
             <button type="button" aria-pressed={tab === "plats"} aria-controls="p-plats" onClick={() => choose("plats")}>
@@ -80,8 +81,8 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
           </div>
         </div>
         <div className="dtabs d-only" role="group" aria-label="Spelförslag">
-          <button type="button" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
-            <IconWand /> Trollspöt
+          <button type="button" className="troll-btn" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
+            <WandSpark /> Trollspöt
           </button>
           <button type="button" aria-pressed={tab !== "trollspot"} aria-controls="p-plats p-rad" onClick={() => choose("plats")}>
             Platsspel och {data.round.gameType}-rad

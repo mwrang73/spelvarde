@@ -868,3 +868,20 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 }
 .ttbl td.num { white-space: nowrap; }
 .trow .pm { white-space: normal; }
+/* Trollspöt sticker ut: glimmande trollspö, tavlans gula ljus. */
+.wand { width: 18px; height: 18px; flex: none; overflow: visible; }
+.wand .wand-s { opacity: .25; transform-box: fill-box; transform-origin: center; animation: wandSpark 2.4s ease-in-out infinite; }
+.wand .s2 { animation-delay: .8s; }
+.wand .s3 { animation-delay: 1.6s; }
+@keyframes wandSpark { 0%, 100% { opacity: .2; transform: scale(.6); } 18% { opacity: 1; transform: scale(1.15); } 40% { opacity: .35; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) { .wand .wand-s { animation: none; opacity: .9; transform: none; } }
+.troll-btn { color: var(--accent) !important; }
+.troll-btn .wand { filter: drop-shadow(0 0 4px var(--glow)); }
+.seg .troll-btn[aria-pressed="true"] { background: var(--head); color: var(--head-ink) !important; box-shadow: inset 0 0 0 1px var(--fill-deep), 0 0 12px var(--glow); }
+.dtabs .troll-btn[aria-pressed="true"] { color: var(--accent) !important; text-shadow: 0 0 10px var(--glow); }
+.qlink.troll-link { justify-content: flex-start; gap: 10px; background: var(--btn-fill); color: var(--fill-ink); border-color: var(--btn-edge); box-shadow: 0 0 14px var(--btn-glow); }
+.qlink.troll-link:hover { background: var(--btn-fill); box-shadow: 0 0 18px var(--btn-glow-hover); }
+.qlink.troll-link > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.qlink.troll-link small { font: 600 11px/1.1 var(--f-body); letter-spacing: 0; text-transform: none; opacity: .8; }
+.qlink.troll-link svg { color: var(--fill-ink); }
+.qlink.troll-link .wand { width: 22px; height: 22px; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .7)); }

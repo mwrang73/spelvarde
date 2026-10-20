@@ -12,6 +12,7 @@ import type { PhaseStep } from "@/lib/phase";
 import type { RaceDto, StartDto } from "@/lib/types";
 import type { XFactor } from "@/lib/xfactor";
 import { riktLabel, riktX, xOf } from "@/lib/xfactor-ui";
+import { WandSpark } from "@/components/ui/WandSpark";
 
 // ---- PhaseRail --------------------------------------------------------------------------
 
@@ -199,9 +200,10 @@ export function RiktShort({ riktodds, x, rx }: { riktodds: number | null; x: XFa
 export function RoundLinks({ roundId, className }: { roundId: string; className?: string }) {
   return (
     <nav className={`qlinks${className ? ` ${className}` : ""}`} aria-label="Odds och spel">
-      <Link className="qlink" href={`/omgang/${roundId}/spel?flik=trollspot`}>
+      <Link className="qlink troll-link" href={`/omgang/${roundId}/spel?flik=trollspot`}>
+        <WandSpark />
         <span>
-          Trollspöt <small className="help">10 hästar att bevaka</small>
+          Trollspöt <small>10 hästar att bevaka</small>
         </span>
         <IconChev />
       </Link>
