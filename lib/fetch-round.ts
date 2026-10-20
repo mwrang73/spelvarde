@@ -501,3 +501,36 @@ export async function fetchStatsStep(deps: FetchDeps, input: { roundId: string; 
   });
   return { ok, pages, aliases: { linked, unlinked }, fetchStatus };
 }
+
+// ---- Uppdatera streck och riktodds (knappen i omgången) ---------------------------------------
+
+export type StreckRefreshResult = {
+  roundId: string;
+  hasStreck: boolean;
+  streckAt: string | null;
+  changes: FetchChanges;
+  // Avdelningar som behöver hämtas om (ny häst eller kuskbyte): då står
+  // omgången som ofullständig tills Slutför hämtningen körs.
+  needsResume: boolean;
+};
+
+// Hämtar spelet på nytt (streck, strykningar, kuskbyten) och räknar om
+// riktoddset för hela omgången. Omgången behåller "komplett" om inget som kräver
+// ny hämtning av tidigare starter har ändrats. Spelbar som användaren har satt
+// eller tagit bort ändras inte (override i Mark); bara förslagen räknas om.
+export async function refreshStreck(deps: FetchDeps, input: { roundId: string; userId: string | null }): Promise<StreckRefreshResult | null> {
+  const { db } = deps;
+  const now = deps.now?.() ?? new Date();
+  const round = await db.round.findUnique({ where: { id: input.roundId }, select: { id: true, atgGameId: true, fetchStatus: true, races: { select: { id: true, recordsFetchedAt: true } } } });
+  if (!round) return null;
+  const game = await fetchGameStep(deps, { gameId: round.atgGameId, userId: input.userId });
+  if (!game) return null;
+  // Bara avdelningar som uppdateringen själv gjorde ofullständiga räknas.
+  const had = new Set(round.races.filter((r) => r.recordsFetchedAt).map((r) => r.id));
+  const races = await db.race.findMany({ where: { roundId: round.id }, select: { id: true, recordsFetchedAt: true } });
+  const needsResume = races.some((r) => had.has(r.id) && !r.recordsFetchedAt);
+  if (round.fetchStatus === "COMPLETE" && !needsResume) await db.round.update({ where: { id: round.id }, data: { fetchStatus: "COMPLETE" } });
+  await computeRoundRiktodds(db, round.id, { now });
+  const snap = await db.roundSnapshot.findFirst({ where: { roundId: round.id }, orderBy: { takenAt: "desc" }, select: { takenAt: true } });
+  return { roundId: round.id, hasStreck: game.hasStreck, streckAt: snap ? snap.takenAt.toISOString() : null, changes: game.changes, needsResume };
+}

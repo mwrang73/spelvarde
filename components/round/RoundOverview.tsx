@@ -18,6 +18,7 @@ import { useFetchChain } from "./fetchChain";
 import { FetchBanners, FetchSteps, runChain } from "./FetchUi";
 import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
 import { useRound } from "./RoundProvider";
+import { StreckRefresh } from "./StreckRefresh";
 
 export function roundSub(data: RoundResponse | null): string {
   if (!data) return "";
@@ -115,6 +116,7 @@ export function RoundOverview() {
         <FetchBanners onRetry={(from, rid) => runChain(from, data.round.atgGameId, rid ?? data.round.id)} />
         <FetchSteps state={chain} />
         <NextStepCardFor data={data} />
+        <StreckRefresh data={data} />
         <p className="fetchline">
           {data.round.fetchedAt ? <>Startlistan hämtad {relTime(data.round.fetchedAt, now)}</> : "Startlistan är inte hämtad"}
           {changes && (

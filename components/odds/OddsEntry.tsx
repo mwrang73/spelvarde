@@ -30,6 +30,7 @@ import { xFactorsOf } from "@/lib/round-overlay";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
 import { riktX, xOf } from "@/lib/xfactor-ui";
+import { StreckRefresh } from "@/components/round/StreckRefresh";
 
 type Item = { race: RaceDto; start: StartDto };
 
@@ -246,6 +247,7 @@ function Keypad({ data, items }: { data: RoundResponse; items: Item[] }) {
         <div className="prog" role="progressbar" aria-label="Förlopp" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done ? total : st.index} aria-valuetext={done ? `Alla ${total} hästar genomgångna` : `Häst ${position} av ${total}`}>
           <i style={{ width: `${((done ? total : st.index) / total) * 100}%` }} />
         </div>
+        <StreckRefresh data={data} />
         {!online && (
           <Banner tone="warn" icon="offline" className="m10">
             Sparas när du är uppkopplad igen.{pending > 0 && <> {pending} {pending === 1 ? "ändring" : "ändringar"} i kö.</>}

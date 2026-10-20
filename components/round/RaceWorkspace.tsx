@@ -36,6 +36,7 @@ import { useRound } from "./RoundProvider";
 import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
 import { pctSignal, signalClass, signalSr } from "@/lib/signals";
+import { StreckRefresh } from "./StreckRefresh";
 
 const PATH_RE = /^\/omgang\/([^/]+)\/avd\/(\d+)(?:\/hast\/([^/]+))?\/?$/;
 
@@ -405,6 +406,7 @@ function Workspace({
             ))}
           </ul>
           <RoundLinks roundId={roundId} className="side" />
+          <StreckRefresh data={data} compact />
         </nav>
 
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>

@@ -829,3 +829,42 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .acts-row { gap: 6px; padding-left: 12px; padding-right: 12px; }
 .acts-row .lamp.lab, .acts-row .betk.lab, .acts-row .sptg { padding: 0 10px 0 6px; gap: 6px; font-size: 13.5px; letter-spacing: .04em; }
 .acts-row .sp-orig { white-space: nowrap; }
+/* Raden Streck och riktodds (StreckRefresh). Gul när strecket är äldre än 12 timmar. */
+.srefresh { margin: 10px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); display: grid; gap: 8px; }
+.srefresh.stale { border-color: var(--fill-deep); background: var(--accent-soft); }
+.srefresh .sr-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.srefresh .sr-t { margin: 0; display: grid; gap: 2px; font-size: 14px; min-width: 0; }
+.srefresh .sr-t .k { font: 700 11.5px/1 var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.srefresh .btn svg { width: 16px; height: 16px; margin-right: 6px; }
+.srefresh .help { margin: 0; }
+.srefresh .ban { margin: 0; }
+.srefresh.compact { margin: 10px 0; padding: 8px 10px; }
+.sr-list { margin: 6px 0 0; font-size: 13.5px; }
+/* Spelförslag: Trollspöt-fliken. */
+.spel[data-tab="trollspot"] .dcols { display: none; }
+.dtabs { display: flex; gap: 4px; padding: 12px 20px 0; border-bottom: 1px solid var(--line); }
+.dtabs button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 10px 14px; font: 700 14px/1 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); border-bottom: 3px solid transparent; cursor: pointer; }
+.dtabs button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--fill); }
+.dtabs svg { width: 16px; height: 16px; }
+/* Trollspöt-listan. */
+.troll { display: grid; gap: 14px; }
+.troll-why { margin: 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 14px; }
+.troll-why h3 { margin: 0 0 6px; font: 700 13px/1.2 var(--f-label); letter-spacing: .08em; text-transform: uppercase; }
+.troll-why p { margin: 0 0 8px; }
+.troll-why p:last-child { margin: 0; }
+.tchance { display: inline-grid; justify-items: end; gap: 3px; min-width: 52px; }
+.tchance i { display: block; height: 3px; background: var(--fill); border-radius: 2px; max-width: 52px; }
+.tstate { font: 600 12.5px/1.2 var(--f-num); white-space: nowrap; }
+.tstate.up { color: var(--sig-text); background: var(--sig-soft); box-shadow: inset 0 0 0 1px var(--sig); padding: 2px 6px; border-radius: 4px; }
+.tstate.dn { color: var(--ink-2); }
+.tlink { color: inherit; text-decoration: none; }
+.tlink:hover { text-decoration: underline; text-underline-offset: 3px; }
+.trow .pm { display: block; }
+.ttbl .sigs { max-width: 260px; }
+@media (min-width: 1024px) {
+  .troll { grid-template-columns: minmax(0, 1fr) 260px; align-items: start; padding: 0 20px; }
+  .troll .twrap { padding: 4px 0 0; }
+  .troll-why { margin: 4px 0 0; }
+}
+.ttbl td.num { white-space: nowrap; }
+.trow .pm { white-space: normal; }

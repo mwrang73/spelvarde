@@ -16,6 +16,7 @@ export const IconCheckThin = svg(<path d="M5 12.5l4.2 4.2L19 7" fill="none" stro
 export const IconX = svg(<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />);
 export const IconBack = svg(<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />);
 export const IconChev = svg(<path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />);
+export const IconWand = svg(<path d="M4 20 14 10M15 4v3M18.5 5.5l-2 2M20 9h-3M13 3.5 14 7M10.5 6.5l2.5 1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />);
 export const IconRefresh = svg(<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />);
 export const IconStat = svg(<path d="M5 20V11M12 20V5M19 20v-6" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />);
 export const IconLink = svg(

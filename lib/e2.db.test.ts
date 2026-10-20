@@ -12,7 +12,7 @@ import type { PrismaClient as PrismaClientType } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AtgError, type AtgFetch } from "@/lib/atg";
 import { ADMIN_ONLY, getCoupon, getModel, RACE_STARTED, saveCoupon, saveMark, saveModel, saveSettings } from "@/lib/e2-server";
-import { fetchGameStep, fetchRaceStep, fetchStatsStep, type FetchDeps } from "@/lib/fetch-round";
+import { fetchGameStep, fetchRaceStep, fetchStatsStep, refreshStreck, type FetchDeps } from "@/lib/fetch-round";
 import { harvilleTop3, oddsFromP3, softmax } from "@/lib/riktodds";
 import { riktoddsStep } from "@/lib/riktodds-server";
 import { buildRoundResponse, buildStartDetail, fetchState } from "@/lib/round-server";
@@ -297,6 +297,17 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(res.active).toMatchObject({ key: "v1.2", params: { noStreck: { pengar: 0.38, plats: 0.1, streck: 0, vinst: 0 } } });
     const off = (await saveModel(db, admin, { noStreck: null, roundId }, thursday)).body as ModelResponse;
     expect(off.active).toMatchObject({ key: "v1.3", params: { noStreck: null } });
+  });
+
+  it("Uppdatera streck: nytt streck, riktodds räknas om och omgången förblir komplett", async () => {
+    await db.round.update({ where: { id: roundId }, data: { fetchStatus: "COMPLETE" } });
+    const snapsBefore = await db.roundSnapshot.count({ where: { roundId } });
+    const res = (await refreshStreck(deps(game, thursday), { roundId, userId: admin.id }))!;
+    expect(res).toMatchObject({ roundId, hasStreck: true, needsResume: false });
+    expect(res.streckAt).not.toBeNull();
+    expect(await db.roundSnapshot.count({ where: { roundId } })).toBe(snapsBefore + 1);
+    expect((await db.round.findUniqueOrThrow({ where: { id: roundId } })).fetchStatus).toBe("COMPLETE");
+    expect(await refreshStreck(deps(game, thursday), { roundId: "finnsinte", userId: admin.id })).toBeNull();
   });
 
   it("ett misslyckat steg 11 ger resumeFrom RIKTODDS", async () => {

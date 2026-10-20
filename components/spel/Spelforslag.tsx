@@ -1,9 +1,10 @@
 "use client";
 
-// S6 Spelförslag (specen S6): Platsspel (S6a) och raden för V85/V75 (S6b). I mobilen
-// som två flikar (?flik=plats|rad, byts med history.replaceState utan
-// omladdning), på desktop sida vid sida. Allt läses ur omgångens cache och
-// sparas optimistiskt via utkorgen.
+// S6 Spelförslag (specen S6): Trollspöt, Platsspel (S6a) och raden för V85/V75
+// (S6b). I mobilen tre flikar (?flik=trollspot|plats|rad, byts med
+// history.replaceState utan omladdning). På desktop två: Trollspöt i full
+// bredd, eller Platsspel och raden sida vid sida. Allt läses ur omgångens cache
+// och sparas optimistiskt via utkorgen.
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -12,10 +13,15 @@ import { useRound } from "@/components/round/RoundProvider";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, Skeleton } from "@/components/ui/board";
 import { dayDate } from "@/lib/format";
+import { StreckRefresh } from "@/components/round/StreckRefresh";
+import { IconWand } from "@/components/ui/icons";
 import { PlatsPanel } from "./PlatsPanel";
 import { RadPanel } from "./RadPanel";
+import { TrollPanel } from "./TrollPanel";
 
-export type Tab = "plats" | "rad";
+export type Tab = "trollspot" | "plats" | "rad";
+
+const tabOf = (f: string | null): Tab => (f === "rad" ? "rad" : f === "trollspot" ? "trollspot" : "plats");
 
 export function Spelforslag({ initialTab }: { initialTab: Tab }) {
   const { data, load, roundId } = useRound();
@@ -25,7 +31,7 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
 
   // Bakåt/framåt i webbläsaren följer fliken.
   useEffect(() => {
-    const onPop = () => setTab(new URLSearchParams(window.location.search).get("flik") === "rad" ? "rad" : "plats");
+    const onPop = () => setTab(tabOf(new URLSearchParams(window.location.search).get("flik")));
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -62,6 +68,9 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
       <main className="spel" id="main" data-tab={tab}>
         <div className="segw m-only">
           <div className="seg" role="group" aria-label="Spelförslag">
+            <button type="button" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
+              Trollspöt
+            </button>
             <button type="button" aria-pressed={tab === "plats"} aria-controls="p-plats" onClick={() => choose("plats")}>
               Platsspel
             </button>
@@ -70,6 +79,20 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
             </button>
           </div>
         </div>
+        <div className="dtabs d-only" role="group" aria-label="Spelförslag">
+          <button type="button" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
+            <IconWand /> Trollspöt
+          </button>
+          <button type="button" aria-pressed={tab !== "trollspot"} aria-controls="p-plats p-rad" onClick={() => choose("plats")}>
+            Platsspel och {data.round.gameType}-rad
+          </button>
+        </div>
+        <StreckRefresh data={data} />
+        {tab === "trollspot" && (
+          <section id="p-troll" className="spel-p trollp" aria-labelledby="h-troll">
+            <TrollPanel data={data} now={now} />
+          </section>
+        )}
         <div className="dcols">
           <section id="p-plats" className="spel-p plats" aria-labelledby="h-plats">
             <PlatsPanel data={data} now={now} />
