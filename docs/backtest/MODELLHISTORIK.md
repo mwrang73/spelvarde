@@ -174,6 +174,33 @@ Strecket överskattar hästar med många signaler och underskattar dem med få
 en häst är bra och för att hitta hästar med lågt streck, men spelbeslutet ska
 vila på riktoddset mot Unibet.
 
+## Mikaels regel och Trollspöt (20 okt)
+
+Rapport: `2026-10-20-trollspot.md`. ATG:s platsodds står i för Unibets. 304
+omgångar, varav 90 i testdelen.
+
+| Regel | Spel per omgång | Träff | Medelodds | ROI (testdelen) |
+|---|---:|---:|---:|---:|
+| v3 chans ≥ 50 % och odds ≥ 2,0 | 0,5 | 42,7 % | 2,34 | −3,4 % (+14,8 % på 45 spel) |
+| v3 chans ≥ 45 % och odds ≥ 2,0 | 1,4 | 42,8 % | 2,28 | −6,0 % (−1,3 %) |
+| Chans × odds ≥ 1,1 och odds ≥ 2,0 | 6,1 | 12,4 % | 11,81 | −32,8 % (−22,6 %) |
+| Alla hästar med odds ≥ 2,0 | 60,9 | 18,0 % | 6,86 | −23,1 % (−22,0 %) |
+
+**Vad det betyder:**
+- Hästar där v3 säger minst 50 % men platspoolen ger minst 2,0 är få (en på två
+  omgångar) och kom topp 3 i 43 %, inte 50–55 %. När modellen och marknaden
+  är oense har marknaden oftare rätt.
+- Regeln "chans × odds över 1" väljer just oenigheterna (långskott där modellen
+  är mer optimistisk) och förlorar mest.
+- Trollspöt rankad på modellens fördel mot strecket valde långskott (träff
+  6 %). Rankad på högst chans bland hästar med uppskattat odds minst 1,8 gav
+  den träff 29 % och ROI −15 % (alla hästar −23 %).
+
+**Slutsats:** mot ATG:s pool finns ingen lönsam regel. Spelvärdet hos Unibet
+uppstår bara om Unibets fasta odds är högre än vad marknaden (strecket och
+platspoolen) säger. Jämför därför Unibets odds mot marknadens chans, inte bara
+mot v3, och samla Unibet-odds med utfall för att mäta det.
+
 ## Det som inte går att backtesta än
 
 - **Unibets odds:** det enda som kan visa en verklig fördel. Appen sparar

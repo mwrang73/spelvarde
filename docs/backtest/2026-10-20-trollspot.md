@@ -1,0 +1,371 @@
+# Backtest riktodds v1 – 2026-10-20
+
+Skapad av `npm run backtest` (scripts/backtest.ts). Spelformer V85, V75, V86, GS75, 2025-01-01 – 2026-10-18. Hästens år/fjol: ögonblicksbilden i games/<id>. Grundvikter: plats 1,00 · vinst 0,50 · form 0,60 · spar 0,40 · kusk 0,30 · tranare 0,20 · galopp -0,40 · galoppVolt 0,00 · pengar 0,00 · barfota 0,00 · vila 0,00 · tid 0,00 · streck 0,00.
+
+## Underlag
+
+Lopp med i analysen: 2025-01-01 – 2026-10-18. Körd med --bara-cache: inget hämtades, 13 spel med resultat i intervallet hoppades över eftersom de saknades helt eller delvis i cachen.
+
+| Spelform | Omgångar | Lopp | Starter | Från | Till |
+|---|---:|---:|---:|---|---|
+| V85 | 73 | 571 | 6053 | 2025-10-25 | 2026-10-17 |
+| V75 | 59 | 411 | 4377 | 2025-01-04 | 2025-10-18 |
+| V86 | 91 | 699 | 7435 | 2025-01-01 | 2026-09-23 |
+| GS75 | 85 | 586 | 6175 | 2025-01-05 | 2026-10-18 |
+| **Summa** | 308 | 2267 | 24040 | | |
+
+Utvärderas: 2181 lopp med minst 4 startande där alla har streck och vinnarodds (86 lopp bort). Tidsmässig delning: träning 1527 lopp t.o.m. 2026-04-02, test 654 lopp från 2026-04-03.
+
+## Läckage och det som saknas
+
+- Tidigare starter: bara poster med datum före loppdagen (strukna borträknade), högst 5 för form och galopp. 102 starter saknar tidigare poster helt, 114 har färre än 5 poster trots minst 5 starter i livet.
+- Hästens år/fjol: ögonblicksbilden i `games/<id>` stämde exakt med posterna före loppet i 13899 av 18133 starter där posterna räcker bakåt (76,7 %); avvikelserna är kvallopp och utländska lopp som posterna och ATG räknar olika. Ögonblicksbilden räknade med senare starter i 209 av 22780 kontrollerbara fall. Källa: ögonblick 24040, poster 0, saknas 0.
+- Kusk och tränare: ögonblicksbilden i `games/<id>`. Samma person på två olika dagar samma år: fler starter senare i 17666 par, lika i 4486, färre i 6 (av 22158). Saknas: kusk 1280, tränare 1550 starter (= fältets medel).
+- Spår: startnumrets plats % (topp 3) på loppets distans och startmetod ur statistikbasen (alla svenska travlopp 2023-10-20 – 2026-10-19, 21727 lopp), bara lopp under två år före loppdagen. Exakt distans med minst 150 lopp, annars distansgruppen. 24021 av 24040 starter fick ett värde (99,9 %); övriga har `spar` = 0.
+- Streck används inte i modellen (vikt 0), bara i referensen Marknaden (streck) och i den extra varianten med streck.
+
+## Mått, testdelen
+
+| Variant | Starter | Lopp | Brier | Log loss | Lägst odds topp 3 | Medel P3 | Verklig andel |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| v1 β = 1 | 7117 | 654 | 0,2232 | 0,7964 | 51,5 % (337/654) | 27,6 % | 27,2 % |
+| v1 β = 0,5 | 7117 | 654 | 0,1910 | 0,5766 | 51,5 % (337/654) | 27,6 % | 27,2 % |
+| v1 bästa β = 0,25 | 7117 | 654 | 0,1798 | 0,5394 | 51,5 % (337/654) | 27,6 % | 27,2 % |
+| Anpassade vikter (β = 1) | 7117 | 654 | 0,1791 | 0,5370 | 53,4 % (349/654) | 27,6 % | 27,2 % |
+| Anpassade vikter + streck | 7117 | 654 | 0,1615 | 0,4925 | 62,8 % (411/654) | 27,6 % | 27,2 % |
+| Anpassade vikter + pengar | 7117 | 654 | 0,1748 | 0,5251 | 54,3 % (355/654) | 27,6 % | 27,2 % |
+| Anpassade vikter + streck + pengar | 7117 | 654 | 0,1615 | 0,4925 | 61,9 % (405/654) | 27,6 % | 27,2 % |
+| v2 (streck 0,88 · plats 0,10 · spår 0,03 · tränare 0,03) | 7117 | 654 | 0,1624 | 0,4949 | 60,9 % (398/654) | 27,6 % | 27,2 % |
+| v2 kalibrerad | 7117 | 654 | 0,1620 | 0,4933 | 60,9 % (398/654) | 27,4 % | 27,2 % |
+| v2 kalibrerad, Σ P3 = 3 | 7117 | 654 | 0,1621 | 0,4961 | 60,9 % (398/654) | 27,6 % | 27,2 % |
+| v2 + signaler | 7117 | 654 | 0,1613 | 0,4920 | 63,3 % (414/654) | 27,6 % | 27,2 % |
+| v2 + signaler, kalibrerad | 7117 | 654 | 0,1613 | 0,4917 | 63,3 % (414/654) | 27,4 % | 27,2 % |
+| Utan streck (v2) | 7117 | 654 | 0,1749 | 0,5253 | 54,6 % (357/654) | 27,6 % | 27,2 % |
+| v3 (rekommenderad i appen) | 7117 | 654 | 0,1608 | 0,4893 | 63,9 % (418/654) | 27,2 % | 27,2 % |
+| v3 | 7117 | 654 | 0,1613 | 0,4922 | 64,2 % (420/654) | 27,6 % | 27,2 % |
+| v3 kalibrerad | 7117 | 654 | 0,1611 | 0,4913 | 64,2 % (420/654) | 27,4 % | 27,2 % |
+| v3 kalibrerad, högst 80 % | 7117 | 654 | 0,1608 | 0,4893 | 63,9 % (418/654) | 27,2 % | 27,2 % |
+| v3 utan streck | 7117 | 654 | 0,1734 | 0,5218 | 56,3 % (368/654) | 27,6 % | 27,2 % |
+| Utan streck + signaler | 7117 | 654 | 0,1736 | 0,5221 | 55,7 % (364/654) | 27,6 % | 27,2 % |
+| Marknaden (streck) | 7117 | 654 | 0,1706 | 0,5380 | 61,6 % (403/654) | 27,6 % | 27,2 % |
+| Marknaden (vinnarodds) | 7117 | 654 | 0,1632 | 0,5010 | 61,8 % (404/654) | 27,6 % | 27,2 % |
+| Naiv (alla lika) | 7117 | 654 | 0,1958 | 0,5797 | 32,7 % (214/654) | 27,6 % | 27,2 % |
+
+## Mått, hela underlaget (varianter utan anpassning)
+
+| Variant | Starter | Lopp | Brier | Log loss | Lägst odds topp 3 | Medel P3 | Verklig andel |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| v1 β = 1 | 23880 | 2181 | 0,2209 | 0,7927 | 52,3 % (1141/2181) | 27,4 % | 27,2 % |
+| v1 β = 0,5 | 23880 | 2181 | 0,1899 | 0,5742 | 52,3 % (1141/2181) | 27,4 % | 27,2 % |
+| v1 bästa β = 0,25 | 23880 | 2181 | 0,1792 | 0,5380 | 52,3 % (1141/2181) | 27,4 % | 27,2 % |
+| Marknaden (streck) | 23880 | 2181 | 0,1671 | 0,5237 | 64,6 % (1410/2181) | 27,4 % | 27,2 % |
+| Marknaden (vinnarodds) | 23880 | 2181 | 0,1609 | 0,4933 | 65,4 % (1426/2181) | 27,4 % | 27,2 % |
+| Naiv (alla lika) | 23880 | 2181 | 0,1958 | 0,5797 | 33,0 % (719/2181) | 27,4 % | 27,2 % |
+
+## β
+
+Bästa β på träningsdelen: **0,25** (log loss 0,5374). På hela underlaget: 0,25.
+
+| β | Log loss (träning) |
+|---:|---:|
+| 0,10 | 0,5529 |
+| 0,20 | 0,5393 |
+| 0,30 | 0,5388 |
+| 0,40 | 0,5506 |
+| 0,50 | 0,5732 |
+| 0,60 | 0,6048 |
+| 0,70 | 0,6438 |
+| 0,80 | 0,6886 |
+| 0,90 | 0,7380 |
+| 1,00 | 0,7911 |
+| 1,10 | 0,8468 |
+| 1,20 | 0,9046 |
+| 1,30 | 0,9638 |
+| 1,40 | 1,0240 |
+| 1,50 | 1,0841 |
+
+## Anpassade vikter
+
+Koordinatvis sökning på log loss för träningsdelen med β = 1 (β bakas in i vikterna; streck hålls utanför, spår är med).
+
+| Indata | v1 | v1 × bästa β | Anpassad | Anpassad + streck | Anpassad + pengar | Anpassad + streck + pengar |
+|---|---:|---:|---:|---:|---:|---:|
+| plats | 1,00 | 0,25 | 0,23 | 0,10 | 0,10 | 0,07 |
+| vinst | 0,50 | 0,13 | 0,15 | -0,05 | 0,05 | -0,05 |
+| form | 0,60 | 0,15 | 0,13 | -0,05 | 0,15 | -0,05 |
+| spar | 0,40 | 0,10 | 0,13 | 0,03 | 0,17 | 0,05 |
+| kusk | 0,30 | 0,07 | 0,13 | -0,03 | 0,10 | -0,03 |
+| tranare | 0,20 | 0,05 | 0,15 | 0,03 | 0,10 | 0,03 |
+| galopp | -0,40 | -0,10 | 0,03 | -0,05 | 0,03 | -0,05 |
+| galoppVolt | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 |
+| pengar | 0,00 | 0,00 | 0,00 | 0,00 | 0,38 | 0,05 |
+| barfota | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 |
+| vila | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 |
+| tid | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 | 0,00 |
+| streck | 0,00 | 0,00 | 0,00 | 0,88 | 0,00 | 0,88 |
+
+pengar = log(1 + hästens vinstsumma per start i livet), z inom loppet. Vinstsumman är ögonblicksbilden i games/<id>, samma som år/fjol.
+
+Bästa modellvariant på testdelen (utan streck): **v3 kalibrerad, högst 80 %**, log loss 0,4893 mot 0,7964 för v1 β = 1.
+
+## Signaler (skor, vagn, kuskbyte, klass, vila, galopp vid volte, tid)
+
+En signal i taget: bara dess vikt anpassas på träningsdelen, ovanpå v2 (med streck, log loss 0,4949) och modellen utan streck (log loss 0,5253). Δ = ändring i log loss på testdelen (negativt = bättre). Andel = starter i testdelen där signalen inte är 0.
+
+| Signal | Andel | Vikt med streck | Δ med streck | Vikt utan streck | Δ utan streck |
+|---|---:|---:|---:|---:|---:|
+| skoAv | 15,2 % | 0,05 | 0,0001 | 0,07 | 0,0005 |
+| barfota | 44,0 % | 0,07 | -0,0011 | 0,13 | -0,0027 |
+| jankNy | 6,2 % | 0,00 | 0,0000 | 0,03 | -0,0001 |
+| vanligNy | 6,0 % | 0,00 | 0,0000 | -0,03 | -0,0001 |
+| kuskUpp | 44,5 % | 0,00 | 0,0000 | 0,03 | -0,0000 |
+| klass | 96,8 % | 0,00 | 0,0000 | 0,00 | 0,0000 |
+| vila | 100,0 % | -0,07 | 0,0000 | -0,10 | -0,0006 |
+| langVila | 4,3 % | -0,05 | 0,0002 | -0,10 | -0,0001 |
+| galoppVolt | 13,3 % | -0,03 | -0,0002 | 0,00 | 0,0000 |
+| tid | 4,7 % | 0,00 | 0,0000 | 0,07 | -0,0007 |
+
+Alla tillsammans, med streck: plats 0,07 · vinst -0,03 · form -0,03 · spar 0,06 · kusk -0,05 · tranare 0,03 · galopp -0,03 · pengar -0,03 · barfota 0,07 · vila -0,07 · streck 0,83 · skoAv 0,03 · kuskUpp 0,03 · klass 0,10.
+
+Alla tillsammans, utan streck: plats 0,10 · vinst 0,07 · form 0,13 · spar 0,17 · kusk 0,07 · tranare 0,10 · galopp 0,03 · pengar 0,35 · barfota 0,13 · vila -0,10 · tid 0,07 · skoAv 0,03 · vanligNy -0,03 · kuskUpp 0,03 · klass 0,05 · langVila -0,03.
+
+**v3** (indata i modellen, små vikter satta till 0): med streck plats 0,08 · form -0,05 · spar 0,03 · tranare 0,03 · galopp -0,05 · pengar 0,05 · barfota 0,08 · vila -0,07 · streck 0,86; utan streck plats 0,10 · vinst 0,08 · form 0,15 · spar 0,17 · kusk 0,10 · tranare 0,10 · galopp 0,03 · pengar 0,38 · barfota 0,13 · vila -0,10 · tid 0,08; kalibrering a -0,055, b 0,947, högst 80,0 %.
+
+Platt-kalibrering av v2: P3' = sigmoid(-0,079 + 0,916 · logit(P3)). För v2 + signaler: a -0,028, b 0,981.
+
+### Kalibrering, v2 före och efter (testdelen)
+
+| P3-hink | Antal före | Verklig före | Antal efter | Verklig efter |
+|---|---:|---:|---:|---:|
+| 0–10 % | 1934 | 7,1 % (förv. 6,6 %) | 1684 | 6,1 % (förv. 7,1 %) |
+| 10–20 % | 1520 | 16,9 % (förv. 14,5 %) | 1693 | 16,2 % (förv. 14,4 %) |
+| 20–30 % | 970 | 25,1 % (förv. 24,9 %) | 1062 | 25,0 % (förv. 24,8 %) |
+| 30–40 % | 816 | 33,3 % (förv. 34,9 %) | 876 | 33,8 % (förv. 34,8 %) |
+| 40–50 % | 659 | 44,6 % (förv. 45,0 %) | 727 | 47,0 % (förv. 45,0 %) |
+| 50–60 % | 500 | 54,2 % (förv. 54,5 %) | 485 | 53,6 % (förv. 54,8 %) |
+| 60–70 % | 366 | 58,7 % (förv. 64,5 %) | 304 | 64,5 % (förv. 64,3 %) |
+| 70–80 % | 190 | 70,0 % (förv. 74,7 %) | 170 | 70,6 % (förv. 74,4 %) |
+| 80–90 % | 116 | 69,8 % (förv. 84,6 %) | 82 | 70,7 % (förv. 84,3 %) |
+| 90–100 % | 46 | 76,1 % (förv. 94,3 %) | 34 | 73,5 % (förv. 93,8 %) |
+
+## Mikaels regel och Trollspöt
+
+304 omgångar (90 i testdelen). ATG:s platsodds står i för Unibets. Chans = v3 med kalibrering. ROI = 1 kr per spel med verklig utdelning. OBS: v3:s vikter är anpassade på träningsdelen, så ROI på hela underlaget är något för optimistisk; testdelen är den ärliga siffran.
+
+### Spelregler när oddsen är kända
+
+| Regel | Spel | Per omgång | Träff | Medelodds | ROI | ROI testdelen (spel) |
+|---|---:|---:|---:|---:|---:|---:|
+| Chans ≥ 50 % och odds ≥ 2,0 (Mikaels regel) | 143 | 0,5 | 42,7 % | 2,34 | −3,4 % | +14,8 % (45) |
+| Chans ≥ 45 % och odds ≥ 2,0 | 414 | 1,4 | 42,8 % | 2,28 | −6,0 % | −1,3 % (130) |
+| Chans ≥ 40 % och odds ≥ 2,0 | 1029 | 3,4 | 36,9 % | 2,27 | −18,4 % | −19,1 % (319) |
+| Chans × odds ≥ 1,0 och odds ≥ 2,0 | 3474 | 11,4 | 14,4 % | 9,91 | −29,6 % | −22,9 % (972) |
+| Chans × odds ≥ 1,1 och odds ≥ 2,0 | 1844 | 6,1 | 12,4 % | 11,81 | −32,8 % | −22,6 % (527) |
+| Chans × odds ≥ 1,2 och odds ≥ 2,0 | 1003 | 3,3 | 12,4 % | 13,34 | −29,2 % | −32,8 % (307) |
+| Alla hästar med odds ≥ 2,0 (referens) | 18501 | 60,9 | 18,0 % | 6,86 | −23,1 % | −22,0 % (5522) |
+
+### Trollspöt: 10 hästar per omgång innan oddsen är kända
+
+Uppskattat platsodds = 0,59 / marknadens chans ur strecket. Bara hästar med uppskattat odds minst 1,8. Raden "sedan odds ≥ 2,0 och ≥ riktodds" är de av de 10 som hade blivit spel när oddsen kom.
+
+| Regel | Spel | Per omgång | Träff | Medelodds | ROI | ROI testdelen (spel) |
+|---|---:|---:|---:|---:|---:|---:|
+| Chans × uppskattat odds (förväntat värde) · alla 10 | 2960 | 9,7 | 6,3 % | 13,83 | −33,2 % | −35,1 % (864) |
+| Chans × uppskattat odds (förväntat värde) · sedan odds ≥ 2,0 och ≥ riktodds | 1123 | 3,7 | 4,6 % | 17,16 | −39,5 % | −22,5 % (318) |
+| Modellens fördel mot strecket (chans / marknadens chans) · alla 10 | 2960 | 9,7 | 6,3 % | 13,83 | −33,2 % | −35,1 % (864) |
+| Modellens fördel mot strecket (chans / marknadens chans) · sedan odds ≥ 2,0 och ≥ riktodds | 1123 | 3,7 | 4,6 % | 17,16 | −39,5 % | −22,5 % (318) |
+| Högst chans · alla 10 | 2960 | 9,7 | 28,7 % | 3,13 | −14,9 % | −17,4 % (864) |
+| Högst chans · sedan odds ≥ 2,0 och ≥ riktodds | 530 | 1,7 | 23,8 % | 4,06 | −13,9 % | −29,0 % (170) |
+| Flest signaler, sedan chans · alla 10 | 2960 | 9,7 | 22,6 % | 4,35 | −20,0 % | −22,2 % (864) |
+| Flest signaler, sedan chans · sedan odds ≥ 2,0 och ≥ riktodds | 605 | 2,0 | 17,4 % | 5,65 | −29,8 % | −34,3 % (176) |
+
+## Antal positiva signaler
+
+Hela underlaget (23880 starter). Signalerna: spår (plats % minst 15 % över medel), tid (extrem), kusk och tränare (vinst % i fältets topp 3), barfota, plats minst 75 %, vinst minst 50 %, form (minst 2 ettor/tvåor av 5), pengar (per start i fältets topp 3), felfri (ingen galopp i 5). "Strecket säger" = chans till topp 3 ur strecket (Harville). Verklig / streck över 1 betyder att marknaden underskattar gruppen.
+
+### Per antal signaler
+
+| Grupp | Starter | Topp 3 verklig | Strecket säger | v3 säger | Verklig / streck | ROI platspool |
+|---|---:|---:|---:|---:|---:|---:|
+| 0 | 1858 | 12,4 % | 8,5 % | 12,3 % | 1,46 | −29,1 % (1858) |
+| 1 | 4608 | 15,5 % | 12,6 % | 15,7 % | 1,23 | −29,6 % (4608) |
+| 2 | 5872 | 21,8 % | 19,8 % | 21,5 % | 1,10 | −20,4 % (5872) |
+| 3 | 5117 | 28,2 % | 29,1 % | 28,5 % | 0,97 | −17,8 % (5117) |
+| 4 | 3289 | 37,3 % | 40,3 % | 37,0 % | 0,93 | −14,4 % (3289) |
+| 5 | 1809 | 46,1 % | 51,3 % | 45,2 % | 0,90 | −10,4 % (1809) |
+| 6+ | 1327 | 57,1 % | 67,9 % | 57,4 % | 0,84 | −11,9 % (1327) |
+
+### Per signal
+
+| Grupp | Starter | Topp 3 verklig | Strecket säger | v3 säger | Verklig / streck | ROI platspool |
+|---|---:|---:|---:|---:|---:|---:|
+| spar | 6949 | 31,6 % | 31,7 % | 30,6 % | 1,00 | −13,1 % (6949) |
+| tid | 1163 | 38,8 % | 43,1 % | 38,0 % | 0,90 | −14,6 % (1163) |
+| kusk | 6291 | 37,5 % | 42,6 % | 37,9 % | 0,88 | −18,5 % (6291) |
+| tranare | 6392 | 38,9 % | 43,6 % | 39,2 % | 0,89 | −16,7 % (6392) |
+| barfota | 7549 | 30,3 % | 29,0 % | 29,9 % | 1,04 | −13,2 % (7549) |
+| plats75 | 1552 | 45,7 % | 52,2 % | 45,7 % | 0,88 | −12,3 % (1552) |
+| vinst50 | 1236 | 48,1 % | 59,9 % | 49,6 % | 0,80 | −16,2 % (1236) |
+| form | 12545 | 32,7 % | 35,9 % | 32,8 % | 0,91 | −18,8 % (12545) |
+| pengar | 6547 | 44,9 % | 51,2 % | 44,4 % | 0,88 | −12,8 % (6547) |
+| felfri | 12259 | 28,4 % | 27,9 % | 28,3 % | 1,02 | −20,0 % (12259) |
+
+### Många signaler men lågt streck (inte bland loppets 3 mest streckade)
+
+| Grupp | Starter | Topp 3 verklig | Strecket säger | v3 säger | Verklig / streck | ROI platspool |
+|---|---:|---:|---:|---:|---:|---:|
+| minst 4, streck 4:e+ · träning | 1789 | 25,0 % | 20,3 % | 25,2 % | 1,23 | −16,2 % (1789) |
+| minst 4, streck 4:e+ · test | 1019 | 26,4 % | 19,9 % | 25,0 % | 1,32 | −16,1 % (1019) |
+| minst 5, streck 4:e+ · träning | 581 | 26,2 % | 22,7 % | 27,9 % | 1,15 | −18,6 % (581) |
+| minst 5, streck 4:e+ · test | 389 | 28,3 % | 22,9 % | 28,3 % | 1,23 | −14,3 % (389) |
+| minst 6, streck 4:e+ · träning | 163 | 29,4 % | 26,4 % | 31,5 % | 1,11 | −22,0 % (163) |
+| minst 6, streck 4:e+ · test | 104 | 28,8 % | 27,4 % | 32,4 % | 1,05 | −22,2 % (104) |
+
+## Kalibrering, v3 kalibrerad, högst 80 % (testdelen)
+
+| P3-hink | Antal | Förväntad | Verklig |
+|---|---:|---:|---:|
+| 0–10 % | 1711 | 6,9 % | 6,5 % |
+| 10–20 % | 1677 | 14,5 % | 15,7 % |
+| 20–30 % | 1046 | 24,8 % | 24,4 % |
+| 30–40 % | 879 | 34,8 % | 35,2 % |
+| 40–50 % | 724 | 45,0 % | 44,6 % |
+| 50–60 % | 479 | 54,8 % | 57,2 % |
+| 60–70 % | 308 | 64,5 % | 61,4 % |
+| 70–80 % | 164 | 74,4 % | 73,8 % |
+| 80–90 % | 129 | 80,0 % | 72,9 % |
+| 90–100 % | 0 | – | – |
+
+## Kalibrering, v1 β = 1 (hela underlaget)
+
+| P3-hink | Antal | Förväntad | Verklig |
+|---|---:|---:|---:|
+| 0–10 % | 11677 | 3,1 % | 16,1 % |
+| 10–20 % | 2796 | 14,3 % | 26,6 % |
+| 20–30 % | 1687 | 24,6 % | 30,3 % |
+| 30–40 % | 1216 | 34,7 % | 35,0 % |
+| 40–50 % | 964 | 44,9 % | 34,2 % |
+| 50–60 % | 828 | 55,0 % | 37,9 % |
+| 60–70 % | 794 | 65,0 % | 40,1 % |
+| 70–80 % | 790 | 75,0 % | 43,0 % |
+| 80–90 % | 817 | 85,2 % | 45,9 % |
+| 90–100 % | 2311 | 97,1 % | 53,9 % |
+
+## Avkastning: spela plats när marknadens platsodds > riktodds
+
+1 kr per spel i ATG:s platspool; marknadens odds är platspoolens slutodds (minOdds efter loppet), utdelningen är den verkliga.
+
+### Platsodds > 1 × riktodds, testdelen
+
+| Variant | Spel | Träff | Insats | Tillbaka | ROI |
+|---|---:|---:|---:|---:|---:|
+| v1 β = 1 | 2172 | 34,6 % | 2172 | 1834,8 | −15,5 % |
+| v1 β = 0,5 | 2607 | 23,2 % | 2607 | 2063,3 | −20,9 % |
+| v1 bästa β = 0,25 | 3353 | 13,7 % | 3353 | 2533,9 | −24,4 % |
+| Anpassade vikter (β = 1) | 3308 | 13,7 % | 3308 | 2468,1 | −25,4 % |
+| Anpassade vikter + streck | 1174 | 21,0 % | 1174 | 942,2 | −19,7 % |
+| Anpassade vikter + pengar | 3100 | 15,9 % | 3100 | 2466,4 | −20,4 % |
+| Anpassade vikter + streck + pengar | 1151 | 23,1 % | 1151 | 896,1 | −22,1 % |
+| v2 (streck 0,88 · plats 0,10 · spår 0,03 · tränare 0,03) | 1052 | 27,7 % | 1052 | 794,8 | −24,5 % |
+| v2 kalibrerad | 1135 | 19,2 % | 1135 | 869,8 | −23,4 % |
+| v2 kalibrerad, Σ P3 = 3 | 1185 | 20,9 % | 1185 | 935,9 | −21,0 % |
+| v2 + signaler | 1260 | 23,2 % | 1260 | 995,1 | −21,0 % |
+| v2 + signaler, kalibrerad | 1229 | 22,0 % | 1229 | 964,3 | −21,5 % |
+| Utan streck (v2) | 3108 | 16,1 % | 3108 | 2479,4 | −20,2 % |
+| v3 (rekommenderad i appen) | 1168 | 20,9 % | 1168 | 920,2 | −21,2 % |
+| v3 | 1134 | 25,0 % | 1134 | 874,5 | −22,9 % |
+| v3 kalibrerad | 1181 | 21,1 % | 1181 | 926,1 | −21,6 % |
+| v3 kalibrerad, högst 80 % | 1172 | 20,8 % | 1172 | 920,2 | −21,5 % |
+| v3 utan streck | 3077 | 16,6 % | 3077 | 2487,4 | −19,2 % |
+| Utan streck + signaler | 3074 | 16,7 % | 3074 | 2517,5 | −18,1 % |
+| Marknaden (streck) | 1748 | 50,2 % | 1748 | 1500,1 | −14,2 % |
+| Marknaden (vinnarodds) | 1140 | 54,6 % | 1140 | 990,4 | −13,1 % |
+| Naiv (alla lika) | 3605 | 11,3 % | 3605 | 2701,8 | −25,1 % |
+| Alla hästar (referens) | 7117 | 27,1 % | 7117 | 5732,4 | −19,5 % |
+
+### Platsodds > 1,2 × riktodds, testdelen
+
+| Variant | Spel | Träff | Insats | Tillbaka | ROI |
+|---|---:|---:|---:|---:|---:|
+| v1 β = 1 | 1754 | 31,9 % | 1754 | 1492,1 | −14,9 % |
+| v1 β = 0,5 | 1878 | 20,6 % | 1878 | 1488,8 | −20,7 % |
+| v1 bästa β = 0,25 | 2622 | 10,8 % | 2622 | 1919,5 | −26,8 % |
+| Anpassade vikter (β = 1) | 2496 | 11,3 % | 2496 | 1868,9 | −25,1 % |
+| Anpassade vikter + streck | 335 | 16,4 % | 335 | 204,8 | −38,9 % |
+| Anpassade vikter + pengar | 2207 | 13,2 % | 2207 | 1808,2 | −18,1 % |
+| Anpassade vikter + streck + pengar | 315 | 16,5 % | 315 | 186,9 | −40,7 % |
+| v2 (streck 0,88 · plats 0,10 · spår 0,03 · tränare 0,03) | 257 | 21,8 % | 257 | 155,9 | −39,3 % |
+| v2 kalibrerad | 340 | 15,6 % | 340 | 233,0 | −31,5 % |
+| v2 kalibrerad, Σ P3 = 3 | 351 | 16,0 % | 351 | 239,0 | −31,9 % |
+| v2 + signaler | 362 | 15,5 % | 362 | 216,9 | −40,1 % |
+| v2 + signaler, kalibrerad | 358 | 14,2 % | 358 | 242,6 | −32,2 % |
+| Utan streck (v2) | 2199 | 13,4 % | 2199 | 1813,7 | −17,5 % |
+| v3 (rekommenderad i appen) | 337 | 12,8 % | 337 | 230,4 | −31,6 % |
+| v3 | 287 | 19,2 % | 287 | 187,5 | −34,7 % |
+| v3 kalibrerad | 349 | 14,3 % | 349 | 240,9 | −31,0 % |
+| v3 kalibrerad, högst 80 % | 339 | 12,7 % | 339 | 230,4 | −32,0 % |
+| v3 utan streck | 2095 | 14,1 % | 2095 | 1760,8 | −16,0 % |
+| Utan streck + signaler | 2110 | 13,9 % | 2110 | 1763,1 | −16,4 % |
+| Marknaden (streck) | 558 | 47,0 % | 558 | 486,8 | −12,8 % |
+| Marknaden (vinnarodds) | 121 | 39,7 % | 121 | 111,2 | −8,1 % |
+| Naiv (alla lika) | 3064 | 9,9 % | 3064 | 2269,9 | −25,9 % |
+| Alla hästar (referens) | 7117 | 27,1 % | 7117 | 5732,4 | −19,5 % |
+
+### Platsodds > 1,5 × riktodds, testdelen
+
+| Variant | Spel | Träff | Insats | Tillbaka | ROI |
+|---|---:|---:|---:|---:|---:|
+| v1 β = 1 | 1204 | 27,2 % | 1204 | 1035,5 | −14,0 % |
+| v1 β = 0,5 | 1164 | 18,5 % | 1164 | 1015,9 | −12,7 % |
+| v1 bästa β = 0,25 | 1788 | 9,1 % | 1788 | 1327,7 | −25,7 % |
+| Anpassade vikter (β = 1) | 1643 | 9,8 % | 1643 | 1271,0 | −22,6 % |
+| Anpassade vikter + streck | 102 | 10,8 % | 102 | 63,5 | −37,8 % |
+| Anpassade vikter + pengar | 1284 | 11,1 % | 1284 | 1114,6 | −13,2 % |
+| Anpassade vikter + streck + pengar | 89 | 12,4 % | 89 | 63,5 | −28,7 % |
+| v2 (streck 0,88 · plats 0,10 · spår 0,03 · tränare 0,03) | 63 | 14,3 % | 63 | 36,9 | −41,4 % |
+| v2 kalibrerad | 93 | 8,6 % | 93 | 34,5 | −63,0 % |
+| v2 kalibrerad, Σ P3 = 3 | 95 | 9,5 % | 95 | 39,5 | −58,4 % |
+| v2 + signaler | 90 | 12,2 % | 90 | 44,9 | −50,2 % |
+| v2 + signaler, kalibrerad | 92 | 12,0 % | 92 | 44,9 | −51,2 % |
+| Utan streck (v2) | 1280 | 11,1 % | 1280 | 1103,1 | −13,8 % |
+| v3 (rekommenderad i appen) | 80 | 11,3 % | 80 | 39,9 | −50,2 % |
+| v3 | 74 | 14,9 % | 74 | 44,9 | −39,4 % |
+| v3 kalibrerad | 86 | 11,6 % | 86 | 41,8 | −51,4 % |
+| v3 kalibrerad, högst 80 % | 80 | 11,3 % | 80 | 39,9 | −50,2 % |
+| v3 utan streck | 1229 | 10,6 % | 1229 | 951,5 | −22,6 % |
+| Utan streck + signaler | 1232 | 10,6 % | 1232 | 979,3 | −20,5 % |
+| Marknaden (streck) | 58 | 34,5 % | 58 | 63,1 | +8,8 % |
+| Marknaden (vinnarodds) | 41 | 22,0 % | 41 | 37,6 | −8,2 % |
+| Naiv (alla lika) | 2488 | 8,4 % | 2488 | 1809,9 | −27,3 % |
+| Alla hästar (referens) | 7117 | 27,1 % | 7117 | 5732,4 | −19,5 % |
+
+### Hela underlaget, platsodds > riktodds
+
+| Variant | Spel | Träff | Insats | Tillbaka | ROI |
+|---|---:|---:|---:|---:|---:|
+| v1 β = 1 | 7228 | 34,9 % | 7228 | 6012,9 | −16,8 % |
+| v1 β = 0,5 | 8670 | 23,2 % | 8670 | 6825,9 | −21,3 % |
+| v1 bästa β = 0,25 | 11319 | 13,3 % | 11319 | 8347,5 | −26,3 % |
+| Alla hästar (referens) | 23880 | 27,1 % | 23880 | 19049,7 | −20,2 % |
+
+### Oddsintervall, v3 kalibrerad, högst 80 % (testdelen)
+
+| Platsodds | Spel | Träff | ROI |
+|---|---:|---:|---:|
+| 1–1,5 | 53 | 60,4 % | −14,6 % |
+| 1,5–2 | 147 | 49,0 % | −14,6 % |
+| 2–3 | 155 | 36,1 % | −12,8 % |
+| 3–5 | 189 | 18,5 % | −32,0 % |
+| 5–10 | 254 | 11,8 % | −19,2 % |
+| 10+ | 374 | 5,1 % | −25,0 % |
+
+### Oddsintervall, v1 β = 1 (hela underlaget)
+
+| Platsodds | Spel | Träff | ROI |
+|---|---:|---:|---:|
+| 1–1,5 | 1107 | 71,0 % | −9,1 % |
+| 1,5–2 | 1460 | 50,5 % | −12,8 % |
+| 2–3 | 1499 | 35,1 % | −15,4 % |
+| 3–5 | 1425 | 20,8 % | −21,2 % |
+| 5–10 | 1263 | 11,6 % | −21,4 % |
+| 10+ | 474 | 5,7 % | −26,0 % |

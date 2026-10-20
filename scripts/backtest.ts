@@ -374,6 +374,8 @@ async function main() {
 
   // Antal positiva signaler: topp 3 mot strecket (marknaden) och v3, på hela underlaget.
   const counts = signalCountAnalysis(races, cut);
+  const troll = trollAnalysis(races, cut);
+  console.log(`Mikaels regel (v3 ≥ 50 %, platsodds ≥ 2,0): ${troll.rules[0].n} spel, träff ${p1(troll.rules[0].hit)}, ROI ${signedPct(troll.rules[0].roi)}`);
 
   const fixed: { name: string; beta: number }[] = o.betas.map((b) => ({ name: `v1 β = ${String(b).replace(".", ",")}`, beta: b }));
   const variants: Variant[] = [
@@ -407,6 +409,7 @@ async function main() {
     fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights, withPengar: fitP.weights, withStreckPengar: fitSP.weights },
     signals: { rows: signals, baseS, baseN, allS: allS.weights, allN: allN.weights, platt, plattAll, v3, v3n, plattV3, capV3 },
     counts,
+    troll,
     variants: variants.map((v) => ({
       name: v.name,
       kind: v.kind,
@@ -489,6 +492,78 @@ function signalCountAnalysis(races: BtRace[], testFrom: string) {
   return { starts: rows.length, byCount, bySignal, lowStreck, all: groupOf("Alla", rows) };
 }
 
+// ---- Mikaels regel och Trollspöt (backtest 2026-10-20) ----------------------------------------
+//
+// ATG:s platsodds (platspoolens slutodds) får stå i för Unibets fasta odds.
+// v3 = den rekommenderade modellen med kalibrering. Marknadens chans ur strecket.
+
+type TrollRow = { gameId: string; date: string; p: number; pm: number; odds: number | null; payout: number; y: boolean; count: number };
+type RuleResult = { label: string; n: number; perRound: number; hit: number; meanOdds: number; roi: number; roiTest: number; nTest: number };
+
+function trollAnalysis(races: BtRace[], testFrom: string) {
+  const v3Params = { ...V1_PARAMS, beta: 1, ...RECOMMENDED_CALIBRATION };
+  const rows: TrollRow[] = [];
+  for (const race of races) {
+    if (race.placesPaid === null) continue;
+    const run = race.starts.filter((s) => !s.scratched);
+    const st = run.map((s) => Math.max(s.streck ?? 0, 1e-4));
+    const sum = st.reduce((a, b) => a + b, 0);
+    const pm = harvilleTop3(st.map((v) => v / sum));
+    const p = computeRace(toFacts(race, true), RECOMMENDED_WEIGHTS, v3Params).map((r) => r.probTop3);
+    const flags = positiveSignals(race);
+    run.forEach((s, i) =>
+      rows.push({ gameId: race.gameId, date: race.date, p: p[i] ?? 0, pm: pm[i], odds: s.placeOdds, payout: s.placePayout, y: s.top3, count: SIGNAL_KEYS.filter((k) => flags[i][k]).length }),
+    );
+  }
+  const rounds = new Set(rows.map((r) => r.gameId)).size;
+  const roundsTest = new Set(rows.filter((r) => r.date >= testFrom).map((r) => r.gameId)).size;
+  const res = (label: string, sel: TrollRow[]): RuleResult => {
+    const test = sel.filter((r) => r.date >= testFrom);
+    const roi = (xs: TrollRow[]) => (xs.length ? xs.reduce((a, r) => a + r.payout, 0) / xs.length - 1 : NaN);
+    return {
+      label,
+      n: sel.length,
+      perRound: sel.length / rounds,
+      hit: sel.length ? sel.filter((r) => r.y).length / sel.length : NaN,
+      meanOdds: sel.length ? sel.reduce((a, r) => a + (r.odds ?? 0), 0) / sel.length : NaN,
+      roi: roi(sel),
+      roiTest: roi(test),
+      nTest: test.length,
+    };
+  };
+  const withOdds = rows.filter((r) => r.odds !== null);
+  const rules = [
+    res("Chans ≥ 50 % och odds ≥ 2,0 (Mikaels regel)", withOdds.filter((r) => r.p >= 0.5 && (r.odds as number) >= 2)),
+    res("Chans ≥ 45 % och odds ≥ 2,0", withOdds.filter((r) => r.p >= 0.45 && (r.odds as number) >= 2)),
+    res("Chans ≥ 40 % och odds ≥ 2,0", withOdds.filter((r) => r.p >= 0.4 && (r.odds as number) >= 2)),
+    res("Chans × odds ≥ 1,0 och odds ≥ 2,0", withOdds.filter((r) => r.p * (r.odds as number) >= 1 && (r.odds as number) >= 2)),
+    res("Chans × odds ≥ 1,1 och odds ≥ 2,0", withOdds.filter((r) => r.p * (r.odds as number) >= 1.1 && (r.odds as number) >= 2)),
+    res("Chans × odds ≥ 1,2 och odds ≥ 2,0", withOdds.filter((r) => r.p * (r.odds as number) >= 1.2 && (r.odds as number) >= 2)),
+    res("Alla hästar med odds ≥ 2,0 (referens)", withOdds.filter((r) => (r.odds as number) >= 2)),
+  ];
+
+  // Trollspöt före oddsen: uppskattat platsodds ur strecket (k / marknadens chans,
+  // k = medianen av platsodds × marknadens chans), hästar med uppskattat odds
+  // minst 1,8, rankade på olika sätt, de 10 bästa per omgång.
+  const prod = withOdds.map((r) => (r.odds as number) * r.pm).sort((a, b) => a - b);
+  const k = prod[Math.floor(prod.length / 2)];
+  const est = (r: TrollRow) => k / Math.max(r.pm, 1e-4);
+  const byRound = new Map<string, TrollRow[]>();
+  for (const r of withOdds) (byRound.get(r.gameId) ?? byRound.set(r.gameId, []).get(r.gameId)!).push(r);
+  const top10 = (score: (r: TrollRow) => number, minEst = 1.8) => [...byRound.values()].flatMap((rs) => rs.filter((r) => est(r) >= minEst).sort((a, b) => score(b) - score(a)).slice(0, 10));
+  const rankings: { label: string; sel: TrollRow[] }[] = [
+    { label: "Chans × uppskattat odds (förväntat värde)", sel: top10((r) => r.p * est(r)) },
+    { label: "Modellens fördel mot strecket (chans / marknadens chans)", sel: top10((r) => r.p / r.pm) },
+    { label: "Högst chans", sel: top10((r) => r.p) },
+    { label: "Flest signaler, sedan chans", sel: top10((r) => r.count + r.p) },
+  ];
+  const troll = rankings.flatMap(({ label, sel }) => [
+    res(`${label} · alla 10`, sel),
+    res(`${label} · sedan odds ≥ 2,0 och ≥ riktodds`, sel.filter((r) => (r.odds as number) >= 2 && (r.odds as number) >= 1 / r.p)),
+  ]);
+  return { rounds, roundsTest, k, rules, troll };
+}
+
 type SignalRow = { key: string; coverage: number; starts: number; wS: number; dS: number; wN: number; dN: number };
 
 type PostInfo = { from: string; to: string; races: number; starts: number; withPost: number };
@@ -542,6 +617,7 @@ type Result = {
   fit: { start: Weights; weights: Weights; trainLogLoss: number; withStreck: Weights; withPengar: Weights; withStreckPengar: Weights };
   signals: { rows: SignalRow[]; baseS: number; baseN: number; allS: Weights; allN: Weights; platt: Platt; plattAll: Platt; v3: Weights; v3n: Weights; plattV3: Platt; capV3: number };
   counts: ReturnType<typeof signalCountAnalysis>;
+  troll: ReturnType<typeof trollAnalysis>;
   variants: VariantResult[];
 };
 
@@ -695,6 +771,24 @@ function report(r: Result): string {
     for (const g of gs) L(`| ${g.label} | ${g.n} | ${p1(g.top3)} | ${p1(g.market)} | ${p1(g.v3)} | ${f(g.top3 / g.market, 2)} | ${signedPct(g.roi)} (${g.poolN}) |`);
     L();
   };
+  const tr = r.troll;
+  const rTable = (rs: RuleResult[]) => {
+    L("| Regel | Spel | Per omgång | Träff | Medelodds | ROI | ROI testdelen (spel) |\n|---|---:|---:|---:|---:|---:|---:|");
+    for (const x of rs) L(`| ${x.label} | ${x.n} | ${f(x.perRound, 1)} | ${p1(x.hit)} | ${f(x.meanOdds, 2)} | ${signedPct(x.roi)} | ${signedPct(x.roiTest)} (${x.nTest}) |`);
+    L();
+  };
+  L("## Mikaels regel och Trollspöt");
+  L();
+  L(`${tr.rounds} omgångar (${tr.roundsTest} i testdelen). ATG:s platsodds står i för Unibets. Chans = v3 med kalibrering. ROI = 1 kr per spel med verklig utdelning. OBS: v3:s vikter är anpassade på träningsdelen, så ROI på hela underlaget är något för optimistisk; testdelen är den ärliga siffran.`);
+  L();
+  L("### Spelregler när oddsen är kända");
+  L();
+  rTable(tr.rules);
+  L(`### Trollspöt: 10 hästar per omgång innan oddsen är kända`);
+  L();
+  L(`Uppskattat platsodds = ${f(tr.k, 2)} / marknadens chans ur strecket. Bara hästar med uppskattat odds minst 1,8. Raden "sedan odds ≥ 2,0 och ≥ riktodds" är de av de 10 som hade blivit spel när oddsen kom.`);
+  L();
+  rTable(tr.troll);
   L("## Antal positiva signaler");
   L();
   L(`Hela underlaget (${ct.starts} starter). Signalerna: spår (plats % minst 15 % över medel), tid (extrem), kusk och tränare (vinst % i fältets topp 3), barfota, plats minst 75 %, vinst minst 50 %, form (minst 2 ettor/tvåor av 5), pengar (per start i fältets topp 3), felfri (ingen galopp i 5). "Strecket säger" = chans till topp 3 ur strecket (Harville). Verklig / streck över 1 betyder att marknaden underskattar gruppen.`);
