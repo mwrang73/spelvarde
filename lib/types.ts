@@ -179,7 +179,8 @@ export type StartDto = {
   // under perioden) och vinst % och plats % för
   // startnumret på loppets distans och startmetod (statistikbasen, annars
   // vinst % från travstatistik.se). null när uppgiften saknas.
-  quick: { winPct: number | null; placePct: number | null; starts: number | null; postPct: number | null; postPlacePct: number | null };
+  // lifeStarts = starter i livet, för intjänat per start (horse.earnings / lifeStarts).
+  quick: { winPct: number | null; placePct: number | null; starts: number | null; lifeStarts: number | null; postPct: number | null; postPlacePct: number | null };
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".
@@ -190,6 +191,12 @@ export type RaceStatsLine = {
   // för vinst och för plats (topp 3).
   bestNumber: { number: number; pct: number } | null;
   bestPlace: { number: number; pct: number } | null;
+  // Banans eget bästa spår (kan vara ett annat nummer), när banan har minst
+  // 150 lopp på distansen och startmetoden. trackRaces = banans antal lopp
+  // (null = ingen statistik för banan).
+  trackBestWin: { number: number; pct: number } | null;
+  trackBestPlace: { number: number; pct: number } | null;
+  trackRaces: number | null;
   number1Pct: number | null;
   number1PlacePct: number | null;
   // "ATG 2 år" (statistikbasen) eller "travstatistik.se".
@@ -350,7 +357,8 @@ export type RecordDto = {
   driverName: string | null;
 };
 
-export type YearStatsDto = { year: string; starts: number; wins: number; seconds: number; thirds: number; winPct: number | null; placePct: number | null };
+// earnings = intjänat i kr under perioden (null = okänt).
+export type YearStatsDto = { year: string; starts: number; wins: number; seconds: number; thirds: number; winPct: number | null; placePct: number | null; earnings: number | null };
 
 export type CommentDto = {
   id: string;

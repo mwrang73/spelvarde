@@ -7,7 +7,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, couponDto, dateStr, dec, iso, markDto, personDto, riktoddsDetailDto, roundDto, settingsDto, yearStatsDto } from "@/lib/dto";
 import { legsFor, type GameType } from "@/lib/game-type";
-import { bestNumbers, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
+import { bestNumbers, MIN_RACES_TRACK_BEST, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
 import { computePhase, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
@@ -166,7 +166,13 @@ export async function currentRoundId(db: Db): Promise<string | null> {
 
 export const POST_SOURCE = "ATG 2 år";
 
-function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestStats>>, streck: Awaited<ReturnType<typeof latestStreck>>, posts: Map<number, PostTable | null>): Map<number, RaceStatsLine> {
+function statsLines(
+  round: FullRound,
+  stats: Awaited<ReturnType<typeof latestStats>>,
+  streck: Awaited<ReturnType<typeof latestStreck>>,
+  posts: Map<number, PostTable | null>,
+  trackPosts: Map<number, PostTable | null>,
+): Map<number, RaceStatsLine> {
   const favByLeg: Record<number, number | null> = {};
   for (const r of round.races) {
     const values = r.starts.filter((s) => !s.scratched).map((s) => streck?.values.get(s.id) ?? null).filter((v): v is number => v !== null);
@@ -180,6 +186,14 @@ function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestSta
     const favorite = stats.ms ? favoriteWinPct(stats.ms.data, ranks[r.leg] ?? null) : null;
     // Statistikbasen i första hand, annars travstatistik.se (bara vinst).
     const table = posts.get(r.leg) ?? null;
+    // Banans eget bästa spår bland loppets nummer, med minst 150 lopp på banan.
+    const tt = trackPosts.get(r.leg) ?? null;
+    const tb = tt && tt.races >= MIN_RACES_TRACK_BEST ? bestNumbers(tt, [...numbers]) : null;
+    const track = {
+      trackBestWin: tb?.win ? { number: tb.win.n, pct: tb.win.winPct! } : null,
+      trackBestPlace: tb?.place ? { number: tb.place.n, pct: tb.place.placePct! } : null,
+      trackRaces: tt?.races ?? null,
+    };
     if (table) {
       const b = bestNumbers(table, [...numbers]);
       const one = table.byNumber.find((x) => x.n === 1);
@@ -188,6 +202,7 @@ function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestSta
         fetchedAt: null,
         bestNumber: b.win ? { number: b.win.n, pct: b.win.winPct! } : null,
         bestPlace: b.place ? { number: b.place.n, pct: b.place.placePct! } : null,
+        ...track,
         number1Pct: one?.winPct ?? null,
         number1PlacePct: one?.placePct ?? null,
         postSource: POST_SOURCE,
@@ -201,6 +216,7 @@ function statsLines(round: FullRound, stats: Awaited<ReturnType<typeof latestSta
       fetchedAt: iso(stats.startnr?.fetchedAt),
       bestNumber: best ? { number: best.n, pct: best.pct! } : null,
       bestPlace: null,
+      ...track,
       number1Pct: legRow?.byNumber.find((b) => b.n === 1)?.pct ?? null,
       number1PlacePct: null,
       postSource: legRow ? "travstatistik.se" : null,
@@ -226,6 +242,7 @@ function quickStats(horseStatsJson: Prisma.JsonValue | null, legRow: StartnrData
     winPct: pct1(wins),
     placePct: pct1(placed),
     starts: starts > 0 ? starts : null,
+    lifeStarts: hs?.life?.starts ?? null,
     postPct: table ? row?.winPct ?? null : legRow?.byNumber.find((b) => b.n === number)?.pct ?? null,
     postPlacePct: row?.placePct ?? null,
   };
@@ -238,7 +255,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
   if (!round) return null;
   const date = dateStr(round.date);
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
-  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled, posts] = await Promise.all([
+  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled, posts, trackPosts] = await Promise.all([
     lastRecordsByHorse(db, horseIds, round.date),
     latestStreck(db, round.id),
     latestStats(db, round.id),
@@ -249,9 +266,10 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     db.coupon.findUnique({ where: { userId_roundId: { userId, roundId: round.id } } }),
     db.source.count({ where: { userId, enabled: true } }),
     postTablesForRaces(db, round.races, round.date),
+    postTablesForRaces(db, round.races, round.date, round.trackId),
   ]);
   const settings = settingsDto(settingsRow);
-  const lines = statsLines(round, stats, streck, posts);
+  const lines = statsLines(round, stats, streck, posts, trackPosts);
 
   const races: RaceDto[] = round.races.map((r) => {
     const legRow = stats.startnr?.data.legs.find((l) => l.leg === r.leg && l.distance === r.distance && l.method === r.startMethod) ?? null;

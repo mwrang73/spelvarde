@@ -29,7 +29,7 @@ function start(id: string, number: number, interesting = false): StartDto {
       ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", xFactor: "NONE", xFactorAt: null, xFactorValue: 1, sourceSupport: null, forslag: false, spelbar: false, riktodds: null, riktoddsX: null, belowGuideline: false }
       : null,
     result: null,
-    quick: { winPct: null, placePct: null, starts: null, postPct: null, postPlacePct: null },
+    quick: { winPct: null, placePct: null, starts: null, lifeStarts: null, postPct: null, postPlacePct: null },
   };
 }
 
@@ -52,7 +52,7 @@ function race(leg: number, starts: StartDto[]): RaceDto {
     reviewed: interesting > 0,
     review: null,
     counts: { starters: starts.length, scratched: 0, interesting, spelbar: 0, bet: 0 },
-    statsLine: { ok: false, fetchedAt: null, bestNumber: null, bestPlace: null, number1Pct: null, number1PlacePct: null, postSource: null, favoriteWinPct: null },
+    statsLine: { ok: false, fetchedAt: null, bestNumber: null, bestPlace: null, trackBestWin: null, trackBestPlace: null, trackRaces: null, number1Pct: null, number1PlacePct: null, postSource: null, favoriteWinPct: null },
     starts,
   };
 }

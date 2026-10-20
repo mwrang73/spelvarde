@@ -1,0 +1,571 @@
+<title>Spelvärde startlista 2×2</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens (kopia av styles/tokens.css) ===== */
+:root{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--bg-glow:rgba(255,255,255,.7);--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--fill-deep:#A45F00;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;
+--led-off:#C5CCD3;--glow:rgba(242,154,0,.40);--up:#0E7A3B;--up-soft:#DDF3E5;
+--sig:#0E7A3B;--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--sig-fill-2:#BFE6CB;--sig-fill-2-ink:#0A4721;
+--down:#C42B1F;--down-soft:#FBE1DD;--gal:#C42B1F;--gal-ink:#FFFFFF;--bet:#0D1014;--bet-ink:#FFFFFF;
+--chip-auto-bg:#DCE7F3;--chip-auto-ink:#0D2A4A;--chip-volte-bg:#FBDCD6;--chip-volte-ink:#6E140C;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--flap-ink:#C9CED4;--flap-glow:rgba(255,178,46,.5);--phase-ink:#9AA2AC;--btn-fill:linear-gradient(#FFC85C,#F4A51F);--btn-edge:#9A5A00;--btn-line:#C47A00;--btn-glow:rgba(244,165,31,.25);--btn-glow-hover:rgba(255,178,46,.45);
+--key-on:linear-gradient(#FFCB60,#F39A00);--key-on-ring:#A45F00;--key-on-edge:#6B3E00;--key-off:linear-gradient(#FFFFFF,#E2E6EB);--key-off-shadow:inset 0 0 0 1px #AEB6BF,0 2px 0 #9AA3AD;--key-dot:#B4BCC5;
+--board-chip-line:#3A4048;--board-auto:#A8D4FF;--board-auto-line:#2F4A66;--board-volte:#FFB8AA;--board-volte-line:#6E3329;--board-btn-line:#4A5058;--tick:#46D37E;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+--focus-ring:3px solid var(--focus);--focus-offset:2px}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--bg-glow:rgba(255,178,46,.08);--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill-deep:#8F5200;--focus:#7CC4FF;
+--head:#050607;--head-ink-2:#B9C0C8;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--led-off:#2A3038;--glow:rgba(255,178,46,.55);--up:#46D37E;--up-soft:rgba(70,211,126,.14);
+--sig:#46D37E;--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--sig-fill-2:rgba(70,211,126,.30);--sig-fill-2-ink:#C8F7DA;
+--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--gal:#FF5A45;--gal-ink:#1A0400;--bet:#F3EFE4;--bet-ink:#0C0E11;
+--chip-auto-bg:#13263A;--chip-auto-ink:#A8D4FF;--chip-volte-bg:#3A1610;--chip-volte-ink:#FFB8AA;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);--key-off:linear-gradient(#2C3138,#1C2026);--key-off-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 2px 0 #000;--key-dot:#4A515A}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+.mk{padding:24px 24px 64px;max-width:1340px}
+.mk-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mk h1.mt{margin:0;font:700 26px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk .lead{max-width:880px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.mk h2.alt{margin:40px 0 4px;font:700 22px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em}
+.mk h2.alt span{display:inline-grid;place-items:center;width:30px;height:34px;margin-right:8px;border-radius:4px;background:var(--flap-on);color:var(--flap-on-ink);font-family:var(--f-num)}
+.mk p.alt-sub{margin:0 0 12px;max-width:900px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.scrollx{overflow-x:auto;padding-bottom:6px}
+.note{max-width:1280px;margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note > div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.note h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.note ul{margin:0;padding-left:18px}
+.note .m{font-family:var(--f-num);font-size:12.5px}
+.rec{margin-top:40px;background:var(--head);background-image:var(--matrix);background-size:4px 4px;color:var(--head-text);border-radius:10px;padding:16px 20px;max-width:1280px;font-size:14.5px;line-height:1.5}
+.rec h2{margin:0 0 6px;font:700 18px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.05em;color:var(--head-ink)}
+.rec b{color:var(--head-title)}
+
+/* Webbläsarram 1280 × 800 */
+.bf{width:1282px;border:1px solid #000;border-radius:10px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);background:#2a2d31}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:560px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.vp{width:1280px;height:800px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+/* Telefonram 390 */
+.phwrap{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;margin-top:18px}
+.ph{width:410px;height:864px;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;position:relative;background:var(--bg);box-shadow:0 20px 50px rgba(0,0,0,.35);flex:none}
+.ph-in{width:390px;height:844px;position:relative;overflow:hidden}
+.phnote{max-width:520px;font-size:14px;line-height:1.5}
+.phnote h3{margin:0 0 6px;font:700 15px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+
+/* ===== Från styles/app.css ===== */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+button{font:inherit;cursor:pointer}
+.logo{display:inline-grid;place-items:center;width:40px;color:var(--head-ink)}
+.logo svg{width:26px;height:26px}
+.ah-brand{font:800 22px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:60px;display:flex;align-items:center;gap:16px;padding:0 20px}
+.dhead .ah-brand{font-size:27px}
+.dnav{display:flex;gap:2px;margin-left:20px;flex:1}
+.dnav a{position:relative;min-height:44px;display:inline-flex;align-items:center;padding:0 14px;text-decoration:none;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);border-radius:6px}
+.dnav a[aria-current="page"]{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2);text-align:right;line-height:1.35}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);font-variant-numeric:tabular-nums;text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr.lg{width:46px;height:56px;font-size:28px}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.i{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.form{display:flex;gap:1px;justify-self:center}
+.form i{display:grid;place-items:center;width:9.6px;height:18px;font:700 11px/1 var(--f-num);font-style:normal;background:var(--surface-3);color:var(--ink);border-radius:2px}
+.form i.w{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.form i.w2{background:var(--sig-fill-2);color:var(--sig-fill-2-ink)}
+.form i.gx{background:var(--gal);color:var(--gal-ink)}
+.tag{display:inline-flex;align-items:center;min-height:22px;padding:1px 7px;border-radius:4px;font:700 11.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none}
+.lamp{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:transparent;padding:0;border-radius:8px;flex:none;color:inherit}
+.lamp-i{display:inline-grid;place-items:center;position:relative;width:28px;height:28px;border-radius:6px;background:var(--key-off);box-shadow:var(--key-off-shadow)}
+.lamp-i::before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--key-dot);box-shadow:inset 0 1px 1px rgba(0,0,0,.4)}
+.lamp-i svg{width:18px;height:18px;opacity:0;color:var(--fill-ink)}
+.lamp[aria-pressed="true"] .lamp-i{background:var(--key-on);box-shadow:0 0 0 1px var(--key-on-ring),0 0 16px var(--glow),0 1px 0 var(--key-on-edge)}
+.lamp[aria-pressed="true"] .lamp-i::before{opacity:0}
+.lamp[aria-pressed="true"] .lamp-i svg{opacity:1}
+.lamp.lab{width:auto;min-height:44px;padding:0 14px 0 8px;gap:8px;display:inline-flex;align-items:center;border:1.5px solid var(--line-strong);background:var(--surface);font:700 15px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink)}
+.lamp.lab[aria-pressed="true"]{border-color:var(--fill-deep)}
+.phase{list-style:none;margin:0;padding:2px 8px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.phase li{position:relative;border-radius:4px;text-align:center;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--phase-ink);box-shadow:0 1px 0 rgba(0,0,0,.9)}
+.phase li>span{display:block;padding:7px 4px 6px;min-height:44px}
+.phase b{display:block;font:700 13.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.phase small{display:block;font:500 9.5px/1.2 var(--f-label);letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.phase li[aria-current="step"]{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:0 0 16px var(--btn-glow-hover)}
+.avd{display:flex;gap:3px;padding:2px 8px 8px}
+.avd-t{flex:1;min-width:0;min-height:44px;position:relative;border:0;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--flap-ink);font:700 17px/1 var(--f-num);box-shadow:0 1px 0 rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07);display:grid;place-items:center}
+.avd-t::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.75)}
+.avd-t[aria-selected="true"]{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:0 0 16px var(--flap-glow),0 1px 0 #000}
+.strip{padding:0 10px 8px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--head-line)}
+.chips{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:1px 8px;border-radius:5px;font:700 12.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;flex:0 0 auto;background:var(--surface-2);color:var(--ink);border:1px solid transparent}
+.brd .chip{background:rgba(255,255,255,.04);color:var(--head-text);border-color:var(--board-chip-line)}
+.brd .chip-volte{color:var(--board-volte);border-color:var(--board-volte-line)}
+.brd .chip-k{background:var(--head-ink);color:var(--fill-ink);border-color:var(--head-ink)}
+.chip-btn{position:relative;cursor:pointer;min-height:28px;margin-left:auto;flex:none}
+.brd .chip-btn{color:var(--head-ink);border-color:rgba(255,178,46,.5);background:transparent}
+.statline{font:500 12.5px/1.3 var(--f-body);color:var(--head-ink-2);display:flex;gap:4px 10px;flex-wrap:wrap;align-items:center;min-height:16px}
+.statline b{color:var(--head-ink);font-family:var(--f-num);font-weight:700}
+.cols,.row{display:grid;column-gap:6px;align-items:center}
+.cols{height:24px;background:var(--surface-3);font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.cols .r{text-align:right}.cols .c{text-align:center}
+.list{list-style:none;margin:0;padding:0}
+.row{height:44px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}
+.list>.row:nth-child(even){background:var(--surface-2)}
+.g-an{grid-template-columns:32px minmax(0,1fr) 52px 38px 44px;padding:0 2px 0 8px}
+.row.is-i::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:3px;border-radius:0 3px 3px 0;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.row.is-i .hn,.tbl tr.is-i .hn{color:var(--accent)}
+.who{min-width:0;height:44px;display:flex;flex-direction:column;justify-content:center;color:inherit}
+.hl{display:flex;align-items:center;gap:4px;min-width:0}
+.hn{font:700 17px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.kt{font-size:12px;line-height:1.25;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk{position:relative;font:700 13.5px/1 var(--f-num);text-align:right;color:var(--ink);white-space:nowrap}
+.sig{color:var(--sig);font-weight:700}
+.few{color:var(--ink-2);opacity:.75}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;font-size:14px;margin:0}
+.kv dt{color:var(--ink-2)}
+.kv dd{margin:0;font:700 14px var(--f-num);text-align:right}
+.hk{padding:0 0 16px}
+.hk-hero{padding:16px 12px 12px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center}
+.hk-name{font:700 28px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);margin:0}
+.hk-hero p{margin:4px 0 0;font-size:13px;color:var(--head-ink-2)}
+.acts-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 12px 0}
+.hk-sec{padding:14px 12px 4px}
+.hk-sec>h3{margin:0 0 8px;font:700 13px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.starts{width:100%;border-collapse:collapse;font-size:13px}
+.starts th{font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:6px 4px;border-bottom:1.5px solid var(--line-strong)}
+.starts td{padding:7px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.starts .r{text-align:right}
+.qlink{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:44px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-decoration:none;color:var(--ink);font:700 14px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);height:64px;padding-bottom:10px;background:var(--surface);border-top:1px solid var(--line)}
+.tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);position:relative}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 4px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:none;color:var(--head-ink-2)}
+.ibtn svg{width:22px;height:22px}
+
+/* Desktop-skalet (app.css, @media min-width 1024) */
+.ws{display:grid;grid-template-columns:240px minmax(0,1fr) 380px;height:740px}
+.dside{padding:14px 12px;border-right:1px solid var(--line);background:var(--surface-2);overflow:hidden}
+.rail-side{border-radius:8px;padding:8px}
+.rail-side .phase{padding:0}
+.vlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.vt{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:inherit;min-height:44px}
+.vt[aria-current="page"]{background:var(--head);color:var(--head-ink);border-color:var(--head);box-shadow:inset 4px 0 0 var(--fill)}
+.vt[aria-current="page"] .bdg.i{color:var(--head-ink);box-shadow:inset 0 0 0 1.5px var(--head-ink)}
+.vt .an{font:700 16px/1 var(--f-num)}
+.vt .aname{font:600 14px/1.2 var(--f-body);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vt .cnt{display:flex;gap:4px;align-items:center;font:700 12px/1 var(--f-num)}
+.vt .cnt>span{display:inline-flex;align-items:center;gap:3px}
+.qside{display:grid;gap:6px;margin-top:12px}
+.dmain{min-width:0;overflow:hidden}
+.daside{border-left:1px solid var(--line);background:var(--bg);overflow:hidden;min-width:0}
+.drace{padding:10px 20px;overflow:hidden}
+.drace .k{margin:0;font:700 12.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink)}
+.drace h1{margin:3px 0 6px;font:700 26px/1.05 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drace .chips{flex-wrap:wrap;overflow:visible}
+.drace .chip-btn{margin-left:0}
+.twrap{padding:8px 0 0}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--surface)}
+.tbl th{font:700 11.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:0 4px;height:34px;white-space:nowrap;overflow:hidden;border-bottom:1.5px solid var(--line-strong);background:var(--surface-3)}
+.tbl th .thsub{display:block;font-size:9.5px;letter-spacing:.04em;opacity:.85}
+.tbl td{padding:0 4px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;overflow:hidden}
+.tbl td:first-child,.tbl th:first-child{padding-left:10px}
+.tbl tbody tr:nth-child(even) td{background:var(--surface-2)}
+.tbl .r{text-align:right}.tbl .c{text-align:center}
+.tbl .form{justify-content:center}
+.tbl tr.is-i td:first-child{box-shadow:inset 4px 0 0 var(--fill)}
+.tbl tr.sel td{background:var(--accent-soft)!important}
+.tbl .lamp{height:36px}
+.tbl .hl{gap:6px}
+.tbl .kus{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbl .kt{overflow:hidden;text-overflow:ellipsis}
+.tbl .n{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-weight:500}
+.tbl .u{font:500 11px var(--f-body);color:var(--ink-2);margin-left:2px}
+
+/* ===== Alternativ A ===== */
+.va .drace{height:136px;display:grid;grid-template-columns:minmax(0,1fr) 286px;column-gap:16px}
+.va .drace h1{font-size:25px}
+.s22{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px}
+.s22 > div{background:rgba(255,255,255,.05);border:1px solid var(--head-line);border-radius:6px;padding:3px 9px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:6px;align-content:center;align-items:baseline}
+.s22 small{grid-column:1/-1;display:block;font:700 10.5px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s22 b{font:700 17px/1.15 var(--f-num);color:var(--head-ink);white-space:nowrap}
+.s22 span{font-size:12px;color:var(--head-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s22 em{grid-column:1/-1;font:500 11.5px/1.25 var(--f-body);font-style:normal;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px}
+.s22 em .v{font:700 12px var(--f-num);color:var(--head-text)}
+.va .tbl tbody tr{height:46px}
+.va .tbl .hn{font-size:18.5px}
+.va .tbl .kus{font-size:13.5px;line-height:1.25}
+.va .tbl .kt{font-size:12.5px}
+.va .tbl td{font-size:14.5px}
+.va .form i{width:10.5px;height:20px;font-size:12px}
+
+/* ===== Alternativ B ===== */
+.vb .drace{height:120px;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:start}
+.vb .drace .k{line-height:13px}
+.tote{border-collapse:separate;border-spacing:0;background:rgba(255,255,255,.05);border:1px solid var(--head-line);border-radius:6px;padding:2px 8px}
+.tote th,.tote td{height:20px;padding:0 0 0 12px;white-space:nowrap;line-height:1}
+.tote th:first-child{padding-left:0}
+.tote thead th{height:15px;font:700 10px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);text-align:right;border-bottom:1px solid var(--head-line)}
+.tote thead th:first-child{text-align:left}
+.tote thead th.tr{color:var(--head-ink)}
+.tote tbody th{font:700 11.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);text-align:left;width:104px}
+.tote td{font:700 14px/1 var(--f-num);color:var(--head-ink);text-align:right;min-width:64px}
+.tote td.trk{color:var(--head-title)}
+.tote td.sp{text-align:left;font:500 12.5px/1 var(--f-body);color:var(--head-text)}
+.tote td.sp b{font:700 14px var(--f-num);color:var(--head-ink);margin-right:6px}
+.tote td.dim{font:500 12px/1 var(--f-body);color:var(--head-ink-2)}
+.tote tbody tr+tr th,.tote tbody tr+tr td{border-top:1px solid rgba(255,255,255,.06)}
+.vb .tbl tbody tr{height:48px}
+.vb .tbl .hn{font-size:19px}
+.vb .tbl .kus{font-size:14px;line-height:1.25}
+.vb .tbl .kt{font-size:12.5px}
+.vb .tbl td{font-size:15px}
+.vb .form i{width:11px;height:21px;font-size:12.5px}
+.vb .nr{width:32px;height:38px;font-size:18px}
+.mn{display:block;line-height:1.15}
+.mn2{display:block;font:500 11.5px/1.2 var(--f-body);color:var(--ink-2)}
+
+/* Lägen-remsa */
+.states{margin-top:12px;max-width:1280px;border-radius:8px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.states figure{margin:0;display:grid;gap:6px}
+.states figcaption{font:700 11px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink)}
+.states .s22{width:146px;grid-template-rows:56px}
+.states .s22.one{grid-template-columns:1fr}
+
+/* Mobil, alternativ B: intjänat på kuskraden */
+.kt.km{display:flex;gap:4px;min-width:0}
+.kt.km .k1{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.kt.km .k2{flex:none;font-weight:600;color:var(--ink)}
+.kt.km .k2 .n{font-family:var(--f-num);font-weight:700}
+
+/* Temaväxlare */
+.seg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{min-height:44px;padding:0 16px;border:0;background:transparent;font:700 14.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+</style>
+
+<div class="mk">
+  <div class="mk-top">
+    <h1 class="mt">Startlistan · 2 × 2-rutor, intjänat och banans spårsiffra</h1>
+    <div class="seg" role="group" aria-label="Tema">
+      <button type="button" data-t="light" aria-pressed="false">Ljust</button>
+      <button type="button" data-t="dark" aria-pressed="true">Mörkt</button>
+    </div>
+  </div>
+  <p class="lead">Avdelningsvyn i Spelvärde på desktop (1280 × 800). Exempel: V85 på Jägersro, avd 4, 15 hästar, 2140 m volte. Crew Lane (nr 2) är vald, så hästkortet syns till höger. Det som är nytt: statistikrutorna ligger bredvid rubriken, raderna är högre, det finns en kolumn för intjänat och tavlan visar banans egen siffra när underlaget räcker.</p>
+
+  <!-- ================= A ================= -->
+  <h2 class="alt"><span>A</span>2 × 2-rutor till höger, intjänat i tkr</h2>
+  <p class="alt-sub">Rubriken och chipsen ligger till vänster i tavlan och de fyra rutorna står 2 × 2 till höger. Banans siffra är en tredje rad i rutan. Startlistan får 46 px höga rader, större text och kolumnen <b>Intjänat i år+fjol</b> i tkr.</p>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/avd/4</span></div>
+    <div class="vp va">
+      <header class="dhead brd js-head"></header>
+      <div class="ws">
+        <nav class="dside js-side" aria-label="Avdelningar"></nav>
+        <main class="dmain">
+          <section class="drace brd" aria-labelledby="a-h1">
+            <div style="min-width:0">
+              <p class="k">Avd 4 · Start 16:06 · 15 hästar</p>
+              <h1 id="a-h1">Johan Jacobssons Minne 2026</h1>
+              <div class="chips">
+                <span class="chip">2140 m</span><span class="chip chip-volte">Volte</span><span class="chip chip-k">Övrigt</span><span class="chip">1:a pris 150 000 kr</span><button type="button" class="chip chip-btn">Loppstatistik ›</button>
+              </div>
+            </div>
+            <div class="s22" role="list" aria-label="Loppstatistik">
+              <div role="listitem"><small>Bästa spår, vinst</small><b>14,9 %</b><span>spår 1</span><em>Jägersro <span class="v">17,2 %</span></em></div>
+              <div role="listitem"><small>Bästa spår, plats</small><b>37,8 %</b><span>spår 1</span><em>Jägersro <span class="v">41,8 %</span></em></div>
+              <div role="listitem"><small>Favorit vinner</small><b>–</b><span>av V85-loppen</span><em></em></div>
+              <div role="listitem"><small>Kuskligan V85</small><b>–</b><span>ingen i ligan</span><em></em></div>
+            </div>
+          </section>
+          <div class="twrap">
+            <table class="tbl">
+              <caption class="sr">Startlista avd 4, 15 hästar</caption>
+              <colgroup><col style="width:46px"><col><col style="width:116px"><col style="width:64px"><col style="width:44px"><col style="width:44px"><col style="width:42px"><col style="width:58px"><col style="width:46px"><col style="width:50px"></colgroup>
+              <thead><tr>
+                <th scope="col">Nr</th><th scope="col">Häst</th><th scope="col">Kusk / tränare</th><th scope="col" class="c">Form</th>
+                <th scope="col" class="r">Vinst<span class="thsub">år+fjol</span></th><th scope="col" class="r">Plats<span class="thsub">år+fjol</span></th>
+                <th scope="col" class="r">Spår v.</th><th scope="col" class="r">Intjänat<span class="thsub">år+fjol</span></th>
+                <th scope="col" class="r">Rikt</th><th scope="col" class="c">Intr.</th>
+              </tr></thead>
+              <tbody class="js-rows" data-v="a"></tbody>
+            </table>
+          </div>
+        </main>
+        <aside class="daside js-card" data-v="a" aria-label="Hästkort"></aside>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="states brd">
+    <figure><figcaption>Banan har ≥ 150 lopp</figcaption>
+      <div class="s22 one"><div><small>Bästa spår, plats</small><b>37,8 %</b><span>spår 1</span><em>Jägersro <span class="v">41,8 %</span></em></div></div></figure>
+    <figure><figcaption>Banan har &lt; 150 lopp</figcaption>
+      <div class="s22 one"><div><small>Bästa spår, plats</small><b>37,8 %</b><span>spår 1</span><em>Åby: för få lopp (84)</em></div></div></figure>
+    <figure><figcaption>Banans bästa spår är ett annat</figcaption>
+      <div class="s22 one"><div><small>Bästa spår, vinst</small><b>14,9 %</b><span>spår 1</span><em>Jägersro: spår 2 <span class="v">16,0 %</span></em></div></div></figure>
+    <figure><figcaption>Saknas eller laddar</figcaption>
+      <div class="s22 one"><div><small>Bästa spår, vinst</small><b>–</b><span>ingen statistik</span><em></em></div></div></figure>
+  </div>
+
+  <div class="note">
+    <div><h3>Mått i 1280 × 800</h3><ul>
+      <li>Tavla: <span class="m">136 px</span> (i dag 160)</li>
+      <li>Rad: <span class="m">46 px</span> (i dag 41), tabellrubrik <span class="m">34 px</span></li>
+      <li>Synliga hästar: <span class="m">12</span> hela + överkanten av nr 13 (60 + 136 + 8 + 34 + 12 × 46 = 790)</li>
+      <li>Text: namn <span class="m">18,5</span>, kusk <span class="m">13,5</span>, siffror <span class="m">14,5 px</span> (i dag 17,5 / 12 / 14)</li>
+      <li>Tabellen går kant i kant i mittkolumnen (i dag 20 px marginal) för att få plats med den nya kolumnen.</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>Samma rutor som i dag, bara flyttade. Lätt att känna igen.</li>
+      <li>Varje ruta är självständig och kan få en egen rad för banan.</li>
+      <li>Intjänat syns direkt i tkr, sorterbart i huvudet.</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Rutorna tar 286 px. Loppnamnet har 318 px och kortas med "…" om det är längre än cirka 28 tecken.</li>
+      <li>Chipsen går på två rader.</li>
+      <li>Mobilen: intjänat visas bara i hästkortet (Statistik), inte i de täta raderna.</li></ul></div>
+  </div>
+
+  <!-- ================= B ================= -->
+  <h2 class="alt"><span>B</span>Tavelruta med Alla banor | Banan, intjänat med kr per start</h2>
+  <p class="alt-sub">Rutorna blir en liten resultattavla till höger med kolumnerna <b>Alla banor</b> och <b>Jägersro</b>, så att de två siffrorna står rakt under varandra och spåret står i radens namn. 1:a pris flyttas till tavlans överrad, så chipsen ryms på en rad. Tavlan blir 120 px och raderna kan bli 48 px. Intjänat får en andra rad med kr per start, och i mobilen läggs summan på kuskraden.</p>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/avd/4</span></div>
+    <div class="vp vb">
+      <header class="dhead brd js-head"></header>
+      <div class="ws">
+        <nav class="dside js-side" aria-label="Avdelningar"></nav>
+        <main class="dmain">
+          <section class="drace brd" aria-labelledby="b-h1">
+            <div style="min-width:0">
+              <p class="k">Avd 4 · Start 16:06 · 15 hästar · 1:a pris 150 000 kr</p>
+              <h1 id="b-h1">Johan Jacobssons Minne 2026</h1>
+              <div class="chips">
+                <span class="chip">2140 m</span><span class="chip chip-volte">Volte</span><span class="chip chip-k">Övrigt</span><button type="button" class="chip chip-btn">Loppstatistik ›</button>
+              </div>
+            </div>
+            <table class="tote">
+              <caption class="sr">Loppstatistik för 2140 m volte</caption>
+              <thead><tr><th scope="col"><span class="sr">Mått</span></th><th scope="col">Alla banor</th><th scope="col" class="tr">Jägersro</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Spår 1 vinner</th><td>14,9 %</td><td class="trk">17,2 %</td></tr>
+                <tr><th scope="row">Spår 1 plats</th><td>37,8 %</td><td class="trk">41,8 %</td></tr>
+                <tr><th scope="row">Favorit vinner</th><td class="sp" colspan="2"><b>–</b>av V85-loppen</td></tr>
+                <tr><th scope="row">Kuskligan V85</th><td class="sp" colspan="2"><b>–</b>ingen i ligan</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <div class="twrap">
+            <table class="tbl">
+              <caption class="sr">Startlista avd 4, 15 hästar</caption>
+              <colgroup><col style="width:48px"><col><col style="width:116px"><col style="width:66px"><col style="width:44px"><col style="width:44px"><col style="width:42px"><col style="width:66px"><col style="width:46px"><col style="width:50px"></colgroup>
+              <thead><tr>
+                <th scope="col">Nr</th><th scope="col">Häst</th><th scope="col">Kusk / tränare</th><th scope="col" class="c">Form</th>
+                <th scope="col" class="r">Vinst<span class="thsub">år+fjol</span></th><th scope="col" class="r">Plats<span class="thsub">år+fjol</span></th>
+                <th scope="col" class="r">Spår v.</th><th scope="col" class="r">Intjänat<span class="thsub">år+fjol · /start</span></th>
+                <th scope="col" class="r">Rikt</th><th scope="col" class="c">Intr.</th>
+              </tr></thead>
+              <tbody class="js-rows" data-v="b"></tbody>
+            </table>
+          </div>
+        </main>
+        <aside class="daside js-card" data-v="b" aria-label="Hästkort"></aside>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="states brd">
+    <figure><figcaption>Banan har &lt; 150 lopp på distansen</figcaption>
+      <table class="tote"><thead><tr><th scope="col"><span class="sr">Mått</span></th><th scope="col">Alla banor</th><th scope="col" class="tr">Åby</th></tr></thead>
+        <tbody><tr><th scope="row">Spår 1 vinner</th><td>14,9 %</td><td class="dim" rowspan="2">för få lopp (84)</td></tr>
+        <tr><th scope="row">Spår 1 plats</th><td>37,8 %</td></tr></tbody></table></figure>
+    <figure><figcaption>Bästa spår för vinst och plats skiljer sig</figcaption>
+      <table class="tote"><thead><tr><th scope="col"><span class="sr">Mått</span></th><th scope="col">Alla banor</th><th scope="col" class="tr">Jägersro</th></tr></thead>
+        <tbody><tr><th scope="row">Spår 1 vinner</th><td>14,9 %</td><td class="trk">17,2 %</td></tr>
+        <tr><th scope="row">Spår 2 plats</th><td>36,1 %</td><td class="trk">39,0 %</td></tr></tbody></table></figure>
+    <figure><figcaption>Saknas eller laddar</figcaption>
+      <table class="tote"><thead><tr><th scope="col"><span class="sr">Mått</span></th><th scope="col">Alla banor</th><th scope="col" class="tr">Jägersro</th></tr></thead>
+        <tbody><tr><th scope="row">Bästa spår, vinst</th><td>–</td><td class="trk">–</td></tr>
+        <tr><th scope="row">Bästa spår, plats</th><td>–</td><td class="trk">–</td></tr></tbody></table></figure>
+  </div>
+
+  <div class="note">
+    <div><h3>Mått i 1280 × 800</h3><ul>
+      <li>Tavla: <span class="m">120 px</span> (i dag 160)</li>
+      <li>Rad: <span class="m">48 px</span> (i dag 41), tabellrubrik <span class="m">34 px</span></li>
+      <li>Synliga hästar: <span class="m">12</span> hela (60 + 120 + 8 + 34 + 12 × 48 = 798)</li>
+      <li>Text: namn <span class="m">19</span>, kusk <span class="m">14</span>, siffror <span class="m">15 px</span>, startnummer 32 × 38</li>
+      <li>Tabellen går kant i kant, som i A.</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>Alla banor och banan står i varsin kolumn och går att jämföra rakt av. Spåret står i radens namn, så det är tydligt att banans siffra gäller samma spår.</li>
+      <li>Lägst tavla och störst rader av de två.</li>
+      <li>Kr per start skiljer en häst med få, dyra starter från en som gått många.</li>
+      <li>Mobilen får intjänat utan en ny kolumn (se telefonen nedan).</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Nytt utseende för rutorna (tabell i stället för fyra rutor). Favorit och Kuskligan passar sämre i två kolumner och spänner över båda.</li>
+      <li>1:a pris flyttas från chips till överraden.</li>
+      <li>Intjänatcellen har två rader och är tätare att läsa.</li></ul></div>
+  </div>
+
+  <div class="phwrap">
+    <div class="ph"><div class="ph-in js-phone"></div></div>
+    <div class="phnote">
+      <h3>Mobil 390 px, alternativ B</h3>
+      <p>Kolumnerna är desamma som i dag (nr 32 · namn och kusk · form 52 · rikt 38 · lampa 44). Summan läggs sist på kuskraden: "Victor Rosleff · 448 tkr". Kuskens namn kortas med "…" först, och summan kortas aldrig.</p>
+      <p>Loppremsan visar banans siffra på samma rad: "Spår 1 vinner 14,9 % · Jägersro 17,2 %".</p>
+      <p>Hästkortet i mobilen har samma statistiktabell som på desktop.</p>
+      <p>I alternativ A ändras inte mobilens rader. Där syns intjänat bara i hästkortet.</p>
+    </div>
+  </div>
+
+  <div class="rec">
+    <h2>Rekommendation</h2>
+    <p><b>Tavlan som i A, startlistan och mobilen som i B.</b> A:s 2 × 2-rutor är det du bad om, känns igen från i dag och klarar alla lägen för banans siffra med en extra rad. B:s tavla blir lägre, men tabellformen passar bara två av fyra rutor. Från B tar jag intjänat med kr per start på andra raden och summan på kuskraden i mobilen. Det ger mer information utan en ny kolumn i mobilen. Med A:s tavla (136 px) blir raderna 46 px och 12 hästar syns hela. Om du vill ha 48 px rader krävs B:s tavla, eller att 1:a pris flyttas till överraden även i A (då blir tavlan cirka 120 px).</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  root.setAttribute('data-theme','dark');
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      root.setAttribute('data-theme',b.dataset.t);
+      document.querySelectorAll('.seg button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+    });
+  });
+
+  var NB=' ';
+  var wheel='<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.6"/><g stroke="currentColor" stroke-width="1.5"><path d="M16 16L16 4M16 16L24.5 7.5M16 16L28 16M16 16L24.5 24.5M16 16L16 28M16 16L7.5 24.5M16 16L4 16M16 16L7.5 7.5"/></g><circle cx="16" cy="16" r="3.4" fill="currentColor"/></svg>';
+  var check='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+  // nr, namn, beskrivning, kusk, tränare, form, starter i år, i fjol, segrar, platser, tkr i år, tkr i fjol, spår v., rikt, intressant, spelbar
+  var H=[
+    [1,'Mister Navajo','3 år hingst · 1.16,0M','Victor Rosleff','Alessandro Gocciadoro','21132',6,2,3,6,386,62,15,'3,36'],
+    [2,'Crew Lane','3 år hingst · 1.16,4M','Johan Untersteiner','Johan Untersteiner','11213',7,3,6,9,612,145,11,'2,10',1,1],
+    [3,'Ulix Turner','3 år hingst · 1.17,1M','Ole Johan Östre','Robert Bergh','32120',6,3,2,6,298,40,12,'3,81',1],
+    [4,'Fools Game','3 år sto · 1.13,3aM','Stefan Persson','Lutfi Kolgjini','40g51',8,3,2,4,214,88,9,'5,18'],
+    [5,'Prince of Euro','3 år hingst · 1.18,0K','Per Nordström','Per Nordström','05342',7,0,1,3,126,0,9,'5,79'],
+    [6,'Fade My Way','3 år sto · 1.15,7M','Dante Kolgjini','Lutfi Kolgjini','21604',6,2,2,4,241,56,12,'5,24'],
+    [7,'Cay','3 år hingst · 1.14,1M','Tyler Mifsud','Joakim Lövgren','12211',4,2,3,5,455,30,10,'3,90'],
+    [8,'Indian','3 år hingst · 1.14,5M','Conrad Lugauer','Conrad Lugauer','31403',8,4,2,6,188,97,8,'4,48'],
+    [9,'Iamthesun','4 år valack · 1.13,2K','Ken Ecce','Ken Ecce','06750',8,6,1,3,64,81,7,'12,37'],
+    [10,'Frank Silvio','4 år hingst · 1.14,5L','Thomas Uhrberg','Thomas Uhrberg','57g06',6,4,0,2,52,48,7,'12,81'],
+    [11,'Special Ale','4 år hingst · 1.13,0M','Rikard N Skoglund','Daniel Redén','23125',7,6,3,8,524,310,7,'6,52'],
+    [12,'Chat Room','4 år valack · 1.10,5aK','Magnus A Djuse','Daniel Redén','14312',8,7,4,10,612,268,6,'5,03'],
+    [13,'Barkley','4 år hingst · 1.18,4M','Carl Johan Jepson','Robert Bergh','2231',4,0,1,4,168,0,6,'4,35'],
+    [14,'Geiles Leben Home','4 år sto · 1.14,9M','Örjan Kihlström','Stefan Melander','60754',6,6,0,1,92,124,6,'9,60'],
+    [15,'Global Futurity','4 år hingst · 1.12,9aM','Erik Adielsson','Stefan Melander','1g032',6,5,3,5,488,356,6,'7,25']
+  ];
+
+  function form(f){
+    var s='',words=[];
+    for(var i=0;i<5;i++){var c=f[i];
+      if(!c){s+='<i></i>';continue}
+      var cls=c==='1'?'w':c==='2'?'w2':c==='g'?'gx':'';
+      words.push(c==='g'?'galopp':c==='0'?'oplacerad':c);
+      s+='<i class="'+cls+'">'+c+'</i>';}
+    return '<span class="form" role="img" aria-label="Form, senaste först: '+words.join(', ')+'">'+s+'</span>';
+  }
+  function pc(w,st,thr){
+    var v=Math.round(w/st*100);
+    var t='<span class="n">'+v+NB+'%</span>';
+    if(st<5) return '<span class="few">'+t+'<span class="sr"> (färre än 5 starter)</span></span>';
+    if(v>=thr) return '<span class="sig">'+t+'<span class="sr"> (stark)</span></span>';
+    return t;
+  }
+  function tkr(n){return '<span class="n">'+n+'</span><span class="u">tkr</span>'}
+  function lamp(h,on){return '<button type="button" class="lamp" aria-pressed="'+(on?'true':'false')+'" aria-label="Intressant: '+h+'"><span class="lamp-i">'+check+'</span></button>'}
+
+  function row(h,v){
+    var st=h[6]+h[7], sum=h[10]+h[11], per=Math.round(sum/st);
+    var cls=(h[14]?'is-i ':'')+(h[0]===2?'sel':'');
+    var name='<div class="hl"><span class="hn">'+h[1]+'</span>'+(h[15]?'<span class="bdg s" role="img" aria-label="Spelbar">S</span>':'')+'</div><div class="kt">'+h[2]+'</div>';
+    var money=v==='a'?tkr(sum):'<span class="mn">'+tkr(sum)+'</span><span class="mn2">'+per+NB+'tkr/start</span>';
+    return '<tr class="'+cls+'"'+(h[0]===2?' aria-selected="true"':'')+'>'+
+      '<td><span class="nr"><b>'+h[0]+'</b></span></td>'+
+      '<td>'+name+'</td>'+
+      '<td><div class="kus">'+h[3]+'</div><div class="kt">tr '+h[4]+'</div></td>'+
+      '<td class="c">'+form(h[5])+'</td>'+
+      '<td class="r">'+pc(h[8],st,50)+'</td>'+
+      '<td class="r">'+pc(h[9],st,75)+'</td>'+
+      '<td class="r"><span class="n">'+h[12]+NB+'%</span></td>'+
+      '<td class="r">'+money+'</td>'+
+      '<td class="r"><span class="rk">'+h[13]+'</span></td>'+
+      '<td class="c">'+lamp(h[1],!!h[14])+'</td></tr>';
+  }
+  document.querySelectorAll('.js-rows').forEach(function(tb){
+    tb.innerHTML=H.map(function(h){return row(h,tb.dataset.v)}).join('');
+  });
+
+  var head='<span class="logo">'+wheel+'</span><span class="ah-brand">Spelvärde</span>'+
+    '<nav class="dnav" aria-label="Huvudmeny"><a href="#" aria-current="page">Omgång</a><a href="#">Källor</a><a href="#">Statistik</a></nav>'+
+    '<div class="dmeta">V85 · Jägersro · lör 24 okt 2026<br>Fas: analys</div>';
+  document.querySelectorAll('.js-head').forEach(function(e){e.innerHTML=head});
+
+  var avd=['Krafft – STL Diamantstoet','RS Mustang – STL Klass I','KWM Stable – STL Klass II','Johan Jacobssons Minne 2026','Björkhaga Plantskola – STL','Stall Ofcourse – STL Klass I','C.L. Müllers Memorial 2026','Välkommen på After Race – STL'];
+  var side='<div class="rail-side brd"><ol class="phase"><li aria-current="step"><span><b>Analys</b><small>sön–tors</small></span></li><li><span><b>Odds</b><small>tors 18:00</small></span></li><li><span><b>Live</b><small>lör 12:00</small></span></li><li><span><b>Klart</b><small>lör</small></span></li></ol></div>'+
+    '<ul class="vlist">'+avd.map(function(a,i){return '<li><a class="vt" href="#"'+(i===3?' aria-current="page"':'')+'><span class="an">'+(i+1)+'</span><span class="aname">'+a+'</span><span class="cnt"><span><span class="bdg i" role="img" aria-label="Intressant">I</span>2</span><span><span class="bdg s" role="img" aria-label="Spelbar">S</span>1</span></span></a></li>'}).join('')+'</ul>'+
+    '<div class="qside"><a class="qlink" href="#">Unibets odds <span aria-hidden="true">›</span></a><a class="qlink" href="#">Spelförslag <span aria-hidden="true">›</span></a></div>';
+  document.querySelectorAll('.js-side').forEach(function(e){e.innerHTML=side});
+
+  var hero='<div class="hk-hero brd"><span class="nr lg"><b>2</b></span><div><h2 class="hk-name">Crew Lane</h2><p>3 år hingst · rekord 1.16,4M<br>Johan Untersteiner · tr Johan Untersteiner</p></div></div>'+
+    '<div class="acts-row"><button type="button" class="lamp lab" aria-pressed="true"><span class="lamp-i">'+check+'</span>Intressant</button><span class="tag" style="background:var(--fill);color:var(--fill-ink)">S Spelbar</span></div>'+
+    '<div class="hk-sec"><div style="border:1.5px dashed var(--line-strong);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--ink-2)">X-faktor och riktodds ligger här, oförändrade</div></div>';
+  var tail='<dt>Spår 2 på 2140 m volte, vinst · alla banor</dt><dd>11,3 %</dd>'+
+    '<dt>Spår 2, vinst · Jägersro (412 lopp)</dt><dd>9,8 %</dd>'+
+    '<dt>Kusken vinner i år</dt><dd>21 %</dd><dt>Tränaren vinner i år</dt><dd>24 %</dd>';
+  var cardA=hero+'<section class="hk-sec" aria-labelledby="sta"><h3 id="sta">Statistik</h3><dl class="kv">'+
+    '<dt>Vinst % i år (7 starter)</dt><dd><span class="sig">57 %</span></dd><dt>Plats % i år</dt><dd><span class="sig">86 %</span></dd>'+
+    '<dt>Vinst % i fjol (3 starter)</dt><dd><span class="few">67 %</span></dd><dt>Plats % i fjol</dt><dd><span class="few">100 %</span></dd>'+
+    '<dt style="border-top:1px solid var(--line);padding-top:4px">Intjänat i år (7 starter)</dt><dd style="border-top:1px solid var(--line);padding-top:4px">612 000 kr</dd>'+
+    '<dt>Intjänat i fjol (3 starter)</dt><dd>145 000 kr</dd><dt>Intjänat totalt</dt><dd>757 000 kr</dd>'+
+    '<dt style="border-bottom:1px solid var(--line);padding-bottom:4px">Per start, i år+fjol</dt><dd style="border-bottom:1px solid var(--line);padding-bottom:4px">75 700 kr</dd>'+
+    tail+'</dl></section>';
+  var cardB=hero+'<section class="hk-sec" aria-labelledby="stb"><h3 id="stb">Statistik</h3>'+
+    '<table class="starts" style="margin-bottom:10px"><caption class="sr">Intjänat per år för Crew Lane</caption><thead><tr><th scope="col">Intjänat</th><th scope="col" class="r">Starter</th><th scope="col" class="r">Kr</th><th scope="col" class="r">Per start</th></tr></thead><tbody>'+
+    '<tr><th scope="row" style="font:600 13px var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink);border:0;border-bottom:1px solid var(--line)">I år</th><td class="r num">7</td><td class="r num">612 000</td><td class="r num">87 400</td></tr>'+
+    '<tr><th scope="row" style="font:600 13px var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink);border:0;border-bottom:1px solid var(--line)">I fjol</th><td class="r num">3</td><td class="r num">145 000</td><td class="r num">48 300</td></tr>'+
+    '<tr><th scope="row" style="font:700 13px var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink);border:0;border-bottom:1px solid var(--line)">Totalt</th><td class="r num" style="font-weight:700">10</td><td class="r num" style="font-weight:700">757 000</td><td class="r num" style="font-weight:700">75 700</td></tr></tbody></table>'+
+    '<dl class="kv"><dt>Vinst % i år (7 starter)</dt><dd><span class="sig">57 %</span></dd><dt>Plats % i år</dt><dd><span class="sig">86 %</span></dd>'+
+    '<dt>Vinst % i fjol (3 starter)</dt><dd><span class="few">67 %</span></dd><dt>Plats % i fjol</dt><dd><span class="few">100 %</span></dd>'+tail+'</dl></section>';
+  document.querySelectorAll('.js-card').forEach(function(e){e.innerHTML='<article class="hk">'+(e.dataset.v==='a'?cardA:cardB)+'</article>'});
+
+  // Mobil B
+  var short=function(n){return n};
+  var mrows=H.map(function(h){
+    var sum=h[10]+h[11];
+    return '<li class="row g-an'+(h[14]?' is-i':'')+'"><span class="nr"><b>'+h[0]+'</b></span>'+
+      '<a class="who" href="#"><span class="hl"><span class="hn">'+h[1]+'</span>'+(h[15]?'<span class="bdg s" role="img" aria-label="Spelbar">S</span>':'')+'</span>'+
+      '<span class="kt km"><span class="k1">'+short(h[3])+'</span><span class="k2">· <span class="n">'+sum+'</span>'+NB+'tkr<span class="sr"> intjänat i år och i fjol</span></span></span></a>'+
+      form(h[5])+'<span class="rk">'+h[13]+'</span>'+lamp(h[1],!!h[14])+'</li>';
+  }).join('');
+  var phone='<div class="brd"><div class="ah"><button class="ibtn" type="button" aria-label="Tillbaka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>'+
+    '<div class="ah-t"><span class="ah-title">Avd 4 · Johan Jacobssons Minne</span><span class="ah-sub">V85 · Jägersro · start 16:06 · 15 hästar</span></div></div>'+
+    '<div class="avd" role="tablist">'+[1,2,3,4,5,6,7,8].map(function(n){return '<button class="avd-t" role="tab" aria-selected="'+(n===4)+'">'+n+'</button>'}).join('')+'</div>'+
+    '<div class="strip"><div class="chips"><span class="chip">2140 m</span><span class="chip chip-volte">Volte</span><span class="chip chip-k">Övrigt</span><button type="button" class="chip chip-btn">Loppstatistik ›</button></div>'+
+    '<div class="statline"><span>Spår 1 vinner <b>14,9 %</b></span><span>· Jägersro <b>17,2 %</b></span></div></div></div>'+
+    '<div class="cols g-an"><span>Nr</span><span>Häst · kusk · intjänat</span><span class="c">Form</span><span class="r">Rikt</span><span class="c">Intr.</span></div>'+
+    '<ul class="list">'+mrows+'</ul>'+
+    '<nav class="tabbar" aria-label="Huvudmeny"><a class="tab" href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Omgång</a>'+
+    '<a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6M9 16h6"/></svg>Källor</a>'+
+    '<a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Statistik</a></nav>';
+  document.querySelectorAll('.js-phone').forEach(function(e){e.innerHTML=phone});
+})();
+</script>

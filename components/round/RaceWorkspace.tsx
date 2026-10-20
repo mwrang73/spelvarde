@@ -21,7 +21,7 @@ import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, FlapNumber, FormStrip, GallopBadge, LampToggle, Skeleton } from "@/components/ui/board";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
-import { ageSex, dayDate, hhmm, kr, methodLabel, pct, shortRaceName } from "@/lib/format";
+import { ageSex, dayDate, hhmm, kr, methodLabel, money, pct, shortRaceName } from "@/lib/format";
 import { PHASE_LABELS } from "@/lib/phase";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor } from "@/lib/xfactor";
@@ -390,30 +390,32 @@ function Workspace({
 
           {/* Desktop: loppet på tavlan och tabellen. */}
           <section className="drace brd d-only" aria-labelledby="race-h">
-            <span className="k">
-              Avd {leg} · start {hhmm(race.startAt)} · {race.counts.starters} hästar
-              {race.counts.scratched > 0 && ` · ${race.counts.scratched} strukna`}
-            </span>
-            <h1 id="race-h" title={race.name}>
-              {shortRaceName(race.name)}
-            </h1>
-            <div className="chips">
-              <span className="chip num">{race.distance} m</span>
-              <span className={`chip ${race.startMethod === "VOLTE" ? "chip-volte" : "chip-auto"}`}>{race.startMethod === "VOLTE" ? "Volte" : "Auto"}</span>
-              {race.classLabel && <span className="chip chip-k">{race.classLabel}</span>}
-              {race.prize !== null && <span className="chip num">1:a pris {kr(race.prize)}</span>}
-              <button type="button" className="chip chip-btn" aria-expanded={statsOpen} aria-controls="dstats-panel" onClick={() => setStatsOpen((v) => !v)}>
-                Loppstatistik {statsOpen ? "‹" : "›"}
-              </button>
+            <div className="dr-l">
+              <span className="k">
+                Avd {leg} · start {hhmm(race.startAt)} · {race.counts.starters} hästar
+                {race.counts.scratched > 0 && ` · ${race.counts.scratched} strukna`}
+                {race.prize !== null && ` · 1:a pris ${kr(race.prize)}`}
+              </span>
+              <h1 id="race-h" title={race.name}>
+                {shortRaceName(race.name)}
+              </h1>
+              <div className="chips">
+                <span className="chip num">{race.distance} m</span>
+                <span className={`chip ${race.startMethod === "VOLTE" ? "chip-volte" : "chip-auto"}`}>{race.startMethod === "VOLTE" ? "Volte" : "Auto"}</span>
+                {race.classLabel && <span className="chip chip-k">{race.classLabel}</span>}
+                <button type="button" className="chip chip-btn" aria-expanded={statsOpen} aria-controls="dstats-panel" onClick={() => setStatsOpen((v) => !v)}>
+                  Loppstatistik {statsOpen ? "‹" : "›"}
+                </button>
+              </div>
             </div>
-            {race.statsLine.ok ? <DeskStats race={race} roundId={roundId} gameType={data.round.gameType} /> : <div className="statline d-miss">{missingStats}</div>}
+            {race.statsLine.ok ? <DeskStats race={race} roundId={roundId} gameType={data.round.gameType} trackName={data.round.trackName} /> : <div className="statline d-miss">{missingStats}</div>}
           </section>
           {isDesktop && statsOpen && (
             <section className="dpanel d-only" id="dstats-panel" aria-label="Loppstatistik">
               <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
             </section>
           )}
-          <div className="twrap d-only">
+          <div className="twrap slist d-only">
             <table className="tbl">
               <caption className="sr">
                 Startlista avdelning {leg}. Välj rad med pil upp och ned, Enter öppnar hästkortet, I växlar Intressant och X stegar X-faktorn.
@@ -433,6 +435,10 @@ function Workspace({
                   <th scope="col" className="r">
                     <abbr title="Plats % (topp 3) i år och i fjol">Plats</abbr>
                     <small className="thsub">i år+fjol</small>
+                  </th>
+                  <th scope="col" className="r">
+                    <abbr title="Hästens totala vinstsumma och per start">Intjänat</abbr>
+                    <small className="thsub">totalt · /start</small>
                   </th>
                   <th scope="col" className="r">
                     <abbr title="Startnumrets vinst % på distansen och startmetoden">Spår v.</abbr>
@@ -482,9 +488,22 @@ function Workspace({
 
 type RowProps = { s: StartDto; index: number; started: boolean; href: string; onOpen: (s: StartDto) => void; onToggle: (s: StartDto, v: boolean) => void };
 
+// Kusken och hästens totala vinstsumma sist (summan kortas aldrig, namnet först).
 function Driver({ s }: { s: StartDto }) {
-  if (s.prevDriver) return <span className="kt chg">↻ Ny: {s.driver?.name ?? "–"}</span>;
-  return <span className="kt">{s.driver?.name ?? "Kusk saknas"}</span>;
+  const earn = s.horse.earnings !== null ? <b className="kt-earn">{money(s.horse.earnings)}</b> : null;
+  if (s.prevDriver)
+    return (
+      <span className="kt kt2">
+        <span className="chg">↻ Ny: {s.driver?.name ?? "–"}</span>
+        {earn}
+      </span>
+    );
+  return (
+    <span className="kt kt2">
+      <span>{s.driver?.name ?? "Kusk saknas"}</span>
+      {earn}
+    </span>
+  );
 }
 
 function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
@@ -543,9 +562,8 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
           <span className="kt">{[ageSex(s.horse.age, s.horse.sex), s.horse.record].filter(Boolean).join(" · ")}</span>
         </a>
       </td>
-      <td>
+      <td className="kus">
         {s.prevDriver ? <span className="chg">↻ Ny: {s.driver?.name ?? "–"}</span> : <span>{s.driver?.name ?? "–"}</span>}
-        <br />
         <span className="kt">{s.trainer ? `tr ${s.trainer.name}` : ""}</span>
       </td>
       <td className="c">
@@ -553,6 +571,10 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
       </td>
       <QuickPct kind="win" v={s.quick.winPct} starts={s.quick.starts} />
       <QuickPct kind="place" v={s.quick.placePct} starts={s.quick.starts} />
+      <td className="r num earn">
+        {money(s.horse.earnings)}
+        {s.horse.earnings !== null && s.quick.lifeStarts ? <small>{money(s.horse.earnings / s.quick.lifeStarts)}</small> : null}
+      </td>
       <td className="r num">{pct(s.quick.postPct, 0)}</td>
       <td className="r">
         <RiktCell s={s} className="rk num dk" two />
@@ -575,7 +597,13 @@ function QuickPct({ kind, v, starts }: { kind: "win" | "place"; v: number | null
   );
 }
 
-function DeskStats({ race, roundId, gameType }: { race: RaceDto; roundId: string; gameType: string }) {
+// Banans eget bästa spår under alla banors (minst 150 lopp på banan).
+function TrackBest({ best, races, trackName }: { best: { number: number; pct: number } | null; races: number | null; trackName: string }) {
+  if (best) return <em>{`${trackName} ${pct(best.pct)} · spår ${best.number}`}</em>;
+  return <em className="dim">{races ? `${trackName}: för få lopp (${races})` : `${trackName}: ingen statistik`}</em>;
+}
+
+function DeskStats({ race, roundId, gameType, trackName }: { race: RaceDto; roundId: string; gameType: string; trackName: string }) {
   const stats = useRaceStats(roundId, race.leg);
   const line = race.statsLine;
   const top = stats.data?.drivers.rows.filter((r) => r.league).sort((a, b) => (b.league?.wins ?? 0) - (a.league?.wins ?? 0))[0] ?? null;
@@ -585,12 +613,14 @@ function DeskStats({ race, roundId, gameType }: { race: RaceDto; roundId: string
         <small>Bästa spår, vinst</small>
         <b className="num">{pct(line.bestNumber?.pct ?? null)}</b>
         <span>{line.bestNumber ? `spår ${line.bestNumber.number}` : ""}</span>
+        <TrackBest best={line.trackBestWin} races={line.trackRaces} trackName={trackName} />
       </div>
       {line.bestPlace ? (
         <div>
           <small>Bästa spår, plats</small>
           <b className="num">{pct(line.bestPlace.pct)}</b>
           <span>spår {line.bestPlace.number}</span>
+          <TrackBest best={line.trackBestPlace} races={line.trackRaces} trackName={trackName} />
         </div>
       ) : (
         <div>

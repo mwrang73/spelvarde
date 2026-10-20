@@ -36,6 +36,8 @@ import {
   fitWeights,
   makePostIndex,
   marketPreds,
+  PENGAR,
+  withPengar,
   metrics,
   modelPreds,
   naivePreds,
@@ -301,6 +303,11 @@ async function main() {
   const zTrainS = zRacesWithStreck(train, o.weights);
   const zTestS = zRacesWithStreck(test, o.weights);
   const fitS = fitWeights(zTrainS, { ...fit.weights, streck: 0.5 }, 1, [...fitKeys, "streck"]);
+  // Intjänade pengar (vinstsumma per start i livet) som extra indata, utan och med streck.
+  const fitP = fitWeights(withPengar(zTrain), { ...fit.weights, [PENGAR]: 0 }, 1, [...fitKeys, PENGAR]);
+  const fitSP = fitWeights(withPengar(zTrainS), { ...fitS.weights, [PENGAR]: 0 }, 1, [...fitKeys, "streck", PENGAR]);
+  const zTest = zRaces(test, V1_PARAMS, o.weights);
+  console.log(`Pengar: vikt ${f(fitP.weights[PENGAR], 2)} utan streck, ${f(fitSP.weights[PENGAR], 2)} med streck`);
 
   const fixed: { name: string; beta: number }[] = o.betas.map((b) => ({ name: `v1 β = ${String(b).replace(".", ",")}`, beta: b }));
   const variants: Variant[] = [
@@ -308,6 +315,9 @@ async function main() {
     { name: `v1 bästa β = ${String(betaTrain.beta).replace(".", ",")}`, kind: "modell", test: modelPreds(test, o.weights, params(betaTrain.beta)), all: modelPreds(races, o.weights, params(betaTrain.beta)) },
     { name: "Anpassade vikter (β = 1)", kind: "anpassad", test: modelPreds(test, fit.weights, params(1)), all: null },
     { name: "Anpassade vikter + streck", kind: "anpassad", test: zPreds(zTestS, fitS.weights, 1), all: null },
+    { name: "Anpassade vikter + pengar", kind: "anpassad", test: zPreds(withPengar(zTest), fitP.weights, 1), all: null },
+    { name: "Anpassade vikter + streck + pengar", kind: "anpassad", test: zPreds(withPengar(zTestS), fitSP.weights, 1), all: null },
+    { name: "v2 (streck 0,88 · plats 0,10 · spår 0,03 · tränare 0,03)", kind: "anpassad", test: zPreds(zTestS, V2_WEIGHTS, 1), all: null },
     { name: "Marknaden (streck)", kind: "referens", test: marketPreds(test, "streck"), all: marketPreds(races, "streck") },
     { name: "Marknaden (vinnarodds)", kind: "referens", test: marketPreds(test, "vinnarodds"), all: marketPreds(races, "vinnarodds") },
     { name: "Naiv (alla lika)", kind: "referens", test: naivePreds(test), all: naivePreds(races) },
@@ -317,7 +327,7 @@ async function main() {
     run: { at: new Date().toISOString(), from: o.from, to: o.to, types: o.types, source: o.source, cacheOnly: o.cacheOnly, skippedGames: skipped, post, firstRace: loaded[0]?.date ?? null, lastRace: loaded[loaded.length - 1]?.date ?? null, weights: o.weights, params: V1_PARAMS, trainShare: o.trainShare },
     data: { byType, sources, persons: personCheck(gameJsonOf(loaded, games)), evaluated: { races: races.length, dropped, train: train.length, test: test.length, testFrom: cut, trainTo: train[train.length - 1]?.date ?? "" } },
     beta: { train: betaTrain, all: betaAll },
-    fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights },
+    fit: { start: startW, weights: fit.weights, trainLogLoss: fit.logLoss, withStreck: fitS.weights, withPengar: fitP.weights, withStreckPengar: fitSP.weights },
     variants: variants.map((v) => ({
       name: v.name,
       kind: v.kind,
@@ -339,6 +349,9 @@ async function main() {
 }
 
 const RATIOS = [1, 1.2, 1.5];
+
+// Modellen som rekommenderades 2026-10-20 (förenklad Anpassad + streck), β = 1.
+const V2_WEIGHTS: Weights = { plats: 0.1, vinst: 0, form: 0, spar: 0.03, kusk: 0, tranare: 0.03, galopp: 0, streck: 0.88 };
 
 type PostInfo = { from: string; to: string; races: number; starts: number; withPost: number };
 
@@ -388,7 +401,7 @@ type Result = {
     evaluated: { races: number; dropped: number; train: number; test: number; testFrom: string; trainTo: string };
   };
   beta: { train: ReturnType<typeof searchBeta>; all: ReturnType<typeof searchBeta> };
-  fit: { start: Weights; weights: Weights; trainLogLoss: number; withStreck: Weights };
+  fit: { start: Weights; weights: Weights; trainLogLoss: number; withStreck: Weights; withPengar: Weights; withStreckPengar: Weights };
   variants: VariantResult[];
 };
 
@@ -499,8 +512,11 @@ function report(r: Result): string {
   L();
   L(`Koordinatvis sökning på log loss för träningsdelen med β = 1 (β bakas in i vikterna; streck hålls utanför${r.run.post ? ", spår är med" : ", spår och streck hålls utanför"}).`);
   L();
-  L("| Indata | v1 | v1 × bästa β | Anpassad | Anpassad + streck |\n|---|---:|---:|---:|---:|");
-  for (const k of INPUT_KEYS) L(`| ${k} | ${f(r.run.weights[k], 2)} | ${f(r.fit.start[k], 2)} | ${f(r.fit.weights[k], 2)} | ${f(r.fit.withStreck[k], 2)} |`);
+  L("| Indata | v1 | v1 × bästa β | Anpassad | Anpassad + streck | Anpassad + pengar | Anpassad + streck + pengar |\n|---|---:|---:|---:|---:|---:|---:|");
+  for (const k of [...INPUT_KEYS, PENGAR])
+    L(`| ${k} | ${f(r.run.weights[k] ?? 0, 2)} | ${f(r.fit.start[k] ?? 0, 2)} | ${f(r.fit.weights[k] ?? 0, 2)} | ${f(r.fit.withStreck[k] ?? 0, 2)} | ${f(r.fit.withPengar[k] ?? 0, 2)} | ${f(r.fit.withStreckPengar[k] ?? 0, 2)} |`);
+  L();
+  L("pengar = log(1 + hästens vinstsumma per start i livet), z inom loppet. Vinstsumman är ögonblicksbilden i games/<id>, samma som år/fjol.");
   L();
   L(`Bästa modellvariant på testdelen (utan streck): **${best.name}**, log loss ${f(best.test.logLoss, 4)} mot ${f(v1.test.logLoss, 4)} för ${v1.name}.`);
   L();

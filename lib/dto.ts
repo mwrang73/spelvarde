@@ -175,6 +175,7 @@ export function yearStatsDto(year: string, y: YearStats | null | undefined): Yea
     thirds: y.thirds,
     winPct: y.starts ? Math.round((1000 * y.wins) / y.starts) / 10 : null,
     placePct: y.starts ? Math.round((1000 * placed) / y.starts) / 10 : null,
+    earnings: y.earnings,
   };
 }
 

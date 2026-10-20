@@ -12,7 +12,7 @@ import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { Badge, Banner, BetToggle, FlapNumber, LampToggle, Skeleton, SpelbarToggle } from "@/components/ui/board";
 import { useToast } from "@/components/ui/Toast";
-import { ageSex, distShort, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
+import { ageSex, distShort, money, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
 import { applyPendingComments, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
 import type { CommentDto, RaceDto, RoundResponse, StartDetailResponse, StartDto, YearStatsDto } from "@/lib/types";
 import { RiktoddsBox } from "./Riktodds";
@@ -173,6 +173,14 @@ function StatsBlock({ d, race }: { d: StartDetailResponse; race: RaceDto }) {
       <dd>{yearLine(h.lastYear, "win")}</dd>
       <dt>Plats % i fjol</dt>
       <dd>{yearLine(h.lastYear, "place")}</dd>
+      <dt>Intjänat i år{h.thisYear ? ` (${h.thisYear.starts} starter)` : ""}</dt>
+      <dd>{money(h.thisYear?.earnings)}</dd>
+      <dt>Intjänat i fjol{h.lastYear ? ` (${h.lastYear.starts} starter)` : ""}</dt>
+      <dd>{money(h.lastYear?.earnings)}</dd>
+      <dt>Intjänat totalt{h.life ? ` (${h.life.starts} starter)` : ""}</dt>
+      <dd>{money(h.life?.earnings ?? d.start.horse.earnings)}</dd>
+      <dt>Per start, totalt</dt>
+      <dd>{h.life?.starts ? money((h.life.earnings ?? d.start.horse.earnings ?? 0) / h.life.starts) : "–"}</dd>
       <dt>
         Spår {d.start.number} på {race.distance} m {race.startMethod === "VOLTE" ? "volte" : "auto"}, vinst
       </dt>

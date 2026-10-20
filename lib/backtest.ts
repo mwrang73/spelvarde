@@ -56,6 +56,8 @@ export type BtStart = {
   // Startnumrets plats % på loppets distans och startmetod ur statistikbasen,
   // bara lopp före loppdagen (attachPosts). null = saknas.
   post?: StartFacts["post"];
+  // Hästens totala vinstsumma i kr (horse.money i ögonblicksbilden). null = saknas.
+  earnings?: number | null;
 };
 
 export type BtRace = {
@@ -210,6 +212,7 @@ export function buildRaces(
         winOdds: res?.finalOdds ?? s.winOdds,
         placeOdds: minOdds !== null && minOdds > 0 ? minOdds / 100 : null,
         placePayout: winners?.paid.get(s.number) ?? 0,
+        earnings: s.earnings,
       };
     });
     out.push({ key: race.atgRaceId, date, gameType, gameId: game.atgGameId, leg: race.leg, distance: race.distance, startMethod: race.startMethod, placesPaid: winners?.places ?? null, starts });
@@ -398,13 +401,30 @@ export function zRaces(races: BtRace[], params: ModelParams, weights: Weights, w
 }
 
 // Samma steg som computeRace efter z: S = Σ w·z, softmax med β, Harville.
+// Nycklar utöver INPUT_KEYS (t.ex. "pengar" från withPengar) räknas med när
+// vikterna har dem.
 export function p3FromZ(z: Record<InputKey, number>[], weights: Weights, beta: number): number[] {
-  const s = z.map((zi) => INPUT_KEYS.reduce((a, k) => a + (weights[k] ?? 0) * zi[k], 0));
+  const keys = Object.keys(weights) as InputKey[];
+  const s = z.map((zi) => keys.reduce((a, k) => a + (weights[k] ?? 0) * (zi[k] ?? 0), 0));
   return harvilleTop3(softmax(s, beta));
 }
 
 export function zPreds(zr: ZRace[], weights: Weights, beta: number, marginal = 0): Pred[] {
   return zr.flatMap(({ race, z }) => predsFor(race, p3FromZ(z, weights, beta), marginal));
+}
+
+// Prövning av intjänade pengar: z för log(1 + vinstsumma per start i livet)
+// inom loppet läggs till under nyckeln "pengar". Saknas summan blir z = 0.
+export const PENGAR = "pengar" as InputKey;
+export function withPengar(zr: ZRace[]): ZRace[] {
+  return zr.map(({ race, z }) => {
+    const run = race.starts.filter((s) => !s.scratched);
+    const vals = run.map((s) => (s.earnings != null && (s.lifeStarts ?? 0) > 0 ? Math.log1p(s.earnings / (s.lifeStarts as number)) : null));
+    const known = vals.filter((v): v is number => v !== null);
+    const m = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 0;
+    const sd = known.length ? Math.sqrt(known.reduce((a, b) => a + (b - m) ** 2, 0) / known.length) : 0;
+    return { race, z: z.map((zi, i) => ({ ...zi, [PENGAR]: vals[i] === null || !(sd > 1e-12) ? 0 : ((vals[i] as number) - m) / sd })) };
+  });
 }
 
 // ---- Mått ------------------------------------------------------------------------------

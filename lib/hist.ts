@@ -277,14 +277,17 @@ export function bestNumbers(table: PostTable | null, numbers: number[]): { win: 
   return { win: best("winPct"), place: best("placePct") };
 }
 
-// Tabeller för alla avdelningar i en omgång (alla banor), en fråga per distinkt
-// startmetod och distans.
-export async function postTablesForRaces(db: Db, races: { leg: number; distance: number; startMethod: StartMethod }[], before: Date): Promise<Map<number, PostTable | null>> {
+// Minsta antal lopp för att banans eget bästa spår ska visas bredvid alla banors.
+export const MIN_RACES_TRACK_BEST = 150;
+
+// Tabeller för alla avdelningar i en omgång (alla banor, eller banan med
+// trackId), en fråga per distinkt startmetod och distans.
+export async function postTablesForRaces(db: Db, races: { leg: number; distance: number; startMethod: StartMethod }[], before: Date, trackId: number | null = null): Promise<Map<number, PostTable | null>> {
   const out = new Map<number, PostTable | null>();
   const keys = new Map<string, Promise<PostTable | null>>();
   for (const r of races) {
     const k = `${r.startMethod}|${r.distance}`;
-    if (!keys.has(k)) keys.set(k, postTable(db, { method: r.startMethod, distance: r.distance, before }).catch(() => null));
+    if (!keys.has(k)) keys.set(k, postTable(db, { method: r.startMethod, distance: r.distance, before, trackId }).catch(() => null));
   }
   for (const r of races) out.set(r.leg, await keys.get(`${r.startMethod}|${r.distance}`)!);
   return out;

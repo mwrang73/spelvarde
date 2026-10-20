@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageSex, changesSummary, dayDate, distShort, kr, odds, ordinal, pct, placeChar, placeLabel, relTime, shortRaceName } from "@/lib/format";
+import { ageSex, changesSummary, dayDate, distShort, kr, odds, ordinal, pct, placeChar, placeLabel, relTime, shortRaceName, money } from "@/lib/format";
 
 const NBSP = " ";
 
@@ -62,5 +62,15 @@ describe("häst och lopp", () => {
   it("sammanfattar ändringar", () => {
     expect(changesSummary({ scratched: [1, 2], driverChanges: [1] })).toBe("2 strykningar, 1 kuskbyte");
     expect(changesSummary({ scratched: [], driverChanges: [] })).toBeNull();
+  });
+});
+
+describe("vinstsumma kort", () => {
+  it("kr, tkr och mkr", () => {
+    expect(money(850)).toBe("850 kr");
+    expect(money(448_200)).toBe("448 tkr");
+    expect(money(5_385_500)).toBe("5,4 mkr");
+    expect(money(25_406_500)).toBe("25 mkr");
+    expect(money(null)).toBe("–");
   });
 });
