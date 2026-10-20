@@ -486,7 +486,7 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .slist .tbl { font-size: 15px; }
   .slist .tbl td { height: 44px; }
   .slist .tbl td, .slist .tbl th { padding-left: 4px; padding-right: 4px; }
-  .tbl td.kus > span { display: block; max-width: 102px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tbl td.kus > span { display: block; max-width: 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .slist .tbl .hn { font-size: 19px; }
   .slist .tbl .kt, .slist .tbl td:nth-child(3) { font-size: 13.5px; }
   .tbl td.earn small { display: block; font-size: 11px; color: var(--ink-2); }
@@ -798,3 +798,29 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .kt2 { display: flex; gap: 6px; min-width: 0; }
 .kt2 > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .kt-earn { flex: none; font: 600 12px/1.25 var(--f-num); color: var(--ink-2); }
+/* Antal positiva signaler: bricka på startnumret (FlapNumber) och märket Lågt streck. */
+.nr .sigb { position: absolute; right: -6px; bottom: -5px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; display: grid; place-items: center; font: 700 10px/1 var(--f-num); font-style: normal; color: var(--sig); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--sig); text-shadow: none; z-index: 1; }
+.nr .sigb.many { background: var(--sig-fill); color: var(--sig-fill-ink); box-shadow: none; }
+.nr.sm .sigb { right: -5px; bottom: -4px; min-width: 14px; height: 14px; font-size: 9px; }
+.tag.lowst { font-size: 10.5px; min-height: 18px; padding: 1px 5px; }
+/* Sortering via Nr-rubriken (startnummer eller antal signaler). */
+.slist .tbl th:first-child { width: 46px; }
+.sortb { display: inline-flex; gap: 2px; border: 0; background: none; padding: 4px 2px; margin: -4px -2px; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; border-radius: 4px; white-space: nowrap; }
+.sortb:hover { color: var(--accent); }
+.kt .tag.lowst { margin-right: 6px; vertical-align: 1px; }
+/* Hästkortet: positiva signaler. */
+.sigsum { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.sigsum .help { grid-column: 1 / -1; margin: 0; }
+.sigsum b { font: 700 18px/1 var(--f-num); }
+.sigbar { display: inline-grid; grid-template-columns: repeat(10, 14px); gap: 3px; }
+.sigbar i { height: 16px; border-radius: 2px; background: var(--surface-3); }
+.sigbar i.on { background: var(--sig-fill-2); }
+.sigbar.many i.on { background: var(--sig-fill); }
+.lowbox { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--up-soft); font-size: 14px; }
+.siglist { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; font-size: 14px; }
+.siglist li { display: grid; grid-template-columns: 18px 72px minmax(0, 1fr); gap: 6px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.siglist li:last-child { border-bottom: 0; }
+.siglist .sig-i { font-weight: 700; text-align: center; }
+.siglist li.ok .sig-i, .siglist li.ok b { color: var(--sig); }
+.siglist li.no, .siglist li.unknown { color: var(--ink-2); }
+.siglist li.unknown span:not(.sr) { font-style: italic; }

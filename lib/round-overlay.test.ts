@@ -30,6 +30,7 @@ function start(id: string, number: number, interesting = false): StartDto {
       : null,
     result: null,
     quick: { winPct: null, placePct: null, starts: null, lifeStarts: null, postPct: null, postPlacePct: null },
+    signals: null,
   };
 }
 

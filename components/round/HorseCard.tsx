@@ -10,7 +10,7 @@ import { forwardRef, useEffect, useMemo, useRef, useState, useSyncExternalStore 
 import { rawPost } from "@/components/api";
 import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
-import { Badge, Banner, BetToggle, FlapNumber, LampToggle, Skeleton, SpelbarToggle } from "@/components/ui/board";
+import { Badge, Banner, BetToggle, FlapNumber, LampToggle, LowStreckTag, Skeleton, SpelbarToggle } from "@/components/ui/board";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, distShort, money, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
 import { applyPendingComments, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
@@ -19,7 +19,8 @@ import { RiktoddsBox } from "./Riktodds";
 import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
 import { XFactorBlock } from "./XFactor";
-import { pctSignal, signalClass, signalSr } from "@/lib/signals";
+import { pctSignal, signalClass, signalLines, signalSr } from "@/lib/signals";
+import { MANY_SIGNALS, SIGNAL_KEYS, TOP3_BY_COUNT } from "@/lib/positive-signals";
 
 export function useDetail(startId: string) {
   return useSyncExternalStore(
@@ -69,7 +70,7 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
   return (
     <article className="hk" aria-labelledby={`hk-${start.id}`}>
       <div className="hk-hero brd">
-        <FlapNumber n={start.number} size="lg" />
+        <FlapNumber n={start.number} size="lg" signals={start.signals?.count} />
         <div>
           <h2 id={`hk-${start.id}`} ref={headingRef} tabIndex={-1} className="hk-name">
             {start.horse.name}
@@ -121,7 +122,9 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
 
       <XFactorBlock key={start.id} race={race} start={start} factors={factors} sourcesEnabled={data.sourcesEnabled ?? 0} />
 
-      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} guideline={data.settings?.spelbarGuideline ?? 2} factors={factors} />
+      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} calibrated={!!data.model?.calibrated} guideline={data.settings?.spelbarGuideline ?? 2} factors={factors} />
+
+      {start.signals && <SignalsBlock start={start} />}
 
       <section className="hk-sec" aria-labelledby={`st-${start.id}`}>
         <h3 id={`st-${start.id}`}>Statistik</h3>
@@ -137,6 +140,47 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
     </article>
   );
 });
+
+// Positiva signaler (lib/positive-signals.ts): stapel med 10 delar, Lågt
+// streck och alla tio signalerna med värde och gräns.
+function SignalsBlock({ start }: { start: StartDto }) {
+  const sig = start.signals!;
+  const lines = signalLines(sig, { driver: start.driver?.name ?? null, trainer: start.trainer?.name ?? null });
+  const many = sig.count >= MANY_SIGNALS;
+  const top3 = TOP3_BY_COUNT[Math.min(sig.count, 6)];
+  return (
+    <section className="hk-sec sigsec" aria-labelledby={`sg-${start.id}`}>
+      <h3 id={`sg-${start.id}`}>Positiva signaler</h3>
+      <div className="sigsum">
+        <span className={`sigbar${many ? " many" : ""}`} role="img" aria-label={`${sig.count} av 10 positiva signaler`}>
+          {SIGNAL_KEYS.map((k, i) => (
+            <i key={k} className={i < sig.count ? "on" : undefined} />
+          ))}
+        </span>
+        <b className="num">{sig.count} av 10</b>
+        <span className="help">Hästar med {sig.count >= 6 ? "6 eller fler" : sig.count} signaler kom topp 3 i {top3} % av fallen i backtestet.</span>
+      </div>
+      {sig.lowStreck && (
+        <p className="lowbox">
+          <LowStreckTag /> Minst 4 signaler men inte bland loppets 3 mest streckade. Sådana hästar kom topp 3 i 25–26 % av fallen, strecket sa 20 %.
+        </p>
+      )}
+      {sig.lowStreck === null && sig.count >= 4 && <p className="help">Streck saknas än, så Lågt streck kan inte bedömas.</p>}
+      <ul className="siglist">
+        {lines.map((l) => (
+          <li key={l.key} className={l.state}>
+            <span className="sig-i" aria-hidden="true">
+              {l.state === "ok" ? "✓" : l.state === "unknown" ? "?" : "–"}
+            </span>
+            <b>{l.label}</b>
+            <span>{l.text}</span>
+            <span className="sr">{l.state === "ok" ? ", uppfylld" : l.state === "unknown" ? ", okänt" : ", inte uppfylld"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 function SkeletonBlock({ rows }: { rows: number }) {
   return (

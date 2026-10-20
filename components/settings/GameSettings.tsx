@@ -12,7 +12,7 @@ import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { GAME_TYPES } from "@/lib/game-type";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
-import { INPUT_KEYS, RECOMMENDED_CALIBRATION, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
+import { INPUT_KEYS, isCalibrated, RECOMMENDED_CALIBRATION, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
 import { applySettings } from "@/lib/round-overlay";
 import { X_FACTOR_ORDER_ERROR, X_FACTOR_RANGE_ERROR } from "@/lib/xfactor";
 import { parseFactorText } from "@/lib/xfactor-ui";
@@ -349,8 +349,13 @@ export function ModelAdmin() {
           <div className="mbox brd">
             <span className="k">Aktiv version</span>
             <b className="num">{active?.key ?? "–"}</b>
-            <span className="tag okal">Okalibrerad</span>
-            <p>Gäller bara plats (topp 3). Vikterna är inte kalibrerade mot tidigare omgångar än.</p>
+            {active && isCalibrated(active.params) ? <span className="tag good">Kalibrerad</span> : <span className="tag okal">Okalibrerad</span>}
+            <p>
+              Gäller bara plats (topp 3).{" "}
+              {active && isCalibrated(active.params)
+                ? "Vikterna och kalibreringen kommer från backtestet mot tidigare V-omgångar (docs/backtest/MODELLHISTORIK.md)."
+                : "Vikterna är inte kalibrerade mot tidigare omgångar."}
+            </p>
           </div>
           <form
             className="mform"

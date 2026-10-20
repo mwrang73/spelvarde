@@ -4,7 +4,7 @@
 // Riktodds.inputs och Riktodds.contributions, så att den kan visas utan att
 // modellen räknas om. Testas i lib/riktodds.test.ts.
 //
-// Modellen är märkt v1, okalibrerad. Den gäller bara plats (topp 3).
+// Modellen gäller bara plats (topp 3). Från v3 kan P3 kalibreras (calibrate).
 
 import { money, pct } from "@/lib/format";
 import { bestAdjusted, timeOutliers } from "@/lib/kmref";
@@ -186,6 +186,9 @@ export function oddsFromP3(p3: number, marginal: number): number {
 export const shrink = (x: number, n: number, k: number, x0: number) => (x + k * x0) / (n + k);
 
 const gallopScore = (last5: StartFacts["records"]) => last5.reduce((a, r) => a + (r.galloped ? (r.disqualified ? 1.5 : 1) : 0), 0);
+
+// Har modellen kalibrering (annat än standardvärdena)?
+export const isCalibrated = (p: Pick<ModelParams, "plattA" | "plattB" | "maxP3">) => p.plattA !== 0 || p.plattB !== 1 || p.maxP3 < 1;
 
 // Kalibreringen efter Harville (v3): sigmoid(a + b·logit P3), högst maxP3.
 // Standardvärdena (a 0, b 1, max 1) ändrar ingenting.

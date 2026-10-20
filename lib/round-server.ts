@@ -7,6 +7,8 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, couponDto, dateStr, dec, iso, markDto, personDto, riktoddsDetailDto, roundDto, settingsDto, yearStatsDto } from "@/lib/dto";
 import { legsFor, type GameType } from "@/lib/game-type";
+import { positiveSignals, type SignalResult } from "@/lib/positive-signals";
+import { barefoot, isCalibrated, parseParams } from "@/lib/riktodds";
 import { bestNumbers, MIN_RACES_TRACK_BEST, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
 import { computePhase, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
@@ -248,6 +250,45 @@ function quickStats(horseStatsJson: Prisma.JsonValue | null, legRow: StartnrData
   };
 }
 
+// Positiva signaler för loppets hästar (lib/positive-signals.ts), samma indata som backtestet.
+function raceSignals(
+  starts: FullRound["races"][number]["starts"],
+  records: Map<string, FormRecord[]>,
+  table: PostTable | null,
+  streck: Awaited<ReturnType<typeof latestStreck>>,
+  year: string,
+): Map<string, SignalResult> {
+  const lastYear = String(Number(year) - 1);
+  const rows = table?.byNumber.filter((b) => b.placePct !== null) ?? [];
+  const mean = rows.length ? rows.reduce((a, b) => a + (b.placePct as number), 0) / rows.length : 0;
+  const counts = (y: { starts: number; wins: number; seconds: number; thirds: number } | undefined) => (y ? { starts: y.starts, wins: y.wins, placed: y.wins + y.seconds + y.thirds } : null);
+  const res = positiveSignals(
+    starts.map((s) => {
+      const hs = asHorseStats(s.horseStatsJson);
+      const d = asPersonStats(s.driver?.statsJson ?? null)?.[year];
+      const t = asPersonStats(s.trainer?.statsJson ?? null)?.[year];
+      const row = rows.find((b) => b.n === s.number);
+      const sv = streck?.values.get(s.id);
+      const total = hs?.life?.earnings ?? s.earnings;
+      return {
+        scratched: s.scratched,
+        thisYear: counts(hs?.years[year]),
+        lastYear: counts(hs?.years[lastYear]),
+        records: (records.get(s.horseId) ?? []).map((x) => ({ ...x })),
+        driver: d ? { starts: d.starts, wins: d.wins } : null,
+        trainer: t ? { starts: t.starts, wins: t.wins } : null,
+        earnings: total != null && hs?.life?.starts ? { total, lifeStarts: hs.life.starts } : null,
+        barefoot: barefoot(s.shoes),
+        post: row && mean > 0 ? { pct: row.placePct as number, mean } : null,
+        streck: sv === undefined ? null : sv / 100,
+      };
+    }),
+  );
+  const out = new Map<string, SignalResult>();
+  starts.forEach((s, i) => res[i] && out.set(s.id, res[i]!));
+  return out;
+}
+
 // ---- GET /api/rounds/[id] -------------------------------------------------------------
 
 export async function buildRoundResponse(db: Db, roundId: string, userId: string, now: Date): Promise<RoundResponse | null> {
@@ -271,9 +312,11 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
   const settings = settingsDto(settingsRow);
   const lines = statsLines(round, stats, streck, posts, trackPosts);
 
+  const year = date.slice(0, 4);
   const races: RaceDto[] = round.races.map((r) => {
     const legRow = stats.startnr?.data.legs.find((l) => l.leg === r.leg && l.distance === r.distance && l.method === r.startMethod) ?? null;
     const table = posts.get(r.leg) ?? null;
+    const signals = raceSignals(r.starts, records, table, streck, year);
     const starts: StartDto[] = r.starts.map((s) => {
       const r = rikt.byStart.get(s.id);
       const mark = s.marks[0] ? markDto(s.marks[0], riktOf(r), settings.spelbarGuideline, settings) : null;
@@ -300,6 +343,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
           ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) }
           : null,
         quick: quickStats(s.horseStatsJson, legRow, s.number, table, date.slice(0, 4)),
+        signals: signals.get(s.id) ?? null,
       };
     });
     const review = r.reviews[0] ?? null;
@@ -355,7 +399,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     races,
     latestStreck: streck ? { kind: streck.kind, takenAt: streck.takenAt.toISOString() } : null,
     coupon: coupon ? couponDto(coupon, legsFor(round.gameType)) : null,
-    model: rikt.model ? { id: rikt.model.id, key: rikt.model.key } : null,
+    model: rikt.model ? { id: rikt.model.id, key: rikt.model.key, calibrated: isCalibrated(parseParams(rikt.model.params)) } : null,
     settings: { spelbarGuideline: settings.spelbarGuideline, rowPrice: settings.rowPrice, xFactorTror: settings.xFactorTror, xFactorStark: settings.xFactorStark },
     sourcesEnabled,
   };
@@ -579,6 +623,8 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       mark,
       result: s.resultAt ? { place: s.place, finishOrder: s.finishOrder, disqualified: s.disqualified, galloped: s.galloped, kmTime: s.kmTime, finalOdds: dec(s.finalOdds) } : null,
       quick: quickStats(s.horseStatsJson, legRow, s.number, table, year),
+      // Signalerna kräver hela fältet och finns på starten i omgångens svar.
+      signals: null,
       raceId: s.raceId,
       roundId: s.race.roundId,
       leg: s.race.leg,

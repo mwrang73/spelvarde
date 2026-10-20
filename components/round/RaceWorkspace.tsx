@@ -18,7 +18,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DESKTOP_QUERY, useIsDesktop } from "@/components/hooks";
 import { AppHeader } from "@/components/shell/AppHeader";
-import { Banner, FlapNumber, FormStrip, GallopBadge, LampToggle, Skeleton } from "@/components/ui/board";
+import { Banner, FlapNumber, FormStrip, GallopBadge, LampToggle, LowStreckTag, signalsSr, Skeleton } from "@/components/ui/board";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, dayDate, hhmm, kr, methodLabel, money, pct, shortRaceName } from "@/lib/format";
@@ -26,6 +26,7 @@ import { PHASE_LABELS } from "@/lib/phase";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor } from "@/lib/xfactor";
 import { xOf } from "@/lib/xfactor-ui";
+import { modelLabel } from "./Riktodds";
 import { refetchStats, useFetchChain } from "./fetchChain";
 import { HorseCard } from "./HorseCard";
 import { Counts, MarkBadges, PhaseRail, RaceTabs, RiktCell, RoundLinks, firstTodoLeg } from "./parts";
@@ -98,9 +99,29 @@ function Workspace({
   const lastOpened = useRef<string | null>(null);
   const listScroll = useRef(0);
   const [statsOpen, setStatsOpen] = useState(false);
+  // Sortering på antal positiva signaler (Nr-rubriken). Sparas i webbläsaren.
+  const [bySignals, setBySignals] = useState(false);
+  useEffect(() => {
+    try {
+      setBySignals(localStorage.getItem(SORT_KEY) === "signaler");
+    } catch {
+      // Ingen lagring: standard är startnummer.
+    }
+  }, []);
+  const toggleSort = () =>
+    setBySignals((v) => {
+      try {
+        localStorage.setItem(SORT_KEY, v ? "nr" : "signaler");
+      } catch {
+        // ignoreras
+      }
+      return !v;
+    });
   const touch = useRef<{ x: number; y: number } | null>(null);
 
   const start = useMemo(() => (startId ? race.starts.find((s) => s.id === startId) ?? null : null), [race, startId]);
+  // Raderna i visningsordning: startnummer, eller flest signaler först (strukna sist).
+  const ordered = useMemo(() => (bySignals ? sortBySignals(race.starts) : race.starts), [race.starts, bySignals]);
   const view: "list" | "horse" = start ? "horse" : "list";
   const base = `/omgang/${roundId}`;
   const avdUrl = useCallback((n: number) => `${base}/avd/${n}`, [base]);
@@ -185,9 +206,9 @@ function Workspace({
   // Förhandsladda grannhästarnas hästkort när en häst är vald.
   useEffect(() => {
     if (!start) return;
-    const i = race.starts.findIndex((s) => s.id === start.id);
-    prefetchDetails([race.starts[i + 1]?.id, race.starts[i - 1]?.id, race.starts[i + 2]?.id].filter((x): x is string => !!x));
-  }, [start, race.starts]);
+    const i = ordered.findIndex((s) => s.id === start.id);
+    prefetchDetails([ordered[i + 1]?.id, ordered[i - 1]?.id, ordered[i + 2]?.id].filter((x): x is string => !!x));
+  }, [start, ordered]);
 
   // Desktop: statistikrutorna behöver loppstatistiken. Den hämtas för alla
   // avdelningar en gång, så att avdelningsbyte inte går mot nätet.
@@ -218,8 +239,8 @@ function Workspace({
     if (!window.matchMedia(DESKTOP_QUERY).matches) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const i = start ? race.starts.findIndex((s) => s.id === start.id) : -1;
-      const next = race.starts[Math.max(0, Math.min(race.starts.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
+      const i = start ? ordered.findIndex((s) => s.id === start.id) : -1;
+      const next = ordered[Math.max(0, Math.min(ordered.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
       if (next) {
         go(hastUrl(leg, next.id), "replace");
         document.querySelector(`.tbl [data-start="${next.id}"]`)?.scrollIntoView({ block: "nearest" });
@@ -339,12 +360,18 @@ function Workspace({
                 )}
               </div>
             </div>
-            <div className="cols g-an" aria-hidden="true">
-              <span>Nr</span>
-              <span>Häst · kusk</span>
-              <span className="c">Form</span>
-              <span className="r">Rikt</span>
-              <span className="c">Intr.</span>
+            <div className="cols g-an">
+              <SortButton bySignals={bySignals} onToggle={toggleSort} />
+              <span aria-hidden="true">Häst · kusk</span>
+              <span className="c" aria-hidden="true">
+                Form
+              </span>
+              <span className="r" aria-hidden="true">
+                Rikt
+              </span>
+              <span className="c" aria-hidden="true">
+                Intr.
+              </span>
             </div>
           </div>
         )}
@@ -383,7 +410,7 @@ function Workspace({
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
           {/* Mobil: täta rader. */}
           <ul className="list mlist m-only" aria-label={`Startlista avdelning ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-            {race.starts.map((s, i) => (
+            {ordered.map((s, i) => (
               <StartRow key={s.id} s={s} index={i} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
             ))}
           </ul>
@@ -422,7 +449,9 @@ function Workspace({
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Nr</th>
+                  <th scope="col" aria-sort={bySignals ? "descending" : "ascending"}>
+                    <SortButton bySignals={bySignals} onToggle={toggleSort} />
+                  </th>
                   <th scope="col">Häst</th>
                   <th scope="col">Kusk / tränare</th>
                   <th scope="col" className="c">
@@ -452,13 +481,13 @@ function Workspace({
                 </tr>
               </thead>
               <tbody>
-                {race.starts.map((s, i) => (
+                {ordered.map((s, i) => (
                   <DeskRow key={s.id} s={s} index={i} selected={s.id === start?.id} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
                 ))}
               </tbody>
             </table>
             <p className="help">
-              Vinst och plats: hela karriären (ATG). Spår %: startnumrets vinst % på distansen och startmetoden (travstatistik.se). Rikt: riktodds för plats, modell {data.model?.key ?? "v1"}, okalibrerad. Med X-faktor står riktoddset med X överst och det vanliga under. * = osäkert.
+              Vinst och plats: i år och i fjol (ATG). Intjänat: total vinstsumma och per start. Spår v.: startnumrets vinst % på distansen och startmetoden (ATG 2 år). Siffran på startnumret: antal positiva signaler av 10. Rikt: riktodds för plats, modell {modelLabel(data.model?.key, !!data.model?.calibrated)}. Med X-faktor står riktoddset med X överst och det vanliga under. * = osäkert.
             </p>
           </div>
 
@@ -506,11 +535,28 @@ function Driver({ s }: { s: StartDto }) {
   );
 }
 
+const SORT_KEY = "sv-sort";
+
+// Flest positiva signaler först, sedan startnummer. Strukna sist.
+function sortBySignals(starts: StartDto[]): StartDto[] {
+  return [...starts].sort((a, b) => Number(a.scratched) - Number(b.scratched) || (b.signals?.count ?? -1) - (a.signals?.count ?? -1) || a.number - b.number);
+}
+
+// Nr-rubriken: växlar mellan startnummer och antal positiva signaler.
+function SortButton({ bySignals, onToggle }: { bySignals: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="sortb" onClick={onToggle} aria-label={bySignals ? "Sorterat på positiva signaler. Sortera på startnummer" : "Sorterat på startnummer. Sortera på positiva signaler"}>
+      {bySignals ? "Sig" : "Nr"}
+      <span aria-hidden="true">{bySignals ? "▼" : "↕"}</span>
+    </button>
+  );
+}
+
 function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
   const on = !!s.mark?.interesting;
   return (
     <li className={`row g-an${on ? " is-i" : ""}${s.scratched ? " scr" : ""}`} data-start={s.id}>
-      <FlapNumber n={s.number} index={index} />
+      <FlapNumber n={s.number} index={index} signals={s.signals?.count} />
       <a
         className="who"
         href={href}
@@ -520,8 +566,9 @@ function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
         }}
       >
         <span className="hl">
-          <span className="sr">Nr {s.number}, </span>
+          <span className="sr">Nr {s.number}{signalsSr(s.signals?.count)}, </span>
           <span className="hn">{s.horse.name}</span>
+          {s.signals?.lowStreck && <LowStreckTag />}
           <MarkBadges s={s} />
           {!s.scratched && <GallopBadge flag={s.form.gallop} />}
           {s.scratched && <span className="tag scr-tag">Struken</span>}
@@ -540,7 +587,7 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
   return (
     <tr className={`${on ? "is-i " : ""}${selected ? "sel " : ""}${s.scratched ? "scr" : ""}`} data-start={s.id} onClick={() => onOpen(s)} aria-current={selected ? "true" : undefined}>
       <td>
-        <FlapNumber n={s.number} index={index} />
+        <FlapNumber n={s.number} index={index} signals={s.signals?.count} />
       </td>
       <td>
         <a
@@ -553,13 +600,14 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
           }}
         >
           <span className="hl">
-            <span className="sr">Nr {s.number}, </span>
+            <span className="sr">Nr {s.number}{signalsSr(s.signals?.count)}, </span>
             <span className="hn">{s.horse.name}</span>
             <MarkBadges s={s} />
             {!s.scratched && <GallopBadge flag={s.form.gallop} />}
             {s.scratched && <span className="tag scr-tag">Struken</span>}
           </span>
-          <span className="kt">{[ageSex(s.horse.age, s.horse.sex), s.horse.record].filter(Boolean).join(" · ")}</span>
+          <span className="kt">
+            {s.signals?.lowStreck && <LowStreckTag />}{[ageSex(s.horse.age, s.horse.sex), s.horse.record].filter(Boolean).join(" · ")}</span>
         </a>
       </td>
       <td className="kus">

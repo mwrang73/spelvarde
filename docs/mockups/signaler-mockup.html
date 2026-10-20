@@ -1,0 +1,704 @@
+<title>Spelvärde signaler</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens (kopia av styles/tokens.css) ===== */
+:root{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--bg-glow:rgba(255,255,255,.7);--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--fill-deep:#A45F00;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;
+--led-off:#C5CCD3;--glow:rgba(242,154,0,.40);--up:#0E7A3B;--up-soft:#DDF3E5;
+--sig:#0E7A3B;--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--sig-fill-2:#BFE6CB;--sig-fill-2-ink:#0A4721;
+--down:#C42B1F;--down-soft:#FBE1DD;--gal:#C42B1F;--gal-ink:#FFFFFF;--bet:#0D1014;--bet-ink:#FFFFFF;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--flap-ink:#C9CED4;--flap-glow:rgba(255,178,46,.5);--phase-ink:#9AA2AC;
+--key-on:linear-gradient(#FFCB60,#F39A00);--key-on-ring:#A45F00;--key-on-edge:#6B3E00;--key-off:linear-gradient(#FFFFFF,#E2E6EB);--key-off-shadow:inset 0 0 0 1px #AEB6BF,0 2px 0 #9AA3AD;--key-dot:#B4BCC5;
+--board-chip-line:#3A4048;--board-volte:#FFB8AA;--board-volte-line:#6E3329;--tick:#46D37E;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+--focus-ring:3px solid var(--focus);--focus-offset:2px}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--bg-glow:rgba(255,178,46,.08);--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill-deep:#8F5200;--focus:#7CC4FF;
+--head:#050607;--head-ink-2:#B9C0C8;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--led-off:#2A3038;--glow:rgba(255,178,46,.55);--up:#46D37E;--up-soft:rgba(70,211,126,.14);
+--sig:#46D37E;--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--sig-fill-2:rgba(70,211,126,.30);--sig-fill-2-ink:#C8F7DA;
+--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--gal:#FF5A45;--gal-ink:#1A0400;--bet:#F3EFE4;--bet-ink:#0C0E11;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);--key-off:linear-gradient(#2C3138,#1C2026);--key-off-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 2px 0 #000;--key-dot:#4A515A}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+.mk{padding:24px 24px 64px;max-width:1340px}
+.mk-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mk h1.mt{margin:0;font:700 26px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk .lead{max-width:900px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.mk h2.alt{margin:44px 0 4px;font:700 22px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em}
+.mk h2.alt span{display:inline-grid;place-items:center;width:30px;height:34px;margin-right:8px;border-radius:4px;background:var(--flap-on);color:var(--flap-on-ink);font-family:var(--f-num)}
+.mk h3.part{margin:26px 0 8px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.mk p.alt-sub{margin:0 0 12px;max-width:920px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.mk p.alt-sub b{color:var(--ink)}
+.scrollx{overflow-x:auto;padding-bottom:6px}
+.note{max-width:1280px;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note > div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.note h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.note ul{margin:0;padding-left:18px}
+.note .m{font-family:var(--f-num);font-size:12.5px}
+.rec{margin-top:44px;background:var(--head);background-image:var(--matrix);background-size:4px 4px;color:var(--head-text);border-radius:10px;padding:16px 20px;max-width:1280px;font-size:14.5px;line-height:1.5}
+.rec h2{margin:0 0 6px;font:700 18px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.05em;color:var(--head-ink)}
+.rec b{color:var(--head-title)}
+.rec ul{margin:6px 0 0;padding-left:18px}
+.bf{width:1282px;border:1px solid #000;border-radius:10px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);background:#2a2d31}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:560px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.bf-bar .crop{margin-left:auto;color:#8e959c}
+.vp{width:1280px;height:800px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+.vp.short{height:600px}
+.phwrap{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+.ph{width:410px;height:864px;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;position:relative;background:var(--bg);box-shadow:0 20px 50px rgba(0,0,0,.35);flex:none}
+.ph-in{width:390px;height:844px;position:relative;overflow:hidden}
+.phnote{flex:1 1 260px;max-width:420px;font-size:14px;line-height:1.5}
+.phnote h3{margin:0 0 6px;font:700 15px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.phnote p{margin:0 0 10px}
+.states{margin-top:12px;max-width:1280px;border-radius:8px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:flex-start;background:var(--surface);border:1px solid var(--line)}
+.states figure{margin:0;display:grid;gap:6px;justify-items:start;max-width:170px}
+.states figcaption{font:700 11px/1.25 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.states .demo{display:flex;align-items:center;gap:10px;min-height:44px}
+.states .demo .hn{font-size:17px}
+.seg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{min-height:44px;padding:0 16px;border:0;background:transparent;font:700 14.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+
+/* ===== Från styles/app.css ===== */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.n,.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+button{font:inherit;cursor:pointer}
+.help{font-size:13px;color:var(--ink-2);line-height:1.4}
+.logo{display:inline-grid;place-items:center;width:40px;color:var(--head-ink)}
+.logo svg{width:26px;height:26px}
+.ah-brand{font:800 22px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:60px;display:flex;align-items:center;gap:16px;padding:0 20px}
+.dhead .ah-brand{font-size:27px}
+.dnav{display:flex;gap:2px;margin-left:20px;flex:1}
+.dnav a{position:relative;min-height:44px;display:inline-flex;align-items:center;padding:0 14px;text-decoration:none;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);border-radius:6px}
+.dnav a[aria-current="page"]{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2);text-align:right;line-height:1.35}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);font-variant-numeric:tabular-nums;text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none;vertical-align:middle}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr.sm{width:24px;height:28px;font-size:14px}
+.nr.lg{width:46px;height:56px;font-size:28px}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.i{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.bdg.b{background:var(--bet);color:var(--bet-ink)}
+.form{display:flex;gap:1px;justify-self:center}
+.form i{display:grid;place-items:center;width:9.6px;height:18px;font:700 11px/1 var(--f-num);font-style:normal;background:var(--surface-3);color:var(--ink);border-radius:2px}
+.form i.w{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.form i.w2{background:var(--sig-fill-2);color:var(--sig-fill-2-ink)}
+.form i.gx{background:var(--gal);color:var(--gal-ink)}
+.tag{display:inline-flex;align-items:center;min-height:22px;padding:1px 7px;border-radius:4px;font:700 11.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none}
+.tag.good{background:var(--up-soft);color:var(--up)}
+.lamp,.betk{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:transparent;padding:0;border-radius:8px;flex:none;color:inherit}
+.lamp-i{display:inline-grid;place-items:center;position:relative;width:28px;height:28px;border-radius:6px;background:var(--key-off);box-shadow:var(--key-off-shadow)}
+.lamp-i::before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--key-dot);box-shadow:inset 0 1px 1px rgba(0,0,0,.4)}
+.lamp-i svg{width:18px;height:18px;opacity:0;color:var(--fill-ink)}
+.lamp[aria-pressed="true"] .lamp-i{background:var(--key-on);box-shadow:0 0 0 1px var(--key-on-ring),0 0 16px var(--glow),0 1px 0 var(--key-on-edge)}
+.lamp[aria-pressed="true"] .lamp-i::before{opacity:0}
+.lamp[aria-pressed="true"] .lamp-i svg{opacity:1}
+.betk .lamp-i::before{display:none}
+.betk .lamp-i svg{opacity:.55;color:var(--ink-2)}
+.betk[aria-pressed="true"] .lamp-i{background:var(--bet);box-shadow:0 0 0 1px var(--bet),0 1px 0 rgba(0,0,0,.6)}
+.betk[aria-pressed="true"] .lamp-i svg{opacity:1;color:var(--bet-ink)}
+.lamp.lab{width:auto;min-height:44px;padding:0 14px 0 8px;gap:8px;display:inline-flex;align-items:center;border:1.5px solid var(--line-strong);background:var(--surface);font:700 15px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink)}
+.phase{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.phase li{position:relative;border-radius:4px;text-align:center;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--phase-ink);box-shadow:0 1px 0 rgba(0,0,0,.9)}
+.phase li>span{display:block;padding:7px 4px 6px;min-height:44px}
+.phase b{display:block;font:700 13.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.phase small{display:block;font:500 9.5px/1.2 var(--f-label);letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.phase li[aria-current="step"]{background:var(--flap-on);color:var(--flap-on-ink)}
+.avd{display:flex;gap:3px;padding:2px 8px 8px}
+.avd-t{flex:1;min-width:0;min-height:44px;position:relative;border:0;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--flap-ink);font:700 17px/1 var(--f-num);box-shadow:0 1px 0 rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07);display:grid;place-items:center;padding-bottom:8px}
+.avd-t::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.75)}
+.avd-t small{position:absolute;left:0;right:0;bottom:3px;font:700 10px/1 var(--f-body);color:var(--tick)}
+.avd-t[aria-selected="true"]{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:0 0 16px var(--flap-glow),0 1px 0 #000}
+.avd-t[aria-selected="true"] small{color:var(--flap-on-ink)}
+.strip{padding:0 10px 8px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--head-line)}
+.chips{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:1px 8px;border-radius:5px;font:700 12.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;flex:0 0 auto;border:1px solid transparent}
+.brd .chip{background:rgba(255,255,255,.04);color:var(--head-text);border-color:var(--board-chip-line)}
+.brd .chip-volte{color:var(--board-volte);border-color:var(--board-volte-line)}
+.brd .chip-k{background:var(--head-ink);color:var(--fill-ink);border-color:var(--head-ink)}
+.chip-btn{min-height:28px;margin-left:auto;flex:none}
+.brd .chip-btn{color:var(--head-ink);border-color:rgba(255,178,46,.5);background:transparent}
+.statline{font:500 12.5px/1.3 var(--f-body);color:var(--head-ink-2);display:flex;gap:4px 10px;flex-wrap:wrap;align-items:center}
+.statline b{color:var(--head-ink);font-family:var(--f-num);font-weight:700}
+.cols,.row{display:grid;column-gap:6px;align-items:center}
+.cols{height:24px;background:var(--surface-3);font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.cols .r{text-align:right}.cols .c{text-align:center}
+.list{list-style:none;margin:0;padding:0}
+.row{height:44px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}
+.list>.row:nth-child(even){background:var(--surface-2)}
+.g-an{grid-template-columns:32px minmax(0,1fr) 52px 38px 44px;padding:0 2px 0 8px}
+.row.is-i::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:3px;border-radius:0 3px 3px 0;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.row.is-i .hn,.tbl tr.is-i .hn{color:var(--accent)}
+.who{min-width:0;height:44px;display:flex;flex-direction:column;justify-content:center;color:inherit;text-decoration:none;position:relative}
+.hl{display:flex;align-items:center;gap:4px;min-width:0}
+.hn{font:700 17px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.kt{font-size:12px;line-height:1.25;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kt.km{display:flex;gap:5px;min-width:0}
+.kt.km .k1{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.kt.km .k2{flex:none;font:600 12px/1.25 var(--f-num);color:var(--ink)}
+.rk{font:700 13.5px/1 var(--f-num);text-align:right;color:var(--ink);white-space:nowrap}
+.sig{color:var(--sig);font-weight:700}
+.few{color:var(--ink-2);opacity:.75}
+.hk{padding:0 0 16px}
+.hk-hero{padding:14px 12px 12px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center}
+.hk-name{font:700 28px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);margin:0}
+.hk-hero p{margin:4px 0 0;font-size:13px;color:var(--head-ink-2)}
+.acts-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px 0}
+.hk-sec{padding:12px 12px 4px}
+.hk-sec>h3{margin:0 0 8px;font:700 13px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);display:flex;justify-content:space-between}
+.qlink{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:44px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-decoration:none;color:var(--ink);font:700 14px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);height:64px;padding-bottom:10px;background:var(--surface);border-top:1px solid var(--line)}
+.tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);position:relative;text-decoration:none}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 4px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:none;color:var(--head-ink-2)}
+.ibtn svg{width:22px;height:22px}
+
+/* Desktop-skalet */
+.ws{display:grid;grid-template-columns:240px minmax(0,1fr) 380px;height:740px}
+.dside{padding:14px 12px;border-right:1px solid var(--line);background:var(--surface-2);overflow:hidden}
+.rail-side{border-radius:8px;padding:8px}
+.vlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.vt{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:inherit;min-height:44px;text-decoration:none}
+.vt[aria-current="page"]{background:var(--head);color:var(--head-ink);border-color:var(--head);box-shadow:inset 4px 0 0 var(--fill)}
+.vt[aria-current="page"] .bdg.i{color:var(--head-ink);box-shadow:inset 0 0 0 1.5px var(--head-ink)}
+.vt .an{font:700 16px/1 var(--f-num)}
+.vt .aname{font:600 14px/1.2 var(--f-body);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vt .cnt{display:flex;gap:4px;align-items:center;font:700 12px/1 var(--f-num)}
+.vt .cnt>span{display:inline-flex;align-items:center;gap:3px}
+.qside{display:grid;gap:6px;margin-top:12px}
+.dmain{min-width:0;overflow:hidden;position:relative}
+.daside{border-left:1px solid var(--line);background:var(--bg);overflow:hidden;min-width:0}
+.drace{height:138px;padding:10px 20px;display:grid;grid-template-columns:minmax(0,1fr) 300px;column-gap:16px;align-items:center;overflow:hidden}
+.drace .k{margin:0;font:700 12.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink)}
+.drace h1{margin:6px 0 10px;font:700 26px/1.05 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drace .chips{flex-wrap:wrap;overflow:visible}
+.drace .chip-btn{margin-left:0}
+.s22{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px;height:116px}
+.s22 > div{background:rgba(255,255,255,.05);border:1px solid var(--head-line);border-radius:6px;padding:3px 9px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:6px;align-content:center;align-items:baseline}
+.s22 small{grid-column:1/-1;font:700 10.5px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap}
+.s22 b{font:700 17px/1.15 var(--f-num);color:var(--head-ink);white-space:nowrap}
+.s22 span{font-size:12px;color:var(--head-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s22 em{grid-column:1/-1;font:500 11.5px/1.25 var(--f-body);font-style:normal;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--surface)}
+.tbl th{font:700 11.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:0 4px;height:42px;white-space:nowrap;overflow:hidden;border-bottom:1.5px solid var(--line-strong);background:var(--surface-3)}
+.tbl th .thsub{display:block;font-size:9.5px;letter-spacing:.04em;opacity:.85}
+.tbl td{padding:0 4px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;overflow:hidden;font-size:14.5px}
+.tbl td:first-child,.tbl th:first-child{padding-left:10px}
+.tbl tbody tr{height:44px}
+.tbl tbody tr:nth-child(even) td{background:var(--surface-2)}
+.tbl .r{text-align:right}.tbl .c{text-align:center}
+.tbl .form{justify-content:center}
+.tbl .form i{width:10.5px;height:20px;font-size:12px}
+.tbl tr.is-i td:first-child{box-shadow:inset 4px 0 0 var(--fill)}
+.tbl tr.sel td{background:var(--accent-soft)!important}
+.tbl .lamp{height:36px}
+.tbl .hl{gap:6px}
+.tbl .hn{font-size:18px}
+.tbl .kus{font-size:13.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbl .kt{font-size:12.5px}
+.tbl .n{font-weight:500}
+.tbl .u{font:500 11px var(--f-body);color:var(--ink-2);margin-left:2px}
+.mn{display:block;line-height:1.15}
+.mn2{display:block;font:500 11.5px/1.2 var(--f-num);color:var(--ink-2)}
+.vb .tbl td:first-child,.vb .tbl th:first-child{padding-left:8px;padding-right:2px}
+
+/* Spelförslag (S6a) */
+.sphead{height:64px;padding:0 20px;display:flex;flex-direction:column;justify-content:center}
+.sphead .k{margin:0;font:700 12.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink)}
+.sphead h1{margin:4px 0 0;font:700 24px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title)}
+.dcols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);height:476px;overflow:hidden}
+.dcols > section+section{border-left:1px solid var(--line)}
+.dsec-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 20px 6px}
+.dsec-h h2{margin:0;font:700 22px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.spel-help{margin:0 20px 4px}
+.pwrap{padding:0 20px}
+.ptbl caption{caption-side:top;text-align:left;padding:10px 0 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.ptbl caption span+span{margin-left:12px}
+.ptbl th{height:30px}
+.ptbl tbody tr{height:auto}
+.ptbl td{padding:7px 4px;white-space:normal}
+.ptbl .kt{display:block}
+.oin{width:76px;height:42px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--bg);color:var(--ink);font:700 17px/1 var(--f-num);text-align:center;padding:0 4px}
+.diff{font:700 13px var(--f-num);white-space:nowrap}
+.diff.up{color:var(--up)}.diff.dn{color:var(--down)}
+.val{font:700 12px var(--f-num)}
+.val.up{color:var(--sig)}.val.dn{color:var(--ink-2)}
+.sigs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center}
+.sigs .tag{font-size:11px;min-height:20px}
+.placeholder{margin:4px 20px;border:1.5px dashed var(--line-strong);border-radius:8px;padding:14px;font-size:13px;color:var(--ink-2)}
+.segw{padding:8px 10px;display:flex}
+.segw .seg{width:100%}
+.segw .seg button{flex:1;padding:0 6px;font-size:13.5px}
+.sl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.plist{list-style:none;margin:0;padding:0}
+.brow{display:grid;grid-template-columns:26px minmax(0,1fr) 68px 44px;column-gap:6px;align-items:center;padding:6px 6px 6px 10px;min-height:60px;border-bottom:1px solid var(--line);background:var(--surface)}
+.plist>.brow:nth-child(even){background:var(--surface-2)}
+.pmain{min-width:0;display:flex;flex-direction:column;gap:2px}
+.brow .pm{font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .pm b{font-family:var(--f-num);color:var(--ink)}
+.brow .oin{width:68px;font-size:16px}
+
+/* ===== NYTT: signaler ===== */
+/* Märket "Lågt streck" (Badge wide, grön fyllning) */
+.bdg.ls{background:var(--sig-fill);color:var(--sig-fill-ink);padding:0 5px;text-transform:uppercase;letter-spacing:.05em}
+.kt .bdg.ls{display:inline-grid;vertical-align:1px;margin-right:5px;height:16px}
+
+/* A: SignalCount, bricka i fällbladsrutans hörn */
+.sc{position:absolute;z-index:2;right:-6px;bottom:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;display:grid;place-items:center;font:700 11px/1 var(--f-num);text-shadow:none;background:var(--surface);color:var(--sig);box-shadow:inset 0 0 0 1.5px var(--sig),0 0 0 2px var(--surface)}
+.sc.hi{background:var(--sig-fill);color:var(--sig-fill-ink);box-shadow:0 0 0 2px var(--surface)}
+.sc.na{color:var(--ink-2);box-shadow:inset 0 0 0 1.5px var(--line-strong),0 0 0 2px var(--surface)}
+.nr.sm .sc{min-width:16px;height:16px;font-size:10px;right:-7px;bottom:-5px;padding:0 3px}
+.sc-lg{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;font:700 20px/1 var(--f-num);background:var(--surface);color:var(--sig);box-shadow:inset 0 0 0 2px var(--sig);flex:none}
+.sc-lg.hi{background:var(--sig-fill);color:var(--sig-fill-ink);box-shadow:none}
+
+/* B: SignalBar, 10 segment */
+.bar{display:inline-flex;gap:1px;width:36px;height:6px;flex:none}
+.bar i{flex:1;background:var(--led-off);border-radius:1px}
+.bar i:nth-child(6){margin-left:2px}
+.bar i.on{background:var(--sig)}
+.sb{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px;vertical-align:middle}
+.sb b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 3px;border-radius:3px;font:700 13.5px/1 var(--f-num);color:var(--ink)}
+.sb.hi b{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.sb.na b{color:var(--ink-2)}
+.sbi{display:inline-flex;align-items:center;gap:5px;margin-right:2px;font:500 11.5px/1 var(--f-num);color:var(--ink-2)}
+.sbi b{font:700 12.5px/1 var(--f-num);color:var(--ink)}
+.sbi.hi b{display:inline-grid;place-items:center;min-width:17px;height:17px;border-radius:3px;background:var(--sig-fill);color:var(--sig-fill-ink)}
+.bar.lg{width:170px;height:12px;gap:2px}
+.bar.lg i:nth-child(6){margin-left:5px}
+.ubar{position:absolute;left:0;right:6px;bottom:2px;height:3px;display:flex;gap:2px}
+.ubar i{flex:1;background:var(--led-off);border-radius:1px}
+.ubar i:nth-child(6){margin-left:4px}
+.ubar i.on{background:var(--sig)}
+.ubar.hi{height:4px;bottom:1px}
+
+/* Popover vid hover/fokus (desktop) */
+.pop{position:absolute;z-index:6;width:280px;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;box-shadow:var(--shadow),0 6px 18px rgba(0,0,0,.25);padding:8px 10px 8px;font-size:12.5px;line-height:1.3;pointer-events:none}
+.pop h4{margin:0 0 5px;font:700 12px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.pop h4 b{color:var(--ink)}
+.pop ul{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.pop li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:6px}
+.pop li b{font:700 11.5px/1.3 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--sig)}
+.pop .pf{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);color:var(--ink-2)}
+.pop .pf strong{color:var(--sig)}
+
+/* Hästkortets signalsektion */
+.sg-sum{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.sg-sum p{margin:0;font-size:13px;line-height:1.35;color:var(--ink-2)}
+.sg-sum p b{display:block;font:700 16px/1.2 var(--f-body);color:var(--ink)}
+.sg-sum .bcol{display:grid;gap:6px}
+.ls-box{border-left:4px solid var(--sig-fill);background:var(--up-soft);border-radius:6px;padding:7px 10px;font-size:12.5px;line-height:1.4;margin:0 0 8px}
+.ls-box strong{display:block;font:700 12px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--sig);margin-bottom:2px}
+.sgl{list-style:none;margin:0;padding:0}
+.sgl li{display:grid;grid-template-columns:20px 64px minmax(0,1fr);gap:6px;align-items:center;min-height:27px;padding:2px 0;font-size:12.5px;line-height:1.25;border-bottom:1px solid var(--line)}
+.sgl .ic{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font:700 12px/1 var(--f-body)}
+.sgl .ic svg{width:12px;height:12px}
+.sgl li.on .ic{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.sgl li.off .ic{box-shadow:inset 0 0 0 1.5px var(--line-strong);color:var(--ink-2)}
+.sgl .lb{font:700 12.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.sgl li.on .lb{color:var(--sig)}
+.sgl li.on .vl{color:var(--ink)}
+.sgl li.off{color:var(--ink-2)}
+.sg-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--ink-2)}
+.sg-foot a{color:var(--accent);font-weight:600;min-height:32px;display:inline-flex;align-items:center;text-decoration:none}
+.xph{border:1.5px dashed var(--line-strong);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--ink-2)}
+</style>
+
+<div class="mk">
+  <div class="mk-top">
+    <h1 class="mt">Signaler · antal, vilka och "lågt streck"</h1>
+    <div class="seg" role="group" aria-label="Tema">
+      <button type="button" data-t="light" aria-pressed="false">Ljust</button>
+      <button type="button" data-t="dark" aria-pressed="true">Mörkt</button>
+    </div>
+  </div>
+  <p class="lead">V85 Jägersro, avd 4, 15 hästar. Varje häst får ett antal av de 10 signalerna med fasta gränser (spår, tid, kusk, tränare, barfota, plats, vinst, form, pengar och felfri). Fem eller fler visas som <b>många</b>. Hästar med minst 4 signaler som inte är bland loppets 3 mest streckade får märket <b>Lågt streck</b>, här Special Ale (4 signaler, 6:e mest streckad). Antalet är ett förklarande stöd till riktoddset och ingen egen spelregel. Special Ale är vald, så hästkortet syns till höger. Håll muspekaren över en siffra i startlistan för att se vilka signaler hästen har.</p>
+
+  <!-- ================= A ================= -->
+  <h2 class="alt"><span>A</span>Siffra i en bricka på startnumret</h2>
+  <p class="alt-sub">En liten rund bricka i nederkant till höger på fällbladsrutan visar antalet. <b>1–4</b>: grön ring och grön siffra. <b>5 eller fler</b>: fylld grön bricka. <b>0</b>: ingen bricka. Inga kolumner ändras, och samma bricka används i startlistan, i mobilen och i Spelförslag. Märket "Lågt streck" står först på hästens andra rad på desktop och efter namnet i mobilen.</p>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/avd/4</span></div>
+    <div class="vp va js-desk" data-v="a"></div>
+  </div></div>
+  <div class="states js-states" data-v="a"></div>
+
+  <h3 class="part">Mobil 390 px: startlistan och Spelförslag</h3>
+  <div class="phwrap">
+    <div class="ph"><div class="ph-in js-phone" data-v="a"></div></div>
+    <div class="ph"><div class="ph-in js-mspel" data-v="a"></div></div>
+    <div class="phnote">
+      <h3>Mobil, alternativ A</h3>
+      <p>Raden är fortfarande 44 px och kolumnerna desamma (nr 32 · namn och kusk · form 52 · rikt 38 · lampa 44). Brickan sticker ut 6 px till höger om rutan, in i mellanrummet före namnet.</p>
+      <p>"Lågt streck" ligger efter namnet med de andra märkena och krymper aldrig. Ett långt namn kortas med "…" först.</p>
+      <p>Tryck på raden för att öppna hästkortet med alla 10 signalerna. Det finns ingen hover i mobilen.</p>
+      <p>Spelförslag: brickan sitter på den mindre rutan (24 × 28). Taggarna får korta namn ("Form 4/5" i stället för "4 av 5 senaste etta/tvåa"), så de ryms på en eller två rader.</p>
+    </div>
+  </div>
+
+  <h3 class="part">Spelförslag på desktop (beskuren till 600 px höjd)</h3>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/spel</span><span class="crop">1280 × 600, beskuren</span></div>
+    <div class="vp short js-spel" data-v="a"></div>
+  </div></div>
+
+  <div class="note">
+    <div><h3>Mått i 1280 × 800</h3><ul>
+      <li>Rad: <span class="m">44 px</span> (som i dag), tabellrubrik <span class="m">42 px</span>, tavla <span class="m">138 px</span></li>
+      <li>Tabellbredd: <span class="m">660 px</span>, oförändrad. Nr 46 · Häst 142 · Kusk/tränare 116 · Form 64 · Vinst 44 · Plats 44 · Intjänat 66 · Spår v. 42 · Rikt 46 · Intr. 50</li>
+      <li>Synliga hästar: <span class="m">12</span> hela + 32 px av nr 13 (60 + 138 + 42 + 12 × 44 = 768)</li>
+      <li>Mobil: <span class="m">44 px</span> rader, inga nya kolumner, 13 hela rader som i dag</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>Ingen bredd behöver tas från något. Brickan ligger i Nr-kolumnens lediga utrymme.</li>
+      <li>Samma komponent i startlistan, mobilen, Spelförslag och hästkortet. Lätt att lära sig.</li>
+      <li>Siffran går att läsa direkt, och fylld bricka gör att 5+ syns när man skummar listan.</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Ingen egen kolumnrubrik, så det går inte att sortera på antal genom att klicka i huvudet.</li>
+      <li>Brickan överlappar fällbladsrutans hörn och tar lite av tavelkänslan.</li>
+      <li>Siffran säger hur många, inte hur nära 10. Skalan syns bara i hästkortet.</li></ul></div>
+  </div>
+
+  <!-- ================= B ================= -->
+  <h2 class="alt"><span>B</span>Stapel med 10 segment i en egen kolumn</h2>
+  <p class="alt-sub">En smal kolumn <b>Sign.</b> står direkt före Rikt, så att den läses som en sammanfattning av kolumnerna till vänster och ett stöd för riktoddset. Cellen har siffran överst och en stapel med 10 segment under (5 + 5 med ett mellanrum). <b>5 eller fler</b>: siffran står i en fylld grön ruta. Kolumnen går att sortera. I mobilen finns ingen plats för en kolumn, så stapeln blir en tunn list längs radens nederkant under namnet.</p>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/avd/4</span></div>
+    <div class="vp vb js-desk" data-v="b"></div>
+  </div></div>
+  <div class="states js-states" data-v="b"></div>
+
+  <h3 class="part">Mobil 390 px: startlistan och Spelförslag</h3>
+  <div class="phwrap">
+    <div class="ph"><div class="ph-in js-phone" data-v="b"></div></div>
+    <div class="ph"><div class="ph-in js-mspel" data-v="b"></div></div>
+    <div class="phnote">
+      <h3>Mobil, alternativ B</h3>
+      <p>Raden är fortfarande 44 px. Stapeln är 3 px hög och ligger längs nederkanten av namn- och kuskfältet (cirka 18 px per segment). Med 5 eller fler blir den 4 px.</p>
+      <p>Det finns ingen siffra i raden. Antalet läses av stapelns längd och mitthacket vid 5, och det exakta antalet står i hästkortet.</p>
+      <p>Spelförslag har mer plats, så där står en liten stapel och "7/10" först på taggraden.</p>
+    </div>
+  </div>
+
+  <h3 class="part">Spelförslag på desktop (beskuren till 600 px höjd)</h3>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/spel</span><span class="crop">1280 × 600, beskuren</span></div>
+    <div class="vp short vb js-spel" data-v="b"></div>
+  </div></div>
+
+  <div class="note">
+    <div><h3>Mått i 1280 × 800</h3><ul>
+      <li>Rad: <span class="m">44 px</span> (som i dag), tabellrubrik <span class="m">42 px</span>, tavla <span class="m">138 px</span></li>
+      <li>Tabellbredd: <span class="m">660 px</span>, oförändrad. Nr 40 · Häst 126 · Kusk/tränare 104 · Form 58 · Vinst 44 · Plats 44 · Intjänat 66 · Spår v. 42 · <b>Sign. 46</b> · Rikt 46 · Intr. 44</li>
+      <li>De 46 px tas från Kusk/tränare (−12, kuskar kortades redan), Häst (−16), Form (−6, remsan är 52), Intr. (−6, lampan är 44) och Nr (−6, rutan är 30)</li>
+      <li>Synliga hästar: <span class="m">12</span> hela + 32 px av nr 13 (60 + 138 + 42 + 12 × 44 = 768)</li>
+      <li>Mobil: <span class="m">44 px</span> rader, 13 hela rader</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>En egen kolumn med rubrik som går att sortera, så hästarna med flest signaler hamnar överst med ett klick.</li>
+      <li>Stapeln visar skalan (4 av 10) och ger en tydlig bild när man skummar listan.</li>
+      <li>Placeringen bredvid Rikt visar att antalet hänger ihop med riktoddset.</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Häst och Kusk/tränare blir smalare. Fler namn kortas, till exempel "Geiles Leben Ho…" och "Rikard N Skog…".</li>
+      <li>Mobilen ser annorlunda ut än desktop och visar ingen siffra. Att en häst har 5+ syns sämre där.</li>
+      <li>Ett nytt element: segmenten är små (cirka 3 px breda) på desktop.</li></ul></div>
+  </div>
+
+  <div class="rec">
+    <h2>Rekommendation</h2>
+    <p><b>A, med B:s stapel i hästkortet.</b> Brickan på startnumret kostar ingen bredd, ser likadan ut på desktop, i mobilen och i Spelförslag, och siffran går att läsa direkt. B:s egen kolumn ger sortering, men det kostar 16 px i hästnamnet och 12 px för kusken, och i mobilen blir det en annan och svagare form. I hästkortet passar B:s stora stapel ("4 av 10") bra som skala ovanför listan. Om du vill kunna sortera på antal i A kan Nr-rubriken bli en sorteringsknapp ("Nr" eller "Signaler").</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  root.setAttribute('data-theme','dark');
+  document.querySelectorAll('.mk-top .seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      root.setAttribute('data-theme',b.dataset.t);
+      document.querySelectorAll('.mk-top .seg button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+    });
+  });
+
+  var NB=' ';
+  var wheel='<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.6"/><g stroke="currentColor" stroke-width="1.5"><path d="M16 16L16 4M16 16L24.5 7.5M16 16L28 16M16 16L24.5 24.5M16 16L16 28M16 16L7.5 24.5M16 16L4 16M16 16L7.5 7.5"/></g><circle cx="16" cy="16" r="3.4" fill="currentColor"/></svg>';
+  var check='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var ticket='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 16.5V14a2 2 0 0 0 0-4z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 6v12" stroke="currentColor" stroke-width="2" stroke-dasharray="2 2"/></svg>';
+
+  // nr, namn, beskrivning, kusk, tränare, form, starter i år, i fjol, segrar, platser, tkr i år, tkr i fjol, spår v., rikt, intressant, spelbar
+  var H=[
+    [1,'Mister Navajo','3 år hingst · 1.16,0M','Victor Rosleff','Alessandro Gocciadoro','21132',6,2,3,5,386,62,15,'3,36'],
+    [2,'Crew Lane','3 år hingst · 1.16,4M','Johan Untersteiner','Johan Untersteiner','11213',7,3,6,9,612,145,11,'2,10',1,1],
+    [3,'Ulix Turner','3 år hingst · 1.17,1M','Ole Johan Östre','Robert Bergh','32120',6,3,2,6,298,40,12,'3,81',1],
+    [4,'Fools Game','3 år sto · 1.13,3aM','Stefan Persson','Lutfi Kolgjini','40g51',8,3,2,4,214,88,9,'5,18'],
+    [5,'Prince of Euro','3 år hingst · 1.18,0K','Per Nordström','Per Nordström','05342',7,0,1,3,126,0,9,'5,79'],
+    [6,'Fade My Way','3 år sto · 1.15,7M','Dante Kolgjini','Lutfi Kolgjini','21604',6,2,2,4,241,56,12,'5,24'],
+    [7,'Cay','3 år hingst · 1.14,1M','Tyler Mifsud','Joakim Lövgren','12211',4,2,3,5,455,30,10,'3,90'],
+    [8,'Indian','3 år hingst · 1.14,5M','Conrad Lugauer','Conrad Lugauer','31403',8,4,2,6,188,97,8,'4,48'],
+    [9,'Iamthesun','4 år valack · 1.13,2K','Ken Ecce','Ken Ecce','06750',8,6,1,3,64,81,7,'12,37'],
+    [10,'Frank Silvio','4 år hingst · 1.14,5L','Thomas Uhrberg','Thomas Uhrberg','57g06',6,4,0,2,52,48,7,'12,81'],
+    [11,'Special Ale','4 år hingst · 1.13,0M','Rikard N Skoglund','Daniel Redén','23125',7,6,3,8,524,310,7,'6,52',0,1],
+    [12,'Chat Room','4 år valack · 1.10,5aK','Magnus A Djuse','Daniel Redén','14312',8,7,4,10,612,268,6,'5,03'],
+    [13,'Barkley','4 år hingst · 1.18,4M','Carl Johan Jepson','Robert Bergh','2231',4,0,1,4,168,0,6,'4,35'],
+    [14,'Geiles Leben Home','4 år sto · 1.14,9M','Örjan Kihlström','Stefan Melander','60754',6,6,0,1,92,124,6,'9,60'],
+    [15,'Global Futurity','4 år hingst · 1.12,9aM','Erik Adielsson','Stefan Melander','1g032',6,5,3,5,488,356,6,'7,25']
+  ];
+  // Fältets underlag för signalerna (påhittat)
+  var PP=[37.8,23.0,27.1,21.4,19.6,22.3,20.1,18.7,17.9,17.0,17.4,16.8,15.9,15.2,14.6], PPM=21.7; // plats % per startnummer
+  var KV=[13,21,12,10,8,11,15,9,7,10,9,24,8,20,16];   // kuskens vinst % i år
+  var TV=[22,24,17,12,8,13,15,10,6,9,26,26,17,14,14]; // tränarens vinst % i år
+  var BF={8:'Barfota runt om',12:'Barfota runt om',15:'Barfota runt om',4:'Barfota bak',9:'Barfota bak',6:'Barfota fram'};
+  var TID={11:'1,4',12:'2,1'};
+  var STR=[9.1,28.2,7.6,3.2,1.6,2.8,14.2,4.1,0.5,0.4,5.8,17.9,1.2,0.9,2.5]; // V85-streck %
+  var SK=[['spar','Spår'],['tid','Tid'],['kusk','Kusk'],['tran','Tränare'],['barf','Barfota'],['plats','Plats'],['vinst','Vinst'],['form','Form'],['peng','Pengar'],['felf','Felfri']];
+
+  function f1(n){return n.toFixed(1).replace('.',',')}
+  function ord(n){return n+(n<3?':a':':e')}
+  function rank(arr,i){var r=1;arr.forEach(function(v){if(v>arr[i])r++});return r}
+  var PER=H.map(function(h){return (h[10]+h[11])/(h[6]+h[7])});
+
+  var S=H.map(function(h,i){
+    var nr=h[0],st=h[6]+h[7],on={},val={},tag={};
+    var rek=h[2].split('· ')[1];
+    on.spar=PP[i]>=PPM*1.15; val.spar='Startspår '+nr+': plats '+f1(PP[i])+' % · medel '+f1(PPM)+' %'; tag.spar='Spår';
+    on.tid=!!TID[nr]; val.tid=on.tid?'Rekord '+rek+', '+TID[nr]+' s bättre än fältet':'Rekord '+rek+', inom det normala'; tag.tid='Tid';
+    var kr=rank(KV,i); on.kusk=kr<=3; val.kusk=h[3]+' '+KV[i]+' % · '+ord(kr)+' i fältet'; tag.kusk='Kusk';
+    var tr=rank(TV,i); on.tran=tr<=3; val.tran=h[4]+' '+TV[i]+' % · '+ord(tr)+' i fältet'; tag.tran='Tränare';
+    val.barf=BF[nr]||'Skor runt om'; on.barf=val.barf==='Barfota runt om'; tag.barf='Barfota';
+    var pp=Math.round(h[9]/st*100), wp=Math.round(h[8]/st*100);
+    on.plats=st>=5&&pp>=75; val.plats=pp+' % ('+st+' starter'+(st<5?', för få)':')')+(!on.plats&&st>=5?' · gräns 75 %':''); tag.plats='Plats '+pp+' %';
+    on.vinst=st>=5&&wp>=50; val.vinst=wp+' % ('+st+' starter'+(st<5?', för få)':')')+(!on.vinst&&st>=5?' · gräns 50 %':''); tag.vinst='Vinst '+wp+' %';
+    var f=h[5].split(''),c=f.filter(function(x){return x==='1'||x==='2'}).length,g=f.filter(function(x){return x==='g'}).length;
+    on.form=c>=2; val.form=c+' ettor/tvåor bland '+f.length+' senaste'+(on.form?'':' · gräns 2'); tag.form='Form '+c+'/'+f.length;
+    var pr=rank(PER,i); on.peng=pr<=3; val.peng=Math.round(PER[i])+' tkr per start · '+ord(pr)+' i fältet'; tag.peng='Pengar';
+    on.felf=g===0; val.felf=g?'Galopp i '+g+' av '+f.length+' senaste':'Ingen galopp bland '+f.length+' senaste'; tag.felf='Felfri';
+    var n=SK.filter(function(k){return on[k[0]]}).length, sr=rank(STR,i);
+    return {on:on,val:val,tag:tag,n:n,hi:n>=5,str:STR[i],sr:sr,low:n>=4&&sr>3};
+  });
+
+  // ---- Komponenter ----
+  var LS='<span class="bdg ls" role="img" aria-label="Många signaler, lågt streck">Lågt streck</span>';
+  function srTxt(s){return '<span class="sr">, '+s.n+' av 10 signaler'+(s.hi?', många':'')+'</span>'}
+  function scA(i,s){return s.n?'<span class="sc'+(s.hi?' hi':'')+'" data-h="'+i+'" aria-hidden="true">'+s.n+'</span>':''}
+  function bar(n,cls){var o='<span class="'+(cls||'bar')+(n>=5&&cls==='ubar'?' hi':'')+'" aria-hidden="true">';for(var k=0;k<10;k++)o+='<i'+(k<n?' class="on"':'')+'></i>';return o+'</span>'}
+  function sbB(i,s){return '<span class="sb'+(s.hi?' hi':'')+'" data-h="'+i+'"><b aria-hidden="true">'+s.n+'</b>'+bar(s.n)+'<span class="sr">'+s.n+' av 10 signaler'+(s.hi?', många':'')+'</span></span>'}
+  function form(f){
+    var o='',w=[];
+    for(var k=0;k<5;k++){var c=f[k];
+      if(!c){o+='<i></i>';continue}
+      w.push(c==='g'?'galopp':c==='0'?'oplacerad':c);
+      o+='<i class="'+(c==='1'?'w':c==='2'?'w2':c==='g'?'gx':'')+'">'+c+'</i>';}
+    return '<span class="form" role="img" aria-label="Form, senaste först: '+w.join(', ')+'">'+o+'</span>';
+  }
+  function pc(w,st,thr){
+    var v=Math.round(w/st*100),t='<span class="n">'+v+NB+'%</span>';
+    if(st<5) return '<span class="few">'+t+'<span class="sr"> (färre än 5 starter)</span></span>';
+    if(v>=thr) return '<span class="sig">'+t+'<span class="sr"> (stark)</span></span>';
+    return t;
+  }
+  function lamp(n,on){return '<button type="button" class="lamp" aria-pressed="'+(on?'true':'false')+'" aria-label="Intressant: '+n+'"><span class="lamp-i">'+check+'</span></button>'}
+  function betk(n,on){return '<button type="button" class="betk" aria-pressed="'+(on?'true':'false')+'" aria-label="Bet: '+n+'"><span class="lamp-i">'+ticket+'</span></button>'}
+
+  // ---- Desktop: startlistan ----
+  var SEL=10; // Special Ale
+  function drow(i,v){
+    var h=H[i],s=S[i],st=h[6]+h[7],sum=h[10]+h[11];
+    var cls=(h[14]?'is-i ':'')+(i===SEL?'sel':'');
+    var nr='<span class="nr"><b>'+h[0]+'</b>'+(v==='a'?scA(i,s):'')+'</span>';
+    var name='<div class="hl"><span class="hn">'+h[1]+'</span>'+(h[15]?'<span class="bdg s" role="img" aria-label="Spelbar">S</span>':'')+(v==='a'?srTxt(s):'')+'</div>'+
+      '<div class="kt">'+(s.low?LS:'')+h[2]+'</div>';
+    var cells='<td>'+nr+'</td><td>'+name+'</td>'+
+      '<td><div class="kus">'+h[3]+'</div><div class="kt">tr '+h[4]+'</div></td>'+
+      '<td class="c">'+form(h[5])+'</td>'+
+      '<td class="r">'+pc(h[8],st,50)+'</td><td class="r">'+pc(h[9],st,75)+'</td>'+
+      '<td class="r"><span class="mn"><span class="n">'+sum+'</span><span class="u">tkr</span></span><span class="mn2">'+Math.round(PER[i])+NB+'tkr</span></td>'+
+      '<td class="r"><span class="n">'+h[12]+NB+'%</span></td>'+
+      (v==='b'?'<td class="r">'+sbB(i,s)+'</td>':'')+
+      '<td class="r"><span class="rk">'+h[13]+'</span></td>'+
+      '<td class="c">'+lamp(h[1],!!h[14])+'</td>';
+    return '<tr class="'+cls+'"'+(i===SEL?' aria-selected="true"':'')+'>'+cells+'</tr>';
+  }
+  var COLS={a:[46,0,116,64,44,44,66,42,46,50],b:[40,0,104,58,44,44,66,42,46,46,44]};
+  function table(v){
+    var cg=COLS[v].map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('');
+    var th='<th scope="col">Nr</th><th scope="col">Häst</th><th scope="col">Kusk / tränare</th><th scope="col" class="c">Form</th>'+
+      '<th scope="col" class="r">Vinst<span class="thsub">i år+fjol</span></th><th scope="col" class="r">Plats<span class="thsub">i år+fjol</span></th>'+
+      '<th scope="col" class="r">Intjänat<span class="thsub">tot · /start</span></th><th scope="col" class="r">Spår v.</th>'+
+      (v==='b'?'<th scope="col" class="r" aria-sort="none">Sign.<span class="thsub">av 10</span></th>':'')+
+      '<th scope="col" class="r">Rikt</th><th scope="col" class="c">Intr.</th>';
+    return '<table class="tbl"><caption class="sr">Startlista avd 4, 15 hästar</caption><colgroup>'+cg+'</colgroup><thead><tr>'+th+'</tr></thead><tbody>'+
+      H.map(function(h,i){return drow(i,v)}).join('')+'</tbody></table>';
+  }
+
+  var head='<span class="logo">'+wheel+'</span><span class="ah-brand">Spelvärde</span>'+
+    '<nav class="dnav" aria-label="Huvudmeny"><a href="#" aria-current="page">Omgång</a><a href="#">Källor</a><a href="#">Statistik</a></nav>'+
+    '<div class="dmeta">V85 · Jägersro · lör 24 okt 2026<br>Fas: analys</div>';
+  var avd=['Krafft – STL Diamantstoet','RS Mustang – STL Klass I','KWM Stable – STL Klass II','Johan Jacobssons Minne 2026','Björkhaga Plantskola – STL','Stall Ofcourse – STL Klass I','C.L. Müllers Memorial 2026','Välkommen på After Race – STL'];
+  var side='<div class="rail-side brd"><ol class="phase"><li aria-current="step"><span><b>Analys</b><small>sön–tors</small></span></li><li><span><b>Odds</b><small>tors 18:00</small></span></li><li><span><b>Live</b><small>lör 12:00</small></span></li><li><span><b>Klart</b><small>lör</small></span></li></ol></div>'+
+    '<ul class="vlist">'+avd.map(function(a,i){return '<li><a class="vt" href="#"'+(i===3?' aria-current="page"':'')+'><span class="an">'+(i+1)+'</span><span class="aname">'+a+'</span><span class="cnt"><span><span class="bdg i" role="img" aria-label="Intressant">I</span>2</span><span><span class="bdg s" role="img" aria-label="Spelbar">S</span>1</span></span></a></li>'}).join('')+'</ul>'+
+    '<div class="qside"><a class="qlink" href="#">Unibets odds <span aria-hidden="true">›</span></a><a class="qlink" href="#">Spelförslag <span aria-hidden="true">›</span></a></div>';
+  var race='<section class="drace brd" aria-label="Loppet"><div style="min-width:0"><p class="k">Avd 4 · Start 16:06 · 15 hästar · 1:a pris 150 000 kr</p><h1>Johan Jacobssons Minne 2026</h1>'+
+    '<div class="chips"><span class="chip">2140 m</span><span class="chip chip-volte">Volte</span><span class="chip chip-k">Övrigt</span><button type="button" class="chip chip-btn">Loppstatistik ›</button></div></div>'+
+    '<div class="s22" role="list" aria-label="Loppstatistik">'+
+    '<div role="listitem"><small>Bästa spår, vinst</small><b>14,9 %</b><span>spår 1</span><em>Jägersro 16,2 % · spår 6</em></div>'+
+    '<div role="listitem"><small>Bästa spår, plats</small><b>37,8 %</b><span>spår 1</span><em>Jägersro 41,8 % · spår 1</em></div>'+
+    '<div role="listitem"><small>Favorit vinner</small><b>–</b><span>av V85-loppen</span><em></em></div>'+
+    '<div role="listitem"><small>Kuskligan V85</small><b>–</b><span>ingen i ligan</span><em></em></div></div></section>';
+
+  // ---- Hästkortet ----
+  var BT={0:'12 %',2:'22 %',4:'37 %'};
+  function bt(n){return n>=6?'57 %':BT[n]||null}
+  function card(v,i){
+    var h=H[i],s=S[i];
+    var hero='<div class="hk-hero brd"><span class="nr lg"><b>'+h[0]+'</b></span><div><h2 class="hk-name">'+h[1]+'</h2><p>4 år hingst · rekord 1.13,0M · streck '+f1(s.str)+' % ('+ord(s.sr)+')<br>'+h[3]+' · tr '+h[4]+'</p></div></div>'+
+      '<div class="acts-row"><button type="button" class="lamp lab" aria-pressed="false"><span class="lamp-i">'+check+'</span>Intressant</button><span class="tag" style="background:var(--fill);color:var(--fill-ink)">S Spelbar</span>'+(s.low?LS:'')+'</div>'+
+      '<div class="hk-sec"><div class="xph">X-faktor och riktodds ligger här, oförändrade</div></div>';
+    var b=bt(s.n);
+    var sum=v==='a'
+      ? '<div class="sg-sum"><span class="sc-lg'+(s.hi?' hi':'')+'" aria-hidden="true">'+s.n+'</span><p><b>'+s.n+' av 10 signaler</b>'+(b?'Hästar med '+s.n+' signaler kom topp 3 i '+b+' av loppen i backtestet.':'')+'</p></div>'
+      : '<div class="sg-sum"><div class="bcol">'+bar(s.n,'bar lg')+'</div><p><b>'+s.n+' av 10</b></p></div><p class="help" style="margin:-2px 0 8px">'+(b?'Hästar med '+s.n+' signaler kom topp 3 i '+b+' av loppen i backtestet.':'')+'</p>';
+    var box=s.low?'<div class="ls-box"><strong>Många signaler, lågt streck</strong>'+s.n+' signaler, men bara '+ord(s.sr)+' mest streckad ('+f1(s.str)+' %). I backtestet kom sådana hästar topp 3 i 25–26 % av loppen, medan strecket säger 20 %.</div>':'';
+    var list='<ul class="sgl">'+SK.map(function(k){var on=s.on[k[0]];
+      return '<li class="'+(on?'on':'off')+'"><span class="ic" aria-hidden="true">'+(on?check:'–')+'</span><span class="lb">'+k[1]+'</span><span class="vl">'+s.val[k[0]]+'<span class="sr">'+(on?', uppfylld':', inte uppfylld')+'</span></span></li>'}).join('')+'</ul>';
+    var foot='<div class="sg-foot"><span>Ett stöd för riktoddset, ingen spelregel.</span><a href="#">Så räknas de ›</a></div>';
+    return '<article class="hk">'+hero+'<section class="hk-sec" aria-labelledby="sg-'+v+'"><h3 id="sg-'+v+'"><span>Signaler</span></h3>'+sum+box+list+foot+'</section></article>';
+  }
+
+  // ---- Popover ----
+  function popHtml(i){
+    var h=H[i],s=S[i];
+    var li=SK.filter(function(k){return s.on[k[0]]}).map(function(k){return '<li><b>'+k[1]+'</b><span>'+s.val[k[0]]+'</span></li>'}).join('');
+    var pf=s.low?'<strong>Många signaler, lågt streck</strong> · streck '+f1(s.str)+' % ('+ord(s.sr)+')':'Streck '+f1(s.str)+' % ('+ord(s.sr)+')';
+    return '<h4><b>'+h[1]+'</b> · '+s.n+' av 10 signaler</h4><ul>'+li+'</ul><div class="pf">'+pf+'</div>';
+  }
+  function showPop(dm,el){
+    var pop=dm.querySelector('.pop'),i=+el.dataset.h;
+    pop.innerHTML=popHtml(i);pop.hidden=false;
+    var d=dm.getBoundingClientRect(),r=el.getBoundingClientRect(),ph=pop.offsetHeight;
+    var top=r.bottom-d.top+6; if(top+ph>d.height-4) top=r.top-d.top-ph-6;
+    var left=Math.min(r.left-d.left-10,d.width-pop.offsetWidth-8);
+    pop.style.top=top+'px';pop.style.left=Math.max(8,left)+'px';
+  }
+
+  document.querySelectorAll('.js-desk').forEach(function(vp){
+    var v=vp.dataset.v;
+    vp.innerHTML='<header class="dhead brd">'+head+'</header><div class="ws"><nav class="dside" aria-label="Avdelningar">'+side+'</nav>'+
+      '<main class="dmain">'+race+table(v)+'<div class="pop" role="tooltip" hidden></div></main>'+
+      '<aside class="daside" aria-label="Hästkort">'+card(v,SEL)+'</aside></div>';
+    var dm=vp.querySelector('.dmain');
+    showPop(dm,dm.querySelector('[data-h="11"]'));
+    dm.addEventListener('mouseover',function(e){var t=e.target.closest('[data-h]');if(t)showPop(dm,t)});
+  });
+
+  // ---- Lägen ----
+  var STATES=[
+    ['0 signaler',{n:0},'Ingen bricka'],
+    ['1–4 signaler',{n:3},''],
+    ['5 eller fler (många)',{n:6,hi:1},''],
+    ['4+ och inte topp 3 i streck',{n:4,low:1},''],
+    ['Underlag saknas (debut)',{n:-1},'Inga starter att räkna på'],
+    ['Streck saknas än',{n:4,nostr:1},'Inget märke. Rutan: "Streck saknas än"']
+  ];
+  document.querySelectorAll('.js-states').forEach(function(el){
+    var v=el.dataset.v;
+    el.innerHTML=STATES.map(function(x){
+      var s=x[1],n=s.n,c;
+      if(v==='a') c='<span class="nr"><b>7</b>'+(n>0?'<span class="sc'+(s.hi?' hi':'')+'">'+n+'</span>':n<0?'<span class="sc na">–</span>':'')+'</span>';
+      else c='<span class="sb'+(s.hi?' hi':'')+(n<0?' na':'')+'"><b>'+(n<0?'–':n)+'</b>'+bar(Math.max(n,0))+'</span>';
+      return '<figure><figcaption>'+x[0]+'</figcaption><div class="demo">'+c+'<span><span class="hn">Exempel</span>'+(s.low?' '+LS:'')+'</span></div>'+(x[2]?'<span class="help" style="font-size:12px">'+x[2]+'</span>':'')+'</figure>';
+    }).join('');
+  });
+
+  // ---- Mobil: startlistan ----
+  var tabbar='<nav class="tabbar" aria-label="Huvudmeny"><a class="tab" href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Omgång</a>'+
+    '<a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Källor</a>'+
+    '<a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Statistik</a></nav>';
+  var back='<button class="ibtn" type="button" aria-label="Tillbaka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>';
+  function mrow(i,v){
+    var h=H[i],s=S[i],sum=h[10]+h[11];
+    return '<li class="row g-an'+(h[14]?' is-i':'')+'"><span class="nr"><b>'+h[0]+'</b>'+(v==='a'?scA(i,s):'')+'</span>'+
+      '<a class="who" href="#"><span class="hl"><span class="hn">'+h[1]+'</span>'+(h[15]?'<span class="bdg s" role="img" aria-label="Spelbar">S</span>':'')+(s.low?LS:'')+srTxt(s)+'</span>'+
+      '<span class="kt km"><span class="k1">'+h[3]+'</span><span class="k2">'+sum+NB+'tkr</span></span>'+(v==='b'?bar(s.n,'ubar'):'')+'</a>'+
+      form(h[5])+'<span class="rk">'+h[13]+'</span>'+lamp(h[1],!!h[14])+'</li>';
+  }
+  document.querySelectorAll('.js-phone').forEach(function(e){
+    var v=e.dataset.v;
+    e.innerHTML='<div class="brd"><div class="ah">'+back+'<div class="ah-t"><span class="ah-title">Avd 4 · 16:06</span><span class="ah-sub">Johan Jacobssons Minne 2026</span></div></div>'+
+      '<div class="avd" role="tablist">'+[1,2,3,4,5,6,7,8].map(function(n){return '<button class="avd-t" role="tab" aria-selected="'+(n===4)+'">'+n+'<small aria-hidden="true">✓</small></button>'}).join('')+'</div>'+
+      '<div class="strip"><div class="chips"><span class="chip">2140 m</span><span class="chip chip-volte">Volte</span><span class="chip chip-k">Övrigt</span><button type="button" class="chip chip-btn">Loppstatistik ›</button></div>'+
+      '<div class="statline"><span>Spår 1 vinner <b>14,9 %</b></span><span>Spår 1 plats <b>37,8 %</b></span><span>Favorit vinner <b>–</b></span></div></div></div>'+
+      '<div class="cols g-an"><span>Nr</span><span>Häst · kusk</span><span class="c">Form</span><span class="r">Rikt</span><span class="c">Intr.</span></div>'+
+      '<ul class="list">'+H.map(function(h,i){return mrow(i,v)}).join('')+'</ul>'+tabbar;
+  });
+
+  // ---- Spelförslag ----
+  function ext(n,keys,tags,hi,low){var on={},tag={};keys.forEach(function(k){on[k]=1;tag[k]=tags[k]||SK.filter(function(x){return x[0]===k})[0][1]});return {on:on,tag:tag,n:keys.length,hi:keys.length>=5,low:!!low}}
+  var P=[
+    {i:1,avd:4,t:'16:06',rikt:'2,10',ub:'2,40',d:'+0,30',val:'+14 %',bet:1},
+    {i:10,avd:4,t:'16:06',rikt:'6,52',ub:'7,40',d:'+0,88',val:'+13 %'},
+    {nr:3,name:'Mascate Match',avd:7,t:'17:12',rikt:'1,85',ub:'2,05',d:'+0,20',val:'+11 %',s:ext(0,['kusk','plats','form','peng','felf'],{plats:'Plats 80 %',form:'Form 3/5'})},
+    {nr:9,name:'Önas Prince',avd:6,t:'16:52',rikt:'3,20',ub:'3,40',d:'+0,20',val:'+6 %',s:ext(0,['spar','felf'],{})}
+  ];
+  var NEAR={i:2,avd:4,t:'16:06',rikt:'3,81',ub:'3,60',d:'−0,21',val:'−6 %',dn:1};
+  function pdat(p){var s=p.s||S[p.i];return {s:s,nr:p.nr||H[p.i][0],name:p.name||H[p.i][1],sp:p.i!==undefined?!!H[p.i][15]||p.i===10:true}}
+  function sigs(s,v){
+    var t=SK.filter(function(k){return s.on[k[0]]}).map(function(k){return '<span class="tag good">'+s.tag[k[0]]+'</span>'}).join('');
+    var lead=v==='b'?'<span class="sbi'+(s.hi?' hi':'')+'">'+bar(s.n)+'<span><b>'+s.n+'</b>/10</span></span>':'';
+    return '<span class="sigs" aria-label="Signaler">'+lead+(s.low?LS:'')+t+'</span>';
+  }
+  function pnr(s,nr,v,sm){return '<span class="nr'+(sm?' sm':'')+'"><b>'+nr+'</b>'+(v==='a'&&s.n?'<span class="sc'+(s.hi?' hi':'')+'" aria-hidden="true">'+s.n+'</span>':'')+'</span>'}
+  function prow(p,v,near){
+    var x=pdat(p),s=x.s;
+    var name='<span class="hl"><span class="hn">'+x.name+'</span>'+(near?'':'<span class="bdg s" role="img" aria-label="Spelbar">S</span>')+(p.bet?'<span class="bdg b" role="img" aria-label="Bet">B</span>':'')+srTxt(s)+'</span>';
+    return '<tr><td>'+pnr(s,x.nr,v)+'</td><td>'+name+'<span class="kt">Avd '+p.avd+' · '+p.t+'</span>'+sigs(s,v)+'</td>'+
+      '<td class="r"><span class="rk">'+p.rikt+'</span></td><td class="r"><input class="oin" value="'+p.ub+'" aria-label="Unibet platsodds för '+x.name+'"></td>'+
+      '<td class="r"><span class="diff '+(p.dn?'dn':'up')+'">'+p.d+'</span></td><td class="r"><span class="val '+(p.dn?'dn':'up')+'">'+p.val+'</span></td><td class="c">'+betk(x.name,!!p.bet)+'</td></tr>';
+  }
+  function ptable(cap,right,rows,v,near){
+    return '<table class="tbl ptbl"><caption><span>'+cap+'</span>'+(right?'<span>'+right+'</span>':'')+'</caption>'+
+      '<colgroup><col style="width:52px"><col><col style="width:56px"><col style="width:92px"><col style="width:72px"><col style="width:58px"><col style="width:56px"></colgroup>'+
+      '<thead><tr><th scope="col">Nr</th><th scope="col">Häst</th><th scope="col" class="r">Rikt</th><th scope="col" class="r">Unibet</th><th scope="col" class="r">Skillnad</th><th scope="col" class="r">Värde</th><th scope="col" class="c">Bet</th></tr></thead><tbody>'+
+      rows.map(function(p){return prow(p,v,near)}).join('')+'</tbody></table>';
+  }
+  document.querySelectorAll('.js-spel').forEach(function(e){
+    var v=e.dataset.v;
+    e.innerHTML='<header class="dhead brd">'+head+'</header><div class="sphead brd"><p class="k">V85 · Jägersro · lör 24 okt</p><h1>Spelförslag</h1></div>'+
+      '<div class="dcols"><section aria-labelledby="pl-'+v+'"><div class="dsec-h"><h2 id="pl-'+v+'">Platsspel hos Unibet</h2><span class="help">Bet 1 av 4 spelbara</span></div>'+
+      '<p class="help spel-help">Markera Bet på det du spelar hos Unibet. Rätta oddset om det har ändrats.</p>'+
+      '<div class="pwrap">'+ptable('Spelbara (4)','Bet 1',P,v)+ptable('Nära gränsen (1)','',[NEAR],v,true)+'</div></section>'+
+      '<section aria-labelledby="rd-'+v+'"><div class="dsec-h"><h2 id="rd-'+v+'">V85-rad</h2></div><div class="placeholder">Budget och V85-raden ligger här, oförändrade.</div></section></div>';
+  });
+  document.querySelectorAll('.js-mspel').forEach(function(e){
+    var v=e.dataset.v;
+    function brow(p,near){
+      var x=pdat(p),s=x.s;
+      return '<li class="brow">'+pnr(s,x.nr,v,1)+'<div class="pmain"><span class="hl"><span class="hn">'+x.name+'</span>'+(near?'':'<span class="bdg s" role="img" aria-label="Spelbar">S</span>')+(p.bet?'<span class="bdg b" role="img" aria-label="Bet">B</span>':'')+srTxt(s)+'</span>'+
+        '<span class="pm">Avd '+p.avd+' · Rikt <b>'+p.rikt+'</b> <span class="val '+(p.dn?'dn':'up')+'">'+p.val+'</span></span>'+sigs(s,v)+'</div>'+
+        '<input class="oin" value="'+p.ub+'" aria-label="Unibet platsodds för '+x.name+'">'+betk(x.name,!!p.bet)+'</li>';
+    }
+    e.innerHTML='<div class="brd"><div class="ah">'+back+'<div class="ah-t"><span class="ah-title">Spelförslag</span><span class="ah-sub">V85 · Jägersro · lör 24 okt</span></div></div></div>'+
+      '<div class="segw"><div class="seg" role="group" aria-label="Visa"><button type="button" aria-pressed="true">Platsspel</button><button type="button" aria-pressed="false">V85-rad</button></div></div>'+
+      '<p class="help" style="margin:0 12px 4px">Markera Bet på det du spelar hos Unibet. Rätta oddset om det har ändrats.</p>'+
+      '<h3 class="sl"><span>Spelbara (4)</span><span>Bet 1</span></h3><ul class="plist">'+P.map(function(p){return brow(p)}).join('')+'</ul>'+
+      '<h3 class="sl"><span>Nära gränsen (1)</span></h3><ul class="plist">'+brow(NEAR,true)+'</ul>'+tabbar;
+  });
+})();
+</script>

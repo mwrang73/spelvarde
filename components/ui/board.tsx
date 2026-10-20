@@ -2,19 +2,36 @@
 // Badge, FormStrip, LampToggle, Banner, EmptyState och Skeleton.
 
 import type { FormBox } from "@/lib/gallop";
+import { MANY_SIGNALS } from "@/lib/positive-signals";
 import type { Override } from "@/lib/spelbar";
 import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconTicket, IconWarn } from "./icons";
 
 // ---- FlapNumber -----------------------------------------------------------------------
 
-export function FlapNumber({ n, size = "md", index, placed }: { n: number | string; size?: "sm" | "md" | "lg"; index?: number; placed?: boolean }) {
+// signals = antal positiva signaler (lib/positive-signals.ts): en bricka i
+// nedre hörnet, grön ring för 1–4 och fylld grön för 5 eller fler. Brickan är
+// dold för skärmläsare; raden säger antalet i text.
+export function FlapNumber({ n, size = "md", index, placed, signals }: { n: number | string; size?: "sm" | "md" | "lg"; index?: number; placed?: boolean; signals?: number | null }) {
   const style = index !== undefined ? ({ "--i": Math.min(index, 12) } as React.CSSProperties) : undefined;
   return (
     <span className={`nr${size === "md" ? "" : ` ${size}`}${placed ? " pl" : ""}`} style={style} aria-hidden="true">
       <b>{n}</b>
+      {signals ? <i className={`sigb${signals >= MANY_SIGNALS ? " many" : ""}`}>{signals}</i> : null}
     </span>
   );
 }
+
+// Märket "Lågt streck": minst 4 positiva signaler men inte bland loppets 3 mest streckade.
+export function LowStreckTag() {
+  return (
+    <span className="tag good lowst" title="Minst 4 positiva signaler men inte bland loppets 3 mest streckade. Topp 3 i 25–26 % mot strecket 20 % i backtestet.">
+      Lågt streck
+    </span>
+  );
+}
+
+// Skärmläsartext för antalet signaler.
+export const signalsSr = (n: number | null | undefined) => (n ? `, ${n} positiva signaler${n >= MANY_SIGNALS ? ", många" : ""}` : "");
 
 // ---- Badge ------------------------------------------------------------------------------
 

@@ -14,8 +14,8 @@ import type { RaceDto, RiktoddsDetailDto, StartDto, WhyRowDto } from "@/lib/type
 import { calcLineWithX, factorText, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 
-// "v1, okalibrerad". Ingen version är kalibrerad i E2 (7.6).
-export const modelLabel = (key: string | null | undefined) => `${key ?? "v1"}, okalibrerad`;
+// "v3, kalibrerad" eller "v1, okalibrerad".
+export const modelLabel = (key: string | null | undefined, calibrated = false) => `${key ?? "v1"}, ${calibrated ? "kalibrerad" : "okalibrerad"}`;
 
 function missingReason(race: RaceDto, start: StartDto): string {
   if (start.scratched) return "Struken häst får inget riktodds.";
@@ -40,6 +40,7 @@ export function RiktoddsBox({
   detail,
   detailLoading,
   modelKey,
+  calibrated,
   guideline,
   factors,
 }: {
@@ -48,6 +49,7 @@ export function RiktoddsBox({
   detail: RiktoddsDetailDto | null;
   detailLoading: boolean;
   modelKey: string | null;
+  calibrated?: boolean;
   guideline: number;
   factors: XFactorSettings;
 }) {
@@ -75,7 +77,7 @@ export function RiktoddsBox({
   return (
     <section className="hk-sec" aria-labelledby={hid}>
       <h3 id={hid}>
-        Riktodds plats <span className="mver">{modelLabel(detail?.modelKey ?? modelKey)}</span>
+        Riktodds plats <span className="mver">{modelLabel(detail?.modelKey ?? modelKey, calibrated)}</span>
       </h3>
       {detail?.uncertainLine && <p className="unc">{detail.uncertainLine}</p>}
       {detail?.noteLine && <p className="help">{detail.noteLine}</p>}

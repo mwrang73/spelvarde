@@ -16,12 +16,12 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useIsDesktop } from "@/components/hooks";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
 import { RiktCell, RiktShort } from "@/components/round/parts";
-import { Badge, BetToggle, FlapNumber, XBadge } from "@/components/ui/board";
+import { Badge, BetToggle, FlapNumber, LowStreckTag, signalsSr, XBadge } from "@/components/ui/board";
 import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
-import { horseSignals, NEAR_LIMIT_PCT, valuePct } from "@/lib/signals";
+import { NEAR_LIMIT_PCT, signalTags, valuePct } from "@/lib/signals";
 import { oddsDiff } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { riktX, xOf } from "@/lib/xfactor-ui";
@@ -33,16 +33,10 @@ const valueOf = (i: Item) => valuePct(i.start.mark?.unibetOdds ?? null, riktX(i.
 // Störst värde först; utan värde sist i avdelningsordning.
 const byValue = (a: Item, b: Item) => (valueOf(b) ?? -Infinity) - (valueOf(a) ?? -Infinity) || byLeg(a, b);
 
+// De uppfyllda positiva signalerna som korta taggar (lib/positive-signals.ts).
 function Signals({ item }: { item: Item }) {
-  const { race, start } = item;
-  const chips = horseSignals({
-    placePct: start.quick.placePct,
-    winPct: start.quick.winPct,
-    starts: start.quick.starts,
-    formTones: start.form.boxes.map((b) => b.tone),
-    postPlacePct: start.quick.postPlacePct,
-    bestPlaceNumber: race.statsLine.bestPlace?.number === start.number,
-  });
+  const { start } = item;
+  const chips = start.signals ? signalTags(start.signals) : [];
   if (!chips.length) return null;
   return (
     <span className="sigs" aria-label="Signaler">
@@ -178,6 +172,8 @@ function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: numbe
   const name = (
     <span className="hl">
       <span className="hn">{start.horse.name}</span>
+      <span className="sr">{signalsSr(start.signals?.count)}</span>
+      {start.signals?.lowStreck && <LowStreckTag />}
       {m?.spelbar && <Badge kind="s" />}
       {m?.bet && <Badge kind="b" />}
       <XBadge x={x} />
@@ -203,7 +199,7 @@ function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: numbe
     return (
       <tr className={start.scratched ? "scr" : undefined}>
         <td>
-          <FlapNumber n={start.number} />
+          <FlapNumber n={start.number} signals={start.signals?.count} />
         </td>
         <td>
           {name}
@@ -230,7 +226,7 @@ function PlatsRow({ item, now, guideline, near, desk }: { item: Item; now: numbe
     );
   return (
     <li className={`brow${start.scratched ? " scr" : ""}`}>
-      <FlapNumber n={start.number} size="sm" />
+      <FlapNumber n={start.number} size="sm" signals={start.signals?.count} />
       <div className="pmain">
         {name}
         <span className="pm">

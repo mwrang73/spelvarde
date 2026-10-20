@@ -6,6 +6,7 @@
 import type { FormSummary, GallopWarning } from "@/lib/gallop";
 import type { GameType } from "@/lib/game-type";
 import type { PostTable } from "@/lib/hist";
+import type { SignalResult } from "@/lib/positive-signals";
 import type { NextStep, Phase, PhaseStep } from "@/lib/phase";
 import type { InputKey } from "@/lib/riktodds";
 import type { Bucket, LeagueRow, StartnrGroup, StartnrLeg } from "@/lib/travstatistik";
@@ -181,6 +182,8 @@ export type StartDto = {
   // vinst % från travstatistik.se). null när uppgiften saknas.
   // lifeStarts = starter i livet, för intjänat per start (horse.earnings / lifeStarts).
   quick: { winPct: number | null; placePct: number | null; starts: number | null; lifeStarts: number | null; postPct: number | null; postPlacePct: number | null };
+  // Positiva signaler (lib/positive-signals.ts). null = struken.
+  signals: SignalResult | null;
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".
@@ -244,7 +247,8 @@ export type RoundResponse = {
   // Användarens V85-rad för omgången (null = inte sparad).
   coupon: CouponDto | null;
   // Modellversionen som riktoddsen kommer från.
-  model: { id: string; key: string } | null;
+  // calibrated = modellen har kalibrering (v3: plattA/plattB/maxP3 ändrar P3).
+  model: { id: string; key: string; calibrated?: boolean } | null;
   // Användarens inställningar som S2–S6 behöver. X-faktorerna (E2.1) skickas
   // alltid av servern. Äldre cachade svar (localStorage) kan sakna dem tills
   // omgången har hämtats igen, så läs dem med xFactorsOf() i
