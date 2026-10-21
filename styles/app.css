@@ -45,6 +45,8 @@ h1, h2, h3 { margin: 0; }
 .logo svg { width: 26px; height: 26px; }
 .ah-t { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
 .ah-brand { font: 800 22px/1 var(--f-display); color: var(--head-ink); letter-spacing: .06em; text-shadow: 0 0 10px var(--glow); text-transform: uppercase; }
+/* I mobilens rubrik delar namnet plats med tavelknappen: det krymper med bredden och klipps hellre än hamnar under knappen. */
+.ah .ah-brand { font-size: clamp(15px, 4.6vw, 22px); white-space: nowrap; overflow: hidden; }
 .ah-title { font: 700 19px/1.1 var(--f-name); text-transform: uppercase; letter-spacing: .03em; color: var(--head-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ah-sub { font: 600 12.5px/1.25 var(--f-label); letter-spacing: .06em; text-transform: uppercase; color: var(--head-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ah .btn.icon, .dtitle .btn.icon, .dhead .btn.icon { color: var(--head-ink-2); }
