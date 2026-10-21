@@ -3,6 +3,7 @@
 //
 //   SPELVARDE_FIXTURES=atg,ts   båda från fixturer
 //   SPELVARDE_FIXTURES=ts       riktiga ATG, travstatistik från fixturer
+//   SPELVARDE_FIXTURES=unibet   Unibets odds från test/fixtures/unibet (E2.2)
 //
 // Fixturläget vägrar köras på Vercel (VERCEL är satt där).
 import { readFile } from "node:fs/promises";
@@ -11,6 +12,8 @@ import { AtgError, atgFetch, type AtgFetch } from "@/lib/atg";
 import type { FetchDeps } from "@/lib/fetch-round";
 import { prisma } from "@/lib/prisma";
 import { decodeHtml, tsFetch, type TsFetch } from "@/lib/travstatistik";
+import { UnibetError, unibetFetch, type UnibetFetch } from "@/lib/unibet";
+import type { UnibetDeps } from "@/lib/unibet-server";
 
 function fixtureModes(): Set<string> {
   const raw = process.env.SPELVARDE_FIXTURES ?? "";
@@ -83,5 +86,37 @@ export function getFetchDeps(): FetchDeps {
     atg: modes.has("atg") ? fixtureAtg : atgFetch,
     ts: modes.has("ts") ? fixtureTs : tsFetch,
     warn: (m) => console.warn("[hämtning]", m),
+  };
+}
+
+// Unibet från fixturer: banor per dag (meetings-<datum>.json, dagen tas ur
+// tidsfönstret) och lopp per nyckel (event-<eventKey>.json). Saknas filen
+// svarar "Unibet" som före öppning: inga möten, eller ett lopp utan odds.
+export const fixtureUnibet: UnibetFetch = async (query) => {
+  const read = async (file: string) => JSON.parse(await readFile(path.join(FIXTURES, "unibet", file), "utf8"));
+  const ev = /eventKey:"([^"]+)"/.exec(query);
+  if (ev) {
+    try {
+      return await read(`event-${ev[1]}.json`);
+    } catch {
+      return { data: { viewer: { event: { hasFixedPrices: false, markets: [], competitors: [] } } } };
+    }
+  }
+  const end = /endDateTime:"(\d{4}-\d{2}-\d{2})T/.exec(query);
+  if (end) {
+    try {
+      return await read(`meetings-${end[1]}.json`);
+    } catch {
+      return { data: { viewer: { meetings: [] } } };
+    }
+  }
+  throw new UnibetError("Okänd fixtur");
+};
+
+export function getUnibetDeps(): UnibetDeps {
+  return {
+    db: prisma,
+    unibet: fixtureModes().has("unibet") ? fixtureUnibet : unibetFetch,
+    warn: (m) => console.warn("[unibet]", m),
   };
 }

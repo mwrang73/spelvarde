@@ -15,7 +15,7 @@
 
 import { odds as formatOdds } from "@/lib/format";
 import { digitsToOdds, isValidOdds, ODDS_MIN, ODDS_RANGE_ERROR, popDigit, pushDigit, shouldAutoAdvance } from "@/lib/odds-input";
-import { oddsDiff, type Override } from "@/lib/spelbar";
+import { DEFAULT_TOLERANCE, oddsClass, oddsDiff, type Override } from "@/lib/spelbar";
 
 export type KeypadState = {
   // Plats i kön. index === total betyder att kön är slut.
@@ -127,21 +127,25 @@ export type Verdict = { tone: "ok" | "no" | "warn" | "help"; text: string; below
 
 const sv = (x: number) => formatOdds(Math.abs(x));
 
-// Resultatraden i S4 för oddset i displayen (eller det sparade).
-// "0,70 över riktoddset · föreslås som Spelbar", "0,10 under riktoddset · inte spelbar".
-// Med X-faktor (E2.1) är riktodds riktoddset med X-faktor och ref
-// "riktoddset med X": "0,70 över riktoddset med X · föreslås som Spelbar".
-export function keypadVerdict(m: { odds: number | null; riktodds: number | null; interesting: boolean; override: Override; guideline: number; ref?: string }): Verdict {
+// Resultatraden i S4 för oddset i displayen (eller det sparade), e2.2 S4:
+// "+0,25 över riktoddset · föreslås som Spelbar",
+// "−0,07 nära riktoddset · föreslås som Spelbar" (högst toleransen under) och
+// "−0,15 under riktoddset · inte spelbar". Med X-faktor (E2.1) är riktodds
+// riktoddset med X-faktor och ref "riktoddset med X".
+export function keypadVerdict(m: { odds: number | null; riktodds: number | null; interesting: boolean; override: Override; guideline: number; ref?: string; tolerance?: number }): Verdict {
   const ref = m.ref ?? "riktoddset";
   const below = m.odds !== null && m.odds < m.guideline;
   if (m.odds === null) return { tone: "help", text: "Skriv tre siffror, till exempel 3 1 0 för 3,10.", below: false };
   if (m.riktodds === null) return { tone: "warn", text: "Riktodds saknas – hämta omgången igen. Oddset sparas ändå.", below };
   const d = oddsDiff(m.odds, m.riktodds)!;
-  const head = d > 0 ? `${sv(d)} över ${ref}` : d < 0 ? `${sv(d)} under ${ref}` : `Samma som ${ref}`;
+  const c = oddsClass(m.odds, m.riktodds, m.tolerance ?? DEFAULT_TOLERANCE);
+  const ok = c === "over" || c === "near";
+  const signed = `${d > 0 ? "+" : d < 0 ? "−" : "±"}${sv(d)}`;
+  const head = `${signed} ${c === "over" ? "över" : c === "near" ? "nära" : "under"} ${ref}`;
   let tail: string;
-  if (d > 0) tail = !m.interesting ? "inte Intressant" : m.override === "OFF" ? "Spelbar borttagen av dig" : "föreslås som Spelbar";
+  if (ok) tail = !m.interesting ? "inte Intressant" : m.override === "OFF" ? "Spelbar borttagen av dig" : "föreslås som Spelbar";
   else tail = m.override === "ON" ? "Spelbar satt av dig" : "inte spelbar";
-  const spelbar = m.override === "ON" || (m.override === "NONE" && m.interesting && d > 0);
+  const spelbar = m.override === "ON" || (m.override === "NONE" && m.interesting && ok);
   return { tone: spelbar ? "ok" : "no", text: `${head} · ${tail}`, below };
 }
 

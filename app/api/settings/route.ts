@@ -12,7 +12,7 @@ export const GET = withUser("settings/get", async ({ user }) => {
   return NextResponse.json(settingsDto(s));
 });
 
-// Något av { theme: "system" | "light" | "dark", rowPrice, spelbarGuideline,
+// Något av { theme: "system" | "light" | "dark", rowPrice, spelbarGuideline, spelbarTolerance (0,00–0,50),
 // xFactorTror, xFactorStark }. Bara fälten som skickas ändras. Svarar med alla
 // inställningar. Reglerna ligger i lib/validate.ts och lib/e2-server.ts.
 export const PUT = withUser("settings/put", async ({ req, user }) => {

@@ -3,6 +3,7 @@
 import { GAME_TYPE_ERROR, isGameType, type GameType } from "@/lib/game-type";
 import type { ThemeSetting } from "@/lib/types";
 import { parseFactor } from "@/lib/xfactor";
+import { TOLERANCE_ERROR, TOLERANCE_MAX, TOLERANCE_MIN } from "@/lib/spelbar";
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -51,17 +52,17 @@ export function parseCommentBody(body: Record<string, unknown>): Result<CommentI
   };
 }
 
-export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number; xFactorTror?: number; xFactorStark?: number; gameType?: GameType };
+export type SettingsInput = { theme?: ThemeSetting; rowPrice?: number; spelbarGuideline?: number; xFactorTror?: number; xFactorStark?: number; gameType?: GameType; spelbarTolerance?: number };
 
 const hundredths = (x: number) => Math.abs(x * 100 - Math.round(x * 100)) < 1e-6;
 
 // PUT /api/settings: tema (E1), radpris och riktlinje (E2), X-faktorerna
-// (E2.1). Larmgränsen kommer i E3. Bara fälten som skickas ändras. Att Stark
+// (E2.1), toleransen för Spelbar (E2.2). Larmgränsen kommer i E3. Bara fälten som skickas ändras. Att Stark
 // känsla är större än Tror på kontrolleras mot det sparade värdet i
 // saveSettings (lib/e2-server.ts) när bara den ena skickas.
 export function parseSettingsBody(body: Record<string, unknown>): Result<SettingsInput> {
   if ("rushThresholdPe" in body) return fail("Den inställningen kommer i en senare version.");
-  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline", "xFactorTror", "xFactorStark", "gameType"].includes(k));
+  const unknown = Object.keys(body).filter((k) => !["theme", "rowPrice", "spelbarGuideline", "xFactorTror", "xFactorStark", "gameType", "spelbarTolerance"].includes(k));
   if (unknown.length) return fail("Okänd inställning.");
   const out: SettingsInput = {};
   if ("theme" in body) {
@@ -77,6 +78,13 @@ export function parseSettingsBody(body: Record<string, unknown>): Result<Setting
     const v = body.spelbarGuideline;
     if (typeof v !== "number" || !Number.isFinite(v) || v < 1.01 || v > 99.99 || !hundredths(v)) return fail("Riktlinjen ska ligga mellan 1,01 och 99,99.");
     out.spelbarGuideline = Math.round(v * 100) / 100;
+  }
+  if ("spelbarTolerance" in body) {
+    // 0,00–0,50 med högst två decimaler. Databasen har samma villkor
+    // (migreringen 20261023120000_e2_2_unibet).
+    const v = body.spelbarTolerance;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < TOLERANCE_MIN - 1e-9 || v > TOLERANCE_MAX + 1e-9 || !hundredths(v)) return fail(TOLERANCE_ERROR);
+    out.spelbarTolerance = Math.round(v * 100) / 100;
   }
   if ("gameType" in body) {
     if (!isGameType(body.gameType)) return fail(GAME_TYPE_ERROR);

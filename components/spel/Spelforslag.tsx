@@ -13,7 +13,7 @@ import { useRound } from "@/components/round/RoundProvider";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, Skeleton } from "@/components/ui/board";
 import { dayDate } from "@/lib/format";
-import { StreckRefresh } from "@/components/round/StreckRefresh";
+import { RefreshRow } from "@/components/round/StreckOdds";
 import { WandSpark } from "@/components/ui/WandSpark";
 import { PlatsPanel } from "./PlatsPanel";
 import { RadPanel } from "./RadPanel";
@@ -88,7 +88,7 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
             Platsspel och {data.round.gameType}-rad
           </button>
         </div>
-        <StreckRefresh data={data} />
+        <RefreshRow data={data} />
         {tab === "trollspot" && (
           <section id="p-troll" className="spel-p trollp" aria-labelledby="h-troll">
             <TrollPanel data={data} now={now} />

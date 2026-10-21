@@ -38,15 +38,16 @@ export function riktShort(riktodds: number | null, x: XFactor, rx: number | null
 // "Riktodds 3,00 · med X-faktor 2,40", och om det senaste bytet (prev → x)
 // ändrade förslaget " · nu föreslagen som Spelbar" / " · inte längre föreslagen".
 // null för Ingen (raden visas inte).
-export function xEffectText(m: { riktodds: number | null; unibetOdds: number | null; x: XFactor; prev: XFactor | null; factors: XFactorSettings }): string | null {
+// tolerance = användarens tolerans för Spelbar (E2.2), standard 0,10.
+export function xEffectText(m: { riktodds: number | null; unibetOdds: number | null; x: XFactor; prev: XFactor | null; factors: XFactorSettings; tolerance?: number }): string | null {
   if (m.x === "NONE") return null;
   if (m.riktodds === null) return "Riktodds saknas. X-faktorn används när riktoddset finns.";
   const rx = riktoddsX(m.riktodds, m.x, m.factors);
   let text = `Riktodds ${odds(m.riktodds)} · med X-faktor ${odds(rx)}`;
   if (m.prev !== null && m.prev !== m.x) {
     // Tror på och Stark känsla tänder Intressant, så förslaget räknas med Intressant.
-    const before = forslag({ interesting: true, unibetOdds: m.unibetOdds, riktodds: riktoddsX(m.riktodds, m.prev, m.factors) });
-    const after = forslag({ interesting: true, unibetOdds: m.unibetOdds, riktodds: rx });
+    const before = forslag({ interesting: true, unibetOdds: m.unibetOdds, riktodds: riktoddsX(m.riktodds, m.prev, m.factors) }, m.tolerance);
+    const after = forslag({ interesting: true, unibetOdds: m.unibetOdds, riktodds: rx }, m.tolerance);
     if (after && !before) text += " · nu föreslagen som Spelbar";
     else if (!after && before) text += " · inte längre föreslagen";
   }

@@ -62,18 +62,23 @@ export async function saveMark(db: Db, userId: string, startId: string, body: Re
         xFactor: existing.xFactor,
         xFactorAt: existing.xFactorAt,
         sourceSupport: existing.sourceSupport,
+        unibetOddsSource: existing.unibetOddsSource,
+        replacedOdds: dec(existing.replacedOdds),
+        replacedByFetchId: existing.replacedByFetchId,
       }
     : EMPTY_MARK;
-  const next = applyMarkChange(prev, change, { now, riktodds, factors: st });
+  // Ett inskrivet odds får källan eget (E2.2, lib/marks.ts). Bet-oddset följer
+  // bara inskrivna odds; en hämtning (lib/unibet-server.ts) rör det aldrig.
+  const next = applyMarkChange(prev, change, { now, riktodds, factors: st, tolerance: st.spelbarTolerance });
   // Samma kropp en gång till (utkorgen skickar om): ingen skrivning.
-  if (existing && sameMark(prev, next)) return ok({ mark: markDto(existing, riktodds, guideline, st) });
+  if (existing && sameMark(prev, next)) return ok({ mark: markDto(existing, riktodds, guideline, st, st.spelbarTolerance) });
 
   const mark = await db.mark.upsert({
     where: { userId_startId: { userId, startId } },
     create: { userId, startId, ...next },
     update: next,
   });
-  return ok({ mark: markDto(mark, riktodds, guideline, st) });
+  return ok({ mark: markDto(mark, riktodds, guideline, st, st.spelbarTolerance) });
 }
 
 // ---- Inställningar (PUT /api/settings) ---------------------------------------------------------
@@ -84,7 +89,7 @@ export async function saveMark(db: Db, userId: string, startId: string, body: Re
 export async function saveSettings(db: Db, userId: string, body: Record<string, unknown>): Promise<Reply<SettingsDto>> {
   const parsed = parseSettingsBody(body);
   if (!parsed.ok) return err(400, parsed.error);
-  const { theme, rowPrice, spelbarGuideline, xFactorTror, xFactorStark, gameType } = parsed.value;
+  const { theme, rowPrice, spelbarGuideline, xFactorTror, xFactorStark, gameType, spelbarTolerance } = parsed.value;
   const cur = settingsDto(await db.userSettings.findUnique({ where: { userId } }));
   const factors = { xFactorTror: xFactorTror ?? cur.xFactorTror, xFactorStark: xFactorStark ?? cur.xFactorStark };
   if (xFactorTror !== undefined || xFactorStark !== undefined) {
@@ -98,6 +103,7 @@ export async function saveSettings(db: Db, userId: string, body: Record<string, 
     ...(xFactorTror !== undefined ? { xFactorTror } : {}),
     ...(xFactorStark !== undefined ? { xFactorStark } : {}),
     ...(gameType ? { gameType } : {}),
+    ...(spelbarTolerance !== undefined ? { spelbarTolerance } : {}),
   };
   // create får alltid båda faktorerna: upsert blir INSERT … ON CONFLICT, och
   // Postgres prövar villkoret Stark > Tror på INSERT-raden (med standardvärdet

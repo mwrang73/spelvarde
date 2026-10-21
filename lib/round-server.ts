@@ -13,6 +13,7 @@ import { bestNumbers, MIN_RACES_TRACK_BEST, postTable, postTablesForRaces, type 
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
 import { computePhase, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
+import { lastOddsAttemptOf, latestOddsOf, unibetByStart, unibetHistoryOf, unibetSummary } from "@/lib/unibet-server";
 import type {
   CurrentRoundResponse,
   FetchChanges,
@@ -128,7 +129,8 @@ function reviewedRace(race: FullRound["races"][number]): boolean {
 export async function fetchState(db: Db, round: { id: string; gameType: string; fetchStatus: FetchState["status"]; fetchedAt: Date | null }, races: { leg: number; recordsFetchedAt: Date | null }[]): Promise<FetchState> {
   const legs = legsFor(round.gameType);
   const lastGame = await db.fetchLog.findFirst({ where: { roundId: round.id, step: "GAME", ok: true }, orderBy: { startedAt: "desc" } });
-  const lastFail = await db.fetchLog.findFirst({ where: { roundId: round.id, ok: false }, orderBy: { startedAt: "desc" } });
+  // Unibets steg (E2.2) hör inte till Hämta omgång och visas inte som fel här.
+  const lastFail = await db.fetchLog.findFirst({ where: { roundId: round.id, ok: false, NOT: { step: { startsWith: "UNIBET_" } } }, orderBy: { startedAt: "desc" } });
   const lastStats = lastGame
     ? await db.fetchLog.findFirst({ where: { roundId: round.id, step: "STATS", ok: true, startedAt: { gte: lastGame.startedAt } } })
     : null;
@@ -296,7 +298,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
   if (!round) return null;
   const date = dateStr(round.date);
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
-  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled, posts, trackPosts] = await Promise.all([
+  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled, posts, trackPosts, unibet, latestOdds, lastOddsAttempt] = await Promise.all([
     lastRecordsByHorse(db, horseIds, round.date),
     latestStreck(db, round.id),
     latestStats(db, round.id),
@@ -308,6 +310,10 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     db.source.count({ where: { userId, enabled: true } }),
     postTablesForRaces(db, round.races, round.date),
     postTablesForRaces(db, round.races, round.date, round.trackId),
+    // E2.2: Unibets senaste och första odds per start (två frågor för hela omgången).
+    unibetByStart(db, round.id),
+    latestOddsOf(db, round.id),
+    lastOddsAttemptOf(db, round.id),
   ]);
   const settings = settingsDto(settingsRow);
   const lines = statsLines(round, stats, streck, posts, trackPosts);
@@ -319,7 +325,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     const signals = raceSignals(r.starts, records, table, streck, year);
     const starts: StartDto[] = r.starts.map((s) => {
       const r = rikt.byStart.get(s.id);
-      const mark = s.marks[0] ? markDto(s.marks[0], riktOf(r), settings.spelbarGuideline, settings) : null;
+      const mark = s.marks[0] ? markDto(s.marks[0], riktOf(r), settings.spelbarGuideline, settings, settings.spelbarTolerance) : null;
       const form = formSummary(records.get(s.horseId) ?? [], date);
       const sv = streck?.values.get(s.id);
       return {
@@ -344,6 +350,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
           : null,
         quick: quickStats(s.horseStatsJson, legRow, s.number, table, date.slice(0, 4)),
         signals: signals.get(s.id) ?? null,
+        unibet: unibet.get(s.id) ?? null,
       };
     });
     const review = r.reviews[0] ?? null;
@@ -400,8 +407,10 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     latestStreck: streck ? { kind: streck.kind, takenAt: streck.takenAt.toISOString() } : null,
     coupon: coupon ? couponDto(coupon, legsFor(round.gameType)) : null,
     model: rikt.model ? { id: rikt.model.id, key: rikt.model.key, calibrated: isCalibrated(parseParams(rikt.model.params)) } : null,
-    settings: { spelbarGuideline: settings.spelbarGuideline, rowPrice: settings.rowPrice, xFactorTror: settings.xFactorTror, xFactorStark: settings.xFactorStark },
+    settings: { spelbarGuideline: settings.spelbarGuideline, rowPrice: settings.rowPrice, xFactorTror: settings.xFactorTror, xFactorStark: settings.xFactorStark, spelbarTolerance: settings.spelbarTolerance },
     sourcesEnabled,
+    latestOdds,
+    lastOddsAttempt,
   };
 }
 
@@ -437,7 +446,7 @@ export async function buildCurrentResponse(
   const next = phase === "KLART" ? await getNextAvailable(gameType) : null;
   const rikt = await activeRiktodds(db, round.id);
   const legs: LegSummary[] = round.races.map((r) => {
-    const marks = r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0], riktOf(rikt.byStart.get(s.id)), settings.spelbarGuideline, settings) : null));
+    const marks = r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0], riktOf(rikt.byStart.get(s.id)), settings.spelbarGuideline, settings, settings.spelbarTolerance) : null));
     return {
       raceId: r.id,
       leg: r.leg,
@@ -578,7 +587,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
   if (!s) return null;
   const roundDate = s.race.round.date;
   const date = dateStr(roundDate);
-  const [records, total, comments, stats, streck, model, settingsRow, table] = await Promise.all([
+  const [records, total, comments, stats, streck, model, settingsRow, table, unibetHistory] = await Promise.all([
     db.horseRecord.findMany({ where: { horseId: s.horseId, date: { lt: roundDate }, scratched: false }, orderBy: { date: "desc" }, take: 10 }),
     db.horseRecord.count({ where: { horseId: s.horseId, date: { lt: roundDate }, scratched: false } }),
     db.horseComment.findMany({
@@ -591,6 +600,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
     db.modelVersion.findFirst({ where: { active: true } }),
     db.userSettings.findUnique({ where: { userId } }),
     postTable(db, { method: s.race.startMethod, distance: s.race.distance, before: roundDate }).catch(() => null),
+    unibetHistoryOf(db, s.id),
   ]);
   const rikt = model ? await db.riktodds.findUnique({ where: { startId_modelVersionId: { startId: s.id, modelVersionId: model.id } } }) : null;
   const formRecords: FormRecord[] = records.map((r) => ({ date: dateStr(r.date), trackName: r.trackName, place: r.place, galloped: r.galloped, disqualified: r.disqualified }));
@@ -601,7 +611,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
   const legRow = stats.startnr?.data.legs.find((l) => l.leg === s.race.leg && l.distance === s.race.distance && l.method === s.race.startMethod) ?? null;
   const sv = streck?.values.get(s.id);
   const st = settingsDto(settingsRow);
-  const mark = s.marks[0] ? markDto(s.marks[0], riktOf(rikt ?? undefined), st.spelbarGuideline, st) : null;
+  const mark = s.marks[0] ? markDto(s.marks[0], riktOf(rikt ?? undefined), st.spelbarGuideline, st, st.spelbarTolerance) : null;
 
   return {
     start: {
@@ -625,6 +635,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       quick: quickStats(s.horseStatsJson, legRow, s.number, table, year),
       // Signalerna kräver hela fältet och finns på starten i omgångens svar.
       signals: null,
+      unibet: unibetSummary(unibetHistory),
       raceId: s.raceId,
       roundId: s.race.roundId,
       leg: s.race.leg,
@@ -662,5 +673,6 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
     comments: comments.map(commentDto),
     riktodds: rikt && model ? riktoddsDetailDto(rikt, model) : null,
     tips: [],
+    unibetHistory,
   };
 }

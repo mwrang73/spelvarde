@@ -25,7 +25,7 @@ export function xLockReason(race: RaceDto, start: StartDto, now: number = Date.n
 
 // Hästkortet monterar blocket med key={start.id}, så att "förra läget" för
 // effektraden alltid gäller samma häst.
-export function XFactorBlock({ race, start, factors, sourcesEnabled }: { race: RaceDto; start: StartDto; factors: XFactorSettings; sourcesEnabled: number }) {
+export function XFactorBlock({ race, start, factors, sourcesEnabled, tolerance }: { race: RaceDto; start: StartDto; factors: XFactorSettings; sourcesEnabled: number; tolerance: number }) {
   const { setXFactor, setSourceSupport } = useRound();
   const { status } = useOutbox();
   const hid = useId();
@@ -68,7 +68,7 @@ export function XFactorBlock({ race, start, factors, sourcesEnabled }: { race: R
     refs.current[to]?.focus();
   };
 
-  const effect = xEffectText({ riktodds: start.riktodds, unibetOdds: start.mark?.unibetOdds ?? null, x, prev, factors });
+  const effect = xEffectText({ riktodds: start.riktodds, unibetOdds: start.mark?.unibetOdds ?? null, x, prev, factors, tolerance });
   const n = start.mark?.sourceSupport ?? null;
   const m = sourcesEnabled;
   const max = Math.min(m, SOURCE_SUPPORT_MAX);

@@ -19,6 +19,7 @@ Status: godkänd för bygge, typen är **Omfattande**. Gäller hela appen och ä
 | E1 | Grund: projekt, inloggning, datamodell, Hämta omgång, Omgången, Avdelningen, hästkortet (5 senaste, galopp), Intressant, egna kommentarer, avdelningens statistik från ATG och travstatistik.se |
 | E2 | Riktodds v1, Unibet-odds (knappsats 4B), Spelbar, Bet, Spelförslag (platsspel och V85-rad) |
 | E2.1 | X-faktor: Mikaels egen krydda som sänker riktoddset, källstöd i hästkortet och faktorerna i Inställningar (6.8) |
+| E2.2 | Hämta streck och odds: en knapp för ATG:s streck och Unibets odds för alla hästar, ögonblicksbilder, grön markering av spelbara odds och toleransen för "nära". Spec: `e2.2-hamta-streck-och-odds.md` (gäller före denna fil där de skiljer sig) |
 | E3 | Fredagens utgångsläge (cron), lördag live, larm |
 | E4 | Under loppet (snabbkommentarer), automatisk placering, Omgången klar, Statistik |
 | E5 | Källor och Hämta tips med Claude-API:t (sidan och datamodellen byggs i E1, läsningen i E5) |

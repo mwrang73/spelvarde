@@ -5,6 +5,7 @@
 
 import { useEffect } from "react";
 import { OutboxNotifications } from "@/components/outbox/OutboxProvider";
+import { StreckOddsRouteWatch } from "@/components/round/streckOddsStore";
 import { ToastProvider } from "@/components/ui/Toast";
 import { BottomNav } from "./BottomNav";
 import { applyTheme, readThemeChoice } from "./theme-client";
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       <OutboxNotifications />
       <ThemeSync />
+      <StreckOddsRouteWatch />
       <div className="shell">{children}</div>
       <BottomNav />
     </ToastProvider>

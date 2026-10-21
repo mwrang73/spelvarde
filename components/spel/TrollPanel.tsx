@@ -11,11 +11,13 @@ import { Badge, FlapNumber, LampToggle, LowStreckTag, signalsSr } from "@/compon
 import { odds, pct } from "@/lib/format";
 import { signalTags } from "@/lib/signals";
 import { TROLL_MIN_EST, trollspot, type TrollItem } from "@/lib/trollspot";
+import { toleranceOf } from "@/lib/round-overlay";
 import type { RoundResponse } from "@/lib/types";
 
 export function TrollPanel({ data, now }: { data: RoundResponse; now: number }) {
   const isDesktop = useIsDesktop();
-  const { items, hasStreck, qualified } = trollspot(data.races, now);
+  const tolerance = toleranceOf(data.settings);
+  const { items, hasStreck, qualified } = trollspot(data.races, now, tolerance);
   const base = `/omgang/${data.round.id}`;
   const spelbara = items.filter((i) => i.start.mark?.spelbar).length;
 
@@ -24,7 +26,7 @@ export function TrollPanel({ data, now }: { data: RoundResponse; now: number }) 
       <h3>Så väljs listan</h3>
       <p>De 10 hästarna med högst chans till topp 3 enligt modellen, bland dem som enligt strecket troligen får minst {odds(TROLL_MIN_EST)} i platsodds.</p>
       <p>
-        <b>Minst X</b> är det lägsta Unibet-odds som ger spelvärde: det högsta av 2,00, riktoddset och marknadens odds.
+        <b>Minst X</b> är det lägsta Unibet-odds som ger spelvärde: det högsta av 2,00, riktoddset minus toleransen ({odds(tolerance)}) och marknadens odds.
       </p>
       <p className="help">I backtestet kom de här hästarna topp 3 i 29 % av fallen, mot 18 % för alla hästar med odds över 2,0. Listan är ett stöd att bevaka, inget spelbeslut. Du avgör själv, bland annat med X-faktorn i hästkortet.</p>
     </aside>

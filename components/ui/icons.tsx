@@ -80,3 +80,11 @@ export const IconLock = svg(
     <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2" />
   </>,
 );
+// E2.2: Hämta streck och odds (nedåtpil) och spärren (klocka).
+export const IconDownload = svg(<path d="M12 4v11M7 10l5 5 5-5M5 20h14" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" />);
+export const IconClock = svg(
+  <>
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.2" />
+    <path d="M12 7v5l3 2" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+  </>,
+);

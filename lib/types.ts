@@ -9,6 +9,7 @@ import type { PostTable } from "@/lib/hist";
 import type { SignalResult } from "@/lib/positive-signals";
 import type { NextStep, Phase, PhaseStep } from "@/lib/phase";
 import type { InputKey } from "@/lib/riktodds";
+import type { OddsClass } from "@/lib/spelbar";
 import type { Bucket, LeagueRow, StartnrGroup, StartnrLeg } from "@/lib/travstatistik";
 import type { XFactor } from "@/lib/xfactor";
 
@@ -19,6 +20,9 @@ export type FetchStatus = "COMPLETE" | "PARTIAL" | "FAILED";
 export type ThemeSetting = "system" | "light" | "dark";
 export type SpelbarOverride = "NONE" | "ON" | "OFF";
 export type CommentKind = "NOTE" | "RACE";
+// Källan till Mark.unibetOdds (E2.2): MANUAL = eget (inskrivet), UNIBET = hämtat.
+export type OddsSource = "MANUAL" | "UNIBET";
+export type { OddsClass } from "@/lib/spelbar";
 export type { XFactor } from "@/lib/xfactor";
 export type { GameType } from "@/lib/game-type";
 
@@ -141,6 +145,34 @@ export type MarkDto = {
   // Unibet-oddset är under riktlinjen (2,00): taggen "Under 2,00". Gäller
   // Unibet-oddset, inte riktoddset med X-faktor.
   belowGuideline: boolean;
+  // ---- E2.2 ----
+  // Källan till unibetOdds. null = inget odds. "UNIBET" med unibetOdds = null
+  // = struken hos Unibet (taggen "Struken hos Unibet", fältet avstängt).
+  // Äldre cachade svar saknar fälten (läs med ?? null).
+  unibetOddsSource: OddsSource | null;
+  // Ångra (6.9): det egna oddset som hämtningen replacedByFetchId ersatte
+  // ("Ersatte ditt 3,10"). Båda null när inget ersattes.
+  replacedOdds: number | null;
+  replacedByFetchId: string | null;
+  // Grön markering (6.1): skillnaden round2(unibetOdds − riktoddsX) mot
+  // användarens tolerans. "over" > 0, "near" −tolerans…0, "under" < −tolerans,
+  // null när odds eller riktodds saknas. Gäller även hästar som inte är
+  // Intressant; S-märket följer spelbar.
+  oddsClass: OddsClass | null;
+};
+
+// Unibets senaste och första platsodds för en start i omgången (E2.2). null =
+// ingen hämtning har haft hästen. place/win = senaste hämtningen där hästen
+// fanns (null om struken hos Unibet), status = Unibets status då ("Starter"
+// = startar, annat = struken hos Unibet). first/firstAt = första
+// ögonblicksbilden med platsodds (för rörelsen), null om ingen haft odds.
+export type StartUnibetDto = {
+  place: number | null;
+  win: number | null;
+  status: string;
+  at: string;
+  first: number | null;
+  firstAt: string | null;
 };
 
 export type StartResultDto = {
@@ -184,6 +216,8 @@ export type StartDto = {
   quick: { winPct: number | null; placePct: number | null; starts: number | null; lifeStarts: number | null; postPct: number | null; postPlacePct: number | null };
   // Positiva signaler (lib/positive-signals.ts). null = struken.
   signals: SignalResult | null;
+  // E2.2: Unibets odds över tid i kort form (se StartUnibetDto).
+  unibet: StartUnibetDto | null;
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".
@@ -256,9 +290,22 @@ export type RoundResponse = {
   settings: RoundSettings;
   // Antal påslagna källor (Source.enabled) för användaren: m i "n av m källor" (6.8).
   sourcesEnabled: number;
+  // E2.2: senaste ögonblicksbilden av Unibets odds (pågående eller klar).
+  // null = ingen sparad. Spärren gäller till takenAt + 2 min (ODDS_LOCK_MS i
+  // lib/unibet.ts), jämför med serverTime.
+  latestOdds: LatestOddsDto | null;
+  // E2.2: senaste försöket att hämta odds, även när inget sparades (Nästa
+  // steg: "Unibet har inga odds än … Senast prövat i dag 14:30").
+  // outcome: "saved" = sparat, "noOdds" = Unibet hade inga odds,
+  // "noMeeting" = banan fanns inte hos Unibet, "failed" = Unibet svarade inte.
+  lastOddsAttempt: { at: string; outcome: "saved" | "noOdds" | "noMeeting" | "failed" } | null;
 };
 
-export type RoundSettings = { spelbarGuideline: number; rowPrice: number; xFactorTror: number; xFactorStark: number };
+export type LatestOddsDto = { fetchId: string; takenAt: string; finishedAt: string | null; legsOk: number[]; legsFailed: number[]; legsSkipped: number[] };
+
+// spelbarTolerance (E2.2) saknas i äldre cachade svar: läs med toleranceOf()
+// i lib/round-overlay.ts, som faller tillbaka på 0,10.
+export type RoundSettings = { spelbarGuideline: number; rowPrice: number; xFactorTror: number; xFactorStark: number; spelbarTolerance: number };
 
 export type LegSummary = {
   raceId: string;
@@ -403,7 +450,12 @@ export type StartDetailResponse = {
   riktodds: RiktoddsDetailDto | null;
   // E5.
   tips: [];
+  // E2.2: Unibets odds för starten i varje ögonblicksbild där hästen fanns,
+  // äldst först. place/win null = struken hos Unibet (status ≠ "Starter").
+  unibetHistory: UnibetHistoryPoint[];
 };
+
+export type UnibetHistoryPoint = { fetchId: string; at: string; place: number | null; win: number | null; status: string };
 
 export type WhyRowDto = { key: InputKey; text: string; contribution: number };
 
@@ -469,7 +521,38 @@ export type ModelResponse = {
 };
 
 // GET/PUT /api/settings
-export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number; xFactorTror: number; xFactorStark: number; gameType: GameType };
+export type SettingsDto = { theme: ThemeSetting; rushThresholdPe: number; rowPrice: number; spelbarGuideline: number; xFactorTror: number; xFactorStark: number; gameType: GameType; spelbarTolerance: number };
+
+// ---- Unibets odds (E2.2, specen e2.2 12) ------------------------------------------------
+
+// POST /api/rounds/[id]/unibet. 429 inom spärren: UnibetLockedError.
+// noMeeting: banan finns inte hos Unibet, inget sparades (fetchId null).
+export type UnibetStartResponse =
+  | { fetchId: string; takenAt: string; noMeeting?: false; legs: { leg: number; eventKey: string | null; skipped: "started" | "no-event" | null }[] }
+  | { fetchId: null; noMeeting: true; legs: [] };
+export type UnibetLockedError = { error: string; retryAfterSec: number };
+
+// POST /api/rounds/[id]/unibet/[fetchId]/legs/[leg]. 502 med ok: false och
+// error när Unibet inte svarade. noPrices = Unibet hade inga odds för loppet
+// (inget skrevs). missing = startnummer som inte fanns hos Unibet (oddset
+// ändrades inte), scratchedAtUnibet = strukna hos Unibet (oddset blev null).
+// replaced = egna odds som ersattes (from = ditt, to = Unibets).
+export type UnibetLegResponse = {
+  leg: number;
+  ok: boolean;
+  noPrices: boolean;
+  withOdds: number;
+  missing: number[];
+  scratchedAtUnibet: number[];
+  replaced: { startId: string; from: number; to: number | null }[];
+  error?: string;
+};
+
+// POST /api/rounds/[id]/unibet/[fetchId]/finish
+export type UnibetFinishResponse = { saved: false } | ({ saved: true; withOdds: number } & LatestOddsDto);
+
+// POST /api/rounds/[id]/unibet/[fetchId]/undo, body { startId? }
+export type UnibetUndoResponse = { restored: { startId: string; odds: number }[]; marks: MarkDto[] };
 
 // /api/sources
 export type SourceDto = {

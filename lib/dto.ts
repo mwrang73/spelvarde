@@ -4,9 +4,9 @@ import type { HorseStats, PersonStats, YearStats } from "@/lib/atg";
 import { asSelections, couponCost, rowCount } from "@/lib/coupon";
 import { DEFAULT_GAME_TYPE, isGameType } from "@/lib/game-type";
 import { explain, parseParams, parseWeights, type InputKey, type StoredInputs } from "@/lib/riktodds";
-import { belowGuideline, DEFAULT_GUIDELINE, forslag, spelbar } from "@/lib/spelbar";
+import { belowGuideline, DEFAULT_GUIDELINE, DEFAULT_TOLERANCE, forslag, oddsClass, spelbar } from "@/lib/spelbar";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
-import type { CommentDto, CouponDto, MarkDto, ModelDto, PersonDto, RiktoddsDetailDto, RoundDto, SettingsDto, SourceDto, ThemeSetting, YearStatsDto } from "@/lib/types";
+import type { CommentDto, CouponDto, MarkDto, ModelDto, OddsSource, PersonDto, RiktoddsDetailDto, RoundDto, SettingsDto, SourceDto, ThemeSetting, YearStatsDto } from "@/lib/types";
 
 export const dec = (d: Prisma.Decimal | null | undefined): number | null => (d === null || d === undefined ? null : Number(d));
 export const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -34,12 +34,22 @@ export function personDto(p: Person | null | undefined): PersonDto | null {
   return { id: p.id, name: `${p.firstName} ${p.lastName}`.trim(), firstName: p.firstName, lastName: p.lastName, shortName: p.shortName };
 }
 
+// Källan som klienten ser. Migreringen E2.2 gav alla befintliga rader
+// MANUAL, även de utan odds; utan odds finns ingen källa. UNIBET utan odds
+// betyder struken hos Unibet och står kvar.
+export function oddsSourceOf(source: OddsSource | null, unibetOdds: number | null): OddsSource | null {
+  if (source === "MANUAL" && unibetOdds === null) return null;
+  return source;
+}
+
 // riktodds = aktivt riktodds för starten, guideline = användarens riktlinje,
-// factors = användarens X-faktorer. Förslaget räknas mot riktoddset med X-faktor (6.1).
-export function markDto(m: Mark, riktodds: number | null = null, guideline: number = DEFAULT_GUIDELINE, factors: XFactorSettings = DEFAULT_X_FACTORS): MarkDto {
+// factors = användarens X-faktorer, tolerance = toleransen för Spelbar (E2.2).
+// Förslaget räknas mot riktoddset med X-faktor (6.1).
+export function markDto(m: Mark, riktodds: number | null = null, guideline: number = DEFAULT_GUIDELINE, factors: XFactorSettings = DEFAULT_X_FACTORS, tolerance: number = DEFAULT_TOLERANCE): MarkDto {
   const unibetOdds = dec(m.unibetOdds);
   const rx = riktoddsX(riktodds, m.xFactor, factors);
   const base = { interesting: m.interesting, unibetOdds, riktodds: rx, override: m.spelbarOverride };
+  const replaced = m.replacedOdds !== null && m.replacedByFetchId !== null;
   return {
     startId: m.startId,
     interesting: m.interesting,
@@ -56,11 +66,15 @@ export function markDto(m: Mark, riktodds: number | null = null, guideline: numb
     xFactorAt: iso(m.xFactorAt),
     xFactorValue: factorFor(m.xFactor, factors),
     sourceSupport: m.sourceSupport,
-    forslag: forslag(base),
-    spelbar: spelbar(base),
+    forslag: forslag(base, tolerance),
+    spelbar: spelbar(base, tolerance),
     riktodds,
     riktoddsX: rx,
     belowGuideline: belowGuideline(unibetOdds, guideline),
+    unibetOddsSource: oddsSourceOf(m.unibetOddsSource, unibetOdds),
+    replacedOdds: replaced ? dec(m.replacedOdds) : null,
+    replacedByFetchId: replaced ? m.replacedByFetchId : null,
+    oddsClass: oddsClass(unibetOdds, rx, tolerance),
   };
 }
 
@@ -147,6 +161,7 @@ export function settingsDto(s: UserSettings | null): SettingsDto {
     xFactorTror: s ? Number(s.xFactorTror) : DEFAULT_X_FACTORS.xFactorTror,
     xFactorStark: s ? Number(s.xFactorStark) : DEFAULT_X_FACTORS.xFactorStark,
     gameType: s && isGameType(s.gameType) ? s.gameType : DEFAULT_GAME_TYPE,
+    spelbarTolerance: s ? Number(s.spelbarTolerance) : DEFAULT_TOLERANCE,
   };
 }
 

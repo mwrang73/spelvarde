@@ -54,7 +54,8 @@ describe("applyMarkChange", () => {
     expect(off2.spelbarOverride).toBe("OFF");
     expect(isSpelbar(off2)).toBe(false);
 
-    const low = applyMarkChange(EMPTY_MARK, { interesting: true, unibetOdds: 1.25 }, ctx(T1, 1.35));
+    // 1,24 mot 1,35 är mer än toleransen 0,10 under: inte föreslagen.
+    const low = applyMarkChange(EMPTY_MARK, { interesting: true, unibetOdds: 1.24 }, ctx(T1, 1.35));
     const on = applyMarkChange(low, { spelbar: "on" }, ctx(T1, 1.35));
     expect(on.spelbarOverride).toBe("ON");
     expect(isSpelbar(applyMarkChange(on, { unibetOdds: 1.1 }, ctx(T2, 1.35)), 1.35)).toBe(true);
@@ -187,3 +188,29 @@ describe("E2.1: X-faktor och källstöd i ändringen (6.8, 12)", () => {
     }
   });
 });
+
+describe("källan till Unibet-oddset (E2.2)", () => {
+  const fetched: MarkState = { ...EMPTY_MARK, unibetOdds: 2.75, unibetOddsAt: T1, unibetOddsSource: "UNIBET", replacedOdds: 3.1, replacedByFetchId: "f1" };
+  it("ett inskrivet odds får källan eget och Ångra försvinner för hästen", () => {
+    const m = applyMarkChange(fetched, { unibetOdds: 3.2 }, ctx(T2));
+    expect(m).toMatchObject({ unibetOdds: 3.2, unibetOddsSource: "MANUAL", unibetOddsPrev: 2.75, replacedOdds: null, replacedByFetchId: null });
+  });
+  it("samma värde som det hämtade blir också eget, utan ny tid", () => {
+    const m = applyMarkChange(fetched, { unibetOdds: 2.75 }, ctx(T2));
+    expect(m).toMatchObject({ unibetOdds: 2.75, unibetOddsAt: T1, unibetOddsSource: "MANUAL" });
+  });
+  it("ett tömt fält har ingen källa", () => {
+    expect(applyMarkChange(fetched, { unibetOdds: null }, ctx(T2))).toMatchObject({ unibetOdds: null, unibetOddsSource: null });
+  });
+  it("andra fält rör inte källan eller Ångra", () => {
+    const m = applyMarkChange(fetched, { interesting: true, bet: true }, ctx(T2));
+    expect(m).toMatchObject({ unibetOddsSource: "UNIBET", replacedOdds: 3.1, replacedByFetchId: "f1", betOdds: 2.75 });
+    expect(sameMark(m, applyMarkChange(m, { interesting: true }, ctx(T2)))).toBe(true);
+  });
+  it("förslaget i ett tryck på Spelbar räknas med toleransen", () => {
+    const near = { ...EMPTY_MARK, interesting: true, unibetOdds: 2.35 };
+    expect(applyMarkChange(near, { spelbar: "on" }, ctx(T1)).spelbarOverride).toBe("NONE");
+    expect(applyMarkChange(near, { spelbar: "on" }, { ...ctx(T1), tolerance: 0 }).spelbarOverride).toBe("ON");
+  });
+});
+

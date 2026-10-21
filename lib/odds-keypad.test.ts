@@ -104,9 +104,15 @@ describe("knappsatsen (S4)", () => {
 describe("läget i ord", () => {
   const g = 2;
   it("resultatraden i S4", () => {
-    expect(keypadVerdict({ odds: 3.1, riktodds: 2.4, interesting: true, override: "NONE", guideline: g })).toEqual({ tone: "ok", text: "0,70 över riktoddset · föreslås som Spelbar", below: false });
-    expect(keypadVerdict({ odds: 1.25, riktodds: 1.35, interesting: true, override: "NONE", guideline: g })).toEqual({ tone: "no", text: "0,10 under riktoddset · inte spelbar", below: true });
-    expect(keypadVerdict({ odds: 3.1, riktodds: 2.4, interesting: true, override: "OFF", guideline: g }).text).toBe("0,70 över riktoddset · Spelbar borttagen av dig");
+    expect(keypadVerdict({ odds: 3.1, riktodds: 2.4, interesting: true, override: "NONE", guideline: g })).toEqual({ tone: "ok", text: "+0,70 över riktoddset · föreslås som Spelbar", below: false });
+    // E2.2: högst toleransen (0,10) under riktoddset är nära och föreslås.
+    expect(keypadVerdict({ odds: 1.25, riktodds: 1.35, interesting: true, override: "NONE", guideline: g })).toEqual({ tone: "ok", text: "−0,10 nära riktoddset · föreslås som Spelbar", below: true });
+    expect(keypadVerdict({ odds: 1.24, riktodds: 1.35, interesting: true, override: "NONE", guideline: g })).toEqual({ tone: "no", text: "−0,11 under riktoddset · inte spelbar", below: true });
+    expect(keypadVerdict({ odds: 2.25, riktodds: 2.4, interesting: true, override: "NONE", guideline: g, tolerance: 0.2 }).text).toBe("−0,15 nära riktoddset · föreslås som Spelbar");
+    expect(keypadVerdict({ odds: 2.25, riktodds: 2.4, interesting: true, override: "NONE", guideline: g, tolerance: 0 }).text).toBe("−0,15 under riktoddset · inte spelbar");
+    expect(keypadVerdict({ odds: 2.4, riktodds: 2.4, interesting: true, override: "NONE", guideline: g, tolerance: 0 }).text).toBe("±0,00 nära riktoddset · föreslås som Spelbar");
+    expect(keypadVerdict({ odds: 2.65, riktodds: 2.4, interesting: true, override: "NONE", guideline: g, ref: "riktoddset med X" }).text).toBe("+0,25 över riktoddset med X · föreslås som Spelbar");
+    expect(keypadVerdict({ odds: 3.1, riktodds: 2.4, interesting: true, override: "OFF", guideline: g }).text).toBe("+0,70 över riktoddset · Spelbar borttagen av dig");
     expect(keypadVerdict({ odds: 1.25, riktodds: 1.35, interesting: true, override: "ON", guideline: g }).tone).toBe("ok");
     expect(keypadVerdict({ odds: 3.1, riktodds: null, interesting: true, override: "NONE", guideline: g }).text).toBe("Riktodds saknas – hämta omgången igen. Oddset sparas ändå.");
     expect(keypadVerdict({ odds: null, riktodds: 2.4, interesting: true, override: "NONE", guideline: g }).tone).toBe("help");

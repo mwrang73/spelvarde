@@ -46,7 +46,7 @@ describe("texterna", () => {
   });
   it("S3 och S4: meningen och resultatraden jämför mot riktoddset med X", () => {
     expect(riktoddsSentence({ unibetOdds: 3.1, riktodds: 2.4, interesting: true, spelbar: true, override: "NONE", ref: "riktoddset med X-faktor" })).toBe("Spelbar: Unibet ger 0,70 mer än riktoddset med X-faktor");
-    expect(keypadVerdict({ odds: 3.1, riktodds: 2.4, interesting: true, override: "NONE", guideline: 2, ref: "riktoddset med X" }).text).toBe("0,70 över riktoddset med X · föreslås som Spelbar");
+    expect(keypadVerdict({ odds: 3.1, riktodds: 2.4, interesting: true, override: "NONE", guideline: 2, ref: "riktoddset med X" }).text).toBe("+0,70 över riktoddset med X · föreslås som Spelbar");
     // Riktlinjen gäller fortfarande Unibet-oddset.
     expect(keypadVerdict({ odds: 1.9, riktodds: 1.5, interesting: true, override: "NONE", guideline: 2, ref: "riktoddset med X" }).below).toBe(true);
   });
@@ -68,8 +68,8 @@ describe("uninterestingUndo (Intressant släcks)", () => {
   it("Ångra återställer Intressant, Spelbar och X-faktor i ett steg, och källstödet ligger kvar", () => {
     const now = new Date("2026-10-22T10:00:00Z");
     const ctx = { now, riktodds: 3.2, factors: S };
-    // Unibet 2,50: inte föreslagen ens med Tror på (2,56), så Spelbar är satt för hand.
-    let m = applyMarkChange(EMPTY_MARK, { interesting: true, unibetOdds: 2.5, xFactor: "TROR", spelbar: "on", sourceSupport: 2 }, ctx);
+    // Unibet 2,45: inte föreslagen ens med Tror på (2,56, mer än toleransen 0,10 under), så Spelbar är satt för hand.
+    let m = applyMarkChange(EMPTY_MARK, { interesting: true, unibetOdds: 2.45, xFactor: "TROR", spelbar: "on", sourceSupport: 2 }, ctx);
     expect(m.spelbarOverride).toBe("ON");
     const before = { spelbar: true, spelbarOverride: m.spelbarOverride, xFactor: m.xFactor };
     m = applyMarkChange(m, { interesting: false }, ctx);

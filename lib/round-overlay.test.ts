@@ -3,7 +3,7 @@ import type { OutboxItem } from "@/lib/outbox";
 import type { Mark } from "@prisma/client";
 import { markDto } from "@/lib/dto";
 import { applyMarkChange, EMPTY_MARK, type MarkChange, type MarkState } from "@/lib/marks";
-import { applyCommentDone, applyDone, applyPending, applyPendingComments, applySettings, conflictText, markDtoOf, retryText, xFactorsOf } from "@/lib/round-overlay";
+import { applyCommentDone, applyDone, applyPending, applyPendingComments, applySettings, conflictText, markDtoOf, retryText, toleranceOf, xFactorsOf } from "@/lib/round-overlay";
 import type { CommentDto, RaceDto, RoundResponse, StartDto } from "@/lib/types";
 
 const NOW = new Date("2026-10-19T12:00:00Z");
@@ -26,11 +26,12 @@ function start(id: string, number: number, interesting = false): StartDto {
     probTop3: null,
     uncertain: true,
     mark: interesting
-      ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", xFactor: "NONE", xFactorAt: null, xFactorValue: 1, sourceSupport: null, forslag: false, spelbar: false, riktodds: null, riktoddsX: null, belowGuideline: false }
+      ? { startId: id, interesting: true, interestingAt: null, spelbarOverride: "NONE", bet: false, betAt: null, betOdds: null, unibetOdds: null, unibetOddsAt: null, unibetOddsPrev: null, updatedAt: "", xFactor: "NONE", xFactorAt: null, xFactorValue: 1, sourceSupport: null, forslag: false, spelbar: false, riktodds: null, riktoddsX: null, belowGuideline: false, unibetOddsSource: null, replacedOdds: null, replacedByFetchId: null, oddsClass: null }
       : null,
     result: null,
     quick: { winPct: null, placePct: null, starts: null, lifeStarts: null, postPct: null, postPlacePct: null },
     signals: null,
+    unibet: null,
   };
 }
 
@@ -73,8 +74,10 @@ function round(): RoundResponse {
     latestStreck: null,
     coupon: null,
     model: null,
-    settings: { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5 },
+    settings: { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5, spelbarTolerance: 0.1 },
     sourcesEnabled: 0,
+    latestOdds: null,
+    lastOddsAttempt: null,
   };
 }
 
@@ -219,7 +222,7 @@ describe("E2.1: X-faktor i det optimistiska läget", () => {
   });
   it("användarens faktorer ur settings, och standard för en gammal cache utan dem", () => {
     const d = withRikt();
-    d.settings = { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.6, xFactorStark: 2 };
+    d.settings = { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.6, xFactorStark: 2, spelbarTolerance: 0.1 };
     const out = applyPending(d, [put("a", { xFactor: "TROR" })], NOW);
     expect(out.races[0].starts[0].mark).toMatchObject({ xFactorValue: 1.6, riktoddsX: 2 });
     expect(xFactorsOf({ spelbarGuideline: 2, rowPrice: 0.5 })).toEqual({ xFactorTror: 1.25, xFactorStark: 1.5 });
@@ -230,11 +233,25 @@ describe("E2.1: X-faktor i det optimistiska läget", () => {
     });
     expect(d.races[0].starts[0].mark).toMatchObject({ forslag: true });
     const out = applySettings(d, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.2, xFactorStark: 1.5 }, NOW);
-    expect(out.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.2, xFactorStark: 1.5 });
+    expect(out.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.2, xFactorStark: 1.5, spelbarTolerance: 0.1 });
     expect(out.races[0].starts[0].mark).toMatchObject({ xFactorValue: 1.2, riktoddsX: 2.67, forslag: true, spelbar: true });
     const out2 = applySettings(d, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.05, xFactorStark: 1.5 }, NOW);
     expect(out2.races[0].starts[0].mark).toMatchObject({ riktoddsX: 3.05, forslag: false, spelbar: false });
     expect(out2.races[0].counts.spelbar).toBe(0);
+  });
+  it("toleransen i S10 (E2.2) räknar om förslag och oddsklass i cachen direkt", () => {
+    // Unibet 3,10 mot riktodds 3,20: −0,10, nära med 0,10 och under med 0,05.
+    const d = applyDone(withRikt(), put("a", {}), {
+      mark: markDtoOf("a", applyMarkChange(EMPTY_MARK, { interesting: true, unibetOdds: 3.1 }, { now: NOW, riktodds: 3.2 }), 3.2, 2, NOW.toISOString()),
+    });
+    expect(d.races[0].starts[0].mark).toMatchObject({ forslag: true, oddsClass: "near", unibetOddsSource: "MANUAL" });
+    const out = applySettings(d, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5, spelbarTolerance: 0.05 }, NOW);
+    expect(out.settings.spelbarTolerance).toBe(0.05);
+    expect(out.races[0].starts[0].mark).toMatchObject({ forslag: false, spelbar: false, oddsClass: "under" });
+    // Utan toleransen i anropet behålls den som finns i cachen.
+    expect(applySettings(out, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5 }, NOW).settings.spelbarTolerance).toBe(0.05);
+    // Ett cachat svar från före E2.2 (utan toleransen) räknas med 0,10.
+    expect(toleranceOf({ spelbarGuideline: 2 })).toBe(0.1);
   });
   it("overlay = server: markDtoOf ger samma MarkDto som markDto för samma tillstånd", () => {
     const F = { xFactorTror: 1.3, xFactorStark: 1.7 };

@@ -14,13 +14,14 @@
 // Mark-poster (E2) läggs på med samma regler som servern (applyMarkChange i
 // lib/marks.ts), så att Spelbar, Bet och "Ändrat från" stämmer direkt. Från
 // E2.1 räknas förslaget mot riktoddset med X-faktor med användarens faktorer
-// ur data.settings (lib/xfactor.ts), precis som på servern.
+// ur data.settings (lib/xfactor.ts), precis som på servern. Från E2.2 med
+// användarens tolerans (data.settings.spelbarTolerance, toleranceOf()).
 
 import { couponCost, rowCount, type Selections } from "@/lib/coupon";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, type MarkChange, type MarkState } from "@/lib/marks";
 import type { OutboxItem } from "@/lib/outbox";
 import { nextStep, type NextStepRace } from "@/lib/phase";
-import { belowGuideline, forslag, spelbar } from "@/lib/spelbar";
+import { belowGuideline, DEFAULT_TOLERANCE, forslag, oddsClass, spelbar } from "@/lib/spelbar";
 import type { CommentDto, CommentKind, CouponDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto } from "@/lib/types";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
 import { legsFor } from "@/lib/game-type";
@@ -169,7 +170,17 @@ export function markStateOf(m: MarkDto | null): MarkState {
     xFactor: m.xFactor ?? "NONE",
     xFactorAt: time(m.xFactorAt ?? null),
     sourceSupport: m.sourceSupport ?? null,
+    // Cachade svar från före E2.2 saknar fälten. Ett odds utan källa var inskrivet.
+    unibetOddsSource: m.unibetOddsSource ?? (m.unibetOdds !== null ? "MANUAL" : null),
+    replacedOdds: m.replacedOdds ?? null,
+    replacedByFetchId: m.replacedByFetchId ?? null,
   };
+}
+
+// Användarens tolerans för Spelbar (E2.2), 0,10 om den saknas (cachat svar
+// från före E2.2).
+export function toleranceOf(settings: Partial<RoundSettings> | null | undefined): number {
+  return settings?.spelbarTolerance ?? DEFAULT_TOLERANCE;
 }
 
 // Användarens X-faktorer ur omgångens inställningar (standard om de saknas,
@@ -183,7 +194,7 @@ export function xFactorsOf(settings: Partial<RoundSettings> | null | undefined):
 
 // MarkState (optimistiskt läge) till MarkDto med beräknad Spelbar (6.1),
 // räknad mot riktoddset med X-faktor (6.8). Samma som markDto i lib/dto.ts.
-export function markDtoOf(startId: string, s: MarkState, riktodds: number | null, guideline: number, updatedAt: string, factors: XFactorSettings = DEFAULT_X_FACTORS): MarkDto {
+export function markDtoOf(startId: string, s: MarkState, riktodds: number | null, guideline: number, updatedAt: string, factors: XFactorSettings = DEFAULT_X_FACTORS, tolerance: number = DEFAULT_TOLERANCE): MarkDto {
   const rx = riktoddsX(riktodds, s.xFactor, factors);
   const base = { interesting: s.interesting, unibetOdds: s.unibetOdds, riktodds: rx, override: s.spelbarOverride };
   return {
@@ -202,33 +213,39 @@ export function markDtoOf(startId: string, s: MarkState, riktodds: number | null
     xFactorAt: isoOf(s.xFactorAt),
     xFactorValue: factorFor(s.xFactor, factors),
     sourceSupport: s.sourceSupport,
-    forslag: forslag(base),
-    spelbar: spelbar(base),
+    forslag: forslag(base, tolerance),
+    spelbar: spelbar(base, tolerance),
     riktodds,
     riktoddsX: rx,
     belowGuideline: belowGuideline(s.unibetOdds, guideline),
+    unibetOddsSource: s.unibetOddsSource === "MANUAL" && s.unibetOdds === null ? null : s.unibetOddsSource,
+    replacedOdds: s.replacedByFetchId !== null ? s.replacedOdds : null,
+    replacedByFetchId: s.replacedOdds !== null ? s.replacedByFetchId : null,
+    oddsClass: oddsClass(s.unibetOdds, rx, tolerance),
   };
 }
 
 // Lägger ändringarna (i köns ordning) på hästens Mark. Tiden för varje
 // ändring är när den lades i kön, så att "Ändrat från … kl …" står still.
-function setMark(start: StartDto, changes: { change: MarkChange; at: number }[], guideline: number, factors: XFactorSettings): StartDto {
+function setMark(start: StartDto, changes: { change: MarkChange; at: number }[], guideline: number, factors: XFactorSettings, tolerance: number = DEFAULT_TOLERANCE): StartDto {
   let state = markStateOf(start.mark ?? null);
-  for (const c of changes) state = applyMarkChange(state, c.change, { now: new Date(c.at), riktodds: start.riktodds, factors });
+  for (const c of changes) state = applyMarkChange(state, c.change, { now: new Date(c.at), riktodds: start.riktodds, factors, tolerance });
   const updatedAt = new Date(changes[changes.length - 1]?.at ?? 0).toISOString();
-  return { ...start, mark: markDtoOf(start.id, state, start.riktodds, guideline, updatedAt, factors) };
+  return { ...start, mark: markDtoOf(start.id, state, start.riktodds, guideline, updatedAt, factors, tolerance) };
 }
 
 // Nya inställningar (S10: riktlinje, radpris, X-faktorer) in i cachen. Alla
 // hästars beräknade fält (forslag, spelbar, riktoddsX, xFactorValue,
 // belowGuideline) räknas om med samma regler som servern, så att förslagen
 // ändras direkt utan att omgången hämtas igen.
-export function applySettings(data: RoundResponse, s: Pick<SettingsDto, "spelbarGuideline" | "rowPrice" | "xFactorTror" | "xFactorStark">, now: Date = new Date()): RoundResponse {
-  const settings: RoundSettings = { spelbarGuideline: s.spelbarGuideline, rowPrice: s.rowPrice, xFactorTror: s.xFactorTror, xFactorStark: s.xFactorStark };
+// spelbarTolerance (E2.2) behålls från cachen om den inte skickas.
+export function applySettings(data: RoundResponse, s: Pick<SettingsDto, "spelbarGuideline" | "rowPrice" | "xFactorTror" | "xFactorStark"> & Partial<Pick<SettingsDto, "spelbarTolerance">>, now: Date = new Date()): RoundResponse {
+  const tolerance = s.spelbarTolerance ?? toleranceOf(data.settings);
+  const settings: RoundSettings = { spelbarGuideline: s.spelbarGuideline, rowPrice: s.rowPrice, xFactorTror: s.xFactorTror, xFactorStark: s.xFactorStark, spelbarTolerance: tolerance };
   const races = data.races.map((race) =>
     recountRace({
       ...race,
-      starts: race.starts.map((st) => (st.mark ? { ...st, mark: markDtoOf(st.id, markStateOf(st.mark), st.riktodds, s.spelbarGuideline, st.mark.updatedAt, s) } : st)),
+      starts: race.starts.map((st) => (st.mark ? { ...st, mark: markDtoOf(st.id, markStateOf(st.mark), st.riktodds, s.spelbarGuideline, st.mark.updatedAt, s, tolerance) } : st)),
     }),
   );
   return withNextStep({ ...data, settings, races }, now);
@@ -263,10 +280,11 @@ export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date
   if (!marks.size && !reviews.size && !coupon) return data;
   const guideline = data.settings?.spelbarGuideline ?? 2;
   const factors = xFactorsOf(data.settings);
+  const tolerance = toleranceOf(data.settings);
   const races = data.races.map((race) => {
     const touched = race.starts.some((s) => marks.has(s.id)) || reviews.has(race.id);
     if (!touched) return race;
-    const starts = race.starts.map((s) => (marks.has(s.id) ? setMark(s, marks.get(s.id)!, guideline, factors) : s));
+    const starts = race.starts.map((s) => (marks.has(s.id) ? setMark(s, marks.get(s.id)!, guideline, factors, tolerance) : s));
     const r = reviews.get(race.id);
     const review = r ? (r.reviewed ? { reviewedAt: new Date(r.at).toISOString(), noneInteresting: r.noneInteresting } : null) : race.review;
     return recountRace({ ...race, starts, review });

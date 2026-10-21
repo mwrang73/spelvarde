@@ -99,6 +99,14 @@ enum XFactor {
   @@schema("spelvarde")
 }
 
+// Källan till Mark.unibetOdds (E2.2): inskrivet av användaren eller hämtat.
+enum OddsSource {
+  MANUAL
+  UNIBET
+
+  @@schema("spelvarde")
+}
+
 enum CommentKind {
   NOTE
   RACE
@@ -144,6 +152,7 @@ model User {
   tipFacts      TipFact[]
   fetchLogs     FetchLog[]
   modelVersions ModelVersion[]
+  oddsFetches   OddsFetch[]
 
   @@schema("spelvarde")
 }
@@ -158,6 +167,9 @@ model UserSettings {
   // X-faktorerna (6.8, E2.1). 1,05–3,00 och Stark > Tror (check i migreringen).
   xFactorTror      Decimal     @default(1.25) @db.Decimal(4, 2)
   xFactorStark     Decimal     @default(1.50) @db.Decimal(4, 2)
+  // E2.2 (6.1): hur mycket under riktoddset med X-faktor Unibet-oddset får
+  // ligga och ändå föreslås som Spelbar. 0,00–0,50 (check i migreringen).
+  spelbarTolerance Decimal     @default(0.10) @db.Decimal(4, 2)
   // Spelformen som Hämta omgång letar efter: V75, V85, V86 eller GS75 (lib/game-type.ts).
   gameType         String      @default("V85")
   updatedAt        DateTime    @updatedAt
@@ -192,14 +204,15 @@ model Round {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  races     Race[]
-  snapshots RoundSnapshot[]
-  stats     StatsSnapshot[]
-  fetchLogs FetchLog[]
-  comments  HorseComment[]
-  coupons   Coupon[]
-  outcomes  Outcome[]
-  tipFacts  TipFact[]
+  races       Race[]
+  snapshots   RoundSnapshot[]
+  stats       StatsSnapshot[]
+  fetchLogs   FetchLog[]
+  comments    HorseComment[]
+  coupons     Coupon[]
+  outcomes    Outcome[]
+  tipFacts    TipFact[]
+  oddsFetches OddsFetch[]
 
   @@index([date])
   @@schema("spelvarde")
@@ -229,6 +242,9 @@ model Race {
   cancelled        Boolean     @default(false)
   // Steg 2–9: när alla starter i avdelningen senast hämtades utan fel.
   recordsFetchedAt DateTime?
+  // E2.2 (10.5): loppets nyckel hos Unibet, t.ex. "202610241300.H.SWE.jagersro.5".
+  // Sätts när en oddshämtning slår upp banan; läses av anropet per avdelning.
+  unibetEventKey   String?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
@@ -339,13 +355,14 @@ model Start {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  streck   StreckValue[]
-  riktodds Riktodds[]
-  marks    Mark[]
-  comments HorseComment[]
-  alarms   LiveAlarm[]
-  outcomes Outcome[]
-  tipFacts TipFact[]
+  streck       StreckValue[]
+  riktodds     Riktodds[]
+  marks        Mark[]
+  comments     HorseComment[]
+  alarms       LiveAlarm[]
+  outcomes     Outcome[]
+  tipFacts     TipFact[]
+  unibetPrices UnibetPrice[]
 
   @@unique([raceId, horseId])
   @@unique([raceId, number])
@@ -485,32 +502,87 @@ model FetchLog {
 }
 
 // ---------------------------------------------------------------------------
+// Unibets odds (E2.2, specen 8.3). Gemensam data som bara oddshämtningen
+// skriver: ett huvud per tryck på Hämta streck och odds (oddsdelen) och en rad
+// per start. En hämtning utan några odds tas bort i finish och sparas alltså
+// inte. Spärren (högst en per omgång och 2 minuter) räknas från takenAt.
+
+model OddsFetch {
+  id          String    @id @default(cuid())
+  roundId     String
+  round       Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  // Den som tryckte (null om användaren har tagits bort).
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  takenAt     DateTime  @default(now())
+  finishedAt  DateTime?
+  // Avdelningar som Unibet svarade för, som misslyckades och som hoppades
+  // över (loppet hade startat). Uppdateras per avdelning.
+  legsOk      Int[]
+  legsFailed  Int[]
+  legsSkipped Int[]
+
+  prices        UnibetPrice[]
+  replacedMarks Mark[]
+
+  @@index([roundId, takenAt])
+  @@index([userId])
+  @@schema("spelvarde")
+}
+
+model UnibetPrice {
+  id        String    @id @default(cuid())
+  fetchId   String
+  fetch     OddsFetch @relation(fields: [fetchId], references: [id], onDelete: Cascade)
+  startId   String
+  start     Start     @relation(fields: [startId], references: [id], onDelete: Cascade)
+  // FixedPlace och FixedWin, avrundade till hundradelar. NULL när hästen är
+  // struken hos Unibet (eller saknar pris).
+  placeOdds Decimal?  @db.Decimal(6, 2)
+  winOdds   Decimal?  @db.Decimal(7, 2)
+  // Unibets competitor.status: "Starter" = startar, annat = struken hos Unibet.
+  status    String
+
+  @@unique([fetchId, startId])
+  @@index([startId])
+  @@schema("spelvarde")
+}
+
+// ---------------------------------------------------------------------------
 // Per användare
 
 model Mark {
-  id              String          @id @default(cuid())
-  userId          String
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startId         String
-  start           Start           @relation(fields: [startId], references: [id], onDelete: Cascade)
-  interesting     Boolean         @default(false)
-  interestingAt   DateTime?
-  spelbarOverride SpelbarOverride @default(NONE)
-  bet             Boolean         @default(false)
-  betAt           DateTime?
-  betOdds         Decimal?        @db.Decimal(6, 2)
-  unibetOdds      Decimal?        @db.Decimal(6, 2)
-  unibetOddsAt    DateTime?
-  unibetOddsPrev  Decimal?        @db.Decimal(6, 2)
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startId           String
+  start             Start           @relation(fields: [startId], references: [id], onDelete: Cascade)
+  interesting       Boolean         @default(false)
+  interestingAt     DateTime?
+  spelbarOverride   SpelbarOverride @default(NONE)
+  bet               Boolean         @default(false)
+  betAt             DateTime?
+  betOdds           Decimal?        @db.Decimal(6, 2)
+  unibetOdds        Decimal?        @db.Decimal(6, 2)
+  unibetOddsAt      DateTime?
+  unibetOddsPrev    Decimal?        @db.Decimal(6, 2)
   // E2.1 (6.8): X-faktor (kräver Intressant) och källstöd 0–20 (null = inte ifyllt).
-  xFactor         XFactor         @default(NONE)
-  xFactorAt       DateTime?
-  sourceSupport   Int?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  xFactor           XFactor         @default(NONE)
+  xFactorAt         DateTime?
+  sourceSupport     Int?
+  // E2.2 (8.3): källan till unibetOdds. NULL = inget odds. UNIBET med
+  // unibetOdds = NULL = struken hos Unibet.
+  unibetOddsSource  OddsSource?
+  // Ångra (6.9): det egna oddset som hämtningen replacedByFetchId ersatte.
+  replacedOdds      Decimal?        @db.Decimal(6, 2)
+  replacedByFetchId String?
+  replacedByFetch   OddsFetch?      @relation(fields: [replacedByFetchId], references: [id], onDelete: SetNull)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@unique([userId, startId])
   @@index([startId])
+  @@index([replacedByFetchId])
   @@schema("spelvarde")
 }
 
@@ -672,7 +744,6 @@ model TipFact {
   @@index([horseId])
   @@schema("spelvarde")
 }
-
 
 // ---------------------------------------------------------------------------
 // Statistikbasen: alla svenska travlopp från ATG (lib/hist.ts). Gemensam

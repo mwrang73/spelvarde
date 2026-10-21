@@ -12,7 +12,8 @@
 // mergeMarkBodies för hur utkorgen slår ihop två kroppar.
 
 import { isValidOdds, ODDS_RANGE_ERROR } from "@/lib/odds-input";
-import { applyInteresting, applySpelbar, type Override, type SpelbarInput } from "@/lib/spelbar";
+import { applyInteresting, applySpelbar, DEFAULT_TOLERANCE, type Override, type SpelbarInput } from "@/lib/spelbar";
+import type { OddsSource } from "@/lib/types";
 import type { Result } from "@/lib/validate";
 import { DEFAULT_X_FACTORS, isXFactor, parseSourceSupport, riktoddsX, X_FACTOR_ERROR, X_NEEDS_INTERESTING, xTurnsOnInteresting, type XFactor, type XFactorSettings } from "@/lib/xfactor";
 
@@ -40,6 +41,10 @@ export type MarkState = {
   xFactor: XFactor;
   xFactorAt: Date | null;
   sourceSupport: number | null;
+  // E2.2: källan till unibetOdds och det ersatta egna oddset för Ångra.
+  unibetOddsSource: OddsSource | null;
+  replacedOdds: number | null;
+  replacedByFetchId: string | null;
 };
 
 export const EMPTY_MARK: MarkState = {
@@ -55,6 +60,9 @@ export const EMPTY_MARK: MarkState = {
   xFactor: "NONE",
   xFactorAt: null,
   sourceSupport: null,
+  unibetOddsSource: null,
+  replacedOdds: null,
+  replacedByFetchId: null,
 };
 
 const KEYS = ["interesting", "spelbar", "bet", "unibetOdds", "betOdds", "xFactor", "sourceSupport"] as const;
@@ -105,7 +113,8 @@ export function turnsSomethingOn(c: MarkChange): boolean {
   return c.interesting === true || c.spelbar === "on" || c.bet === true || (c.xFactor !== undefined && c.xFactor !== "NONE") || (c.sourceSupport !== undefined && c.sourceSupport !== null);
 }
 
-export type MarkCtx = { now: Date; riktodds: number | null; factors?: XFactorSettings };
+// tolerance = användarens tolerans för Spelbar (E2.2, standard 0,10).
+export type MarkCtx = { now: Date; riktodds: number | null; factors?: XFactorSettings; tolerance?: number };
 
 export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: MarkCtx): MarkState {
   const now = ctx.now;
@@ -113,10 +122,18 @@ export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: MarkCtx): M
   const next: MarkState = { ...prev };
 
   // 1. Unibet-odds. Ett nytt värde sparar det gamla för "Ändrat från … kl …".
-  if (c.unibetOdds !== undefined && c.unibetOdds !== prev.unibetOdds) {
-    next.unibetOdds = c.unibetOdds;
-    next.unibetOddsAt = now;
-    next.unibetOddsPrev = c.unibetOdds === null ? null : prev.unibetOdds;
+  // Ett inskrivet odds får källan eget (E2.2, även samma värde som det
+  // hämtade), och ett tomt fält ingen källa. Ångra för den senaste hämtningen
+  // gäller inte längre för hästen.
+  if (c.unibetOdds !== undefined) {
+    if (c.unibetOdds !== prev.unibetOdds) {
+      next.unibetOdds = c.unibetOdds;
+      next.unibetOddsAt = now;
+      next.unibetOddsPrev = c.unibetOdds === null ? null : prev.unibetOdds;
+    }
+    next.unibetOddsSource = c.unibetOdds === null ? null : "MANUAL";
+    next.replacedOdds = null;
+    next.replacedByFetchId = null;
   }
 
   // 2. Intressant. Tas den bort nollställs override och X-faktorn (6.1, 6.8).
@@ -150,7 +167,7 @@ export function applyMarkChange(prev: MarkState, c: MarkChange, ctx: MarkCtx): M
   // riktoddset med X-faktor.
   if (c.spelbar !== undefined && !(c.interesting === false && c.spelbar === "on")) {
     const rx = riktoddsX(ctx.riktodds, next.xFactor, factors);
-    const s = applySpelbar({ interesting: next.interesting, unibetOdds: next.unibetOdds, riktodds: rx }, c.spelbar);
+    const s = applySpelbar({ interesting: next.interesting, unibetOdds: next.unibetOdds, riktodds: rx }, c.spelbar, ctx.tolerance ?? DEFAULT_TOLERANCE);
     if (s.interesting && !next.interesting) next.interestingAt = now;
     next.interesting = s.interesting;
     next.spelbarOverride = next.interesting ? s.override : "NONE";
@@ -216,6 +233,9 @@ export function sameMark(a: MarkState, b: MarkState): boolean {
     a.unibetOddsPrev === b.unibetOddsPrev &&
     a.xFactor === b.xFactor &&
     t(a.xFactorAt) === t(b.xFactorAt) &&
-    a.sourceSupport === b.sourceSupport
+    a.sourceSupport === b.sourceSupport &&
+    a.unibetOddsSource === b.unibetOddsSource &&
+    a.replacedOdds === b.replacedOdds &&
+    a.replacedByFetchId === b.replacedByFetchId
   );
 }

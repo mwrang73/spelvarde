@@ -14,6 +14,8 @@ import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from 
 import { odds, relTime } from "@/lib/format";
 import { INPUT_KEYS, isCalibrated, RECOMMENDED_CALIBRATION, RECOMMENDED_KEY, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
 import { applySettings } from "@/lib/round-overlay";
+import { parseTolerance } from "@/lib/odds-ui";
+import { TOLERANCE_ERROR } from "@/lib/spelbar";
 import { X_FACTOR_ORDER_ERROR, X_FACTOR_RANGE_ERROR } from "@/lib/xfactor";
 import { parseFactorText } from "@/lib/xfactor-ui";
 import type { CurrentRoundResponse, ModelDto, ModelResponse, RiktoddsStepResponse, SettingsDto } from "@/lib/types";
@@ -154,6 +156,14 @@ export function GameSettings({ settings, onChange }: { settings: SettingsDto | n
           parse={parseGuideline}
           error={GUIDELINE_ERROR}
           onSave={(v) => save({ spelbarGuideline: v })}
+        />
+        <NumberSetting
+          label="Tolerans för Spelbar"
+          help="Hästen föreslås som Spelbar även när Unibet ligger upp till så här mycket under riktoddset. Med 0,10 räcker 2,00 mot riktodds 2,10. Mellan 0,00 och 0,50."
+          value={settings?.spelbarTolerance ?? null}
+          parse={parseTolerance}
+          error={TOLERANCE_ERROR}
+          onSave={(v) => save({ spelbarTolerance: v })}
         />
         <NumberSetting label="Radpris" help="Används för kostnaden i raden." value={settings?.rowPrice ?? null} unit="kr" parse={parseRowPrice} error={ROW_PRICE_ERROR} onSave={(v) => save({ rowPrice: v })} />
         <NumberSetting

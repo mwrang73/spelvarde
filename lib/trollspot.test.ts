@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trollspot } from "@/lib/trollspot";
+import { minOddsOf, trollspot } from "@/lib/trollspot";
 import type { RaceDto, StartDto } from "@/lib/types";
 
 const start = (n: number, streck: number | null, p: number | null, o: Partial<StartDto> = {}) =>
@@ -19,10 +19,20 @@ describe("Trollspöt", () => {
     expect(res.items[0].start.number).toBe(2);
     expect(res.items.every((i) => i.estOdds >= 1.8)).toBe(true);
   });
-  it("minst X är det högsta av 2,00, riktoddset och marknadens odds", () => {
+  it("minst X är det högsta av 2,00, riktoddset minus toleransen och marknadens odds", () => {
     const it2 = trollspot([field(1)], NOW).items[0];
-    expect(it2.minOdds).toBe(Math.max(2, it2.start.riktodds!, it2.estOdds));
+    expect(it2.minOdds).toBe(Math.round(Math.max(2, it2.start.riktodds! - 0.1, it2.estOdds) * 100) / 100);
     expect(it2.minOdds).toBeGreaterThanOrEqual(2);
+    // Utan tolerans: som före E2.2.
+    const it0 = trollspot([field(1)], NOW, 0).items[0];
+    expect(it0.minOdds).toBe(Math.round(Math.max(2, it0.start.riktodds!, it0.estOdds) * 100) / 100);
+  });
+  it("toleransen dras av från riktoddset men inte från 2,00", () => {
+    expect(minOddsOf(3.4, 2.5)).toBe(3.3);
+    expect(minOddsOf(3.4, 2.5, 0.5)).toBe(2.9);
+    expect(minOddsOf(2.05, 1.9)).toBe(2);
+    expect(minOddsOf(null, 2.62)).toBe(2.62);
+    expect(minOddsOf(1.5, 0)).toBe(2);
   });
   it("högst 10, strukna och startade lopp bort, Unibet över eller under gränsen", () => {
     const races = [1, 2, 3].map(field);

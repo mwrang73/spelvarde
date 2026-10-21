@@ -18,7 +18,8 @@ import { useFetchChain } from "./fetchChain";
 import { FetchBanners, FetchSteps, runChain } from "./FetchUi";
 import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
 import { useRound } from "./RoundProvider";
-import { StreckRefresh } from "./StreckRefresh";
+import { OddsFetchCard, RefreshBanner, RefreshBoardButton } from "./StreckOdds";
+import { needsOddsFetch } from "@/lib/streck-odds";
 
 export function roundSub(data: RoundResponse | null): string {
   if (!data) return "";
@@ -103,7 +104,7 @@ export function RoundOverview() {
 
   return (
     <>
-      <AppHeader brand title="Omgången" sub={roundSub(data)} actions={<HeaderActions roundId={data.round.id} gameId={data.round.atgGameId} />} />
+      <AppHeader brand title="Omgången" sub={roundSub(data)} refresh={<RefreshBoardButton data={data} />} actions={<HeaderActions roundId={data.round.id} gameId={data.round.atgGameId} />} />
       <main className="page" id="main">
         <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} className="rail" />
         {!data.isCurrent && data.currentRoundId && (
@@ -116,7 +117,7 @@ export function RoundOverview() {
         <FetchBanners onRetry={(from, rid) => runChain(from, data.round.atgGameId, rid ?? data.round.id)} />
         <FetchSteps state={chain} />
         <NextStepCardFor data={data} />
-        <StreckRefresh data={data} />
+        <RefreshBanner data={data} className="m10" />
         <p className="fetchline">
           {data.round.fetchedAt ? <>Startlistan hämtad {relTime(data.round.fetchedAt, now)}</> : "Startlistan är inte hämtad"}
           {changes && (
@@ -174,9 +175,14 @@ export function RoundOverview() {
   );
 }
 
+// Steg som kortet "Hämta streck och odds" går före i fas Odds (e2.2, Nästa
+// steg punkt 5): allt utom en ofullständig hämtning och larm.
+const ODDS_FETCH_BEFORE = new Set<NextStep["kind"]>(["ODDS_FILL", "MARK_BET", "BUILD_COUPON", "ANALYZE_LEG", "ALL_REVIEWED"]);
+
 function NextStepCardFor({ data }: { data: RoundResponse }) {
   const chain = useFetchChain();
   const step = data.nextStep;
+  if (data.phase === "ODDS" && ODDS_FETCH_BEFORE.has(step.kind) && needsOddsFetch(data.latestOdds ?? null, Date.now())) return <OddsFetchCard data={data} />;
   // Under en körning och efter ett fel i den visar stegraden och banderollen
   // läget, så kortet "Slutför hämtningen" skulle bara säga samma sak igen.
   if (step.kind === "RESUME_FETCH" && (chain.kind === "running" || chain.kind === "error")) return null;

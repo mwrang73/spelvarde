@@ -13,7 +13,9 @@ import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { Badge, Banner, BetToggle, FlapNumber, LampToggle, LowStreckTag, Skeleton, SpelbarToggle } from "@/components/ui/board";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, distShort, money, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
-import { applyPendingComments, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
+import { applyPendingComments, toleranceOf, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
+import { riktX } from "@/lib/xfactor-ui";
+import { UnibetHistory } from "./UnibetHistory";
 import type { CommentDto, RaceDto, RoundResponse, StartDetailResponse, StartDto, YearStatsDto } from "@/lib/types";
 import { RiktoddsBox } from "./Riktodds";
 import { raceStarted, useRound } from "./RoundProvider";
@@ -52,9 +54,12 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
   const detail = useDetail(start.id);
   const now = new Date();
 
+  // Hämtas när kortet öppnas, och igen om cachen har tömts (efter Hämta igen
+  // eller Hämta streck och odds).
+  const empty = !detail.data && !detail.loading && !detail.error;
   useEffect(() => {
-    loadDetail(start.id);
-  }, [start.id]);
+    if (empty) loadDetail(start.id);
+  }, [start.id, empty]);
 
   const d = detail.data;
   const warning = start.form.warning;
@@ -66,6 +71,7 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
   const override = mark?.spelbarOverride ?? "NONE";
   const isSpelbar = !!mark?.spelbar;
   const factors = xFactorsOf(data.settings);
+  const tolerance = toleranceOf(data.settings);
 
   return (
     <article className="hk" aria-labelledby={`hk-${start.id}`}>
@@ -120,9 +126,11 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
       )}
       {started && <p className="acts-sub help">Loppet har startat. Intressant, Spelbar, Bet, X-faktor och källstöd är låsta.</p>}
 
-      <XFactorBlock key={start.id} race={race} start={start} factors={factors} sourcesEnabled={data.sourcesEnabled ?? 0} />
+      <XFactorBlock key={start.id} race={race} start={start} factors={factors} sourcesEnabled={data.sourcesEnabled ?? 0} tolerance={tolerance} />
 
-      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} calibrated={!!data.model?.calibrated} guideline={data.settings?.spelbarGuideline ?? 2} factors={factors} />
+      <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} calibrated={!!data.model?.calibrated} guideline={data.settings?.spelbarGuideline ?? 2} factors={factors} tolerance={tolerance} />
+
+      <UnibetHistory id={start.id} horseName={start.horse.name} history={d?.unibetHistory ?? null} loading={!d && !detail.error} rikt={riktX(start, factors)} tolerance={tolerance} mark={mark} />
 
       {start.signals && <SignalsBlock start={start} />}
 

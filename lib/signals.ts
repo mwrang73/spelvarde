@@ -27,9 +27,6 @@ export function valuePct(unibet: number | null, rikt: number | null): number | n
   return Math.round((unibet / rikt - 1) * 1000) / 10;
 }
 
-// Nära gränsen: Unibet högst 10 % under riktoddset.
-export const NEAR_LIMIT_PCT = -10;
-
 // Skärmläsartext efter siffran.
 export const signalSr = (s: Signal): string => (s === "good" ? ", stark" : s === "few" ? ", få starter" : "");
 

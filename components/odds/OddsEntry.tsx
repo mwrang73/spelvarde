@@ -27,11 +27,11 @@ import { hhmm, odds } from "@/lib/format";
 import { AUTO_ADVANCE_MS, digitsToOdds, displayDigits, isValidOdds } from "@/lib/odds-input";
 import { buildOddsQueue, guidelineTag, initialKeypad, isDone, keyFromKeyboard, keypadReduce, keypadVerdict, type KeypadAction, type KeypadKey, type KeypadState } from "@/lib/odds-keypad";
 import { oddsDiff } from "@/lib/spelbar";
-import { xFactorsOf } from "@/lib/round-overlay";
+import { toleranceOf, xFactorsOf } from "@/lib/round-overlay";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
 import { riktX, xOf } from "@/lib/xfactor-ui";
-import { StreckRefresh } from "@/components/round/StreckRefresh";
+import { RefreshBanner, RefreshBoardButton } from "@/components/round/StreckOdds";
 import { OddsList } from "./OddsList";
 
 type Item = { race: RaceDto; start: StartDto };
@@ -42,7 +42,7 @@ export function OddsEntry() {
   if (!data)
     return (
       <>
-        <AppHeader title="Unibets platsodds" sub="Laddar …" back={back} />
+        <AppHeader title="Unibets odds" sub="Laddar …" back={back} />
         <main className="page" id="main">
           {load.error && !load.loading ? (
             <Banner tone={load.notFound ? "info" : "err"} className="m10" actions={load.notFound ? <Link href="/">Till aktuell omgång</Link> : undefined}>
@@ -100,8 +100,9 @@ function OddsQueue({ data, onList }: { data: RoundResponse; onList: () => void }
   if (!items.length) {
     return (
       <>
-        <AppHeader title="Unibets platsodds" sub={`${data.round.gameType} · ${data.round.trackName}`} back={{ href: base, label: "Tillbaka till omgången" }} />
+        <AppHeader title="Unibets odds" sub={`${data.round.gameType} · ${data.round.trackName}`} back={{ href: base, label: "Tillbaka till omgången" }} refresh={<RefreshBoardButton data={data} />} />
         <main className="page" id="main">
+          <RefreshBanner data={data} className="m10" />
           {anyMarked ? (
             <EmptyState icon={<IconFlag />} title="Inga odds att fylla i" text="Loppen för dina intressanta hästar har startat, eller hästarna är strukna.">
               <Link className="btn primary" href={base}>
@@ -133,6 +134,7 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
   const base = `/omgang/${roundId}`;
   const guideline = data.settings?.spelbarGuideline ?? 2;
   const factors = xFactorsOf(data.settings);
+  const tolerance = toleranceOf(data.settings);
   const total = items.length;
 
   const [st, setSt] = useState<KeypadState>(() => initialKeypad(total));
@@ -263,7 +265,7 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
 
   return (
     <>
-      <AppHeader title="Unibets platsodds" sub={done ? `Alla ${total} genomgångna` : `Häst ${position} av ${total}`} back={{ href: base, label: "Tillbaka till omgången" }} />
+      <AppHeader title="Unibets odds" sub={done ? `Alla ${total} genomgångna` : `Häst ${position} av ${total}`} back={{ href: base, label: "Tillbaka till omgången" }} refresh={<RefreshBoardButton data={data} />} />
       <main className="page odds-page" id="main">
         <div className="prog" role="progressbar" aria-label="Förlopp" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done ? total : st.index} aria-valuetext={done ? `Alla ${total} hästar genomgångna` : `Häst ${position} av ${total}`}>
           <i style={{ width: `${((done ? total : st.index) / total) * 100}%` }} />
@@ -273,7 +275,7 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
             Visa alla som lista
           </button>
         </p>
-        <StreckRefresh data={data} />
+        <RefreshBanner data={data} className="m10" />
         {!online && (
           <Banner tone="warn" icon="offline" className="m10">
             Sparas när du är uppkopplad igen.{pending > 0 && <> {pending} {pending === 1 ? "ändring" : "ändringar"} i kö.</>}
@@ -341,7 +343,7 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
               ) : st.digits && shown === null ? (
                 <p className="help">Fortsätt skriva …</p>
               ) : (
-                <ResultLine odds={shown} start={cur.start} guideline={guideline} factors={factors} />
+                <ResultLine odds={shown} start={cur.start} guideline={guideline} factors={factors} tolerance={tolerance} />
               )}
             </div>
             <div className="knav">
@@ -405,11 +407,11 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
   );
 }
 
-function ResultLine({ odds: value, start, guideline, factors }: { odds: number | null; start: StartDto; guideline: number; factors: XFactorSettings }) {
+function ResultLine({ odds: value, start, guideline, factors, tolerance }: { odds: number | null; start: StartDto; guideline: number; factors: XFactorSettings; tolerance: number }) {
   const m = start.mark;
   // Med X-faktor jämförs mot riktoddset med X-faktor (6.8).
   const withX = xOf(m) !== "NONE" && start.riktodds !== null;
-  const v = keypadVerdict({ odds: value, riktodds: riktX(start, factors), interesting: !!m?.interesting, override: m?.spelbarOverride ?? "NONE", guideline, ref: withX ? "riktoddset med X" : undefined });
+  const v = keypadVerdict({ odds: value, riktodds: riktX(start, factors), interesting: !!m?.interesting, override: m?.spelbarOverride ?? "NONE", guideline, ref: withX ? "riktoddset med X" : undefined, tolerance });
   if (v.tone === "help") return <p className="help">{v.text}</p>;
   return (
     <div className="kverd">

@@ -838,7 +838,6 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .srefresh .btn svg { width: 16px; height: 16px; margin-right: 6px; }
 .srefresh .help { margin: 0; }
 .srefresh .ban { margin: 0; }
-.srefresh.compact { margin: 10px 0; padding: 8px 10px; }
 .sr-list { margin: 6px 0 0; font-size: 13.5px; }
 /* Spelförslag: Trollspöt-fliken. */
 .spel[data-tab="trollspot"] .dcols { display: none; }
@@ -906,11 +905,147 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .ol-back { margin: 8px 12px 0; }
 @media (min-width: 1024px) { .odds-list { max-width: 1000px; margin: 0 auto; } }
 .ol-head .seg button { white-space: nowrap; }
-/* Samma kolumnbredder i alla avdelningar. */
-.odds-list .ptbl { table-layout: fixed; }
-.odds-list .ptbl th:nth-child(1) { width: 64px; }
-.odds-list .ptbl th:nth-child(3) { width: 90px; }
-.odds-list .ptbl th:nth-child(4) { width: 130px; }
-.odds-list .ptbl th:nth-child(5) { width: 100px; }
-.odds-list .ptbl th:nth-child(6) { width: 84px; }
-.odds-list .ptbl th:nth-child(7) { width: 70px; }
+
+/* ============ E2.2: Hämta streck och odds ============ */
+/* Tavelknappen (mockupen v2 .sbtn) i vyrubriken och toppmenyn. */
+.sbtn { position: relative; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid rgba(255, 178, 46, .45); border-radius: 7px; background: rgba(255, 255, 255, .03); color: var(--head-ink); flex: none; text-align: left; font: inherit; }
+.sbtn:hover:not(:disabled) { background: rgba(255, 178, 46, .1); }
+.sbtn > svg { width: 16px; height: 16px; flex: none; }
+.sbtn .st { display: flex; flex-direction: column; line-height: 1; }
+.sbtn small { font: 700 9.5px/1 var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--head-ink-2); }
+.sbtn b { font: 700 14px/1.1 var(--f-num); text-shadow: 0 0 8px var(--glow); margin-top: 3px; white-space: nowrap; }
+.sbtn b em { display: none; font: 500 11.5px var(--f-body); font-style: normal; color: var(--head-ink-2); text-shadow: none; margin-left: 4px; }
+@media (min-width: 600px) { .sbtn b em { display: inline; } }
+.sbtn .ok { color: var(--tick); }
+.sbtn .dot { position: absolute; top: -4px; right: -4px; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px var(--head); }
+.sbtn.err { border-color: var(--gal); }
+.sbtn.err .dot { background: var(--gal); }
+.sbtn.old { border-color: var(--fill); background: rgba(255, 178, 46, .12); }
+.sbtn.old .dot { background: var(--fill); }
+.sbtn.none b, .sbtn.wt b { color: var(--head-ink-2); text-shadow: none; }
+.sbtn:disabled { opacity: .85; cursor: not-allowed; }
+.sbtn .spin { color: var(--head-ink); }
+.ah .sbtn { margin-right: 2px; }
+.dhead .sbtn { margin-left: 4px; }
+.spin { display: inline-block; width: 15px; height: 15px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .9s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-right-color: currentColor; opacity: .6; } }
+
+/* Banderollen efter en hämtning, med × (44 × 44). */
+.ban-b { flex: 1; min-width: 0; }
+.ban .x { margin: -10px -8px -10px 0; width: 44px; height: 44px; border: 0; background: none; color: var(--ink-2); display: grid; place-items: center; flex: none; border-radius: 8px; }
+.ban .x:hover { background: rgba(0, 0, 0, .06); color: var(--ink); }
+.ban .x svg { width: 16px; height: 16px; }
+.ban .acts { gap: 6px 14px; align-items: center; }
+.ban .acts .btn svg { width: 16px; height: 16px; }
+.ban .acts .linkish { min-height: 32px; }
+
+/* Raden i S6: två tider, lampor och spärren. */
+.srefresh .two { display: flex; gap: 4px 12px; flex-wrap: wrap; font-size: 13px; align-items: baseline; }
+.srefresh .two b { font-family: var(--f-num); }
+.srefresh .two .old { color: var(--accent); font-weight: 600; }
+.srefresh .two .help { font-size: 12.5px; }
+.srefresh .btn .spin { margin-right: 6px; }
+.srefresh .wait { font: 700 13px var(--f-num); margin-left: 4px; }
+.lamps { display: grid; grid-template-columns: 1.6fr repeat(var(--n, 8), 1fr); gap: 3px; }
+.lamps i { height: 22px; border-radius: 3px; display: grid; place-items: center; font: 700 11px/1 var(--f-num); font-style: normal; background: var(--surface-3); color: var(--ink-2); }
+.lamps i.on { background: var(--fill); color: var(--fill-ink); box-shadow: 0 0 8px var(--glow); }
+.lamps i.cur { box-shadow: inset 0 0 0 2px var(--fill); color: var(--ink); animation: lampPulse 1.2s infinite; }
+.lamps i.bad { background: var(--gal); color: var(--gal-ink); }
+.lamps i.started { background: repeating-linear-gradient(135deg, var(--surface-3) 0 4px, var(--line-strong) 4px 6px); color: var(--ink); }
+.lamps i.st { font-family: var(--f-label); letter-spacing: .05em; }
+@keyframes lampPulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .lamps i.cur { animation: none; } }
+
+/* Taggarna i S4. */
+.tag.new { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); min-height: 18px; padding: 1px 5px; font-size: 10.5px; }
+.tag.scr-u { color: var(--ink-2); min-height: 18px; padding: 1px 5px; font-size: 10.5px; }
+.brow .tag.gl { min-height: 18px; padding: 1px 5px; font-size: 10.5px; }
+
+/* Raderna: S4 (xb) 26 · 1fr · 46 · 72 · 44 och S6 (xa) 26 · 1fr · 72 · 44. */
+.brow.xb { grid-template-columns: 26px minmax(0, 1fr) 46px 72px 44px; }
+.brow.xa { grid-template-columns: 26px minmax(0, 1fr) 72px 44px; }
+.brow.xb > .spkc { grid-row: 1; grid-column: 3; }
+.brow.xb > .ofc { grid-row: 1; grid-column: 4; }
+.brow.xa > .ofc { grid-row: 1; grid-column: 3; }
+.brow.xb > .betk, .brow.xb > .lamp { grid-row: 1; grid-column: 5; }
+.brow.xa > .betk, .brow.xa > .lamp { grid-row: 1; grid-column: 4; }
+.ofc { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.brow .ofc .oin { grid-row: auto; grid-column: auto; width: 68px; height: 40px; }
+.brow .notes, .brow .pmain > .note { white-space: normal; }
+.spkc { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.mic { font: 600 11px/1 var(--f-label); letter-spacing: .03em; color: var(--ink-2); white-space: nowrap; }
+.up-t { color: var(--up) !important; }
+.dn-t { color: var(--down) !important; }
+.spk { display: block; overflow: visible; }
+.spk polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; }
+.spk circle { fill: var(--accent); }
+.spk line { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 2; }
+.trend { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.trend span { font: 700 12.5px var(--f-num); }
+.trend small { display: block; font: 500 11px var(--f-body); color: var(--ink-2); }
+.dim { color: var(--ink-2); }
+
+/* Grön markering, variant 1 · Ram (6.1). */
+.sv { display: inline-flex; align-items: center; gap: 3px; font: 700 11.5px/1 var(--f-num); color: var(--ink-2); white-space: nowrap; min-height: 16px; }
+.sv i { font: 700 10.5px/1 var(--f-label); font-style: normal; letter-spacing: .04em; text-transform: uppercase; }
+.sv.over, .sv.near { color: var(--sig); }
+.oin.over { border: 2px solid var(--sig); background: var(--sig-soft); box-shadow: 0 0 10px rgba(70, 211, 126, .25); }
+.oin.near { border: 2px dashed var(--sig); }
+.oin.over:focus-visible, .oin.near:focus-visible { border-color: var(--focus); }
+.ptbl .sv { font-size: 12.5px; }
+
+/* Desktop: S4 och S6 med fasta kolumner (colgroup). */
+.ptbl.odds, .ptbl.spel { table-layout: fixed; }
+.ptbl.odds .oin, .ptbl.spel .oin { width: 76px; height: 40px; }
+.ptbl .cap-help { margin-left: 12px; font: 500 12.5px/1.3 var(--f-body); letter-spacing: 0; text-transform: none; }
+.ptbl caption:focus-visible, .pgroup .sl:focus-visible { outline-offset: -2px; }
+.unm-line { margin: 10px 20px 0; font-size: 13.5px; }
+
+/* Hästkortet: Unibet-rutan, vinnaroddset och meningen (S3 5b). */
+.rbox, .rbox.x { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
+.rbox .rb-tags { flex: 1; display: flex; justify-content: flex-end; gap: 4px; flex-wrap: wrap; }
+.rbox .verdict { flex-basis: 100%; }
+.uval { display: inline-block; padding: 2px 6px; margin: -2px -6px; border-radius: 6px; }
+.uval.over { box-shadow: 0 0 0 2px var(--head-up), 0 0 14px rgba(70, 211, 126, .35); }
+.uval.near { outline: 2px dashed var(--head-up); outline-offset: 0; }
+.rbox .mid.win { font-size: 18px; color: var(--head-text); }
+.hsv { font: 700 13px var(--f-num); color: var(--head-up); }
+.rbox .verdict b.hsv-l { color: var(--head-up); }
+.rbox .verdict .vsrc { color: var(--head-ink-2); }
+.rbox > div > .k { display: block; margin-bottom: 4px; }
+
+/* Unibets odds över tid: kurvan på tavlan och listan. */
+.tl-board { border-radius: 10px; padding: 10px 12px 8px; }
+.tl-board .k { display: flex; justify-content: space-between; font: 700 11px/1.2 var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--head-ink-2); }
+.tl-board svg { display: block; width: 100%; height: 124px; margin-top: 4px; }
+.tl-over { fill: rgba(70, 211, 126, .13); }
+.tl-near { fill: rgba(70, 211, 126, .06); }
+.tl-nearline { stroke: var(--head-up); stroke-width: 1; stroke-dasharray: 3 3; }
+.tl-rikt { stroke: var(--head-ink-2); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.tl-line { fill: none; stroke: var(--head-ink); stroke-width: 2.2; stroke-linejoin: round; }
+.tl-pt { fill: var(--head-ink); }
+.tl-pt.over { fill: var(--head-up); }
+.tl-pt.near { stroke: var(--head-up); stroke-width: 2; }
+.tl-tick { fill: var(--head-ink-2); font: 500 10px var(--f-num); }
+.tl-val { fill: var(--head-text); font: 700 10.5px var(--f-num); }
+.tl-day { fill: var(--head-ink-2); font: 600 10.5px var(--f-label); letter-spacing: .08em; }
+.tl-board .lg { display: flex; gap: 4px 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--head-ink-2); margin-top: 2px; }
+.tl-board .lg i { display: inline-block; width: 14px; height: 10px; vertical-align: -1px; margin-right: 5px; border-radius: 2px; }
+.tl-board .lg .lg-over { background: rgba(70, 211, 126, .35); }
+.tl-board .lg .lg-near { border: 1.5px dashed var(--head-up); }
+.tl-board .lg .lg-rikt { border-top: 2px dashed var(--head-ink-2); height: 0; border-radius: 0; }
+.utl { list-style: none; margin: 8px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.utl li { display: grid; grid-template-columns: minmax(0, 1fr) 116px 62px; gap: 6px; align-items: center; min-height: 40px; padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--surface); font-size: 13.5px; }
+.utl li:nth-child(even) { background: var(--surface-2); }
+.utl li:last-child { border-bottom: 0; }
+.utl li.h { min-height: 26px; background: var(--surface-3); font: 700 10.5px/1 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); }
+.utl .r { text-align: right; }
+.utl .pl { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+.utl b { font: 700 14px var(--f-num); }
+.utl .t { font-family: var(--f-num); font-size: 13px; }
+.utl .tg { font: 600 11px var(--f-label); letter-spacing: .04em; text-transform: uppercase; color: var(--accent); margin-left: 6px; }
+.trend > div { white-space: nowrap; min-width: 0; }
+.trend > div > span:not(.sr) { display: block; }
+.ptbl .trend .spk { flex: none; }
+.ban .acts a.linkish { display: inline-flex; align-items: center; }

@@ -1,0 +1,782 @@
+<title>Spelvärde · Hämta Unibet-odds</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens (kopia av styles/tokens.css) ===== */
+:root{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--fill-deep:#A45F00;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;
+--led-off:#C5CCD3;--glow:rgba(242,154,0,.40);--up:#0E7A3B;--up-soft:#DDF3E5;
+--sig:#0E7A3B;--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--sig-soft:#DDF3E5;--sig-text:#0A4721;
+--down:#C42B1F;--down-soft:#FBE1DD;--gal:#C42B1F;--gal-ink:#FFFFFF;--bet:#0D1014;--bet-ink:#FFFFFF;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--flap-ink:#C9CED4;--flap-glow:rgba(255,178,46,.5);--phase-ink:#9AA2AC;--btn-fill:linear-gradient(#FFC85C,#F4A51F);--btn-edge:#9A5A00;--btn-line:#C47A00;--btn-glow:rgba(244,165,31,.25);--btn-glow-hover:rgba(255,178,46,.45);
+--key-on:linear-gradient(#FFCB60,#F39A00);--key-on-ring:#A45F00;--key-on-edge:#6B3E00;--key-off:linear-gradient(#FFFFFF,#E2E6EB);--key-off-shadow:inset 0 0 0 1px #AEB6BF,0 2px 0 #9AA3AD;--key-dot:#B4BCC5;
+--board-chip-line:#3A4048;--tick:#46D37E;--led-dim:#5B636D;--head-up:#46D37E;--head-down:#FF8A7A;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+--focus-ring:3px solid var(--focus);--focus-offset:2px}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill-deep:#8F5200;--focus:#7CC4FF;
+--head:#050607;--head-ink-2:#B9C0C8;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--led-off:#2A3038;--glow:rgba(255,178,46,.55);--up:#46D37E;--up-soft:rgba(70,211,126,.14);
+--sig:#46D37E;--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--sig-soft:rgba(70,211,126,.16);--sig-text:#8BEDB3;
+--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--gal:#FF5A45;--gal-ink:#1A0400;--bet:#F3EFE4;--bet-ink:#0C0E11;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);--key-off:linear-gradient(#2C3138,#1C2026);--key-off-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 2px 0 #000;--key-dot:#4A515A}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+.mk{padding:24px 24px 64px;max-width:1340px}
+.mk-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mk h1.mt{margin:0;font:700 26px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk .lead{max-width:960px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.mk h2.alt{margin:48px 0 4px;font:700 22px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em}
+.mk h2.alt span{display:inline-grid;place-items:center;width:30px;height:34px;margin-right:8px;border-radius:4px;background:var(--flap-on);color:var(--flap-on-ink);font-family:var(--f-num)}
+.mk h3.part{margin:26px 0 8px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.mk p.alt-sub{margin:0 0 12px;max-width:980px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.mk p.alt-sub b{color:var(--ink)}
+.scrollx{overflow-x:auto;padding-bottom:6px}
+.note{max-width:1280px;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note > div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.note h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.note ul{margin:0;padding-left:18px}
+.rec{margin-top:44px;background:var(--head);background-image:var(--matrix);background-size:4px 4px;color:var(--head-text);border-radius:10px;padding:16px 20px;max-width:1280px;font-size:14.5px;line-height:1.5}
+.rec h2{margin:0 0 6px;font:700 18px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.05em;color:var(--head-ink)}
+.rec b{color:var(--head-title)}
+.rec ul,.rec ol{margin:6px 0 0;padding-left:20px}
+.rec li{margin-bottom:4px}
+.bf{width:1282px;border:1px solid #000;border-radius:10px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);background:#2a2d31}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:620px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.vp{width:1280px;height:760px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+.phwrap{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+.phc{display:grid;gap:8px;justify-items:start}
+.phc > span{font:700 12px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);max-width:410px}
+.ph{width:410px;height:864px;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;position:relative;background:var(--bg);box-shadow:0 20px 50px rgba(0,0,0,.35);flex:none}
+.ph-in{width:390px;height:844px;position:relative;overflow:hidden}
+.states{margin-top:12px;max-width:1280px;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px 22px;background:var(--surface-2);border:1px solid var(--line)}
+.states figure{margin:0;display:grid;gap:6px;align-content:start}
+.states figcaption{font:700 11.5px/1.25 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.states figcaption b{color:var(--ink)}
+.states .srefresh{margin:0}
+.states .next{margin:0}
+.states .demo{background:var(--head);border-radius:8px;padding:6px 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shared{margin-top:14px;max-width:1280px;display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px}
+.shared > div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.shared h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.shared ul{margin:0;padding-left:18px}
+.seg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{min-height:44px;padding:0 16px;border:0;background:transparent;font:700 14.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"],.seg button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+
+/* ===== Från styles/app.css ===== */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.n,.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+button{font:inherit;cursor:pointer}
+.help{font-size:13px;color:var(--ink-2);line-height:1.4}
+.logo{display:inline-grid;place-items:center;width:40px;color:var(--head-ink);flex:none}
+.logo svg{width:26px;height:26px}
+.ah-brand{font:800 22px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:60px;display:flex;align-items:center;gap:16px;padding:0 20px}
+.dhead .ah-brand{font-size:27px}
+.dnav{display:flex;gap:2px;margin-left:20px;flex:1}
+.dnav a{position:relative;min-height:44px;display:inline-flex;align-items:center;padding:0 14px;text-decoration:none;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);border-radius:6px}
+.dnav a[aria-current="page"]{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2);text-align:right;line-height:1.35}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none;vertical-align:middle}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr.sm{width:24px;height:28px;font-size:14px}
+.nr.lg{width:46px;height:56px;font-size:28px}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.i{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.bdg.b{background:var(--bet);color:var(--bet-ink)}
+.tag{display:inline-flex;align-items:center;min-height:18px;padding:1px 5px;border-radius:4px;font:700 10.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none;white-space:nowrap}
+.tag.gl{background:var(--accent-soft);color:var(--accent)}
+.tag.new{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tag.scr{background:var(--surface-3);color:var(--ink-2)}
+.lamp-i{display:inline-grid;place-items:center;position:relative;width:28px;height:28px;border-radius:6px;background:var(--key-off);box-shadow:var(--key-off-shadow)}
+.lamp-i svg{width:18px;height:18px}
+.betk{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:transparent;padding:0;border-radius:8px;flex:none}
+.betk .lamp-i svg{opacity:.55;color:var(--ink-2)}
+.betk[aria-pressed="true"] .lamp-i{background:var(--bet);box-shadow:0 0 0 1px var(--bet),0 1px 0 rgba(0,0,0,.6)}
+.betk[aria-pressed="true"] .lamp-i svg{opacity:1;color:var(--bet-ink)}
+.phase{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.phase li{position:relative;border-radius:4px;text-align:center;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--phase-ink);box-shadow:0 1px 0 rgba(0,0,0,.9)}
+.phase li>span{display:block;padding:7px 4px 6px;min-height:44px}
+.phase b{display:block;font:700 13.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.phase small{display:block;font:500 9.5px/1.2 var(--f-label);letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.phase li[aria-current="step"]{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:0 0 16px var(--btn-glow-hover)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);height:64px;padding-bottom:10px;background:var(--surface);border-top:1px solid var(--line);z-index:3}
+.tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);position:relative;text-decoration:none}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 4px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:none;color:var(--head-ink-2);flex:none;border-radius:8px}
+.ibtn svg{width:22px;height:22px}
+.btn{position:relative;min-height:44px;padding:0 16px;border-radius:7px;border:1.5px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;white-space:nowrap;font:700 15.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:inherit}
+.btn svg{width:17px;height:17px;flex:none}
+.btn.primary{background:var(--btn-fill);color:var(--fill-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 3px 0 var(--btn-edge),0 6px 14px var(--btn-glow)}
+.btn.secondary{background:linear-gradient(var(--surface),var(--surface-2));border:1px solid var(--line-strong);color:var(--ink);box-shadow:0 3px 0 var(--line-strong)}
+.btn.ghost{color:var(--accent);padding:0 8px}
+.btn.sm{min-height:36px;padding:0 10px;font-size:13.5px}
+.btn.sm::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
+.btn:disabled{background:var(--surface-3);color:var(--ink-2);border-color:transparent;cursor:not-allowed;box-shadow:none}
+.linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:24px}
+.next{margin:10px;padding:12px 12px 12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.next .lbl{font:700 11.5px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.next h2{margin:0;font:700 20px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.next p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.fetchline{margin:0;padding:4px 12px;font-size:12.5px;color:var(--ink-2)}
+.sl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.olist{list-style:none;margin:0;padding:0}
+.orow{display:grid;grid-template-columns:30px minmax(0,1fr) auto 18px;gap:8px;align-items:center;padding:7px 8px 7px 10px;min-height:56px;border-bottom:1px solid var(--line);background:var(--surface);text-decoration:none;color:inherit}
+.olist>li:nth-child(even) .orow{background:var(--surface-2)}
+.o-mid{min-width:0;display:flex;flex-direction:column;gap:3px}
+.orow .on{font:700 16px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .om{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow svg{width:16px;height:16px;color:var(--ink-2)}
+.cnt2{display:flex;gap:6px;align-items:center;font:700 12px/1 var(--f-num)}
+.cnt2>span{display:inline-flex;align-items:center;gap:3px}
+.qlink{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:44px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-decoration:none;color:var(--ink);font:700 14px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.qlink svg{width:16px;height:16px;flex:none}
+.ban{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:8px;font-size:14px;line-height:1.35;background:var(--surface-2);border-left:4px solid var(--line-strong)}
+.ban>svg{flex:none;width:18px;height:18px;margin-top:1px}
+.ban p{margin:0}
+.ban.err{background:var(--down-soft);border-left-color:var(--down)}
+.ban.err>svg{color:var(--down)}
+.ban.ok{background:var(--up-soft);border-left-color:var(--up)}
+.ban.ok>svg{color:var(--up)}
+.ban.warn{background:var(--accent-soft);border-left-color:var(--fill-deep)}
+.ban.warn>svg{color:var(--accent)}
+.ban.info>svg{color:var(--ink-2)}
+.ban .acts{display:flex;gap:6px 14px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.ban .x{margin:-8px -8px -8px auto;width:44px;height:44px;border:0;background:none;color:var(--ink-2);display:grid;place-items:center;flex:none}
+.ban .x svg{width:16px;height:16px}
+.ban.m{margin:0 10px 8px}
+.srefresh{margin:10px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:grid;gap:8px}
+.srefresh.stale{border-color:var(--fill-deep);background:var(--accent-soft)}
+.srefresh .sr-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.srefresh .sr-t{margin:0;display:grid;gap:2px;font-size:14px;min-width:0}
+.srefresh .sr-t .k{font:700 11.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.srefresh .help{margin:0}
+.srefresh .ban{margin:0}
+.ol-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px 0}
+.ol-head .seg button{min-height:38px;font-size:13px;white-space:nowrap;padding:0 12px}
+.ol-count{margin:0;font-size:14px;color:var(--ink-2)}
+.ol-count b{color:var(--ink);font-family:var(--f-num)}
+.spel-help{margin:0 12px 4px}
+.plist{list-style:none;margin:0;padding:0}
+.pmain{min-width:0;display:flex;flex-direction:column;gap:2px}
+.hl{display:flex;align-items:center;gap:4px;min-width:0}
+.hn{font:700 17px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pm{font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm b{font-family:var(--f-num);color:var(--ink)}
+.kt{font-size:12px;line-height:1.25;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oin{width:70px;height:42px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--bg);color:var(--ink);font:700 16px/1 var(--f-num);text-align:center;padding:0 4px}
+.oin::placeholder{color:var(--ink-2);opacity:.7}
+.oin:disabled{opacity:.5}
+.val{font:700 12px var(--f-num)}
+.val.up{color:var(--sig)}
+.val.dn{color:var(--ink-2)}
+.diff{font:700 13px var(--f-num);white-space:nowrap}
+.diff.up{color:var(--up)}.diff.dn{color:var(--down)}
+.nt{display:block;font-size:11.5px;line-height:1.3;color:var(--ink-2)}
+.nt.bad{color:var(--down);font-weight:600}
+.segw{padding:8px 10px;display:flex}
+.segw .seg{width:100%}
+.segw .seg button{flex:1;padding:0 6px;font-size:13.5px}
+.sphead{height:64px;padding:0 20px;display:flex;flex-direction:column;justify-content:center}
+.sphead .k{margin:0;font:700 12.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink)}
+.sphead h1{margin:4px 0 0;font:700 24px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title)}
+.dwrap{max-width:1000px;margin:0 auto}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--surface)}
+.tbl caption{caption-side:top;text-align:left;padding:12px 0 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.tbl caption span+span{margin-left:12px}
+.tbl th{font:700 11.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:0 6px;height:40px;white-space:nowrap;overflow:hidden;border-bottom:1.5px solid var(--line-strong);background:var(--surface-3)}
+.tbl th .thsub{display:block;font-size:9.5px;letter-spacing:.04em;opacity:.85}
+.tbl td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;overflow:hidden;font-size:14.5px}
+.tbl td:first-child,.tbl th:first-child{padding-left:12px}
+.tbl tbody tr:nth-child(even) td{background:var(--surface-2)}
+.tbl .r{text-align:right}.tbl .c{text-align:center}
+.tbl .hn{font-size:18px}
+.tbl .hl{gap:6px}
+.rk{font:700 14px/1 var(--f-num);color:var(--ink)}
+.dim{color:var(--ink-2)}
+.rest{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:8px 12px;font-size:13.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:8px;text-decoration:none;margin-top:14px}
+.rest b{color:var(--ink)}
+.rest svg{width:16px;height:16px;flex:none}
+.spin{width:15px;height:15px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .9s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{opacity:.35}}
+.hk-hero{padding:12px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center}
+.hk-name{font:700 28px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);margin:0}
+.hk-hero p{margin:4px 0 0;font-size:13px;color:var(--head-ink-2)}
+.hk-sec{padding:14px 12px 4px}
+.hk-sec > h3{margin:0 0 8px;font:700 13px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.rbox{border-radius:10px;padding:12px;display:grid;grid-template-columns:auto auto 1fr;gap:4px 16px;align-items:end}
+.rbox .k{font:700 11px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.rbox .big{font:700 40px/1 var(--f-num);color:var(--head-ink);text-shadow:0 0 14px var(--glow)}
+.rbox .mid{font:700 26px/1 var(--f-num);color:var(--head-title)}
+.rbox .verdict{grid-column:1/-1;margin:8px 0 0;font-size:13.5px;color:var(--head-text)}
+.rbox .verdict b{color:var(--head-ink)}
+.acts-row{display:flex;gap:6px;padding:10px 12px 0;flex-wrap:wrap}
+.chipb{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 10px 0 8px;border-radius:8px;border:1.5px solid var(--line-strong);background:var(--surface);font:700 13.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--ink)}
+.chipb svg{width:16px;height:16px}
+.chipb.on{border-color:var(--fill);box-shadow:0 0 10px var(--btn-glow)}
+.chipb.bt{border-color:var(--bet)}
+
+/* ===== NYTT: Hämta Unibet-odds ===== */
+.uf .lamps{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
+.lamps i{height:22px;border-radius:3px;display:grid;place-items:center;font:700 11.5px/1 var(--f-num);font-style:normal;background:var(--surface-3);color:var(--ink-2)}
+.lamps i.on{background:var(--fill);color:var(--fill-ink);box-shadow:0 0 8px var(--glow)}
+.lamps i.cur{box-shadow:inset 0 0 0 2px var(--fill);color:var(--ink);animation:pulse 1.2s infinite}
+.lamps i.bad{background:var(--gal);color:var(--gal-ink)}
+.lamps i.skip{background:repeating-linear-gradient(135deg,var(--surface-3) 0 4px,transparent 4px 8px);color:var(--ink-2)}
+.uf .lt{font-size:12.5px;color:var(--ink-2);margin:0}
+.uf.compact{margin:8px 10px;padding:8px 10px}
+/* Rader: egen grid, andra raden ligger i namnspalten */
+.xr{display:grid;column-gap:6px;align-items:center;padding:6px 6px 6px 10px;min-height:60px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}
+.plist>.xr:nth-child(even){background:var(--surface-2)}
+.xr.a{grid-template-columns:26px minmax(0,1fr) 68px 44px}
+.xr.b{grid-template-columns:26px minmax(0,1fr) 46px 68px 44px}
+.xr.c{grid-template-columns:26px minmax(0,1fr) 56px 62px 44px}
+.xr.conf{background:var(--accent-soft)!important;box-shadow:inset 4px 0 0 var(--fill)}
+.xr.scr .hn{color:var(--ink-2)}
+.ofc{display:flex;flex-direction:column;align-items:center;gap:3px}
+.ofc .oin{width:68px;height:40px}
+.ofc small,.mic{font:600 11px/1 var(--f-label);letter-spacing:.03em;color:var(--ink-2);white-space:nowrap}
+.up-t{color:var(--up)!important}.dn-t{color:var(--down)!important}
+.oin.conf{border:2px solid var(--fill-deep)}
+.oin.mine{border-style:dashed}
+.cline{display:flex;align-items:center;gap:2px 6px;flex-wrap:wrap;font-size:12.5px;color:var(--ink);margin-top:1px}
+.cline b{font-family:var(--f-num)}
+.cline .btn.sm{min-height:30px;padding:0 6px;font-size:13px}
+.spk{width:44px;height:22px;overflow:visible;display:block}
+.spk polyline{fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linejoin:round}
+.spk circle{fill:var(--accent)}
+.spk line{stroke:var(--line-strong);stroke-width:1;stroke-dasharray:2 2}
+.spkc{display:flex;flex-direction:column;align-items:center;gap:2px}
+.trend{display:flex;align-items:center;gap:8px}
+.trend .spk{width:58px}
+.trend span{font:700 12.5px var(--f-num)}
+.trend small{display:block;font:500 11px var(--f-body);color:var(--ink-2)}
+.uv{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.uv b{font:700 16px/1 var(--f-num)}
+.uv b.dim{color:var(--ink-2)}
+.colh{display:grid;column-gap:6px;height:24px;align-items:center;padding:0 6px 0 10px;background:var(--surface-3);font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.colh .r{text-align:right}.colh .c{text-align:center}
+/* Tavlans knapp (B) */
+.sbtn{position:relative;min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 8px;border:1px solid rgba(255,178,46,.45);border-radius:7px;background:rgba(255,255,255,.03);color:var(--head-ink);flex:none;text-align:left}
+.sbtn>svg{width:16px;height:16px;flex:none}
+.sbtn .st{display:flex;flex-direction:column;line-height:1}
+.sbtn small{font:700 9.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.sbtn b{font:700 14px/1.1 var(--f-num);text-shadow:0 0 8px var(--glow);margin-top:3px;white-space:nowrap}
+.sbtn b em{font:500 11.5px var(--f-body);font-style:normal;color:var(--head-ink-2);text-shadow:none;margin-left:4px}
+.sbtn .ok{color:var(--tick)}
+.sbtn .dot{position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 2px var(--head)}
+.sbtn.err{border-color:var(--gal)}.sbtn.err .dot{background:var(--gal)}
+.sbtn.old{border-color:var(--fill);background:rgba(255,178,46,.12)}.sbtn.old .dot{background:var(--fill)}
+.sbtn.none b{color:var(--head-ink-2);text-shadow:none}
+.sbtn:disabled{opacity:.8;cursor:progress}
+.dacts{display:flex;gap:8px;align-items:center}
+/* Hästkortets tidslinje */
+.tl-board{border-radius:10px;padding:10px 12px 8px}
+.tl-board .k{display:flex;justify-content:space-between;font:700 11px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.tl-board svg{display:block;width:100%;height:120px;margin-top:4px}
+.tl-board .lg{display:flex;gap:14px;font-size:11.5px;color:var(--head-ink-2);margin-top:2px}
+.tl-board .lg i{display:inline-block;width:14px;height:0;border-top:2px solid var(--head-ink);vertical-align:3px;margin-right:5px}
+.tl-board .lg i.d{border-top:2px dashed var(--head-ink-2)}
+.utl{list-style:none;margin:8px 0 0;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.utl li{display:grid;grid-template-columns:minmax(0,1fr) 78px 72px;gap:6px;align-items:center;min-height:40px;padding:0 10px;border-bottom:1px solid var(--line);background:var(--surface);font-size:13.5px}
+.utl li:nth-child(even){background:var(--surface-2)}
+.utl li:last-child{border-bottom:0}
+.utl li.h{min-height:26px;background:var(--surface-3);font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.utl .r{text-align:right}
+.utl b{font:700 14px var(--f-num)}
+.utl small{font:600 11px var(--f-num);margin-left:3px}
+.utl .t{font-family:var(--f-num);font-size:13px}
+.utl .tg{font:600 11px var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-left:6px}
+/* Rörelse (C) */
+.mv{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--surface)}
+.mv th{height:36px;padding:0 4px;font:700 10.5px/1.1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);background:var(--surface-3);text-align:right;border-bottom:1.5px solid var(--line-strong)}
+.mv th:first-child{text-align:left;padding-left:10px}
+.mv th small{display:block;font-size:9.5px;opacity:.85}
+.mv td{height:44px;padding:0 4px;border-bottom:1px solid var(--line);text-align:right;font:500 13px var(--f-num);white-space:nowrap}
+.mv td:first-child{text-align:left;padding-left:10px;font:700 15px/1.1 var(--f-name);overflow:hidden;text-overflow:ellipsis}
+.mv td:first-child small{display:block;font:500 11px var(--f-body);color:var(--ink-2)}
+.mv tbody tr:nth-child(even) td{background:var(--surface-2)}
+.mv td.hi{font-weight:700;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--fill);border-radius:3px}
+.mv td.d{font-weight:700}
+.mv td.na{color:var(--ink-2)}
+.thes{margin:10px;border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.thes > div{border:1px solid var(--head-line);border-radius:6px;padding:6px 8px}
+.thes small{display:block;font:700 10px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+.thes b{font:700 20px/1.2 var(--f-num);color:var(--head-ink);text-shadow:0 0 8px var(--glow)}
+.thes p{grid-column:1/-1;margin:2px 0 0;font-size:12.5px;color:var(--head-text)}
+</style>
+
+<div class="mk">
+  <div class="mk-top">
+    <h1 class="mt">Hämta Unibet-odds</h1>
+    <div class="seg" role="group" aria-label="Tema">
+      <button type="button" data-t="light" aria-pressed="false">Ljust</button>
+      <button type="button" data-t="dark" aria-pressed="true">Mörkt</button>
+    </div>
+  </div>
+  <p class="lead">V85 Jägersro lör 24 okt. Knappen <b>Hämta Unibet-odds</b> hämtar Unibets fasta plats- och vinnarodds för alla hästar i alla 8 avdelningar, med ett anrop per avdelning. Varje tryck sparas som en ögonblicksbild med tid, så att man kan se hur oddsen rör sig från torsdag till lördag. Platsoddset fyller i "Unibet plats", och Spelbar räknas om som förut (6.1 och 6.8). Exemplen visar torsdag 22 okt kl. 21:05, efter en första hämtning kl. 18:02. Hästkortet och Spelförslag visar lördag förmiddag.</p>
+
+  <div class="shared">
+    <div><h3>Lika i alla alternativ</h3><ul>
+      <li>Ett tryck ger 8 anrop, ett per avdelning. Avdelningar som har startat hoppas över.</li>
+      <li>Varje lyckad avdelning sparas direkt. Misslyckas en avdelning sparas resten, och då går det att hämta bara de som saknas.</li>
+      <li>Oddsen visas med två decimaler (1,1666 blir 1,17), och Spelbar räknas på det avrundade talet, alltså samma tal som du ser.</li>
+      <li>Bet-oddset (det du fick) ändras aldrig av en hämtning.</li>
+    </ul></div>
+    <div><h3>Lägen som täcks</h3><ul>
+      <li>Inte hämtat än, hämtar (avd 3 av 8), klart, Unibet har inga odds än, delvis, fel, offline, gamla odds (äldre än 12 timmar) och lopp som har startat.</li>
+      <li>En häst som Unibet har strukit men ATG inte har strukit än får taggen "Struken hos Unibet" och inget odds.</li>
+      <li>En häst som inte hittas hos Unibet nämns i resultatet ("2 hästar fanns inte hos Unibet") och har kvar det odds den hade.</li>
+    </ul></div>
+  </div>
+
+  <!-- ================= A ================= -->
+  <h2 class="alt"><span>A</span>En rad som Streck och riktodds. Egna odds står kvar</h2>
+  <p class="alt-sub"><b>Placering:</b> raden "Unibets odds" med knappen ser ut och fungerar som raden för streck och riktodds. Den står överst i Unibets odds och i Spelförslag. Nästa steg i Omgång blir "Hämta Unibets odds" från torsdag 18:00 och när oddsen är äldre än 12 timmar. <b>Egna odds:</b> en hämtning fyller tomma fält och fält som kom från Unibet förra gången. Ett odds du har skrivit in själv skrivs inte över. Raden blir gul och visar Unibets odds med knappen <b>Använd 2,75</b>. <b>Utveckling:</b> under fältet står "▲ från 2,20", jämfört med den första hämtningen. Hela tidslinjen finns i hästkortet. <b>Vinnaroddset</b> står i hästkortet och som en kolumn på desktop, men inte i mobilens rad.</p>
+
+  <h3 class="part">Desktop: Unibets odds efter hämtningen tors 21:05</h3>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/odds</span></div>
+    <div class="vp js" data-k="dA"></div>
+  </div></div>
+
+  <h3 class="part">Raden Unibets odds och Nästa steg: lägen</h3>
+  <div class="states js" data-k="stA"></div>
+
+  <h3 class="part">Mobil 390 px</h3>
+  <div class="phwrap">
+    <div class="phc"><span>Omgång tors 18:10: Nästa steg</span><div class="ph"><div class="ph-in js" data-k="mA_omg"></div></div></div>
+    <div class="phc"><span>Unibets odds efter hämtningen (tors 21:05)</span><div class="ph"><div class="ph-in js" data-k="mA_list"></div></div></div>
+    <div class="phc"><span>Tomt: Unibet har inga odds än (tors 14:30)</span><div class="ph"><div class="ph-in js" data-k="mA_empty"></div></div></div>
+  </div>
+  <div class="phwrap" style="margin-top:28px">
+    <div class="phc"><span>Hästkortet: tidslinjen (lör 11:35)</span><div class="ph"><div class="ph-in js" data-k="mA_hk"></div></div></div>
+    <div class="phc"><span>Spelförslag: oddsen är gamla (lör 11:10)</span><div class="ph"><div class="ph-in js" data-k="mA_spel"></div></div></div>
+  </div>
+
+  <div class="note">
+    <div><h3>Placering och flöde</h3><ul>
+      <li>Torsdag 18:00: Nästa steg föreslår hämtningen. Efter den blir nästa steg "Markera Bet – 5 spelbara".</li>
+      <li>I Spelförslag ligger raden överst, eftersom oddsen bör vara färska när du markerar Bet.</li>
+      <li>Fältet går fortfarande att skriva i. Det du skriver blir ditt eget odds tills du trycker Använd.</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>Inget du har skrivit in försvinner, och du ser direkt vad Unibets odds skulle betyda ("då inte spelbar").</li>
+      <li>Raden är redan känd från Streck och riktodds: samma tidsangivelse och samma gula läge efter 12 timmar.</li>
+      <li>Mobilens rad blir inte högre (60 px). Utvecklingen tar bara en kort rad under fältet.</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Två rader med knappar i Spelförslag (streck och Unibet) tar cirka 130 px tillsammans.</li>
+      <li>Ett eget odds står kvar tills du tar ställning, även när det är gammalt.</li>
+      <li>Vinnaroddset syns inte i mobilens lista.</li></ul></div>
+  </div>
+
+  <!-- ================= B ================= -->
+  <h2 class="alt"><span>B</span>Knapp på tavlan. Senaste hämtningen gäller</h2>
+  <p class="alt-sub"><b>Placering:</b> knappen "Unibet 21:05" står i vyrubriken på tavlan i alla omgångens vyer (Omgång, avdelningar, Unibets odds och Spelförslag), som knappen för strecket i Trollspöt-mockupens alternativ B. <b>Egna odds:</b> en hämtning skriver över alla odds, även dem du har skrivit in. Banderollen säger hur många egna odds som ersattes och har knappen <b>Ångra</b>, och raden visar "Ersatte ditt 3,10". <b>Utveckling:</b> en liten kurva i raden med alla hämtningar. <b>Vinnaroddset</b> står i raden: "vinn 7,50".</p>
+
+  <h3 class="part">Desktop: Unibets odds efter hämtningen tors 21:05</h3>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/odds</span></div>
+    <div class="vp js" data-k="dB"></div>
+  </div></div>
+
+  <h3 class="part">Knappen på tavlan: lägen (mobil och desktop)</h3>
+  <div class="states js" data-k="stB"></div>
+
+  <h3 class="part">Mobil 390 px</h3>
+  <div class="phwrap">
+    <div class="phc"><span>Unibets odds efter hämtningen</span><div class="ph"><div class="ph-in js" data-k="mB_list"></div></div></div>
+    <div class="phc"><span>Omgång: knappen finns i alla vyer</span><div class="ph"><div class="ph-in js" data-k="mB_omg"></div></div></div>
+  </div>
+
+  <div class="note">
+    <div><h3>Placering och flöde</h3><ul>
+      <li>Knappen syns alltid och visar klockslaget. Den blir gul med en prick när oddsen är äldre än 12 timmar.</li>
+      <li>Resultatet visas som en banderoll under tavlan i den vy där du trycker. Ångra gäller tills du gör nästa hämtning.</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>Ett tryck från vilken vy som helst. Inget att ta ställning till efteråt.</li>
+      <li>Oddsen i appen är alltid Unibets senaste.</li>
+      <li>Kurvan visar hela veckan direkt i raden.</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Ett eget odds kan försvinna. Ångra finns, men bara tills nästa hämtning.</li>
+      <li>Kurvan på 44 px är svår att läsa. Den visar riktningen, inte talen.</li>
+      <li>Vyrubriken blir trång i mobilen, och kurvan tar plats från namnet (cirka 50 px).</li></ul></div>
+  </div>
+
+  <!-- ================= C ================= -->
+  <h2 class="alt"><span>C</span>Unibets odds och ditt odds bredvid varandra. Egen vy för rörelsen</h2>
+  <p class="alt-sub"><b>Placering:</b> samma rad som i A, men bara i Unibets odds. Nästa steg som i A. <b>Egna odds:</b> båda visas. Unibets odds står i en egen kolumn och kan inte ändras. Fältet "Ditt" är tomt så länge Unibets odds gäller. Skriver du ett eget odds räknas Spelbar på det. <b>Utveckling:</b> en tredje vy, <b>Rörelse</b>, bredvid Lista och En i taget. Där står varje hämtning som en kolumn, och tavlan överst jämför torsdag med lördag för hela omgången. <b>Vinnaroddset</b> står under Unibets platsodds i raden.</p>
+
+  <h3 class="part">Desktop: vyn Rörelse (lör 11:35)</h3>
+  <div class="scrollx"><div class="bf">
+    <div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-24/odds?lage=rorelse</span></div>
+    <div class="vp js" data-k="dC"></div>
+  </div></div>
+
+  <h3 class="part">Mobil 390 px</h3>
+  <div class="phwrap">
+    <div class="phc"><span>Lista: Unibet och Ditt (tors 21:05)</span><div class="ph"><div class="ph-in js" data-k="mC_list"></div></div></div>
+    <div class="phc"><span>Rörelse (lör 11:35)</span><div class="ph"><div class="ph-in js" data-k="mC_mv"></div></div></div>
+  </div>
+
+  <div class="note">
+    <div><h3>Placering och flöde</h3><ul>
+      <li>Lägena för hämtningen är desamma som i A.</li>
+      <li>Rörelse visar hämtningarna som kolumner och skrollar i sidled när de är fler än skärmen rymmer. Den första hämtningen med odds har en ram.</li></ul></div>
+    <div><h3>Ger</h3><ul>
+      <li>Det syns alltid vad Unibet säger och vad du räknar med. Inget skrivs över och inget behöver godkännas.</li>
+      <li>Tesen om torsdag kan prövas direkt: tavlan räknar hur många hästar som fick lägre odds på lördagen.</li></ul></div>
+    <div><h3>Kostar</h3><ul>
+      <li>Fem kolumner i mobilens rad, så namnet får cirka 140 px.</li>
+      <li>Två tal per häst är lätt att blanda ihop. Det måste stå tydligt vilket som räknas.</li>
+      <li>En vy till att bygga och underhålla.</li></ul></div>
+  </div>
+
+  <div class="rec">
+    <h2>Rekommendation: A, med tavlan från C senare</h2>
+    <p><b>A</b> löser det viktigaste, att ett odds du har skrivit in aldrig försvinner utan att du märker det. Det kostar bara en knapp i de få rader där talen skiljer sig. Raden fungerar som Streck och riktodds, som du redan använder, och listan i mobilen behåller höjden 60 px. Tidslinjen i hästkortet räcker för att följa en häst. Själva tesen om torsdag prövas bäst över flera omgångar, så tavlan "Tors mot lör" från C passar bättre i Statistik när det finns historik.</p>
+    <ul>
+      <li>B passar om du nästan aldrig skriver in odds själv när knappen väl finns. Då är frågan om egna odds onödig.</li>
+      <li>Hästar som du inte har markerat men som ligger över riktoddset kan visas som en rad längst ned ("Ej markerade men över riktoddset (4)"). Raden finns i A:s desktopbild och är en öppen fråga.</li>
+    </ul>
+  </div>
+
+  <div class="note" style="margin-top:14px">
+    <div style="grid-column:1/-1"><h3>Öppna frågor till Mikael</h3><ol style="margin:0;padding-left:20px">
+      <li><b>Egna odds:</b> ska de stå kvar (A), skrivas över med Ångra (B) eller visas bredvid Unibets (C)?</li>
+      <li><b>Vad räknas rörelsen från?</b> Förslaget är den första hämtningen med odds, oftast torsdag ("▲ från 2,10"). Alternativet är den förra hämtningen.</li>
+      <li><b>Hästar du inte har markerat:</b> alla hästar får odds, men listan i Unibets odds visar bara Intressant och Bet. Vill du se de omarkerade som ligger över riktoddset? De kan stå som en rad längst ned, i Trollspöt eller i avdelningsvyn.</li>
+      <li><b>Vinnaroddset:</b> räcker det i hästkortet och på desktop, eller vill du ha det i mobilens rad också?</li>
+      <li><b>En knapp för allt?</b> Ska "Uppdatera streck" och "Hämta Unibet-odds" bli en enda knapp i Spelförslag, eller vara två?</li>
+      <li><b>Tomma försök:</b> ska en hämtning utan odds (före torsdag) sparas i historiken som "inga odds", eller inte sparas alls? Förslaget är att inte spara den.</li>
+      <li><b>Tätt mellan hämtningarna:</b> ska det finnas en spärr, till exempel högst en hämtning per 2 minuter, för att inte belasta Unibets API?</li>
+      <li><b>Tors mot lör:</b> ska jämförelsen över flera omgångar ligga i Statistik (S9)?</li>
+    </ol></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  root.setAttribute('data-theme','dark');
+  document.querySelectorAll('.mk-top .seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      root.setAttribute('data-theme',b.dataset.t);
+      document.querySelectorAll('.mk-top .seg button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+    });
+  });
+
+  var NB=' ', MI='−';
+  var I={
+    wheel:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.6"/><g stroke="currentColor" stroke-width="1.5"><path d="M16 16L16 4M16 16L24.5 7.5M16 16L28 16M16 16L24.5 24.5M16 16L16 28M16 16L7.5 24.5M16 16L4 16M16 16L7.5 7.5"/></g><circle cx="16" cy="16" r="3.4" fill="currentColor"/></svg>',
+    dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+    ref:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg>',
+    chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+    ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke-width="2"/><path d="M7.5 12.3l3 3 6-6.3"/></svg>',
+    err:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l10 18H2z" stroke-linejoin="round"/><path d="M12 10v5M12 18h.01"/></svg>',
+    info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke-width="2"/><path d="M12 11v6M12 7.5h.01"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    ticket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg>'
+  };
+  function od(v){return v==null?'–':v.toFixed(2).replace('.',',')}
+  function sg(v){return (v>0?'+':v<0?MI:'±')+od(Math.abs(v))}
+  function pc(v){return (v>0?'+':v<0?MI:'±')+Math.abs(Math.round(v))+NB+'%'}
+  var SPB='<span class="bdg s" role="img" aria-label="Spelbar">S</span>';
+  var BB='<span class="bdg b" role="img" aria-label="Bet">B</span>';
+  function bet(n,on){return '<button type="button" class="betk" aria-pressed="'+(on?'true':'false')+'" aria-label="Bet: '+n+'"><span class="lamp-i">'+I.ticket+'</span></button>'}
+
+  // Hästarna (Jägersro V85, fixturen): avd, nr, häst, kusk, rikt, Unibet nu (tors 21:05), första hämtningen (tors 18:02), vinnare, eget odds, spelbar, ny spelbar, bet, betodds, struken hos Unibet, serier för fem hämtningar
+  var D=[
+    {a:1,n:2,h:'Fantastica Doda',k:'Alessandro Gocciadoro',r:2.14,u:2.45,f:2.20,w:7.50,s:1,nw:1,se:[2.20,2.45,2.30,2.25,2.10],ws:[8.00,7.50,7.25,7.00,6.75]},
+    {a:1,n:3,h:'Nilla Lane',k:'Johan Untersteiner',r:1.62,u:1.47,f:1.50,w:2.75,se:[1.50,1.47,1.45,1.40,1.38],ws:[2.90,2.75,2.70,2.60,2.55]},
+    {a:1,n:5,h:'Kaley D.C.',k:'Carl Johan Jepson',r:2.90,u:2.75,f:2.80,w:15.00,own:3.10,s:1,se:[2.80,2.75,2.75,2.60,2.50],ws:[16.00,15.00,15.00,14.00,13.00]},
+    {a:2,n:2,h:'Polly Vici',k:'Björn Goop',r:3.40,u:4.10,f:3.60,w:17.00,s:1,nw:1,se:[3.60,4.10,3.80,3.60,3.40],ws:[19.00,17.00,16.00,15.00,14.00]},
+    {a:2,n:6,h:'Run Rhapsody Run',k:'Magnus A Djuse',r:2.60,u:2.30,f:2.30,w:9.00,se:[2.30,2.30,2.40,2.40,2.45],ws:[9.00,9.00,9.50,9.50,10.00]},
+    {a:3,n:3,h:'Veritas',k:'Ole Johan Östre',r:2.05,u:2.00,f:2.10,w:5.50,se:[2.10,2.00,2.00,1.95,1.90],ws:[5.75,5.50,5.50,5.25,5.00]},
+    {a:3,n:7,h:'Charmant Dream',k:'Victor Rosleff',r:3.80,u:null,f:3.90,w:null,scr:1,se:[3.90,null,null,null,null],ws:[21.00,null,null,null,null]},
+    {a:4,n:2,h:'Crew Lane',k:'Johan Untersteiner',r:2.10,u:2.40,f:2.10,w:6.00,s:1,b:1,bo:2.25,se:[2.10,2.40,2.25,2.20,2.15],ws:[6.50,6.00,6.00,5.75,5.50]},
+    {a:4,n:11,h:'Special Ale',k:'Rikard N Skoglund',r:3.05,u:3.50,f:null,w:21.00,s:1,nw:1,se:[null,3.50,3.30,3.25,3.10],ws:[null,21.00,20.00,19.00,18.00]}
+  ];
+  var SNAP=['tors 18:02','tors 21:05','fre 09:12','fre 20:40','lör 11:35'];
+  function vOf(d){return d.own!=null?d.own:d.u}
+  function trendTxt(d){ if(d.u==null||d.f==null) return d.u!=null?'<small>Ny i dag</small>':''; var df=d.u-d.f; if(Math.abs(df)<.005) return '<small>oförändrat</small>'; return '<small class="'+(df>0?'up-t':'dn-t')+'">'+(df>0?'▲':'▼')+' från '+od(d.f)+'</small>'}
+  function spark(arr,rikt,w,h){
+    w=w||44;h=h||22;var v=arr.filter(function(x){return x!=null});if(!v.length)return '';
+    var lo=Math.min.apply(null,v.concat(rikt?[rikt]:[])),hi=Math.max.apply(null,v.concat(rikt?[rikt]:[]));if(hi-lo<.1){hi+=.05;lo-=.05}
+    var pts=[],last;arr.forEach(function(x,i){if(x==null)return;var X=(i/(arr.length-1))*w,Y=h-2-((x-lo)/(hi-lo))*(h-4);pts.push(X.toFixed(1)+','+Y.toFixed(1));last=[X,Y]});
+    var ry=rikt?(h-2-((rikt-lo)/(hi-lo))*(h-4)).toFixed(1):null;
+    return '<svg class="spk" viewBox="0 0 '+w+' '+h+'" aria-hidden="true">'+(ry?'<line x1="0" x2="'+w+'" y1="'+ry+'" y2="'+ry+'"/>':'')+'<polyline points="'+pts.join(' ')+'"/><circle cx="'+last[0]+'" cy="'+last[1]+'" r="2.4"/></svg>';
+  }
+
+  // ---------- Raden Unibets odds ----------
+  function lamps(on,cur,bad,skip){var o='';for(var i=1;i<=8;i++){var c=bad&&bad.indexOf(i)>-1?'bad':skip&&skip.indexOf(i)>-1?'skip':i<=on?'on':i===cur?'cur':'';o+='<i class="'+c+'">'+(c==='bad'?'!':i)+'</i>'}return '<div class="lamps" aria-hidden="true">'+o+'</div>'}
+  var BAN={
+    ok:'<div class="ban ok" role="status">'+I.ok+'<div><p><b>98 hästar fick odds, 3 nya Spelbara.</b> 1 eget odds skiljer sig från Unibets och står kvar.</p><div class="acts"><button type="button" class="linkish">Visa vilka</button><button type="button" class="linkish">Använd Unibets odds för alla (1)</button></div></div></div>',
+    okC:'<div class="ban ok" role="status">'+I.ok+'<div><p><b>98 hästar fick odds, 3 nya Spelbara.</b> 1 häst har ett eget odds, som räknas i stället för Unibets.</p><div class="acts"><button type="button" class="linkish">Visa vilka</button></div></div></div>',
+    okB:'<div class="ban ok m" role="status">'+I.ok+'<div><p><b>98 hästar fick odds, 3 nya Spelbara.</b> 1 eget odds ersattes: Kaley D.C. 3,10 blev 2,75.</p><div class="acts"><button type="button" class="linkish">Ångra för Kaley D.C.</button><button type="button" class="linkish">Visa vilka</button></div></div><button type="button" class="x" aria-label="Stäng">'+I.x+'</button></div>',
+    empty:'<div class="ban info" role="status">'+I.info+'<p><b>Unibet har inga odds för V85 än.</b> De brukar komma på torsdagen. Inget sparades.</p></div>',
+    part:'<div class="ban warn" role="status">'+I.err+'<div><p><b>6 av 8 avdelningar hämtade.</b> Avd 6 och 8 svarade inte. 74 hästar fick odds, 2 nya Spelbara. Det som hämtades är sparat.</p><div class="acts"><button type="button" class="btn secondary sm">'+I.dl+'Hämta avd 6 och 8</button></div></div></div>',
+    miss:'<div class="ban warn" role="status">'+I.err+'<div><p><b>96 hästar fick odds.</b> 2 hästar fanns inte hos Unibet och 1 är struken hos Unibet. De har kvar sina tidigare odds.</p><div class="acts"><button type="button" class="linkish">Visa vilka</button></div></div></div>',
+    err:'<div class="ban err" role="alert">'+I.err+'<div><p><b>Kunde inte nå Unibet.</b> Inga odds ändrades. Försök igen om en stund.</p><div class="acts"><button type="button" class="btn secondary sm">'+I.dl+'Försök igen</button></div></div></div>'
+  };
+  function uf(st,o){
+    o=o||{};var cls='srefresh uf'+(o.compact?' compact':''),t,btn,extra='';
+    function B(p,l,dis){return '<button type="button" class="btn '+(p?'primary':'secondary')+' sm"'+(dis?' disabled':'')+'>'+I.dl+(l||'Hämta Unibet-odds')+'</button>'}
+    switch(st){
+      case 'never':t='Inte hämtade än';btn=B(0);extra='<p class="help">Hämtar plats- och vinnarodds för alla hästar i de 8 avdelningarna.</p>';break;
+      case 'idle':t='<b class="n">'+(o.at||'i dag 21:05')+'</b> · '+(o.ago||'för 3 min sedan');btn=B(0);break;
+      case 'busy':t='Hämtar avd 3 av 8 …';btn='<button type="button" class="btn secondary sm" disabled><span class="spin" aria-hidden="true"></span>Hämtar …</button>';extra=lamps(2,3)+'<p class="lt">Avd 1–2 klara. Varje avdelning sparas när den är hämtad.</p>';break;
+      case 'done':t='<b class="n">i dag 21:05</b> · nyss · 2:a hämtningen i dag';btn=B(0);extra=lamps(8)+(o.ban||BAN.ok);break;
+      case 'empty':t='Senast prövat <b class="n">i dag 14:30</b> · inga odds än';btn=B(0);extra=BAN.empty;break;
+      case 'part':t='<b class="n">i dag 21:05</b> · delvis';btn=B(0);extra=lamps(5,0,[6,8])+BAN.part;break;
+      case 'miss':t='<b class="n">i dag 21:05</b> · nyss';btn=B(0);extra=BAN.miss;break;
+      case 'err':t='<b class="n">i dag 18:02</b> · för 3 timmar sedan';btn=B(0);extra=BAN.err;break;
+      case 'off':t='<b class="n">i dag 18:02</b> · för 3 timmar sedan';btn=B(0,null,1);extra='<p class="help">Ingen uppkoppling. Du ser oddsen från i dag 18:02.</p>';break;
+      case 'old':cls+=' stale';t='<b class="n">'+(o.at||'tors 21:05')+'</b> · '+(o.ago||'för 14 timmar sedan');btn=B(1,'Hämta igen');extra='<p class="help">Unibets odds är äldre än 12 timmar. Hämta igen innan du markerar Bet.</p>';break;
+      case 'started':t='<b class="n">i dag 15:58</b> · nyss';btn=B(0);extra=lamps(8,0,null,[1,2,3])+'<p class="lt">Avd 1–3 har startat och hämtades inte. Deras odds är från i dag 11:35.</p>';break;
+    }
+    return '<div class="'+cls+'" role="group" aria-label="Unibets odds"'+(st==='busy'?' aria-busy="true"':'')+'><div class="sr-row"><p class="sr-t"><span class="k">Unibets odds</span><span aria-live="polite">'+t+'</span></p>'+btn+'</div>'+extra+'</div>';
+  }
+
+  // ---------- Gemensamma skal ----------
+  var tabbar='<nav class="tabbar" aria-label="Huvudmeny"><a class="tab" href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Omgång</a>'+
+    '<a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Källor</a>'+
+    '<a class="tab" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Statistik</a></nav>';
+  var backBtn='<button class="ibtn" type="button" aria-label="Tillbaka">'+I.back+'</button>';
+  function ah(title,sub,acts){return '<div class="brd"><div class="ah">'+backBtn+'<div class="ah-t"><span class="ah-title">'+title+'</span><span class="ah-sub">'+sub+'</span></div>'+(acts||'')+'</div></div>'}
+  function phase(cur){var P=[['Analys','sön–tors'],['Odds','tors 18:00'],['Live','lör 12:00'],['Klart','lör']];return '<ol class="phase">'+P.map(function(p,i){return '<li'+(i===cur?' aria-current="step"':'')+'><span><b>'+(i<cur?'✓ ':'')+p[0]+'</b><small>'+p[1]+'</small></span></li>'}).join('')+'</ol>'}
+  function dhead(acts){return '<header class="dhead brd"><span class="logo">'+I.wheel+'</span><span class="ah-brand">Spelvärde</span><nav class="dnav" aria-label="Huvudmeny"><a href="#" aria-current="page">Omgång</a><a href="#">Källor</a><a href="#">Statistik</a></nav>'+(acts||'<div class="dmeta">V85 · Jägersro · lör 24 okt 2026<br>Fas: Odds</div>')+'</header>'}
+  function olhead(sel,count){var L=sel==null?['Lista','En i taget']:['Lista','Rörelse','En i taget'];var s=sel||0;return '<div class="ol-head"><div class="seg" role="group" aria-label="Visa">'+L.map(function(x,i){return '<button type="button" aria-pressed="'+(i===s)+'">'+x+'</button>'}).join('')+'</div>'+(count?'<p class="ol-count" role="status">'+count+'</p>':'')+'</div>'}
+  var COUNT='Odds <b>8</b> av <b>9</b> · <b>5</b> spelbara';
+  var AVD=['Krafft – STL Diamantstoet','RS Mustang – STL Klass I','KWM Stable – STL Klass II','Johan Jacobssons Minne 2026','Björkhaga Plantskola – STL','Stall Ofcourse – STL Klass I','C.L. Müllers Memorial 2026','Välkommen på After Race – STL'];
+  var TID=['15:00','15:25','15:50','16:06','16:30','16:52','17:12','17:35'];
+  function groups(rows,fn,colh){var out='',a=0,buf=[];
+    function flush(){if(!buf.length)return;var withO=buf.filter(function(d){return vOf(d)!=null}).length;out+='<h3 class="sl"><span>Avd '+a+' · '+TID[a-1]+'</span><span>'+withO+' av '+buf.length+' med odds</span></h3>'+(colh||'')+'<ul class="plist">'+buf.map(fn).join('')+'</ul>';buf=[]}
+    rows.forEach(function(d){if(d.a!==a){flush();a=d.a}buf.push(d)});flush();return out}
+  function nameLine(d,o){o=o||{};var v=o.val!==undefined?o.val:vOf(d),sp=o.sp!==undefined?o.sp:d.s;
+    return '<span class="hl"><span class="hn">'+d.h+'</span>'+(sp?SPB:'')+(d.b?BB:'')+(o.nw!==false&&d.nw?'<span class="tag new">Ny</span>':'')+(v!=null&&v<2?'<span class="tag gl">Under 2,00</span>':'')+(d.scr?'<span class="tag scr">Struken hos Unibet</span>':'')+'</span>'}
+  function valSpan(v,r){if(v==null)return '';var x=(v/r-1)*100;return '<span class="val '+(x>0?'up':'dn')+'">'+pc(x)+'</span>'}
+
+  // ---------- A: rader ----------
+  function rowA(d){
+    var v=vOf(d),conf=d.own!=null&&d.u!=null&&Math.abs(d.own-d.u)>.004;
+    var pm='<span class="pm">Avd '+d.a+' · rikt <b>'+od(d.r)+'</b>'+(v!=null?' · '+valSpan(v,d.r):'')+'</span>';
+    var notes='';
+    if(conf) notes='<span class="cline">Unibet 21:05: <b>'+od(d.u)+'</b>'+(d.u<=d.r?', då inte spelbar':'')+'<button type="button" class="btn ghost sm" aria-label="Använd Unibets odds '+od(d.u)+' för '+d.h+'">Använd '+od(d.u)+'</button></span>';
+    if(d.b) notes+='<span class="nt">Bet till '+od(d.bo)+' fre 09:20 · ändras inte</span>';
+    if(d.scr) notes='<span class="nt">Unibet har strukit hästen. ATG har inte strukit den än.</span>';
+    var mic=d.scr?'<small>–</small>':conf?'<small>Eget</small>':trendTxt(d);
+    return '<li class="xr a'+(conf?' conf':'')+(d.scr?' scr':'')+'"><span class="nr sm"><b>'+d.n+'</b></span><div class="pmain">'+nameLine(d)+pm+notes+'</div>'+
+      '<span class="ofc"><input class="oin'+(conf?' conf mine':'')+'" inputmode="decimal" value="'+(v!=null?od(v):'')+'" placeholder="–,––"'+(d.scr?' disabled':'')+' aria-label="Unibet platsodds för '+d.h+(conf?', eget odds':', hämtat i dag 21:05')+'">'+mic+'</span>'+bet(d.h,d.b)+'</li>';
+  }
+  function rowEmpty(d){
+    return '<li class="xr a"><span class="nr sm"><b>'+d.n+'</b></span><div class="pmain">'+nameLine(d,{val:null,sp:0,nw:false})+'<span class="pm">Avd '+d.a+' · rikt <b>'+od(d.r)+'</b> · minst <b>'+od(Math.max(2,d.r))+'</b></span></div><span class="ofc"><input class="oin" inputmode="decimal" placeholder="–,––" aria-label="Unibet platsodds för '+d.h+'"><small>&nbsp;</small></span>'+bet(d.h,0)+'</li>';
+  }
+
+  // ---------- A: desktop ----------
+  function dtA(rows){
+    var cg=[56,0,70,104,150,72,82,66,58].map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('');
+    var th='<th scope="col">Nr</th><th scope="col">Häst</th><th scope="col" class="r">Rikt</th><th scope="col" class="r">Unibet<span class="thsub">plats</span></th><th scope="col">Sedan första<span class="thsub">hämtningen</span></th><th scope="col" class="r">Vinnare<span class="thsub">Unibet</span></th><th scope="col" class="r">Skillnad</th><th scope="col" class="r">Värde</th><th scope="col" class="c">Bet</th>';
+    var a=rows[0].a;
+    var body=rows.map(function(d){
+      var v=vOf(d),conf=d.own!=null&&d.u!=null&&Math.abs(d.own-d.u)>.004,df=v!=null?v-d.r:null;
+      var notes=conf?'<span class="cline">Unibet 21:05: <b>'+od(d.u)+'</b>, då inte spelbar <button type="button" class="btn ghost sm">Använd '+od(d.u)+'</button></span>':d.b?'<span class="nt">Bet till '+od(d.bo)+' fre 09:20 · ändras inte</span>':d.scr?'<span class="nt">Unibet har strukit hästen. ATG har inte strukit den än.</span>':'';
+      var trend=d.u==null?'<span class="dim">–</span>':(d.f==null?'<div class="trend"><div><span>Ny</span><small>första i dag 21:05</small></div></div>':'<div class="trend">'+spark([d.f,d.u],null,58,20)+'<div><span class="'+(d.u>d.f?'up-t':d.u<d.f?'dn-t':'')+'">'+(d.u>d.f?'▲ ':d.u<d.f?'▼ ':'')+sg(d.u-d.f)+'</span><small>från '+od(d.f)+' tors 18:02</small></div></div>');
+      return '<tr'+(conf?' style="box-shadow:inset 4px 0 0 var(--fill)"':'')+'><td><span class="nr"><b>'+d.n+'</b></span></td><td>'+nameLine(d)+'<span class="kt" style="display:block">'+d.k+' · minst '+od(Math.max(2,d.r))+'</span>'+notes+'</td>'+
+        '<td class="r"><span class="rk">'+od(d.r)+'</span></td><td class="r"><span class="ofc" style="align-items:flex-end"><input class="oin'+(conf?' conf mine':'')+'" value="'+(v!=null?od(v):'')+'" placeholder="–,––"'+(d.scr?' disabled':'')+' aria-label="Unibet platsodds för '+d.h+'"><small>'+(conf?'Eget':d.u!=null?'Unibet 21:05':'&nbsp;')+'</small></span></td>'+
+        '<td>'+trend+'</td><td class="r n dim">'+od(d.w)+'</td><td class="r"><span class="diff '+(df>0?'up':'dn')+'">'+(df==null?'–':sg(df))+'</span></td><td class="r">'+(v!=null?valSpan(v,d.r):'')+'</td><td class="c">'+bet(d.h,d.b)+'</td></tr>';
+    }).join('');
+    return '<table class="tbl"><caption><span>Avd '+a+' · '+TID[a-1]+'</span><span>'+rows.filter(function(d){return vOf(d)!=null}).length+' av '+rows.length+' med odds</span></caption><colgroup>'+cg+'</colgroup><thead><tr>'+th+'</tr></thead><tbody>'+body+'</tbody></table>';
+  }
+  function byAvd(rows){var m={};rows.forEach(function(d){(m[d.a]=m[d.a]||[]).push(d)});return Object.keys(m).map(function(k){return m[k]})}
+
+  var R={};
+  R.dA=function(){
+    return dhead()+'<div class="sphead brd"><p class="k">V85 · Jägersro · lör 24 okt</p><h1>Unibets platsodds</h1></div>'+
+      '<div class="dwrap">'+olhead(null,COUNT)+uf('done')+'<p class="help spel-help">Hämtade odds fyller fälten. Ett odds du skriver själv står kvar tills du trycker Använd.</p>'+
+      '<div style="padding:0 12px">'+byAvd(D).map(dtA).join('')+
+      '<a class="rest" href="#"><span><b>Ej markerade men över riktoddset (4):</b> Be My Baby, Mahakala, Rip Wheeler, Global Giant</span>'+I.chev+'</a></div></div>';
+  };
+
+  // A: lägen
+  function nextCard(h,p,btn){return '<section class="next"><span class="lbl">Nästa steg</span><h2>'+h+'</h2><p>'+p+'</p>'+(btn||'')+'</section>'}
+  R.stA=function(){
+    var F=[
+      ['<b>Inte hämtat än</b> · måndag till torsdag',uf('never')],
+      ['<b>Hämtar</b> · en lampa per avdelning, knappen är avstängd',uf('busy')],
+      ['<b>Klart</b> · banderollen ligger kvar tills du lämnar vyn',uf('done')],
+      ['<b>Unibet har inga odds än</b> · före torsdag, inget sparas',uf('empty')],
+      ['<b>Delvis</b> · två avdelningar svarade inte',uf('part')],
+      ['<b>Delvis</b> · hästar saknas hos Unibet',uf('miss')],
+      ['<b>Fel</b> · inget ändrades',uf('err')],
+      ['<b>Offline</b>',uf('off')],
+      ['<b>Äldre än 12 timmar</b> · knappen blir primär',uf('old')],
+      ['<b>Lopp har startat</b> · randiga lampor hoppades över',uf('started')],
+      ['<b>Nästa steg</b> · fas Odds, inga odds hämtade',nextCard('Hämta Unibets odds','Plats- och vinnarodds för alla 101 hästar. Spelbar räknas om direkt.','<button type="button" class="btn primary">'+I.dl+'Hämta Unibet-odds</button>')],
+      ['<b>Nästa steg</b> · senaste försöket gav inga odds',nextCard('Unibet har inga odds än','Senast prövat i dag 14:30. Oddsen brukar komma på torsdagen.','<button type="button" class="btn secondary">'+I.dl+'Försök igen</button>')]
+    ];
+    return F.map(function(f){return '<figure><figcaption>'+f[0]+'</figcaption><div>'+f[1]+'</div></figure>'}).join('');
+  };
+
+  // A: mobil
+  var omgHead='<div class="brd"><div class="ah"><span class="logo">'+I.wheel+'</span><div class="ah-t"><span class="ah-title">Omgången</span><span class="ah-sub">V85 · Jägersro · lör 24 okt · 15:00</span></div><button class="ibtn" type="button" aria-label="Hämta omgången igen">'+I.ref+'</button><button class="ibtn" type="button" aria-label="Inställningar">'+I.gear+'</button></div><div style="padding:0 8px 8px">'+phase(1)+'</div></div>';
+  function orows(){return AVD.map(function(a,i){return '<li><a class="orow" href="#"><span class="nr sm"><b>'+(i+1)+'</b></span><span class="o-mid"><span class="on">'+a.replace(/ – .*/,'')+'</span><span class="om n">'+TID[i]+' · 2140 m · 12 hästar</span></span><span class="cnt2"><span><span class="bdg i" role="img" aria-label="Intressant">I</span>'+(i<4?2:1)+'</span><span><span class="bdg s" role="img" aria-label="Spelbar">S</span>'+(i<2?1:0)+'</span></span>'+I.chev+'</a></li>'}).join('')}
+  R.mA_omg=function(){
+    return omgHead+nextCard('Hämta Unibets odds','Plats- och vinnarodds för alla 101 hästar. Spelbar räknas om direkt.','<button type="button" class="btn primary">'+I.dl+'Hämta Unibet-odds</button>')+
+      '<p class="fetchline">Startlistan hämtad sön 21:14 · Streck i dag 17:55</p>'+
+      '<nav style="display:grid;gap:6px;margin:4px 10px 0" aria-label="Odds och spel"><a class="qlink" href="#">Unibets odds <span style="display:inline-flex;gap:6px;align-items:center"><span class="n" style="font-size:12px;color:var(--ink-2)">inte hämtade</span>'+I.chev+'</span></a><a class="qlink" href="#">Spelförslag '+I.chev+'</a></nav>'+
+      '<h2 class="sl">Avdelningar</h2><ul class="olist">'+orows()+'</ul>'+tabbar;
+  };
+  R.mA_list=function(){return ah('Unibets platsodds','V85 · Jägersro')+olhead(null,COUNT)+uf('done')+groups(D,rowA)+tabbar};
+  R.mA_empty=function(){return ah('Unibets platsodds','V85 · Jägersro')+olhead(null,'Odds <b>0</b> av <b>9</b>')+uf('empty')+'<p class="help spel-help">Du kan skriva in odds själv så länge.</p>'+groups(D.slice(0,6).map(function(d){var c={};for(var k in d)c[k]=d[k];c.u=null;c.own=null;return c}),rowEmpty)+tabbar};
+
+  function chartTL(d){
+    var w=340,h=120,pad=26,se=d.se,lo=2.0,hi=2.5,top=10,bot=h-22;
+    function Y(v){return bot-((v-lo)/(hi-lo))*(bot-top)}
+    function X(i){return pad+i*((w-pad-8)/(se.length-1))}
+    var g='';[2.0,2.25,2.5].forEach(function(v){g+='<line x1="'+pad+'" x2="'+w+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#2E343B" stroke-width="1"/><text x="0" y="'+(Y(v)+4)+'" fill="#B9C0C8" font-size="10" font-family="JetBrains Mono, monospace">'+od(v)+'</text>'});
+    g+='<line x1="'+pad+'" x2="'+w+'" y1="'+Y(d.r)+'" y2="'+Y(d.r)+'" stroke="#B9C0C8" stroke-width="1.5" stroke-dasharray="4 3"/>';
+    var pts=se.map(function(v,i){return X(i)+','+Y(v)}).join(' ');
+    g+='<polyline points="'+pts+'" fill="none" stroke="#FFB22E" stroke-width="2.2" style="filter:drop-shadow(0 0 4px rgba(255,178,46,.6))"/>';
+    se.forEach(function(v,i){g+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="'+(i===se.length-1?4:3)+'" fill="#FFB22E"/><text x="'+X(i)+'" y="'+(Y(v)-8)+'" text-anchor="middle" fill="#ECE8DD" font-size="10.5" font-weight="700" font-family="JetBrains Mono, monospace">'+od(v)+'</text>'});
+    ['tors','','fre','','lör'].forEach(function(t,i){if(t)g+='<text x="'+X(i)+'" y="'+(h-6)+'" text-anchor="middle" fill="#B9C0C8" font-size="10.5" font-family="Barlow Condensed, sans-serif" letter-spacing=".08em">'+t.toUpperCase()+'</text>'});
+    return '<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Unibets platsodds för '+d.h+': '+se.map(function(v,i){return SNAP[i]+' '+od(v)}).join(', ')+'. Riktodds '+od(d.r)+'.">'+g+'</svg>';
+  }
+  function tlList(d){
+    var rows='<li class="h"><span>Hämtning</span><span class="r">Plats</span><span class="r">Vinnare</span></li>';
+    for(var i=d.se.length-1;i>=0;i--){var p=d.se[i],q=i>0?d.se[i-1]:null,df=q!=null?p-q:null;
+      rows+='<li><span class="t">'+SNAP[i]+(i===0?'<span class="tg">Första</span>':'')+(i===2?'<span class="tg">Bet 2,25</span>':'')+'</span><span class="r"><b>'+od(p)+'</b>'+(df?'<small class="'+(df>0?'up-t':'dn-t')+'">'+(df>0?'▲':'▼')+'</small>':'<small>&nbsp;&nbsp;</small>')+'</span><span class="r n">'+od(d.ws[i])+'</span></li>'}
+    return '<ul class="utl" aria-label="Alla hämtningar, senaste först">'+rows+'</ul>';
+  }
+  R.mA_hk=function(){
+    var d=D[7];
+    return ah(d.h,'Avd 4 · 16:06 · Johan Jacobssons Minne')+
+      '<div class="brd" style="border-top:1px solid var(--head-line)"><div class="hk-hero"><span class="nr lg"><b>2</b></span><div><h1 class="hk-name">Crew Lane</h1><p>3 år hingst · 1.16,4M</p><p>Johan Untersteiner · tr Johan Untersteiner</p></div></div></div>'+
+      '<div class="acts-row"><button type="button" class="chipb on" aria-pressed="true">'+I.check+'Intressant</button><button type="button" class="chipb" aria-pressed="true"><span class="bdg s">S</span>Spelbar</button><button type="button" class="chipb bt" aria-pressed="true"><span class="bdg b">B</span>Bet 2,25</button></div>'+
+      '<section class="hk-sec"><h3>Riktodds plats</h3><div class="rbox brd"><div><span class="k">Riktodds</span><div class="big">2,10</div></div><div><span class="k">Unibet plats</span><div class="mid">2,15</div></div><div><span class="k">Vinnare</span><div class="mid" style="font-size:18px">5,50</div></div>'+
+      '<p class="verdict"><b>Spelbar:</b> Unibet ger 0,05 mer än riktoddset. <span style="color:var(--head-ink-2)">Hämtat lör 11:35.</span></p></div></section>'+
+      '<section class="hk-sec"><h3>Unibets odds över tid</h3><div class="tl-board brd"><div class="k"><span>Plats · 5 hämtningar</span><span>tors 18:02 → lör 11:35</span></div>'+chartTL(d)+'<div class="lg"><span><i></i>Unibet plats</span><span><i class="d"></i>Riktodds 2,10</span></div></div>'+tlList(d)+'</section>'+tabbar;
+  };
+  function spRow(d,lat){
+    var v=lat,df=v-d.r;
+    return '<li class="xr a"><span class="nr sm"><b>'+d.n+'</b></span><div class="pmain">'+nameLine(d,{val:v,nw:false})+'<span class="pm">Avd '+d.a+' · rikt <b>'+od(d.r)+'</b> · '+valSpan(v,d.r)+'</span>'+(df<=0?'<span class="nt bad">Under riktoddset nu, inte längre föreslagen</span>':'')+(d.b?'<span class="nt">Bet till '+od(d.bo)+' · ändras inte</span>':'')+'</div><span class="ofc"><input class="oin" value="'+od(v)+'" aria-label="Unibet platsodds för '+d.h+'"><small>'+(d.se[0]!=null&&v!==d.se[0]?'<span class="'+(v>d.se[0]?'up-t':'dn-t')+'">'+(v>d.se[0]?'▲':'▼')+' från '+od(d.se[0])+'</span>':'Ny')+'</small></span>'+bet(d.h,d.b)+'</li>';
+  }
+  R.mA_spel=function(){
+    var sel=[D[3],D[7],D[8],D[0]];
+    return ah('Spelförslag','V85 · Jägersro · lör 24 okt')+'<div class="segw"><div class="seg" role="tablist" aria-label="Spelförslag">'+['Trollspöt','Platsspel','V85-rad'].map(function(x,i){return '<button type="button" role="tab" aria-selected="'+(i===1)+'">'+x+'</button>'}).join('')+'</div></div>'+
+      '<div class="srefresh compact" style="margin:6px 10px"><div class="sr-row"><p class="sr-t"><span class="k">Streck och riktodds</span><span><b class="n">i dag 10:40</b> · för 30 min sedan</span></p><button type="button" class="btn secondary sm">'+I.ref+'Uppdatera streck</button></div></div>'+
+      uf('old',{compact:1,at:'tors 21:05',ago:'för 14 timmar sedan'})+
+      '<p class="help spel-help">Markera Bet på det du spelar hos Unibet. Rätta oddset om det har ändrats.</p>'+
+      '<h3 class="sl"><span>Spelbara (4)</span><span>Bet 1</span></h3><ul class="plist">'+[spRow(sel[0],4.10),spRow(sel[1],2.40),spRow(sel[2],3.50),spRow(sel[3],2.45)].join('')+'</ul>'+tabbar;
+  };
+
+  // ---------- B ----------
+  function sbtn(st,wide){
+    var inner,cls='sbtn',dis='',lab='Unibet';
+    if(st==='idle')inner='<b>21:05'+(wide?'<em>för 3 min sedan</em>':'')+'</b>';
+    if(st==='never'){inner='<b>Hämta'+(wide?'<em>inte hämtade än</em>':'')+'</b>';cls+=' none'}
+    if(st==='busy'){inner='<b>3/8'+(wide?'<em>hämtar</em>':'')+'</b>';dis=' disabled aria-busy="true"'}
+    if(st==='done')inner='<b>21:05 <span class="ok">✓</span>'+(wide?'<em>nyss</em>':'')+'</b>';
+    if(st==='empty'){inner='<b>–:–'+(wide?'<em>inga odds än</em>':'')+'</b>';cls+=' none'}
+    if(st==='part'){inner='<b>6/8'+(wide?'<em>delvis, försök igen</em>':'')+'</b><span class="dot" aria-hidden="true"></span>';cls+=' old'}
+    if(st==='err'){inner='<b>18:02'+(wide?'<em>försök igen</em>':'')+'</b><span class="dot" aria-hidden="true"></span>';cls+=' err'}
+    if(st==='old'){inner='<b>tors 21:05'+(wide?'<em>14 tim</em>':'')+'</b><span class="dot" aria-hidden="true"></span>';cls+=' old'}
+    if(st==='off'){inner='<b>18:02'+(wide?'<em>offline</em>':'')+'</b>';dis=' disabled'}
+    var aria={idle:'Hämta Unibet-odds. Senast i dag 21:05',never:'Hämta Unibet-odds. Inte hämtade än',busy:'Hämtar Unibet-odds, avdelning 3 av 8',done:'Unibet-odds hämtade i dag 21:05',empty:'Unibet har inga odds än. Försök igen',part:'6 av 8 avdelningar hämtade. Tryck för att hämta resten',err:'Hämtningen misslyckades. Försök igen',old:'Unibet-odds från tors 21:05, äldre än 12 timmar. Hämta igen',off:'Ingen uppkoppling'}[st];
+    return '<button type="button" class="'+cls+'" aria-label="'+aria+'"'+dis+'>'+(st==='busy'?'<span class="spin" aria-hidden="true"></span>':I.dl)+'<span class="st" aria-hidden="true"><small>'+lab+'</small>'+inner+'</span></button>';
+  }
+  function rowB(d){
+    var conf=d.own!=null, v=d.u, sp=conf?0:d.s;
+    var pm='<span class="pm">Avd '+d.a+' · rikt <b>'+od(d.r)+'</b>'+(d.w?' · vinn <b>'+od(d.w)+'</b>':'')+'</span>';
+    var notes=conf?'<span class="nt bad">Ersatte ditt '+od(d.own)+', inte längre föreslagen · <button type="button" class="linkish">Ångra</button></span>':d.b?'<span class="nt">Bet till '+od(d.bo)+' · ändras inte</span>':d.scr?'<span class="nt">Struken hos Unibet, inte hos ATG än.</span>':'';
+    return '<li class="xr b'+(d.scr?' scr':'')+'"><span class="nr sm"><b>'+d.n+'</b></span><div class="pmain">'+nameLine(d,{sp:sp,val:v})+pm+notes+'</div>'+
+      '<span class="spkc">'+(d.u!=null&&d.f!=null?spark([d.f,d.u],d.r)+'<small class="mic '+(d.u>d.f?'up-t':d.u<d.f?'dn-t':'')+'">'+(d.u>d.f?'▲':d.u<d.f?'▼':'=')+' '+od(Math.abs(d.u-d.f))+'</small>':d.u!=null?'<small class="mic">Ny</small>':'')+'</span>'+
+      '<span class="ofc"><input class="oin" value="'+(v!=null?od(v):'')+'" placeholder="–,––"'+(d.scr?' disabled':'')+' aria-label="Unibet platsodds för '+d.h+'"></span>'+bet(d.h,d.b)+'</li>';
+  }
+  function dtB(rows){
+    var cg=[56,0,70,92,110,72,82,58].map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('');
+    var th='<th scope="col">Nr</th><th scope="col">Häst</th><th scope="col" class="r">Rikt</th><th scope="col" class="r">Unibet<span class="thsub">plats</span></th><th scope="col">Kurva<span class="thsub">alla hämtningar</span></th><th scope="col" class="r">Vinnare</th><th scope="col" class="r">Skillnad</th><th scope="col" class="c">Bet</th>';
+    var a=rows[0].a;
+    return '<table class="tbl"><caption><span>Avd '+a+' · '+TID[a-1]+'</span></caption><colgroup>'+cg+'</colgroup><thead><tr>'+th+'</tr></thead><tbody>'+rows.map(function(d){
+      var conf=d.own!=null,df=d.u!=null?d.u-d.r:null;
+      return '<tr><td><span class="nr"><b>'+d.n+'</b></span></td><td>'+nameLine(d,{sp:conf?0:d.s,val:d.u})+'<span class="kt" style="display:block">'+d.k+'</span>'+(conf?'<span class="nt bad">Ersatte ditt '+od(d.own)+' · inte längre föreslagen · <button type="button" class="linkish">Ångra</button></span>':'')+'</td>'+
+        '<td class="r"><span class="rk">'+od(d.r)+'</span></td><td class="r"><input class="oin" value="'+(d.u!=null?od(d.u):'')+'" placeholder="–,––"'+(d.scr?' disabled':'')+' aria-label="Unibet platsodds för '+d.h+'"></td><td><div class="trend">'+(d.u!=null&&d.f!=null?spark([d.f,d.u],d.r,58,20)+'<span class="'+(d.u>d.f?'up-t':d.u<d.f?'dn-t':'')+'">'+(d.u>d.f?'▲':d.u<d.f?'▼':'=')+'</span>':'<span class="dim">–</span>')+'</div></td>'+
+        '<td class="r n">'+od(d.w)+'</td><td class="r"><span class="diff '+(df>0?'up':'dn')+'">'+(df==null?'–':sg(df))+'</span></td><td class="c">'+bet(d.h,d.b)+'</td></tr>'}).join('')+'</tbody></table>';
+  }
+  var COUNTB=COUNT.replace('<b>5</b>','<b>4</b>');
+  R.dB=function(){
+    return dhead('<div class="dacts">'+sbtn('done',1)+'</div>')+'<div class="sphead brd"><p class="k">V85 · Jägersro · lör 24 okt</p><h1>Unibets platsodds</h1></div>'+
+      '<div class="dwrap"><div style="padding:10px 12px 0">'+BAN.okB.replace('ban ok m','ban ok')+'</div>'+olhead(null,COUNTB)+'<div style="padding:0 12px">'+byAvd(D).map(dtB).join('')+'</div></div>';
+  };
+  R.stB=function(){
+    var F=[['<b>Inte hämtat än</b>','never'],['<b>Viloläge</b>','idle'],['<b>Hämtar</b> · avd 3 av 8','busy'],['<b>Klart</b> · bock i 10 s, sedan viloläge','done'],['<b>Unibet har inga odds än</b>','empty'],['<b>Delvis</b> · tryck hämtar resten','part'],['<b>Fel</b> · röd prick och banderoll','err'],['<b>Äldre än 12 timmar</b> · gul prick','old'],['<b>Offline</b>','off']];
+    return F.map(function(f){return '<figure><figcaption>'+f[0]+'</figcaption><div class="demo">'+sbtn(f[1])+sbtn(f[1],1)+'</div></figure>'}).join('');
+  };
+  R.mB_list=function(){
+    return '<div class="brd"><div class="ah">'+backBtn+'<div class="ah-t"><span class="ah-title">Unibets odds</span><span class="ah-sub">V85 · Jägersro</span></div>'+sbtn('done')+'</div></div>'+
+      '<div style="padding-top:8px">'+BAN.okB+'</div>'+olhead(null,COUNTB)+groups(D,rowB)+tabbar;
+  };
+  R.mB_omg=function(){
+    return '<div class="brd"><div class="ah"><span class="logo">'+I.wheel+'</span><div class="ah-t"><span class="ah-title">Omgången</span><span class="ah-sub">V85 · Jägersro · lör 24 okt</span></div>'+sbtn('old')+'<button class="ibtn" type="button" aria-label="Hämta omgången igen">'+I.ref+'</button><button class="ibtn" type="button" aria-label="Inställningar">'+I.gear+'</button></div><div style="padding:0 8px 8px">'+phase(1)+'</div></div>'+
+      nextCard('Markera Bet – 4 spelbara','Unibets odds är från tors 21:05. Tryck på Unibet i tavlan för att hämta nya.','<a class="btn primary" href="#">Till Spelförslag</a>')+
+      '<p class="fetchline">Startlistan hämtad sön 21:14 · Streck i dag 10:40</p><h2 class="sl">Avdelningar</h2><ul class="olist">'+orows()+'</ul>'+tabbar;
+  };
+
+  // ---------- C ----------
+  function rowC(d){
+    var mine=d.own!=null, v=vOf(d);
+    var pm='<span class="pm">Avd '+d.a+' · rikt <b>'+od(d.r)+'</b>'+(v!=null?' · '+valSpan(v,d.r):'')+'</span>';
+    var notes=mine?'<span class="nt">Räknas på ditt '+od(d.own)+'. Med Unibets '+od(d.u)+' vore den inte spelbar.</span>':d.b?'<span class="nt">Bet till '+od(d.bo)+' · ändras inte</span>':d.scr?'<span class="nt">Struken hos Unibet, inte hos ATG än.</span>':'';
+    return '<li class="xr c'+(mine?' conf':'')+(d.scr?' scr':'')+'"><span class="nr sm"><b>'+d.n+'</b></span><div class="pmain">'+nameLine(d)+pm+notes+'</div>'+
+      '<span class="uv"><b class="'+(mine?'dim':'')+'">'+od(d.u)+'</b>'+(d.u!=null?trendTxt(d).replace(' från ',' fr '):'')+(d.w?'<small class="mic">v '+od(d.w)+'</small>':'')+'</span>'+
+      '<span class="ofc"><input class="oin'+(mine?' mine':'')+'" style="width:62px" value="'+(mine?od(d.own):'')+'" placeholder="eget"'+(d.scr?' disabled':'')+' aria-label="Ditt odds för '+d.h+'. Tomt betyder att Unibets odds gäller."></span>'+bet(d.h,d.b)+'</li>';
+  }
+  var colC='<div class="colh" style="grid-template-columns:26px minmax(0,1fr) 56px 62px 44px"><span>Nr</span><span>Häst</span><span class="r">Unibet</span><span class="c">Ditt</span><span class="c">Bet</span></div>';
+  var THES='<div class="thes brd" role="group" aria-label="Torsdag mot lördag"><div><small>Hästar med odds</small><b>92</b></div><div><small>Lägre på lör</small><b>61</b></div><div><small>Snitt tors → lör</small><b>'+MI+'0,14</b></div><p>Jämför tors 21:05 med lör 11:35. 61 av 92 hästar har lägre platsodds på lördagen, 18 har högre och 13 är oförändrade.</p></div>';
+  function mvTable(rows,cols){
+    var wide=cols.length>3;
+    var cg='<colgroup><col>'+cols.map(function(){return '<col style="width:'+(wide?'84':'54')+'px">'}).join('')+'<col style="width:'+(wide?'96':'70')+'px"></colgroup>';
+    var head='<tr><th scope="col">Häst</th>'+cols.map(function(c){var p=SNAP[c].split(' ');return '<th scope="col">'+p[0]+'<small>'+p[1]+'</small></th>'}).join('')+'<th scope="col">Första<small>→ nu</small></th></tr>';
+    var body=rows.map(function(d){
+      var first=null,firstI=-1;cols.forEach(function(c){if(first==null&&d.se[c]!=null){first=d.se[c];firstI=c}});var last=d.se[cols[cols.length-1]];
+      var df=(first!=null&&last!=null)?last-first:null;
+      return '<tr><td>'+d.n+' '+d.h+'<small>Avd '+d.a+' · rikt '+od(d.r)+'</small></td>'+cols.map(function(c){var v=d.se[c];return '<td class="'+(v==null?'na':c===firstI?'hi':'')+'">'+(v==null?(d.scr?'str.':'–'):od(v))+'</td>'}).join('')+
+        '<td class="d '+(df>0?'up-t':df<0?'dn-t':'')+'">'+(df==null?'–':(df>0?'▲ ':df<0?'▼ ':'')+sg(df))+'</td></tr>'}).join('');
+    return '<table class="mv"><caption class="sr">Unibets platsodds per hämtning</caption>'+cg+'<thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+  }
+  R.mC_list=function(){return ah('Unibets platsodds','V85 · Jägersro')+olhead(0,'')+uf('done',{ban:BAN.okC})+groups(D,rowC,colC)+tabbar};
+  R.mC_mv=function(){
+    return ah('Unibets platsodds','V85 · Jägersro')+olhead(1,'')+THES+'<p class="help spel-help">Dina hästar. Rutan med ram är första hämtningen med odds. ▲ betyder högre odds nu.</p>'+
+      mvTable(D,[1,2,4])+tabbar;
+  };
+  R.dC=function(){
+    return dhead()+'<div class="sphead brd"><p class="k">V85 · Jägersro · lör 24 okt</p><h1>Unibets platsodds</h1></div>'+
+      '<div class="dwrap">'+olhead(1,'5 hämtningar · tors 18:02 till lör 11:35')+uf('idle',{at:'i dag 11:35',ago:'för 2 min sedan'})+
+      '<div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;padding:0 12px"><div>'+mvTable(D,[0,1,2,3,4])+'</div><div>'+THES.replace('class="thes brd"','class="thes brd" style="margin:0;grid-template-columns:1fr 1fr"')+
+      '<p class="help" style="margin:10px 2px">Visa: <button type="button" class="linkish">Dina hästar</button> · <button type="button" class="linkish">Alla 101</button></p></div></div></div>';
+  };
+
+  document.querySelectorAll('.js').forEach(function(e){var f=R[e.dataset.k];if(f)e.innerHTML=f()});
+})();
+</script>

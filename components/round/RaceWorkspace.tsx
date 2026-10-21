@@ -36,7 +36,7 @@ import { useRound } from "./RoundProvider";
 import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
 import { pctSignal, signalClass, signalSr } from "@/lib/signals";
-import { StreckRefresh } from "./StreckRefresh";
+import { RefreshBanner, RefreshBoardButton } from "./StreckOdds";
 
 const PATH_RE = /^\/omgang\/([^/]+)\/avd\/(\d+)(?:\/hast\/([^/]+))?\/?$/;
 
@@ -310,6 +310,7 @@ function Workspace({
               : { href: base, label: "Tillbaka till omgången" }
           }
           deskTitle={false}
+          refresh={<RefreshBoardButton data={data} />}
           deskMeta={
             <>
               {data.round.gameType} · {data.round.trackName} · {dayDate(data.round.date)} {data.round.date.slice(0, 4)}
@@ -406,10 +407,10 @@ function Workspace({
             ))}
           </ul>
           <RoundLinks roundId={roundId} className="side" />
-          <StreckRefresh data={data} compact />
         </nav>
 
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
+          <RefreshBanner data={data} className="m10" />
           {/* Mobil: täta rader. */}
           <ul className="list mlist m-only" aria-label={`Startlista avdelning ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             {ordered.map((s, i) => (
@@ -497,6 +498,7 @@ function Workspace({
         </div>
 
         <aside className="daside" aria-label="Vald häst">
+          {view === "horse" && <RefreshBanner data={data} className="m10 m-only" />}
           {start ? (
             <HorseCard ref={headingRef} data={data} race={race} start={start} onToggle={(v) => toggle(start, v)} />
           ) : (

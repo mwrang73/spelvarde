@@ -4,7 +4,7 @@
 import type { FormBox } from "@/lib/gallop";
 import { MANY_SIGNALS } from "@/lib/positive-signals";
 import type { Override } from "@/lib/spelbar";
-import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconTicket, IconWarn } from "./icons";
+import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconTicket, IconWarn, IconX } from "./icons";
 
 // ---- FlapNumber -----------------------------------------------------------------------
 
@@ -225,6 +225,8 @@ export function Banner({
   actions,
   className,
   role,
+  after,
+  onClose,
 }: {
   tone?: "info" | "ok" | "warn" | "err";
   icon?: "offline" | "check" | "warn" | "info";
@@ -232,15 +234,25 @@ export function Banner({
   actions?: React.ReactNode;
   className?: string;
   role?: "alert" | "status";
+  // Innehåll under handlingarna (t.ex. listan i "Visa vilka").
+  after?: React.ReactNode;
+  // Stängknappen × (44 × 44, "Stäng").
+  onClose?: () => void;
 }) {
   const Ic = icon === "offline" ? IconOffline : icon === "check" || tone === "ok" ? IconCheckThin : tone === "info" && icon !== "warn" ? IconInfo : IconWarn;
   return (
     <div className={`ban ${tone}${className ? ` ${className}` : ""}`} role={role}>
       <Ic />
-      <div>
+      <div className="ban-b">
         <p>{children}</p>
         {actions && <div className="acts">{actions}</div>}
+        {after}
       </div>
+      {onClose && (
+        <button type="button" className="x" aria-label="Stäng" onClick={onClose}>
+          <IconX />
+        </button>
+      )}
     </div>
   );
 }

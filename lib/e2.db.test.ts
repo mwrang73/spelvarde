@@ -157,7 +157,7 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
       expect(race.starts.filter((s) => !s.scratched).every((s) => s.riktodds !== null)).toBe(true);
     }
     expect(res.model?.key).toBe("v1");
-    expect(res.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5 });
+    expect(res.settings).toEqual({ spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 1.25, xFactorStark: 1.5, spelbarTolerance: 0.1 });
     expect(res.sourcesEnabled).toBe(0);
   });
 

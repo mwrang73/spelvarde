@@ -25,6 +25,7 @@ export function AppHeader({
   actions,
   deskMeta,
   deskTitle = true,
+  refresh,
 }: {
   title: React.ReactNode;
   sub?: React.ReactNode;
@@ -35,6 +36,9 @@ export function AppHeader({
   deskMeta?: React.ReactNode;
   // false: vyn har sin egen h1 på desktop (S2:s loppruta).
   deskTitle?: boolean;
+  // Tavelknappen Hämta streck och odds (E2.2, S1–S4): i mobilen före
+  // ikonknapparna, på desktop i toppmenyn till höger.
+  refresh?: React.ReactNode;
 }) {
   return (
     <>
@@ -58,9 +62,10 @@ export function AppHeader({
           )}
           {sub && <span className="ah-sub">{sub}</span>}
         </div>
+        {refresh}
         {actions}
       </header>
-      <DeskHeader meta={deskMeta} />
+      <DeskHeader meta={deskMeta} refresh={refresh} />
       {deskTitle && (
         <div className="dtitle brd d-only">
           {back && (
@@ -79,7 +84,7 @@ export function AppHeader({
   );
 }
 
-function DeskHeader({ meta }: { meta?: React.ReactNode }) {
+function DeskHeader({ meta, refresh }: { meta?: React.ReactNode; refresh?: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const stale = useOutboxStale();
   return (
@@ -97,6 +102,7 @@ function DeskHeader({ meta }: { meta?: React.ReactNode }) {
         ))}
       </nav>
       {meta && <div className="dmeta">{meta}</div>}
+      {refresh}
     </header>
   );
 }

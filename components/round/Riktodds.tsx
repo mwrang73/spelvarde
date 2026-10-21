@@ -11,6 +11,9 @@ import { MIN_STARTERS } from "@/lib/riktodds";
 import { odds } from "@/lib/format";
 import { guidelineTag, riktoddsSentence } from "@/lib/odds-keypad";
 import type { RaceDto, RiktoddsDetailDto, StartDto, WhyRowDto } from "@/lib/types";
+import { boxVerdict, scratchedAtUnibet } from "@/lib/odds-ui";
+import { weekdayTime } from "@/lib/streck-odds";
+import { oddsClass } from "@/lib/spelbar";
 import { calcLineWithX, factorText, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 
@@ -43,6 +46,7 @@ export function RiktoddsBox({
   calibrated,
   guideline,
   factors,
+  tolerance,
 }: {
   race: RaceDto;
   start: StartDto;
@@ -52,6 +56,8 @@ export function RiktoddsBox({
   calibrated?: boolean;
   guideline: number;
   factors: XFactorSettings;
+  // Användarens tolerans för Spelbar (E2.2).
+  tolerance: number;
 }) {
   const m = start.mark;
   const unibet = m?.unibetOdds ?? null;
@@ -64,7 +70,9 @@ export function RiktoddsBox({
   const sentence =
     rikt === null
       ? missingReason(race, start)
-      : riktoddsSentence({
+      : scratchedAtUnibet(m) && !start.scratched
+        ? "Struken hos Unibet, inte hos ATG än. Hästen föreslås inte som Spelbar."
+        : riktoddsSentence({
           unibetOdds: unibet,
           riktodds: withX ? rx : rikt,
           interesting: !!m?.interesting,
@@ -72,6 +80,13 @@ export function RiktoddsBox({
           override: m?.spelbarOverride ?? "NONE",
           ref: withX ? "riktoddset med X-faktor" : undefined,
         });
+  // Grön markering (e2.2 5b): ring på Unibet-rutan och meningen för över och nära.
+  const ref = withX ? rx : rikt;
+  const cls = oddsClass(unibet, ref, tolerance);
+  const green = rikt === null ? null : boxVerdict({ unibetOdds: unibet, riktodds: ref, interesting: !!m?.interesting, spelbar: !!m?.spelbar, override: m?.spelbarOverride ?? "NONE", tolerance, withX });
+  const scrU = scratchedAtUnibet(m);
+  const source = unibet === null ? null : m?.unibetOddsSource === "UNIBET" ? `Hämtat ${m.unibetOddsAt ? weekdayTime(m.unibetOddsAt) : ""}.`.replace(" .", ".") : "Eget odds.";
+  const win = start.unibet && !scrU ? start.unibet.win : null;
   const unc = start.uncertain && rikt !== null;
   const hid = `rk-${start.id}`;
   return (
@@ -102,12 +117,31 @@ export function RiktoddsBox({
           </div>
         )}
         <div>
-          <span className="k">Unibet</span>
-          <div className="mid num">{odds(unibet)}</div>
+          <span className="k">Unibet plats</span>
+          <div className={`mid num uval${cls === "over" || cls === "near" ? ` ${cls}` : ""}`}>{scrU ? "–" : odds(unibet)}</div>
         </div>
-        <div className="rb-tags">{below && <span className="tag gl">{guidelineTag(guideline)}</span>}</div>
+        {win !== null && (
+          <div>
+            <span className="k">Vinnare</span>
+            <div className="mid num win">{odds(win)}</div>
+          </div>
+        )}
+        <div className="rb-tags">
+          {below && <span className="tag gl">{guidelineTag(guideline)}</span>}
+          {scrU && <span className="tag gl">Struken hos Unibet</span>}
+        </div>
         <p className="verdict">
-          <Sentence text={sentence} />
+          {green ? (
+            <>
+              <span className="hsv">{green.diff}</span>
+              <span className="sr">{green.cls === "over" ? " över riktoddset" : " under riktoddset, nära"}</span>{" "}
+              {green.lead && <b className="hsv-l">{green.lead}</b>}
+              {green.text}
+            </>
+          ) : (
+            <Sentence text={sentence} />
+          )}
+          {source && <span className="vsrc"> {source}</span>}
         </p>
       </div>
       {withX && (
