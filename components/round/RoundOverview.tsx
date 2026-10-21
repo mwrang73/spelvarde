@@ -5,25 +5,28 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useOnline } from "@/components/hooks";
+import { useNow, useOnline } from "@/components/hooks";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, FlapNumber, Skeleton } from "@/components/ui/board";
-import { IconChev, IconGear, IconRefresh } from "@/components/ui/icons";
+import { IconCheck, IconChev, IconGear, IconRefresh, IconX } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { changesSummary, dayDate, hhmm, methodLabel, relTime, shortRaceName } from "@/lib/format";
 import { resumeMessage } from "@/lib/fetch-chain";
 import type { NextStep } from "@/lib/phase";
-import type { RoundResponse } from "@/lib/types";
+import { allLegsDone, lastResultAt, latestIso, legRow, type LegRow } from "@/lib/results-ui";
+import type { RaceDto, RoundResponse } from "@/lib/types";
 import { useFetchChain } from "./fetchChain";
 import { FetchBanners, FetchSteps, runChain } from "./FetchUi";
 import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
+import { Summary } from "./RaceResult";
 import { useRound } from "./RoundProvider";
 import { OddsFetchCard, RefreshBanner, RefreshBoardButton } from "./StreckOdds";
 import { needsOddsFetch } from "@/lib/streck-odds";
 
 export function roundSub(data: RoundResponse | null): string {
   if (!data) return "";
-  return `${data.round.gameType} · ${data.round.trackName} · ${dayDate(data.round.date)} · ${hhmm(data.round.firstStartAt)}`;
+  // E4a: "V85 · Jägersro · lör 24 okt · klar" när omgången är klar.
+  return `${data.round.gameType} · ${data.round.trackName} · ${dayDate(data.round.date)} · ${data.phase === "KLART" ? "klar" : hhmm(data.round.firstStartAt)}`;
 }
 
 export function HeaderActions({ roundId, gameId }: { roundId: string | null; gameId: string | null }) {
@@ -79,7 +82,8 @@ export function RoundOverview() {
   const { data, load, roundId } = useRound();
   const chain = useFetchChain();
   const [changesOpen, setChangesOpen] = useState(false);
-  const now = new Date();
+  // Klockan för "Pågår" och "väntar på resultat" i raderna (E4a).
+  const now = useNow(30_000);
 
   if (!data) {
     return (
@@ -101,6 +105,9 @@ export function RoundOverview() {
   const base = `/omgang/${data.round.id}`;
   const changes = changesSummary(data.fetch.lastChanges);
   const resume = data.fetch.resumeFrom;
+  const done = data.phase === "KLART";
+  const resultsAt = done ? latestIso(data.results?.syncedAt, lastResultAt(data.races)) : null;
+  const roundSummary = data.results?.summary ?? null;
 
   return (
     <>
@@ -117,10 +124,19 @@ export function RoundOverview() {
         <FetchBanners onRetry={(from, rid) => runChain(from, data.round.atgGameId, rid ?? data.round.id)} />
         <FetchSteps state={chain} />
         <NextStepCardFor data={data} />
+        {roundSummary && data.races.some((r) => r.resultAt && !r.cancelled) && (
+          <Summary summary={roundSummary} heading={allLegsDone(data.races) ? "Omgången" : "Hittills"} label={allLegsDone(data.races) ? "Summering omgången" : "Summering hittills"} />
+        )}
         <RefreshBanner data={data} className="m10" />
         <p className="fetchline">
-          {data.round.fetchedAt ? <>Startlistan hämtad {relTime(data.round.fetchedAt, now)}</> : "Startlistan är inte hämtad"}
-          {changes && (
+          {done && resultsAt ? (
+            <>Resultat hämtade från ATG {relTime(resultsAt, now)}</>
+          ) : data.round.fetchedAt ? (
+            <>Startlistan hämtad {relTime(data.round.fetchedAt, now)}</>
+          ) : (
+            "Startlistan är inte hämtad"
+          )}
+          {changes && !done && (
             <>
               {" · "}
               <button type="button" className="linkish" onClick={() => setChangesOpen(true)} aria-haspopup="dialog">
@@ -137,21 +153,7 @@ export function RoundOverview() {
         <ul className="olist" aria-label="Avdelningar">
           {data.races.map((r) => (
             <li key={r.id}>
-              <Link className="orow" href={`${base}/avd/${r.leg}`} title={r.name}>
-                <FlapNumber n={r.leg} size="sm" />
-                <span className="o-mid">
-                  <span className="on">
-                    <span className="sr">Avd {r.leg}: </span>
-                    {shortRaceName(r.name)}
-                  </span>
-                  <span className="om num">
-                    {hhmm(r.startAt)} · {r.distance} {methodLabel(r.startMethod)} · {r.counts.starters} hästar
-                    {r.counts.scratched > 0 && ` · ${r.counts.scratched} strukna`}
-                  </span>
-                </span>
-                {r.reviewed ? <Counts interesting={r.counts.interesting} spelbar={r.counts.spelbar} bet={r.counts.bet} /> : <span className="todo">Ej genomgången</span>}
-                <IconChev className="chev" />
-              </Link>
+              <LegLink race={r} href={`${base}/avd/${r.leg}`} row={legRow(r, now.getTime())} />
             </li>
           ))}
         </ul>
@@ -172,6 +174,56 @@ export function RoundOverview() {
         </Sheet>
       </main>
     </>
+  );
+}
+
+// En avdelning i S1: som i dag före start, och med resultatstatus efter
+// (E4a: "Pågår", vinnaren och dina Bet, "Inställt"). Raden leder till S2,
+// som visar Resultat när loppet har startat.
+function LegLink({ race: r, href, row }: { race: RaceDto; href: string; row: LegRow }) {
+  const counts = <Counts interesting={r.counts.interesting} spelbar={r.counts.spelbar} bet={r.counts.bet} />;
+  const line1 = row.kind === "result" ? row.title : shortRaceName(r.name);
+  const line2 =
+    row.kind === "before" ? (
+      <>
+        {hhmm(r.startAt)} · {r.distance} {methodLabel(r.startMethod)} · {r.counts.starters} hästar
+        {r.counts.scratched > 0 && ` · ${r.counts.scratched} strukna`}
+      </>
+    ) : row.kind === "cancelled" ? (
+      "Inställt"
+    ) : (
+      row.line2
+    );
+  let right: React.ReactNode;
+  if (row.kind === "before") right = r.reviewed ? counts : <span className="todo">Ej genomgången</span>;
+  else if (row.kind === "live") right = <span className="tag live">Pågår</span>;
+  else if (row.kind === "cancelled") right = <span className="tag">Inställt</span>;
+  else if (row.bet)
+    right = (
+      <span className={`hit ${row.bet.hits ? "y" : "n"}`}>
+        {row.bet.hits ? <IconCheck /> : <IconX />}
+        <span aria-hidden="true">
+          {row.bet.hits ? "Träff" : "Miss"} {row.bet.hits}/{row.bet.total}
+        </span>
+        <span className="sr">
+          Bet {row.bet.hits} av {row.bet.total} träff
+        </span>
+      </span>
+    );
+  else right = counts;
+  return (
+    <Link className={`orow${row.kind === "result" ? " res" : ""}`} href={href} title={r.name}>
+      <FlapNumber n={r.leg} size="sm" />
+      <span className="o-mid">
+        <span className="on">
+          <span className="sr">Avd {r.leg}: </span>
+          {line1}
+        </span>
+        <span className={`om${row.kind === "before" ? " num" : ""}`}>{line2}</span>
+      </span>
+      {right}
+      <IconChev className="chev" />
+    </Link>
   );
 }
 

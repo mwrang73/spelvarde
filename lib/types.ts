@@ -184,6 +184,35 @@ export type StartResultDto = {
   finalOdds: number | null;
 };
 
+// ---- Resultat (E4a) ---------------------------------------------------------------
+
+// Träff av antal i en grupp. Bet = placering 1–3 ("träff"), övriga = topp 3.
+export type HitCount = { hits: number; total: number };
+
+// Summeringen räknad från de frysta Outcome (lib/outcomes.ts, outcomeSummary).
+// Bara lopp med resultat som inte är inställda räknas. trollspot = hästar som
+// var i Trollspöt vid loppets start (avsnitt 18). total = 0 → visa "–".
+export type OutcomeSummary = { bet: HitCount; spelbar: HitCount; interesting: HitCount; trollspot: HitCount };
+
+// De frysta värdena för användaren och starten (null = ingen Outcome: loppet
+// har inte startat, hästen var omarkerad och inte i Trollspöt, eller struken).
+// hit: null före resultat och för inställda lopp. place/disqualified följer
+// resultatet (null före). trollspotRank 1–10 = platsen i Trollspöt precis
+// före start, med minst X (trollspotMinOdds) och uppskattat platsodds.
+export type StartOutcomeDto = {
+  interesting: boolean;
+  spelbar: boolean;
+  bet: boolean;
+  xFactor: XFactor;
+  hit: boolean | null;
+  place: number | null;
+  disqualified: boolean;
+  unibetOdds: number | null;
+  trollspotRank: number | null;
+  trollspotMinOdds: number | null;
+  trollspotEstOdds: number | null;
+};
+
 export type StartDto = {
   id: string;
   number: number;
@@ -218,6 +247,9 @@ export type StartDto = {
   signals: SignalResult | null;
   // E2.2: Unibets odds över tid i kort form (se StartUnibetDto).
   unibet: StartUnibetDto | null;
+  // E4a: frysta värden vid loppets start (se StartOutcomeDto). Äldre cachade
+  // svar saknar fältet (läs med ?? null).
+  outcome?: StartOutcomeDto | null;
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".
@@ -262,6 +294,9 @@ export type RaceDto = {
   counts: { starters: number; scratched: number; interesting: number; spelbar: number; bet: number };
   statsLine: RaceStatsLine;
   starts: StartDto[];
+  // E4a: summeringen för avdelningen från de frysta Outcome. null före
+  // resultat och när loppet är inställt. Äldre cachade svar saknar fältet.
+  summary?: OutcomeSummary | null;
 };
 
 // GET /api/rounds/[id]
@@ -299,7 +334,32 @@ export type RoundResponse = {
   // outcome: "saved" = sparat, "noOdds" = Unibet hade inga odds,
   // "noMeeting" = banan fanns inte hos Unibet, "failed" = Unibet svarade inte.
   lastOddsAttempt: { at: string; outcome: "saved" | "noOdds" | "noMeeting" | "failed" } | null;
+  // E4a: resultathämtningen. syncedAt = senaste lyckade hämtning från ATG
+  // (Round.liveOkAt, "Senast kollat"). nextSyncAt = när nästa automatiska
+  // hämtning väntas (null = ingen pollning gäller). summary = hela omgången
+  // ("Hittills"/"Omgången"), null tills någon avdelning har resultat.
+  // Äldre cachade svar saknar fältet.
+  results?: RoundResultsDto;
 };
+
+export type RoundResultsDto = { syncedAt: string | null; nextSyncAt: string | null; summary: OutcomeSummary | null };
+
+// POST /api/rounds/[id]/results, body { force?: boolean }. Lättdata efter
+// resultathämtningen. changed = något ändrades (rev ökade): läs om omgången.
+// claimed = det här anropet hämtade från ATG (false = någon annan gjorde det
+// nyss, svaret är senast sparade läge). 502 { error: "ATG svarade inte." }.
+export type ResultsSyncResponse = {
+  serverTime: string;
+  rev: number;
+  changed: boolean;
+  claimed: boolean;
+  syncedAt: string | null;
+  nextSyncAt: string | null;
+  races: { leg: number; resultAt: string | null; cancelled: boolean }[];
+};
+
+// GET /api/cron/results
+export type CronResultsResponse = { slot: string | null; rounds: { roundId: string; legsWithResult: number; finished: boolean; ok: boolean }[] };
 
 export type LatestOddsDto = { fetchId: string; takenAt: string; finishedAt: string | null; legsOk: number[]; legsFailed: number[]; legsSkipped: number[] };
 
@@ -322,6 +382,14 @@ export type LegSummary = {
   reviewed: boolean;
   started: boolean;
   hasResult: boolean;
+  // E4a (S1 under och efter loppen).
+  cancelled: boolean;
+  // Placering 1 (lägsta startnummer vid dött lopp). null före resultat.
+  winner: { number: number; name: string } | null;
+  // Användarens frysta Bet i avdelningen, i startnummerordning. place/
+  // disqualified = resultatet (null/false före resultat).
+  betResults: { number: number; name: string; place: number | null; disqualified: boolean }[];
+  summary: OutcomeSummary | null;
 };
 
 // GET /api/rounds/current

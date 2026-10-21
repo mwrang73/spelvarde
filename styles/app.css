@@ -206,8 +206,9 @@ h1, h2, h3 { margin: 0; }
 .row.scr .form, .row.scr .nr, .tbl tr.scr .nr, .tbl tr.scr .form { opacity: .45; }
 .who { min-width: 0; height: 44px; display: flex; flex-direction: column; justify-content: center; text-decoration: none; color: inherit; border-radius: 4px; }
 .who:hover .hn { text-decoration: underline; text-underline-offset: 3px; }
-.hl { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.hn { font: 700 17px/1.1 var(--f-name); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hl { display: flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+/* Namnet krymper till högst 6em; därefter klipps märkena efter namnet i stället. */
+.hn { font: 700 17px/1.1 var(--f-name); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: min(6em, 100%); }
 .kt { font-size: 12px; line-height: 1.25; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kt.chg, .chg { color: var(--accent); font-weight: 600; }
 .rk { position: relative; font: 700 13.5px/1 var(--f-num); text-align: right; color: var(--ink); white-space: nowrap; }
@@ -1049,3 +1050,64 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .trend > div > span:not(.sr) { display: block; }
 .ptbl .trend .spk { flex: none; }
 .ban .acts a.linkish { display: inline-flex; align-items: center; }
+
+/* ============ E4a: resultat (skärm 7b och Omgången klar i flödesmockupen) ============ */
+/* Segmentkontrollen "Startlista | Resultat" under loppremsan (S2). */
+.rseg { padding: 6px 10px; background: var(--bg); }
+.rseg .seg button { font-size: 13.5px; }
+/* Summeringen på tavlan: Bet, Spelbar, Intressant (och Trollspöt). */
+.sumb { margin: 10px; border-radius: 10px; padding: 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sumb.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 560px) { .sumb.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sumb div { background: rgba(255, 255, 255, .05); border: 1px solid var(--head-line); border-radius: 6px; padding: 8px; min-width: 0; }
+.sumb small { display: block; font: 700 10.5px/1.1 var(--f-label); letter-spacing: .07em; text-transform: uppercase; color: var(--head-ink-2); }
+.sumb b { display: block; font: 700 22px/1.1 var(--f-num); color: var(--head-ink); margin-top: 4px; text-shadow: 0 0 10px var(--glow); white-space: nowrap; }
+.sumb span { display: block; font-size: 12px; color: var(--head-text); margin-top: 2px; }
+.sumw .sl { padding-bottom: 0; }
+.sk-sum b, .sk-sum small, .sk-sum span { opacity: .3; }
+.rnone { padding: 12px; }
+/* Placering 1–4 och "5 eller sämre". */
+.rlist { list-style: none; margin: 0; padding: 0; }
+.rrow { display: grid; grid-template-columns: 30px 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 10px; min-height: 52px; border-bottom: 1px solid var(--line); background: var(--surface); text-decoration: none; color: inherit; }
+.rlist > li:nth-child(even) .rrow { background: var(--surface-2); }
+a.rrow:hover { background: var(--surface-3); }
+a.rrow:hover .pn { text-decoration: underline; text-underline-offset: 3px; }
+.rrow.sel, .rlist > li:nth-child(even) .rrow.sel { background: var(--accent-soft); box-shadow: inset 4px 0 0 var(--fill); }
+.rmid { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rrow .pn { font: 700 17px/1.1 var(--f-name); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rrow .pm { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); min-width: 0; }
+.rrow .pd { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rrow .pm .tag { min-height: 18px; font-size: 10.5px; padding: 1px 5px; }
+.rr { display: flex; gap: 4px; align-items: center; flex: none; }
+.plc { display: inline-grid; place-items: center; width: 30px; height: 36px; border-radius: 4px; font: 700 14px/1 var(--f-num); background: var(--surface-3); color: var(--ink); }
+/* Bet-utfallet: text och ikon, inte bara färg. */
+.hit { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 4px; font: 700 12px/1 var(--f-label); letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; flex: none; }
+.hit.y { background: var(--up); color: var(--surface); }
+.hit.n { background: var(--down-soft); color: var(--down); box-shadow: inset 0 0 0 1.5px var(--down); }
+.hit svg { width: 12px; height: 12px; }
+/* Övriga på en rad. */
+.rest-line { display: block; margin: 0; padding: 8px 10px; min-height: 0; font-size: 13px; line-height: 1.6; color: var(--ink-2); background: var(--surface); border-bottom: 1px solid var(--line); }
+.rest-line b { font: 700 12px/1 var(--f-label); color: var(--accent); }
+.rest-line .bdg { vertical-align: -3px; }
+.rres .empty .help { max-width: 34ch; }
+/* Trollspöt-märket: samma trollspö som fliken, still i listor. */
+.bdg.tsb { background: var(--head); color: var(--head-ink); box-shadow: inset 0 0 0 1px var(--fill-deep); padding: 0 1px; }
+.bdg.tsb .wand { width: 13px; height: 13px; filter: drop-shadow(0 0 3px var(--glow)); }
+.bdg.tsb .wand .wand-s { animation: none; opacity: .95; transform: none; }
+/* "minst 2,40" under fältet för en Trollspöt-häst utan odds (S4, S6). */
+.sv.tmin-h { color: var(--accent); }
+/* S1: resultatstatus i avdelningsraderna. */
+.tag.live { background: var(--accent-soft); color: var(--accent); }
+.orow .hit { font-size: 11.5px; padding: 4px 6px; }
+@media (min-width: 1024px) {
+  .rseg { padding: 12px 20px 0; background: transparent; }
+  .rseg .seg { max-width: 360px; }
+  .rres { padding: 0 20px 24px; }
+  .rres .sumb, .rres .m10 { margin: 12px 0; }
+  .rres .sl { padding-left: 0; padding-right: 0; }
+  .rres .next { margin: 16px 0 0; max-width: 560px; }
+  .rres .rrow { min-height: 54px; }
+  .rres .rrow .pn { font-size: 19px; }
+  .rres .rrow .pm { font-size: 13px; }
+  .rres .rest-line { font-size: 14px; }
+}

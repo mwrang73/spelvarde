@@ -245,6 +245,9 @@ model Race {
   // E2.2 (10.5): loppets nyckel hos Unibet, t.ex. "202610241300.H.SWE.jagersro.5".
   // Sätts när en oddshämtning slår upp banan; läses av anropet per avdelning.
   unibetEventKey   String?
+  // E4a (6.4): när frysningen av Outcome gjordes för loppet (första läsningen
+  // efter starttiden). NULL = inte fryst än. Gör kontrollen i GET billig.
+  outcomesFrozenAt DateTime?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
@@ -691,6 +694,12 @@ model Outcome {
   place         Int?
   disqualified  Boolean  @default(false)
   hit           Boolean?
+  // E4a (avsnitt 18): Trollspöt precis före loppets start, räknat med
+  // trollspot(races, startAt − 1 ms, tolerans). Plats 1–10 i listan, minst X
+  // och det uppskattade platsoddset. Alla NULL när hästen inte var med.
+  trollspotRank    Int?
+  trollspotMinOdds Decimal? @db.Decimal(6, 2)
+  trollspotEstOdds Decimal? @db.Decimal(6, 2)
 
   @@unique([userId, startId])
   @@index([userId, roundId])

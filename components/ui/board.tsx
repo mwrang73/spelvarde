@@ -5,6 +5,7 @@ import type { FormBox } from "@/lib/gallop";
 import { MANY_SIGNALS } from "@/lib/positive-signals";
 import type { Override } from "@/lib/spelbar";
 import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconTicket, IconWarn, IconX } from "./icons";
+import { WandSpark } from "./WandSpark";
 
 // ---- FlapNumber -----------------------------------------------------------------------
 
@@ -59,6 +60,15 @@ export function Badge({ kind, wide }: { kind: keyof typeof BADGE; wide?: boolean
 export function XBadge({ x, wide }: { x: "NONE" | "TROR" | "STARK" | undefined; wide?: boolean }) {
   if (!x || x === "NONE") return null;
   return <Badge kind={x === "STARK" ? "xp" : "x"} wide={wide} />;
+}
+
+// Trollspöt-märket (e4a avsnitt 18): samma trollspö som fliken Trollspöt.
+export function TrollBadge() {
+  return (
+    <span className="bdg tsb" role="img" aria-label="Trollspöt" title="Trollspöt">
+      <WandSpark />
+    </span>
+  );
 }
 
 export function GallopBadge({ flag }: { flag: "G" | "GD" | null }) {

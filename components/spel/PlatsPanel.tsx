@@ -9,7 +9,9 @@
 // för att försvinna ur listan. Spelbara sorteras på skillnaden mot riktoddset
 // med X-faktor, störst först. Gruppen "Nära gränsen" finns inte längre: det
 // finns bara en regel för "nära", toleransen i 6.1. Sist kommer "Inte
-// markerade men spelbara odds" med Intressant-lampan.
+// markerade (n)" med Intressant-lampan: Trollspöt-hästar först med märket,
+// sedan spelbara odds (e4a avsnitt 18). En Trollspöt-häst utan odds visar
+// "minst X" under fältet.
 //
 // Grön markering (variant 1 · Ram): oddsfältet får klassen over/near och
 // skillnaden `sv` står under fältet (desktop: i kolumnen Skillnad).
@@ -21,19 +23,20 @@ import { MovementCell, Sv, TrendCell } from "@/components/odds/OddsMark";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
 import { RiktCell, RiktShort } from "@/components/round/parts";
 import { useUndoReplaced } from "@/components/round/streckOddsStore";
-import { Badge, BetToggle, FlapNumber, LampToggle, LowStreckTag, signalsSr, XBadge } from "@/components/ui/board";
+import { Badge, BetToggle, FlapNumber, LampToggle, LowStreckTag, signalsSr, TrollBadge, XBadge } from "@/components/ui/board";
 import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds, relTime } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
-import { byDiffDesc, classOf, diffOf, replacedNote, scratchedAtUnibet, unmarkedItems } from "@/lib/odds-ui";
+import { byDiffDesc, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
 import { toleranceOf } from "@/lib/round-overlay";
 import { signalTags } from "@/lib/signals";
 import type { OddsClass } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 
-export type Item = { race: RaceDto; start: StartDto };
+// troll = hästen är i Trollspöt (gruppen "Inte markerade", e4a 18).
+export type Item = { race: RaceDto; start: StartDto; troll?: { rank: number; minOdds: number } | null };
 
 const byLeg = (a: Item, b: Item) => a.race.leg - b.race.leg || a.start.number - b.start.number;
 
@@ -53,7 +56,10 @@ function Signals({ item }: { item: Item }) {
   );
 }
 
-export const UNMARKED_HELP = "Unibet ger mer än riktoddset, eller nästan. Tänd Intressant så blir hästen Spelbar.";
+export const UNMARKED_HELP = UNMARKED_HELP_TEXT;
+
+// "Inte markerade (n)" (e4a avsnitt 18, tidigare "Inte markerade men spelbara odds").
+export const unmarkedTitle = (n: number) => `Inte markerade (${n})`;
 
 export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) {
   const isDesktop = useIsDesktop();
@@ -101,13 +107,13 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
       {unmarked.length > 0 &&
         (isDesktop ? (
           <p className="help unm-line">
-            Inte markerade men spelbara odds ({unmarked.length}): {unmarked.map((i) => i.start.horse.name).join(", ")}.{" "}
+            {unmarkedTitle(unmarked.length)}: {unmarked.map((i) => i.start.horse.name).join(", ")}.{" "}
             <Link className="linkish" href={`${base}/odds#omarkerade`}>
               Visa
             </Link>
           </p>
         ) : (
-          <PlatsGroup title={`Inte markerade men spelbara odds (${unmarked.length})`} help={UNMARKED_HELP} items={unmarked} unmarked {...common} />
+          <PlatsGroup title={unmarkedTitle(unmarked.length)} help={UNMARKED_HELP} items={unmarked} unmarked {...common} />
         ))}
     </>
   );
@@ -124,7 +130,7 @@ type GroupProps = {
   desk: boolean;
   // odds = S4 (rörelse, vinnarodds på desktop), spel = S6.
   variant: "odds" | "spel";
-  // Gruppen "Inte markerade men spelbara odds": Intressant-lampan i stället för Bet.
+  // Gruppen "Inte markerade (n)": Intressant-lampan i stället för Bet.
   unmarked?: boolean;
   // Hästar som blev Spelbara vid den senaste hämtningen (taggen "Ny", S4).
   newIds?: ReadonlySet<string>;
@@ -215,6 +221,7 @@ export function PlatsGroup(props: GroupProps) {
 function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId }: GroupProps & { item: Item }) {
   const { setBet, setInteresting } = useRound();
   const { race, start } = item;
+  const troll = item.troll ?? null;
   const m = start.mark;
   const started = raceStarted(race, now);
   const scrUnibet = scratchedAtUnibet(m);
@@ -231,6 +238,7 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
   const name = (
     <span className="hl">
       <span className="hn">{start.horse.name}</span>
+      {troll && <TrollBadge />}
       {!odds4 && <span className="sr">{signalsSr(start.signals?.count)}</span>}
       {!odds4 && start.signals?.lowStreck && <LowStreckTag />}
       {m?.spelbar && <Badge kind="s" />}
@@ -260,7 +268,9 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
     <BetToggle on={!!m?.bet} horseName={start.horse.name} disabledReason={started || (start.scratched && !m?.bet) ? locked : null} onToggle={() => setBet(race, start, !m?.bet)} />
   );
   const fieldOff = !!locked || scrUnibet;
-  const sv = <Sv diff={d} cls={cls} />;
+  // Trollspöt-häst utan odds: "minst 2,40" under fältet (e4a 18).
+  const minHint = troll && m?.unibetOdds == null ? `minst ${odds(troll.minOdds)}` : null;
+  const sv = minHint ? <span className="sv tmin-h">{minHint}</span> : <Sv diff={d} cls={cls} />;
   const win = start.unibet && !scrUnibet ? start.unibet.win : null;
 
   if (desk)
@@ -281,9 +291,11 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
           <RiktCell s={start} className="rk num dk" two />
         </td>
         <td className="r">
-          <OddsField item={item} disabled={fieldOff} cls={cls} />
+          <OddsField item={item} disabled={fieldOff} cls={cls} hint={minHint} />
         </td>
-        <td className="r">{sv}</td>
+        <td className="r">
+          <Sv diff={d} cls={cls} />
+        </td>
         {odds4 && (
           <>
             <td>
@@ -308,7 +320,7 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
         {notes}
       </div>
       {odds4 && <MovementCell start={start} rikt={rx} />}
-      <OddsField item={item} disabled={fieldOff} cls={cls} sv={sv} />
+      <OddsField item={item} disabled={fieldOff} cls={cls} sv={sv} hint={minHint} />
       {toggle}
     </li>
   );
@@ -332,7 +344,9 @@ function ReplacedNote({ name, from, lost, startId, fetchId }: { name: string; fr
 // Fältet för Unibet-odds: samma tolkning som knappsatsen. Sparas vid blur
 // eller Enter. Tomt fält ändrar inget (oddset tas bort i S4). cls = grön ram
 // (over: heldragen, near: streckad). sv = skillnaden under fältet (mobil).
-function OddsField({ item, disabled, cls, sv }: { item: Item; disabled: boolean; cls: OddsClass | null; sv?: React.ReactNode }) {
+// hint = "minst 2,40" för en Trollspöt-häst utan odds: under fältet, och
+// kopplad till fältet med aria-describedby.
+function OddsField({ item, disabled, cls, sv, hint }: { item: Item; disabled: boolean; cls: OddsClass | null; sv?: React.ReactNode; hint?: string | null }) {
   const { setOdds } = useRound();
   const { race, start } = item;
   const saved = start.mark?.unibetOdds ?? null;
@@ -376,7 +390,7 @@ function OddsField({ item, disabled, cls, sv }: { item: Item; disabled: boolean;
       disabled={disabled}
       aria-label={`Unibet platsodds för ${start.horse.name}`}
       aria-invalid={error ? true : undefined}
-      aria-describedby={error ? `${id}-e` : undefined}
+      aria-describedby={[error ? `${id}-e` : null, hint ? `${id}-h` : null].filter(Boolean).join(" ") || undefined}
       onFocus={() => (editing.current = true)}
       onChange={(e) => {
         editing.current = true;
@@ -407,7 +421,13 @@ function OddsField({ item, disabled, cls, sv }: { item: Item; disabled: boolean;
       <>
         <span className="ofc">
           {input}
-          {sv}
+          {hint ? (
+            <span className="sv tmin-h" id={`${id}-h`}>
+              {hint}
+            </span>
+          ) : (
+            sv
+          )}
         </span>
         {err}
       </>
@@ -415,6 +435,11 @@ function OddsField({ item, disabled, cls, sv }: { item: Item; disabled: boolean;
   return (
     <span className="ofield">
       {input}
+      {hint && (
+        <span className="sv tmin-h" id={`${id}-h`}>
+          {hint}
+        </span>
+      )}
       {err}
     </span>
   );

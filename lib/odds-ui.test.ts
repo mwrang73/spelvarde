@@ -38,6 +38,39 @@ describe("Inte markerade men spelbara odds", () => {
     const started = mkRace(1, [mkStart("g", 1, { riktodds: 2, mark: mkMark("g", { unibetOdds: 3, oddsClass: "over" }) })], { started: true });
     const items = unmarkedItems([started, mkRace(2, rows)], NOW, 0.1);
     expect(items.map((i) => i.start.id)).toEqual(["a", "b"]);
+    expect(items.every((i) => i.troll === null)).toBe(true);
+  });
+  it("e4a 18: Trollspöt-hästar först efter plats, utan dubbletter, även utan odds", () => {
+    // Avd 3: ett fält med streck och modell (som i lib/trollspot.test.ts), så att Trollspöt har hästar.
+    const st = (n: number, streck: number, p: number, o: Parameters<typeof mkStart>[2] = {}) => mkStart(`t${n}`, n, { streck, probTop3: p, riktodds: Math.round(100 / p) / 100, ...o });
+    const field = [
+      st(1, 40, 0.8),
+      st(2, 9, 0.5, { mark: mkMark("t2", { unibetOdds: 3, oddsClass: "over" }) }),
+      st(3, 8, 0.45),
+      st(4, 7, 0.3, { mark: mkMark("t4", { interesting: true }) }),
+      // Trollspöt-häst med odds under gränsen: står ändå med (en gång).
+      st(5, 7, 0.25, { mark: mkMark("t5", { unibetOdds: 2, oddsClass: "under" }) }),
+      st(6, 6, 0.2, { scratched: true }),
+      st(7, 6, 0.2),
+      st(8, 6, 0.15),
+      st(9, 6, 0.15),
+      st(10, 5, 0.1),
+    ];
+    const other = mkRace(2, [mkStart("o1", 1, { riktodds: 3, mark: mkMark("o1", { unibetOdds: 4, oddsClass: "over" }) })]);
+    const items = unmarkedItems([other, mkRace(3, field)], NOW, 0.1);
+    const ids = items.map((i) => i.start.id);
+    // t4 (Intressant) och t6 (struken) är inte med. t1 och t2 har för lågt
+    // uppskattat odds för Trollspöt; t2 kommer med på sina spelbara odds, efter
+    // Trollspöt-hästarna (lika skillnad som o1, som står i en tidigare avdelning).
+    expect(ids).toEqual(["t3", "t5", "t7", "t8", "t9", "t10", "o1", "t2"]);
+    expect(new Set(ids).size).toBe(ids.length);
+    const ranks = items.map((i) => i.troll?.rank ?? null);
+    expect(ranks.slice(6)).toEqual([null, null]);
+    expect(ranks.slice(0, 6)).toEqual([...(ranks.slice(0, 6) as number[])].sort((a, b) => a - b));
+    // En Trollspöt-häst utan odds: ingen skillnad, men minst X.
+    const t3 = items.find((i) => i.start.id === "t3")!;
+    expect(t3.diff).toBeNull();
+    expect(t3.troll!.minOdds).toBeGreaterThanOrEqual(2);
   });
 });
 

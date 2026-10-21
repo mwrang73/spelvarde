@@ -19,6 +19,7 @@ import type { SpelbarInput } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import type { XFactor } from "@/lib/xfactor";
 import { uninterestingUndo } from "@/lib/xfactor-ui";
+import { useResultPolling } from "./resultsStore";
 import { getRound, loadRound, subscribeRounds } from "./roundStore";
 
 type LoadState = { loading: boolean; error: string | null; notFound: boolean };
@@ -80,6 +81,9 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
   }, [refresh]);
 
   const data = useMemo(() => (base ? applyPending(base, queue) : null), [base, queue]);
+
+  // E4a 6.10: resultatet hämtas automatiskt medan ett lopp väntar på det (S1 och S2).
+  useResultPolling(roundId, base);
 
   const toast = useToast();
 

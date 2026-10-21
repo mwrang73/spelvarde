@@ -3,8 +3,9 @@
 // S4 Unibets odds som lista (standardläget, specen S4 och e2.2 S4): alla
 // hästar markerade Intressant (och hästar med Bet), en grupp per avdelning
 // sorterad på startnummer, med fältet för Unibet-oddset i raden. Oddsen
-// hämtas med tavelknappen. Sist gruppen "Inte markerade men spelbara odds"
-// (#omarkerade). "En i taget" byter till knappsatsen (?lage=guide).
+// hämtas med tavelknappen. Sist gruppen "Inte markerade (n)" (#omarkerade,
+// e4a avsnitt 18: Trollspöt-hästar först, sedan spelbara odds). "En i
+// taget" byter till knappsatsen (?lage=guide).
 
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
@@ -12,7 +13,7 @@ import { useIsDesktop } from "@/components/hooks";
 import { RefreshBanner, RefreshBoardButton } from "@/components/round/StreckOdds";
 import { clearNew, useStreckOddsRun } from "@/components/round/streckOddsStore";
 import { AppHeader } from "@/components/shell/AppHeader";
-import { PlatsGroup, UNMARKED_HELP, type Item } from "@/components/spel/PlatsPanel";
+import { PlatsGroup, UNMARKED_HELP, unmarkedTitle, type Item } from "@/components/spel/PlatsPanel";
 import { EmptyState } from "@/components/ui/board";
 import { IconFlag } from "@/components/ui/icons";
 import { hhmm } from "@/lib/format";
@@ -90,7 +91,7 @@ export function OddsList({ data, now, onGuide }: { data: RoundResponse; now: num
             ))}
           </>
         )}
-        <PlatsGroup id="omarkerade" title={`Inte markerade men spelbara odds (${unmarked.length})`} help={UNMARKED_HELP} items={unmarked} unmarked {...common} />
+        <PlatsGroup id="omarkerade" title={unmarkedTitle(unmarked.length)} help={UNMARKED_HELP} items={unmarked} unmarked {...common} />
       </main>
     </>
   );

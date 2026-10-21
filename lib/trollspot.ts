@@ -22,14 +22,20 @@ import { harvilleTop3 } from "@/lib/riktodds";
 import { DEFAULT_TOLERANCE } from "@/lib/spelbar";
 import type { RaceDto, StartDto } from "@/lib/types";
 
+// Det som Trollspöt läser av ett lopp och en start. RaceDto och StartDto
+// uppfyller typerna; servern (frysningen i lib/outcomes-server.ts) skickar in
+// lättare objekt byggda direkt från databasen.
+export type TrollStart = Pick<StartDto, "id" | "number" | "scratched" | "streck" | "probTop3" | "riktodds"> & { mark?: { unibetOdds: number | null } | null };
+export type TrollRace<S extends TrollStart = TrollStart> = Pick<RaceDto, "id" | "leg" | "startAt" | "cancelled"> & { starts: S[] };
+
 export const TROLL_COUNT = 10;
 export const TROLL_K = 0.59;
 export const TROLL_MIN_EST = 1.8;
 export const TROLL_MIN_ODDS = 2.0;
 
-export type TrollItem = {
-  race: RaceDto;
-  start: StartDto;
+export type TrollItem<R extends TrollRace = RaceDto> = {
+  race: R;
+  start: R["starts"][number];
   // Chans till topp 3 enligt modellen (0–1).
   chance: number;
   // Uppskattat platsodds ur strecket.
@@ -41,12 +47,12 @@ export type TrollItem = {
   over: boolean | null;
 };
 
-export type TrollResult = { items: TrollItem[]; hasStreck: boolean; qualified: number };
+export type TrollResult<R extends TrollRace = RaceDto> = { items: TrollItem<R>[]; hasStreck: boolean; qualified: number };
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
 // Marknadens chans till topp 3 ur strecket per start (id → chans).
-export function marketChances(race: RaceDto): Map<string, number> {
+export function marketChances(race: TrollRace): Map<string, number> {
   const run = race.starts.filter((s) => !s.scratched && s.streck !== null && s.streck > 0);
   const out = new Map<string, number>();
   if (run.length < 4) return out;
@@ -63,19 +69,19 @@ export function minOddsOf(riktodds: number | null, estOdds: number, tolerance: n
 
 // Minst X för en enskild häst (Platsspel och listan i Unibets odds). Utan
 // streck eller riktodds: det som finns av 2,00 och riktoddset.
-export function minOddsFor(race: RaceDto, start: StartDto, tolerance: number = DEFAULT_TOLERANCE): number {
+export function minOddsFor(race: TrollRace, start: TrollStart, tolerance: number = DEFAULT_TOLERANCE): number {
   const pm = marketChances(race).get(start.id);
   const est = pm && pm > 0 ? TROLL_K / pm : 0;
   return minOddsOf(start.riktodds, est, tolerance);
 }
 
-export function trollspot(races: RaceDto[], now: number, tolerance: number = DEFAULT_TOLERANCE): TrollResult {
+export function trollspot<R extends TrollRace = RaceDto>(races: R[], now: number, tolerance: number = DEFAULT_TOLERANCE): TrollResult<R> {
   const hasStreck = races.some((r) => r.starts.some((s) => s.streck !== null && s.streck > 0));
-  const cands: TrollItem[] = [];
+  const cands: TrollItem<R>[] = [];
   for (const race of races) {
     if (race.cancelled || Date.parse(race.startAt) <= now) continue;
     const market = marketChances(race);
-    for (const start of race.starts) {
+    for (const start of race.starts as R["starts"][number][]) {
       if (start.scratched || start.probTop3 === null || start.riktodds === null) continue;
       const pm = market.get(start.id);
       if (pm === undefined || !(pm > 0)) continue;

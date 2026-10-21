@@ -82,9 +82,9 @@ describe("Nästa steg (3.2)", () => {
   it("5–7. Odds-steg bara när E2 är påslaget", () => {
     const oddsNow = at("2026-10-23T08:00:00Z");
     const rs = round(races({ reviewed: true }));
-    const e1 = { odds: false, coupon: false, live: false, raceView: false, stats: false };
+    const e1 = { odds: false, coupon: false, live: false, raceView: false, stats: false, results: false };
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3, features: e1 }).kind).toBe("ALL_REVIEWED");
-    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true };
+    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true };
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3, features: f }).title).toBe("Fyll i Unibets odds – 3 kvar");
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, spelbarWithoutBet: 2, features: f }).title).toBe("Markera Bet – 2 spelbara");
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, features: f }).kind).toBe("BUILD_COUPON");
@@ -92,12 +92,42 @@ describe("Nästa steg (3.2)", () => {
   });
   it("3–4. Live: larm först, sedan nästa lopp", () => {
     const liveNow = at("2026-10-24T13:30:00Z");
-    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true };
+    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true };
     const rs = round(races());
     expect(nextStep({ now: liveNow, round: rs, nextAvailable: null, unackedAlarms: [{ leg: 7, horseName: "Mateo di Quattro", kind: "RUSH" }], features: f }).title).toBe("Rusning i avd 7 – Mateo di Quattro");
     const s = nextStep({ now: liveNow, round: rs, nextAvailable: null });
     expect(s.title).toBe("Avd 3 startar 15:44");
-    expect(s.action).toBeNull();
+    // E4a: meningen är loppnamnet utan markeringar, och knappen leder till S2.
+    expect(s.text).toBe("Lopp 3");
+    expect(s.action).toEqual({ type: "link", label: "Till avd 3", href: "/omgang/r1/avd/3" });
+  });
+  it("4. E4a: dina hästar i nästa avdelning", () => {
+    const liveNow = at("2026-10-24T13:30:00Z");
+    const rs = round(races({}, { 3: { mine: [{ name: "Blixt Lane", label: "Bet" }, { name: "Django Silver", label: "Intressant" }] } }));
+    expect(nextStep({ now: liveNow, round: rs, nextAvailable: null }).text).toBe("Blixt Lane är Bet. Django Silver är Intressant.");
+    // Före E4a: ingen knapp och loppnamnet.
+    const e1 = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: false };
+    expect(nextStep({ now: liveNow, round: rs, nextAvailable: null, features: e1 })).toMatchObject({ text: "Lopp 3", action: null });
+  });
+  it("4b. E4a: alla har startat, väntar på resultat med länk", () => {
+    const late = at("2026-10-24T16:20:00Z");
+    const rs = round(races({ hasResult: true }, { 7: { hasResult: false }, 8: { hasResult: false } }));
+    const s = nextStep({ now: late, round: rs, nextAvailable: null });
+    expect(s).toMatchObject({ kind: "LIVE_WAITING", title: "Väntar på resultat i avd 7", text: "Placeringen hämtas automatiskt från ATG." });
+    expect(s.action).toEqual({ type: "link", label: "Till avd 7", href: "/omgang/r1/avd/7" });
+  });
+  it("9. E4a: Omgången är klar med summeringen", () => {
+    const done = round(races({ hasResult: true }));
+    const later = at("2026-10-25T19:00:00Z");
+    const summary = { bet: { hits: 2, total: 4 }, spelbar: { hits: 3, total: 6 }, interesting: { hits: 6, total: 13 }, trollspot: { hits: 2, total: 3 } };
+    expect(nextStep({ now: later, round: done, nextAvailable: null, summary })).toMatchObject({
+      kind: "ROUND_DONE",
+      title: "Omgången är klar",
+      text: "Bet 2/4 träff · Spelbar 3/6 topp 3 · Intressant 6/13 topp 3 · Trollspöt 2/3 topp 3.",
+      action: null,
+    });
+    const noTroll = { ...summary, trollspot: { hits: 0, total: 0 } };
+    expect(nextStep({ now: later, round: done, nextAvailable: null, summary: noTroll }).text).toBe("Bet 2/4 träff · Spelbar 3/6 topp 3 · Intressant 6/13 topp 3.");
   });
   it("9. Klart: hämta nästa om den finns", () => {
     const done = round(races({ hasResult: true }));

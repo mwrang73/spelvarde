@@ -544,3 +544,142 @@ export async function refreshStreck(deps: FetchDeps, input: { roundId: string; u
   const snap = await db.roundSnapshot.findFirst({ where: { roundId: round.id }, orderBy: { takenAt: "desc" }, select: { takenAt: true } });
   return { roundId: round.id, hasStreck: game.hasStreck, streckAt: snap ? snap.takenAt.toISOString() : null, changes: game.changes, needsResume };
 }
+
+// ---- Resultathämtningen (E4a, specen e4a 6.10) -----------------------------------------------
+
+// Claim på Round.liveSyncAt (9.2): ATG anropas högst var 50:e sekund oavsett
+// antal flikar, var 15:e vid Hämta resultat (force) och alltid från cron.
+export const RESULTS_CLAIM_MS = 50_000;
+export const RESULTS_FORCE_CLAIM_MS = 15_000;
+
+export type ResultsClaim = "normal" | "force" | "cron";
+
+export type SyncResultsOutcome = {
+  roundId: string;
+  // Fick anropet claimet och hämtade från ATG?
+  claimed: boolean;
+  // Något i resultatet, strykningarna eller loppens status ändrades (rev +1).
+  changed: boolean;
+  finished: boolean;
+};
+
+const sameNum = (a: unknown, b: number | null) => (a === null || a === undefined ? null : Number(a)) === b;
+
+// Läser games/<atgGameId> och skriver BARA resultatfälten på Start (som steg
+// 1), strykning, loppens resultAt/cancelled/atgStatus och omgångens
+// atgStatus, finishedAt, liveOkAt och rev. Ingen RoundSnapshot, ingen
+// StreckValue, inga nya hästar eller starter och ingen omräkning av riktodds.
+// Kastar AtgError när ATG inte svarar (claimet står kvar, så nästa försök
+// får vänta claim-tiden). null = omgången finns inte.
+export async function syncResults(deps: FetchDeps, input: { roundId: string; userId: string | null; claim?: ResultsClaim }): Promise<SyncResultsOutcome | null> {
+  const { db, atg } = deps;
+  const now = deps.now?.() ?? new Date();
+  const round = await db.round.findUnique({ where: { id: input.roundId }, select: { id: true, atgGameId: true, gameType: true, atgStatus: true, finishedAt: true } });
+  if (!round) return null;
+
+  // Atomiskt claim: bara den som flyttar liveSyncAt hämtar.
+  const claim = input.claim ?? "normal";
+  if (claim !== "cron") {
+    const ms = claim === "force" ? RESULTS_FORCE_CLAIM_MS : RESULTS_CLAIM_MS;
+    const got = await db.round.updateMany({
+      where: { id: round.id, OR: [{ liveSyncAt: null }, { liveSyncAt: { lte: new Date(now.getTime() - ms) } }, { liveSyncAt: { gt: now } }] },
+      data: { liveSyncAt: now },
+    });
+    if (got.count === 0) return { roundId: round.id, claimed: false, changed: false, finished: !!round.finishedAt };
+  } else {
+    await db.round.update({ where: { id: round.id }, data: { liveSyncAt: now } });
+  }
+
+  const warnings: string[] = [];
+  const warn = (m: string) => {
+    warnings.push(m);
+    deps.warn?.(m);
+  };
+  let parsed: ReturnType<typeof parseGame>;
+  try {
+    parsed = parseGame(await atg(atgPaths.game(round.atgGameId)), warn);
+    if (!parsed || parsed.atgGameId !== round.atgGameId) throw new AtgError("ATG svarade med ett spel som inte gick att läsa");
+  } catch (e) {
+    await db.fetchLog.create({ data: { roundId: round.id, userId: input.userId, step: "RESULTS", startedAt: now, finishedAt: new Date(), ok: false, message: e instanceof AtgError ? e.message : "Okänt fel" } });
+    throw e;
+  }
+
+  const races = await db.race.findMany({
+    where: { roundId: round.id },
+    select: { id: true, atgRaceId: true, resultAt: true, cancelled: true, atgStatus: true, starts: { include: { horse: { select: { atgHorseId: true } } } } },
+  });
+  const byAtgId = new Map(races.map((r) => [r.atgRaceId, r]));
+  let changed = false;
+  const scratched: { leg: number; number: number; horseName: string }[] = [];
+
+  for (const r of parsed.races) {
+    const race = byAtgId.get(r.atgRaceId);
+    if (!race) {
+      warn(`avd ${r.leg}: loppet finns inte i databasen, hoppar över`);
+      continue;
+    }
+    const raceData = { atgStatus: r.status, cancelled: r.cancelled, resultAt: r.hasResult ? (race.resultAt ?? now) : null };
+    if (race.atgStatus !== raceData.atgStatus || race.cancelled !== raceData.cancelled || (race.resultAt === null) !== (raceData.resultAt === null)) {
+      await db.race.update({ where: { id: race.id }, data: raceData });
+      changed = true;
+    }
+    for (const s of r.starts) {
+      const old = race.starts.find((x) => x.number === s.number);
+      if (!old || old.horse.atgHorseId !== s.horse.atgHorseId) {
+        // Ny häst på numret (t.ex. reserv in): hör till Hämta omgång, inte hit.
+        warn(`avd ${r.leg} nr ${s.number}: hästen finns inte i databasen, hoppar över`);
+        continue;
+      }
+      const res = s.result;
+      const data = {
+        scratched: s.scratched,
+        scratchedAt: s.scratched ? (old.scratchedAt ?? now) : null,
+        place: res?.place ?? null,
+        finishOrder: res?.finishOrder ?? null,
+        disqualified: res?.disqualified ?? false,
+        galloped: res?.galloped ?? false,
+        kmTime: res?.kmTime ?? null,
+        finalOdds: res?.finalOdds ?? null,
+        placeOddsMin: res?.placeOddsMin ?? null,
+        placeOddsMax: res?.placeOddsMax ?? null,
+        resultAt: res ? (old.resultAt ?? now) : null,
+      };
+      const same =
+        old.scratched === data.scratched &&
+        old.place === data.place &&
+        old.finishOrder === data.finishOrder &&
+        old.disqualified === data.disqualified &&
+        old.galloped === data.galloped &&
+        old.kmTime === data.kmTime &&
+        sameNum(old.finalOdds, data.finalOdds) &&
+        sameNum(old.placeOddsMin, data.placeOddsMin) &&
+        sameNum(old.placeOddsMax, data.placeOddsMax) &&
+        (old.resultAt === null) === (data.resultAt === null);
+      if (same) continue;
+      if (s.scratched && !old.scratched) scratched.push({ leg: r.leg, number: s.number, horseName: s.horse.name });
+      await db.start.update({ where: { id: old.id }, data });
+      changed = true;
+    }
+  }
+
+  const finished = parsed.races.length === legsFor(round.gameType) && parsed.races.every((r) => r.hasResult || r.cancelled) && parsed.races.some((r) => r.hasResult);
+  const finishedAt = finished ? (round.finishedAt ?? now) : null;
+  if (round.atgStatus !== parsed.status || (round.finishedAt === null) !== (finishedAt === null)) changed = true;
+  await db.round.update({
+    where: { id: round.id },
+    data: { atgStatus: parsed.status, finishedAt, liveOkAt: now, ...(changed ? { rev: { increment: 1 } } : {}) },
+  });
+  await db.fetchLog.create({
+    data: {
+      roundId: round.id,
+      userId: input.userId,
+      step: "RESULTS",
+      startedAt: now,
+      finishedAt: new Date(),
+      ok: true,
+      message: [changed ? "ändrat" : "oförändrat", warnings.length ? `${warnings.length} varningar: ${warnings.slice(0, 3).join("; ")}` : ""].filter(Boolean).join(", "),
+      ...(scratched.length ? { changes: { scratched } as unknown as Prisma.InputJsonValue } : {}),
+    },
+  });
+  return { roundId: round.id, claimed: true, changed, finished };
+}

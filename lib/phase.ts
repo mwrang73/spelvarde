@@ -3,6 +3,8 @@
 import { FEATURES, type Features } from "@/lib/features";
 import { addDaysToDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
 import { DEFAULT_GAME_TYPE, gameTypeOfId } from "@/lib/game-type";
+import { summaryText } from "@/lib/outcomes";
+import type { OutcomeSummary } from "@/lib/types";
 
 export type Phase = "ANALYS" | "ODDS" | "LIVE" | "KLART";
 export const PHASES: Phase[] = ["ANALYS", "ODDS", "LIVE", "KLART"];
@@ -94,7 +96,23 @@ export type NextStepAction =
 
 export type NextStep = { kind: NextStepKind; title: string; text: string; action: NextStepAction | null };
 
-export type NextStepRace = PhaseRace & { reviewed: boolean };
+// mine = användarens markerade hästar i avdelningen (E4a, punkt 4): "Blixt
+// Lane är Bet. Django Silver är Intressant." Saknas = loppnamnet.
+export type MineLabel = "Bet" | "Spelbar" | "Intressant";
+export type NextStepRace = PhaseRace & { reviewed: boolean; mine?: { name: string; label: MineLabel }[] };
+
+// Starkaste märket: Bet före Spelbar före Intressant. null = omarkerad.
+export function mineLabel(m: { interesting: boolean; spelbar: boolean; bet: boolean } | null | undefined): MineLabel | null {
+  if (!m) return null;
+  if (m.bet) return "Bet";
+  if (m.spelbar) return "Spelbar";
+  if (m.interesting) return "Intressant";
+  return null;
+}
+
+export function mineSentence(race: Pick<NextStepRace, "name" | "mine">): string {
+  return race.mine?.length ? race.mine.map((h) => `${h.name} är ${h.label}.`).join(" ") : race.name;
+}
 
 export type NextStepInput = {
   now: Date;
@@ -115,6 +133,8 @@ export type NextStepInput = {
   spelbarWithoutBet?: number;
   hasCoupon?: boolean;
   unackedAlarms?: { leg: number; horseName: string; kind: "RUSH" | "DROP" }[];
+  // E4a: summeringen för hela omgången (punkt 9), från de frysta Outcome.
+  summary?: OutcomeSummary | null;
   features?: Features;
 };
 
@@ -168,20 +188,24 @@ export function nextStep(input: NextStepInput): NextStep {
     }
     // 4. Nästa lopp som inte har startat.
     const next = races.find((r) => !r.cancelled && r.startAt.getTime() > now.getTime());
+    // E4a: knappen leder till avdelningen (S2), som visar Resultat när loppet har startat.
+    const legLink = (leg: number): NextStepAction =>
+      f.raceView ? { type: "link", label: "Till loppet", href: `${base}/lopp/${leg}` } : { type: "link", label: `Till avd ${leg}`, href: `${base}/avd/${leg}` };
     if (next) {
       return {
         kind: "LIVE_NEXT_RACE",
         title: `Avd ${next.leg} startar ${hhmm(next.startAt)}`,
-        text: next.name,
-        action: f.raceView ? { type: "link", label: "Till loppet", href: `${base}/lopp/${next.leg}` } : null,
+        text: f.results ? mineSentence(next) : next.name,
+        action: f.results || f.raceView ? legLink(next.leg) : null,
       };
     }
+    // 4b. Alla lopp har startat och något saknar resultat.
     const waiting = races.find((r) => !r.cancelled && !r.hasResult);
     return {
       kind: "LIVE_WAITING",
       title: waiting ? `Väntar på resultat i avd ${waiting.leg}` : "Väntar på resultat",
-      text: "Placeringen hämtas när ATG har den.",
-      action: null,
+      text: f.results ? "Placeringen hämtas automatiskt från ATG." : "Placeringen hämtas när ATG har den.",
+      action: f.results && waiting ? legLink(waiting.leg) : null,
     };
   }
 
@@ -233,5 +257,6 @@ export function nextStep(input: NextStepInput): NextStep {
   if (f.stats) {
     return { kind: "SEE_STATS", title: "Se statistik", text: "Omgången är klar.", action: { type: "link", label: "Se statistik", href: "/statistik" } };
   }
-  return { kind: "ROUND_DONE", title: "Omgången är klar", text: `Nästa ${gameType} kan hämtas när ATG har publicerat den.`, action: null };
+  const sum = f.results && input.summary ? summaryText(input.summary) : null;
+  return { kind: "ROUND_DONE", title: "Omgången är klar", text: sum ?? `Nästa ${gameType} kan hämtas när ATG har publicerat den.`, action: null };
 }

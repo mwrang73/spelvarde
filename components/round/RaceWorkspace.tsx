@@ -14,15 +14,16 @@
 // Layouten växlar med CSS, så att sidan inte blinkar vid första ritningen.
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DESKTOP_QUERY, useIsDesktop } from "@/components/hooks";
+import { DESKTOP_QUERY, useIsDesktop, useNow } from "@/components/hooks";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, FlapNumber, FormStrip, GallopBadge, LampToggle, LowStreckTag, signalsSr, Skeleton } from "@/components/ui/board";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, dayDate, hhmm, kr, methodLabel, money, pct, shortRaceName } from "@/lib/format";
 import { PHASE_LABELS } from "@/lib/phase";
+import { resultMode, showsResultToggle } from "@/lib/results-ui";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor } from "@/lib/xfactor";
 import { xOf } from "@/lib/xfactor-ui";
@@ -30,6 +31,7 @@ import { modelLabel } from "./Riktodds";
 import { refetchStats, useFetchChain } from "./fetchChain";
 import { HorseCard } from "./HorseCard";
 import { Counts, MarkBadges, PhaseRail, RaceTabs, RiktCell, RoundLinks, firstTodoLeg } from "./parts";
+import { RaceResult, ResultSkeleton } from "./RaceResult";
 import { RaceStatsContent } from "./RaceStats";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
 import { useRound } from "./RoundProvider";
@@ -45,8 +47,9 @@ export function parseRacePath(pathname: string): { leg: number; startId: string 
   return { leg: m ? Math.max(1, Math.min(8, parseInt(m[2], 10))) : 1, startId: m?.[3] ?? null };
 }
 
+// url kan ha en sökdel (?vy=resultat, E4a).
 function go(url: string, mode: "push" | "replace") {
-  if (window.location.pathname === url) return;
+  if (window.location.pathname + window.location.search === url) return;
   if (mode === "push") window.history.pushState(null, "", url);
   else window.history.replaceState(null, "", url);
 }
@@ -58,8 +61,9 @@ export function RaceWorkspace() {
   const { data, load, roundId, setInteresting, setReviewed, setXFactor } = useRound();
   const pathname = usePathname() ?? "";
   const { leg, startId } = parseRacePath(pathname);
+  const wantsResult = useSearchParams()?.get("vy") === "resultat";
 
-  if (!data) return <WorkspaceSkeleton leg={leg} roundId={roundId} error={load.loading ? null : load.error} notFound={load.notFound} />;
+  if (!data) return <WorkspaceSkeleton leg={leg} roundId={roundId} error={load.loading ? null : load.error} notFound={load.notFound} result={wantsResult} />;
   const race = data.races.find((r) => r.leg === leg);
   if (!race)
     return (
@@ -125,41 +129,59 @@ function Workspace({
   const ordered = useMemo(() => (bySignals ? sortBySignals(race.starts) : race.starts), [race.starts, bySignals]);
   const view: "list" | "horse" = start ? "horse" : "list";
   const base = `/omgang/${roundId}`;
-  const avdUrl = useCallback((n: number) => `${base}/avd/${n}`, [base]);
-  const hastUrl = useCallback((n: number, sid: string) => `${base}/avd/${n}/hast/${sid}`, [base]);
+
+  // E4a: segmentkontrollen "Startlista | Resultat" när loppet har startat
+  // eller är inställt. Resultat är förvalt; valet står kvar vid byte till en
+  // annan avdelning som också har startat. URL:en visar valet (?vy=resultat).
+  const now = useNow(15_000).getTime();
+  const [listChosen, setListChosen] = useState(false);
+  const canResult = showsResultToggle(race, now);
+  const showResult = canResult && !listChosen;
+  const vy = showResult ? "?vy=resultat" : "";
+  const avdUrl = useCallback((n: number, q = "") => `${base}/avd/${n}${q}`, [base]);
+  const hastUrl = useCallback((n: number, sid: string, q = "") => `${base}/avd/${n}/hast/${sid}${q}`, [base]);
+
+  // Adressen följer valet (router-fritt, som flikarna: ingen omladdning).
+  useEffect(() => {
+    const path = window.location.pathname;
+    const has = new URLSearchParams(window.location.search).get("vy") === "resultat";
+    if (has !== showResult) go(path + (showResult ? "?vy=resultat" : ""), "replace");
+  }, [showResult, leg, startId]);
 
   const selectLeg = useCallback(
     (n: number) => {
       const to = Math.max(1, Math.min(data.races.length, n));
       if (to === leg && !startId) return;
       pushed.current = false;
-      go(avdUrl(to), "replace");
+      const target = data.races.find((r) => r.leg === to);
+      const result = !!target && showsResultToggle(target, Date.now()) && !listChosen;
+      go(avdUrl(to, result ? "?vy=resultat" : ""), "replace");
       if (!window.matchMedia(DESKTOP_QUERY).matches) window.scrollTo(0, 0);
     },
-    [avdUrl, data.races.length, leg, startId],
+    [avdUrl, data.races, leg, startId, listChosen],
   );
 
   const openHorse = useCallback(
     (s: StartDto) => {
       if (window.matchMedia(DESKTOP_QUERY).matches) {
-        go(hastUrl(leg, s.id), "replace");
+        go(hastUrl(leg, s.id, vy), "replace");
         return;
       }
       listScroll.current = window.scrollY;
       lastOpened.current = s.id;
       pushed.current = true;
-      go(hastUrl(leg, s.id), "push");
+      go(hastUrl(leg, s.id, vy), "push");
       window.scrollTo(0, 0);
     },
-    [hastUrl, leg],
+    [hastUrl, leg, vy],
   );
 
   const backToList = useCallback(() => {
     if (pushed.current) {
       pushed.current = false;
       window.history.back();
-    } else go(avdUrl(leg), "replace");
-  }, [avdUrl, leg]);
+    } else go(avdUrl(leg, vy), "replace");
+  }, [avdUrl, leg, vy]);
 
   const toggle = useCallback(
     (s: StartDto, value: boolean) => {
@@ -200,7 +222,7 @@ function Workspace({
       const id = lastOpened.current;
       lastOpened.current = null;
       window.scrollTo(0, listScroll.current);
-      document.querySelector<HTMLElement>(`.mlist [data-start="${id}"] .who`)?.focus({ preventScroll: true });
+      document.querySelector<HTMLElement>(`.mlist [data-start="${id}"] .who, .rres [data-start="${id}"]`)?.focus({ preventScroll: true });
     }
   }, [view, isDesktop]);
 
@@ -232,18 +254,24 @@ function Workspace({
       selectLeg(leg + (e.key === "ArrowRight" ? 1 : -1));
       return;
     }
+    // R växlar Startlista och Resultat när segmentkontrollen visas (E4a).
+    if ((e.key === "r" || e.key === "R") && canResult && !e.shiftKey) {
+      e.preventDefault();
+      setListChosen(showResult);
+      return;
+    }
     if ((e.key === "x" || e.key === "X") && start) {
       e.preventDefault();
       stepX(start, e.shiftKey);
       return;
     }
     if (!window.matchMedia(DESKTOP_QUERY).matches) return;
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !showResult) {
       e.preventDefault();
       const i = start ? ordered.findIndex((s) => s.id === start.id) : -1;
       const next = ordered[Math.max(0, Math.min(ordered.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
       if (next) {
-        go(hastUrl(leg, next.id), "replace");
+        go(hastUrl(leg, next.id, vy), "replace");
         document.querySelector(`.tbl [data-start="${next.id}"]`)?.scrollIntoView({ block: "nearest" });
       }
       return;
@@ -279,8 +307,29 @@ function Workspace({
     if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.5) selectLeg(leg + (dx < 0 ? 1 : -1));
   };
 
-  const title = start ? `${start.number} ${start.horse.name}` : `Avd ${leg} · ${hhmm(race.startAt)}`;
-  const sub = start ? `Avd ${leg} · ${hhmm(race.startAt)} · ${race.distance} m ${methodLabel(race.startMethod)}` : shortRaceName(race.name);
+  const mode = resultMode(race, now);
+  const title = start ? `${start.number} ${start.horse.name}` : showResult ? `Avd ${leg} · resultat` : `Avd ${leg} · ${hhmm(race.startAt)}`;
+  const sub = start
+    ? `Avd ${leg} · ${hhmm(race.startAt)} · ${race.distance} m ${methodLabel(race.startMethod)}`
+    : !showResult
+      ? shortRaceName(race.name)
+      : mode === "result" && race.resultAt
+        ? `Hämtat från ATG ${hhmm(race.resultAt)}`
+        : mode === "cancelled"
+          ? "Inställt"
+          : `Startade ${hhmm(race.startAt)}`;
+  const segmented = canResult ? (
+    <div className="segw rseg">
+      <div className="seg full" role="group" aria-label="Visa avdelningen" title="R växlar">
+        <button type="button" aria-pressed={!showResult} onClick={() => setListChosen(true)}>
+          Startlista
+        </button>
+        <button type="button" aria-pressed={showResult} onClick={() => setListChosen(false)}>
+          Resultat
+        </button>
+      </div>
+    </div>
+  ) : null;
   const statsBusy = chain.kind === "running";
   const missingStats = (
     <>
@@ -362,7 +411,8 @@ function Workspace({
                 )}
               </div>
             </div>
-            <div className="cols g-an">
+            {segmented}
+            <div className="cols g-an" hidden={showResult}>
               <SortButton bySignals={bySignals} onToggle={toggleSort} />
               <span aria-hidden="true">Häst · kusk</span>
               <span className="c" aria-hidden="true">
@@ -411,8 +461,13 @@ function Workspace({
 
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
           <RefreshBanner data={data} className="m10" />
+          {showResult && !isDesktop && (
+            <div className="m-only" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+              <RaceResult data={data} race={race} now={now} selectedId={null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
+            </div>
+          )}
           {/* Mobil: täta rader. */}
-          <ul className="list mlist m-only" aria-label={`Startlista avdelning ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          <ul className="list mlist m-only" hidden={showResult} aria-label={`Startlista avdelning ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             {ordered.map((s, i) => (
               <StartRow key={s.id} s={s} index={i} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
             ))}
@@ -445,7 +500,13 @@ function Workspace({
               <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
             </section>
           )}
-          <div className="twrap slist d-only">
+          <div className="d-only">{segmented}</div>
+          {showResult && isDesktop && (
+            <div className="d-only">
+              <RaceResult data={data} race={race} now={now} selectedId={start?.id ?? null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
+            </div>
+          )}
+          <div className="twrap slist d-only" hidden={showResult}>
             <table className="tbl">
               <caption className="sr">
                 Startlista avdelning {leg}. Välj rad med pil upp och ned, Enter öppnar hästkortet, I växlar Intressant och X stegar X-faktorn.
@@ -494,7 +555,7 @@ function Workspace({
             </p>
           </div>
 
-          <ReviewBar race={race} setReviewed={setReviewed} />
+          {!showResult && <ReviewBar race={race} setReviewed={setReviewed} />}
         </div>
 
         <aside className="daside" aria-label="Vald häst">
@@ -718,7 +779,7 @@ function ReviewBar({ race, setReviewed }: { race: RaceDto; setReviewed: (race: R
 
 // ---- Laddar ------------------------------------------------------------------------------
 
-function WorkspaceSkeleton({ leg, roundId, error, notFound }: { leg: number; roundId: string; error: string | null; notFound: boolean }) {
+function WorkspaceSkeleton({ leg, roundId, error, notFound, result }: { leg: number; roundId: string; error: string | null; notFound: boolean; result: boolean }) {
   return (
     <>
       <div className="stick">
@@ -736,6 +797,8 @@ function WorkspaceSkeleton({ leg, roundId, error, notFound }: { leg: number; rou
           <Banner tone={notFound ? "info" : "err"} className="m10" actions={notFound ? <Link href="/">Till aktuell omgång</Link> : undefined}>
             {notFound ? "Omgången finns inte." : error}
           </Banner>
+        ) : result ? (
+          <ResultSkeleton />
         ) : (
           <ul className="list" aria-busy="true" aria-label="Laddar startlistan">
             {Array.from({ length: 12 }, (_, i) => (

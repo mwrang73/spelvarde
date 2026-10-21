@@ -11,7 +11,9 @@ import { positiveSignals, type SignalResult } from "@/lib/positive-signals";
 import { barefoot, isCalibrated, parseParams } from "@/lib/riktodds";
 import { bestNumbers, MIN_RACES_TRACK_BEST, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
-import { computePhase, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
+import { computePhase, mineLabel, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
+import { byPlace, hitOf, nextResultsSyncAt, outcomeSummary } from "@/lib/outcomes";
+import { settleOutcomes } from "@/lib/outcomes-server";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
 import { lastOddsAttemptOf, latestOddsOf, unibetByStart, unibetHistoryOf, unibetSummary } from "@/lib/unibet-server";
 import type {
@@ -20,6 +22,7 @@ import type {
   FetchState,
   LegSummary,
   NextAvailableResponse,
+  OutcomeSummary,
   PersonFormDto,
   RaceDto,
   RaceStatsLine,
@@ -28,6 +31,7 @@ import type {
   RoundResponse,
   StartDetailResponse,
   StartDto,
+  StartOutcomeDto,
 } from "@/lib/types";
 
 type Db = PrismaClient;
@@ -48,6 +52,7 @@ const roundInclude = (userId: string) =>
             trainer: true,
             prevDriver: true,
             marks: { where: { userId } },
+            outcomes: { where: { userId } },
           },
         },
       },
@@ -58,6 +63,89 @@ type FullRound = Prisma.RoundGetPayload<{ include: ReturnType<typeof roundInclud
 
 export async function loadFullRound(db: Db, roundId: string, userId: string): Promise<FullRound | null> {
   return db.round.findUnique({ where: { id: roundId }, include: roundInclude(userId) });
+}
+
+// ---- Resultat (E4a) ------------------------------------------------------------------
+
+// Behöver frysningen eller resultaten göras (lib/outcomes-server.ts)? Avgörs
+// i minnet ur den redan lästa omgången, så att GET inte gör några extra frågor
+// när allt är klart: ett lopp har startat utan att vara fryst, eller någon av
+// användarens Outcome skiljer sig från resultatet (eller hästen är struken).
+export function needsSettle(round: FullRound, now: Date): boolean {
+  for (const r of round.races) {
+    if (!r.cancelled && !r.outcomesFrozenAt && r.startAt.getTime() <= now.getTime()) return true;
+    for (const s of r.starts) {
+      const o = s.outcomes[0];
+      if (!o) continue;
+      if (s.scratched) return true;
+      if (!r.resultAt && !r.cancelled) continue;
+      const place = r.cancelled ? null : s.place;
+      const disq = r.cancelled ? false : s.disqualified;
+      if (o.place !== place || o.disqualified !== disq || o.hit !== hitOf(place, disq, r.cancelled)) return true;
+    }
+  }
+  return false;
+}
+
+// Läser omgången och fryser/uppdaterar Outcome först om det behövs.
+export async function loadSettledRound(db: Db, roundId: string, userId: string, now: Date): Promise<FullRound | null> {
+  const round = await loadFullRound(db, roundId, userId);
+  if (!round || !needsSettle(round, now)) return round;
+  await settleOutcomes(db, round.id, now);
+  // Bara användarens Outcome har ändrats: läs om dem i stället för hela omgången.
+  const fresh = await db.outcome.findMany({ where: { roundId: round.id, userId } });
+  const byStart = new Map(fresh.map((o) => [o.startId, o]));
+  for (const r of round.races) {
+    if (!r.cancelled && !r.outcomesFrozenAt && r.startAt.getTime() <= now.getTime()) r.outcomesFrozenAt = now;
+    for (const s of r.starts) s.outcomes = byStart.has(s.id) ? [byStart.get(s.id)!] : [];
+  }
+  return round;
+}
+
+type FullRace = FullRound["races"][number];
+type FullOutcome = FullRace["starts"][number]["outcomes"][number];
+
+function outcomeDto(o: FullOutcome | undefined): StartOutcomeDto | null {
+  if (!o) return null;
+  return {
+    interesting: o.interesting,
+    spelbar: o.spelbar,
+    bet: o.bet,
+    xFactor: o.xFactor,
+    hit: o.hit,
+    place: o.place,
+    disqualified: o.disqualified,
+    unibetOdds: dec(o.unibetOdds),
+    trollspotRank: o.trollspotRank,
+    trollspotMinOdds: dec(o.trollspotMinOdds),
+    trollspotEstOdds: dec(o.trollspotEstOdds),
+  };
+}
+
+const raceOutcomes = (r: FullRace) => r.starts.flatMap((s) => (s.outcomes[0] ? [s.outcomes[0]] : []));
+const hasCountedResult = (r: FullRace) => !!r.resultAt && !r.cancelled;
+
+// Summeringen för avdelningen: null före resultat och för inställda lopp.
+function raceSummary(r: FullRace): OutcomeSummary | null {
+  return hasCountedResult(r) ? outcomeSummary(raceOutcomes(r)) : null;
+}
+
+// Summeringen för omgången: null tills någon avdelning har resultat.
+function roundSummary(round: FullRound): OutcomeSummary | null {
+  const done = round.races.filter(hasCountedResult);
+  return done.length ? outcomeSummary(done.flatMap(raceOutcomes)) : null;
+}
+
+function legResults(r: FullRace): Pick<LegSummary, "cancelled" | "winner" | "betResults" | "summary"> {
+  const placed = r.resultAt ? r.starts.filter((s) => !s.scratched && s.place === 1).sort(byPlace) : [];
+  return {
+    cancelled: r.cancelled,
+    winner: placed[0] ? { number: placed[0].number, name: placed[0].horse.name } : null,
+    betResults: r.starts
+      .filter((s) => s.outcomes[0]?.bet)
+      .map((s) => ({ number: s.number, name: s.horse.name, place: r.resultAt ? s.place : null, disqualified: !!r.resultAt && s.disqualified })),
+    summary: raceSummary(r),
+  };
 }
 
 // Aktiv modellversion och dess riktodds per start i omgången.
@@ -130,7 +218,8 @@ export async function fetchState(db: Db, round: { id: string; gameType: string; 
   const legs = legsFor(round.gameType);
   const lastGame = await db.fetchLog.findFirst({ where: { roundId: round.id, step: "GAME", ok: true }, orderBy: { startedAt: "desc" } });
   // Unibets steg (E2.2) hör inte till Hämta omgång och visas inte som fel här.
-  const lastFail = await db.fetchLog.findFirst({ where: { roundId: round.id, ok: false, NOT: { step: { startsWith: "UNIBET_" } } }, orderBy: { startedAt: "desc" } });
+  // Resultathämtningen (E4a) visas i resultatvyn, inte här.
+  const lastFail = await db.fetchLog.findFirst({ where: { roundId: round.id, ok: false, NOT: [{ step: { startsWith: "UNIBET_" } }, { step: "RESULTS" }] }, orderBy: { startedAt: "desc" } });
   const lastStats = lastGame
     ? await db.fetchLog.findFirst({ where: { roundId: round.id, step: "STATS", ok: true, startedAt: { gte: lastGame.startedAt } } })
     : null;
@@ -294,7 +383,7 @@ function raceSignals(
 // ---- GET /api/rounds/[id] -------------------------------------------------------------
 
 export async function buildRoundResponse(db: Db, roundId: string, userId: string, now: Date): Promise<RoundResponse | null> {
-  const round = await loadFullRound(db, roundId, userId);
+  const round = await loadSettledRound(db, roundId, userId, now);
   if (!round) return null;
   const date = dateStr(round.date);
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
@@ -351,6 +440,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
         quick: quickStats(s.horseStatsJson, legRow, s.number, table, date.slice(0, 4)),
         signals: signals.get(s.id) ?? null,
         unibet: unibet.get(s.id) ?? null,
+        outcome: outcomeDto(s.outcomes[0]),
       };
     });
     const review = r.reviews[0] ?? null;
@@ -379,10 +469,20 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
       },
       statsLine: lines.get(r.leg)!,
       starts,
+      summary: raceSummary(r),
     };
   });
 
-  const phaseRaces: NextStepRace[] = round.races.map((r) => ({ leg: r.leg, name: r.name, startAt: r.startAt, hasResult: !!r.resultAt, cancelled: r.cancelled, reviewed: reviewedRace(r) }));
+  const phaseRaces: NextStepRace[] = round.races.map((r, i) => ({
+    leg: r.leg,
+    name: r.name,
+    startAt: r.startAt,
+    hasResult: !!r.resultAt,
+    cancelled: r.cancelled,
+    reviewed: reviewedRace(r),
+    mine: mineOf(races[i].starts.map((s) => ({ name: s.horse.name, scratched: s.scratched, mark: s.mark }))),
+  }));
+  const summary = roundSummary(round);
   const phase = computePhase(date, phaseRaces, now);
   const open = races.filter((r) => !r.started).flatMap((r) => r.starts).filter((s) => !s.scratched);
   return {
@@ -401,6 +501,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
       interestingWithoutOdds: open.filter((s) => s.mark?.interesting && s.mark.unibetOdds === null).length,
       spelbarWithoutBet: open.filter((s) => s.mark?.spelbar && !s.mark.bet).length,
       hasCoupon: !!coupon,
+      summary,
     }),
     fetch,
     races,
@@ -411,7 +512,20 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
     sourcesEnabled,
     latestOdds,
     lastOddsAttempt,
+    results: {
+      syncedAt: iso(round.liveOkAt),
+      nextSyncAt: iso(nextResultsSyncAt(phaseRaces, round.liveSyncAt, now)),
+      summary,
+    },
   };
+}
+
+// Användarens markerade hästar i avdelningen för Nästa steg (punkt 4).
+function mineOf(starts: { name: string; scratched: boolean; mark: { interesting: boolean; spelbar: boolean; bet: boolean } | null }[]): NextStepRace["mine"] {
+  return starts.flatMap((s) => {
+    const label = s.scratched ? null : mineLabel(s.mark);
+    return label ? [{ name: s.name, label }] : [];
+  });
 }
 
 // ---- GET /api/rounds/current -----------------------------------------------------------
@@ -423,7 +537,7 @@ export async function buildCurrentResponse(
   getNextAvailable: (gameType: GameType) => Promise<NextAvailableResponse>,
 ): Promise<CurrentRoundResponse> {
   const id = await currentRoundId(db);
-  const [round, settingsRow] = await Promise.all([id ? loadFullRound(db, id, userId) : null, db.userSettings.findUnique({ where: { userId } })]);
+  const [round, settingsRow] = await Promise.all([id ? loadSettledRound(db, id, userId, now) : null, db.userSettings.findUnique({ where: { userId } })]);
   const settings = settingsDto(settingsRow);
   const gameType = settings.gameType;
   if (!round) {
@@ -441,12 +555,21 @@ export async function buildCurrentResponse(
     };
   }
   const date = dateStr(round.date);
-  const phaseRaces: NextStepRace[] = round.races.map((r) => ({ leg: r.leg, name: r.name, startAt: r.startAt, hasResult: !!r.resultAt, cancelled: r.cancelled, reviewed: reviewedRace(r) }));
+  const rikt = await activeRiktodds(db, round.id);
+  const marksByRace = round.races.map((r) => r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0], riktOf(rikt.byStart.get(s.id)), settings.spelbarGuideline, settings, settings.spelbarTolerance) : null)));
+  const phaseRaces: NextStepRace[] = round.races.map((r, i) => ({
+    leg: r.leg,
+    name: r.name,
+    startAt: r.startAt,
+    hasResult: !!r.resultAt,
+    cancelled: r.cancelled,
+    reviewed: reviewedRace(r),
+    mine: mineOf(r.starts.map((s, j) => ({ name: s.horse.name, scratched: s.scratched, mark: marksByRace[i][j] }))),
+  }));
   const phase = computePhase(date, phaseRaces, now);
   const next = phase === "KLART" ? await getNextAvailable(gameType) : null;
-  const rikt = await activeRiktodds(db, round.id);
-  const legs: LegSummary[] = round.races.map((r) => {
-    const marks = r.starts.map((s) => (s.marks[0] ? markDto(s.marks[0], riktOf(rikt.byStart.get(s.id)), settings.spelbarGuideline, settings, settings.spelbarTolerance) : null));
+  const legs: LegSummary[] = round.races.map((r, i) => {
+    const marks = marksByRace[i];
     return {
       raceId: r.id,
       leg: r.leg,
@@ -462,6 +585,7 @@ export async function buildCurrentResponse(
       reviewed: reviewedRace(r),
       started: started(r.startAt, now),
       hasResult: !!r.resultAt,
+      ...legResults(r),
     };
   });
   const fetchNow = await fetchState(db, round, round.races);
@@ -476,6 +600,7 @@ export async function buildCurrentResponse(
       gameType,
       round: { id: round.id, date, gameType: round.gameType, fetchStatus: fetchNow.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
       nextAvailable: next?.game ? { gameId: next.game.gameId, trackName: next.game.trackName, date: next.game.date, fetched: next.fetched } : null,
+      summary: roundSummary(round),
     }),
     fetch: fetchNow,
     legs,

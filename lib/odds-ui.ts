@@ -1,11 +1,12 @@
 // Unibets odds i gränssnittet (specen e2.2 6.1, S3, S4 och S6): grön
 // markering (variant 1 · Ram), skillnaden `sv`, rörelsen sedan första
-// hämtningen, gruppen "Inte markerade men spelbara odds" och toleransen i
+// hämtningen, gruppen "Inte markerade" (med Trollspöt, e4a 18) och toleransen i
 // S10. Rena funktioner utan React, testade i lib/odds-ui.test.ts.
 
 import { MINUS, odds } from "@/lib/format";
 import { oddsClass, oddsDiff, spelbar as spelbarOf, TOLERANCE_MAX, TOLERANCE_MIN, type OddsClass, type Override } from "@/lib/spelbar";
 import type { MarkDto, RaceDto, StartDto } from "@/lib/types";
+import { trollspot } from "@/lib/trollspot";
 import { riktX } from "@/lib/xfactor-ui";
 
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -42,25 +43,37 @@ export function scratchedAtUnibet(m: Pick<MarkDto, "unibetOdds" | "unibetOddsSou
 // Loppet har startat enligt klockan (samma regel som raceStarted i RoundProvider).
 const started = (race: Pick<RaceDto, "started" | "startAt">, now: number) => race.started || Date.parse(race.startAt) <= now;
 
-export type UnmarkedItem = { race: RaceDto; start: StartDto; diff: number };
+// troll = hästen är i Trollspöt just nu (plats 1–10 och minst X), annars null.
+// diff = Unibet minus riktodds med X-faktor, null när oddset saknas (en
+// Trollspöt-häst utan odds: fältet är tomt och "minst X" står under).
+export type UnmarkedItem = { race: RaceDto; start: StartDto; diff: number | null; troll: { rank: number; minOdds: number } | null };
 
-// "Inte markerade men spelbara odds" (S4 och S6): inte Intressant, ingen Bet,
-// inte struken, loppet har inte startat och oddset är över eller nära.
-// Störst skillnad först.
+// "Inte markerade (n)" (S4 och S6, e4a avsnitt 18): inte Intressant, ingen
+// Bet, inte struken och loppet har inte startat, och antingen i Trollspöt
+// eller med oddset över eller nära. Trollspöt-hästarna först efter plats,
+// sedan övriga efter skillnad, störst först. Varje häst bara en gång.
 export function unmarkedItems(races: RaceDto[], now: number, tolerance: number): UnmarkedItem[] {
-  const out: UnmarkedItem[] = [];
+  const troll = new Map(trollspot(races, now, tolerance).items.map((t, i) => [t.start.id, { rank: i + 1, minOdds: t.minOdds }]));
+  const inTroll: UnmarkedItem[] = [];
+  const rest: UnmarkedItem[] = [];
   for (const race of races) {
     if (race.cancelled || started(race, now)) continue;
     for (const start of race.starts) {
       const m = start.mark;
       if (start.scratched || m?.interesting || m?.bet) continue;
+      const t = troll.get(start.id) ?? null;
       const c = classOf(start, tolerance);
-      if (c !== "over" && c !== "near") continue;
-      out.push({ race, start, diff: diffOf(start) ?? 0 });
+      if (t) inTroll.push({ race, start, diff: diffOf(start), troll: t });
+      else if (c === "over" || c === "near") rest.push({ race, start, diff: diffOf(start) ?? 0, troll: null });
     }
   }
-  return out.sort((a, b) => b.diff - a.diff || a.race.leg - b.race.leg || a.start.number - b.start.number);
+  inTroll.sort((a, b) => a.troll!.rank - b.troll!.rank);
+  rest.sort((a, b) => (b.diff ?? 0) - (a.diff ?? 0) || a.race.leg - b.race.leg || a.start.number - b.start.number);
+  return [...inTroll, ...rest];
 }
+
+// Hjälptexten under rubriken "Inte markerade (n)".
+export const UNMARKED_HELP_TEXT = "Hästar du inte har markerat som är med i Trollspöt eller har spelbara odds. Tänd Intressant så kommer de med.";
 
 // Spelbara i S6 sorteras på skillnaden mot riktoddset med X-faktor, största först.
 export function byDiffDesc<T extends { race: { leg: number }; start: Pick<StartDto, "riktodds" | "mark" | "number"> }>(a: T, b: T): number {

@@ -11,6 +11,8 @@ export type Features = {
   // E4: S7 Under loppet och S9 Statistik.
   raceView: boolean;
   stats: boolean;
+  // E4a: resultatet i S2 och S1, automatisk hämtning och Nästa steg med länkar.
+  results: boolean;
 };
 
-export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: false, stats: false };
+export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: true };
