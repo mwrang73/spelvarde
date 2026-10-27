@@ -44,6 +44,8 @@ export type RoundContextValue = {
 
 // Loppet har startat enligt klockan (RaceDto.started gäller vid hämtningen).
 export const raceStarted = (race: RaceDto, now: number = Date.now()) => race.started || Date.parse(race.startAt) <= now;
+// Alla lopp har startat (eller är inställda): streck och odds behövs inte längre.
+export const allRacesStarted = (races: RaceDto[], now: number = Date.now()) => races.every((r) => r.cancelled || raceStarted(r, now));
 
 const RoundContext = createContext<RoundContextValue | null>(null);
 

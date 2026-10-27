@@ -6,8 +6,7 @@
 //
 // Gruppen "Spelbara" fryses när vyn öppnas (och fylls på med nya), så att en
 // häst vars odds rättas under riktoddset ligger kvar med varningen i stället
-// för att försvinna ur listan. Spelbara sorteras på skillnaden mot riktoddset
-// med X-faktor, störst först. Gruppen "Nära gränsen" finns inte längre: det
+// för att försvinna ur listan. Spelbara sorteras per lopp och startnummer. Gruppen "Nära gränsen" finns inte längre: det
 // finns bara en regel för "nära", toleransen i 6.1. Sist kommer "Inte
 // markerade (n)" med Intressant-lampan: Trollspöt-hästar först med märket,
 // sedan spelbara odds (e4a avsnitt 18). En Trollspöt-häst utan odds visar
@@ -28,7 +27,7 @@ import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds, relTime } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
-import { byDiffDesc, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
+import { byLegNumber, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
 import { toleranceOf } from "@/lib/round-overlay";
 import { signalTags } from "@/lib/signals";
 import type { OddsClass } from "@/lib/spelbar";
@@ -38,7 +37,7 @@ import { riktX, xOf } from "@/lib/xfactor-ui";
 // troll = hästen är i Trollspöt (gruppen "Inte markerade", e4a 18).
 export type Item = { race: RaceDto; start: StartDto; troll?: { rank: number; minOdds: number } | null };
 
-const byLeg = (a: Item, b: Item) => a.race.leg - b.race.leg || a.start.number - b.start.number;
+const byLeg = byLegNumber<Item>;
 
 // De uppfyllda positiva signalerna som korta taggar (lib/positive-signals.ts).
 function Signals({ item }: { item: Item }) {
@@ -72,7 +71,7 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
     if (add.length) setFrozen((f) => new Set([...f, ...add.map((i) => i.start.id)]));
   }, [all, frozen]);
 
-  const spelbara = all.filter((i) => frozen.has(i.start.id)).sort(byDiffDesc);
+  const spelbara = all.filter((i) => frozen.has(i.start.id)).sort(byLeg);
   const betOnly = all.filter((i) => i.start.mark?.bet && !frozen.has(i.start.id)).sort(byLeg);
   const rest = all.filter((i) => i.start.mark?.interesting && !i.start.mark.spelbar && !i.start.mark.bet && !frozen.has(i.start.id) && !i.start.scratched).sort(byLeg);
   const unmarked = unmarkedItems(data.races, now, tolerance);
@@ -219,7 +218,7 @@ export function PlatsGroup(props: GroupProps) {
 }
 
 function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId }: GroupProps & { item: Item }) {
-  const { setBet, setInteresting } = useRound();
+  const { setBet, setInteresting, roundId } = useRound();
   const { race, start } = item;
   const troll = item.troll ?? null;
   const m = start.mark;
@@ -237,7 +236,9 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
   const betNote = m?.bet && m.betOdds !== null && m.betOdds !== m.unibetOdds ? `Bet till ${odds(m.betOdds)} · ändras inte` : null;
   const name = (
     <span className="hl">
-      <span className="hn">{start.horse.name}</span>
+      <Link className="hn tlink" href={`/omgang/${roundId}/avd/${race.leg}/hast/${start.id}`}>
+        {start.horse.name} ›
+      </Link>
       {troll && <TrollBadge />}
       {!odds4 && <span className="sr">{signalsSr(start.signals?.count)}</span>}
       {!odds4 && start.signals?.lowStreck && <LowStreckTag />}

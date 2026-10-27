@@ -98,9 +98,6 @@ export function TrollPanel({ data, now }: { data: RoundResponse; now: number }) 
   );
 }
 
-// Mobil: högst så många signaltaggar på en rad, resten som "+n".
-const MOBILE_TAGS = 3;
-
 // Mobil: rutan till höger. Utan Unibet-odds: minst X. Med: Unibets odds, grönt
 // över gränsen och dämpat under, med minst X i liten text under.
 function MinBox({ it }: { it: TrollItem }) {
@@ -196,12 +193,11 @@ function TrollRow({ item: it, index, base, now, desk }: { item: TrollItem; index
         </span>
         {tags.length > 0 && (
           <span className="sigs one">
-            {tags.slice(0, MOBILE_TAGS).map((t) => (
+            {tags.map((t) => (
               <span key={t.key} className="tag good">
                 {t.text}
               </span>
             ))}
-            {tags.length > MOBILE_TAGS && <span className="tag more">+{tags.length - MOBILE_TAGS}</span>}
           </span>
         )}
       </div>

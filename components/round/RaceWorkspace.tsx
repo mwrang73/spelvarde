@@ -34,7 +34,7 @@ import { Counts, MarkBadges, PhaseRail, RaceTabs, RiktCell, RoundLinks, firstTod
 import { RaceResult, ResultSkeleton } from "./RaceResult";
 import { RaceStatsContent } from "./RaceStats";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
-import { useRound } from "./RoundProvider";
+import { raceStarted, useRound } from "./RoundProvider";
 import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
 import { pctSignal, signalClass, signalSr } from "@/lib/signals";
@@ -138,6 +138,8 @@ function Workspace({
   const canResult = showsResultToggle(race, now);
   const showResult = canResult && !listChosen;
   const vy = showResult ? "?vy=resultat" : "";
+  // Rutan Streck · odds behövs inte när avdelningen har startat.
+  const oddsOpen = !race.cancelled && !raceStarted(race, now);
   const avdUrl = useCallback((n: number, q = "") => `${base}/avd/${n}${q}`, [base]);
   const hastUrl = useCallback((n: number, sid: string, q = "") => `${base}/avd/${n}/hast/${sid}${q}`, [base]);
 
@@ -359,7 +361,7 @@ function Workspace({
               : { href: base, label: "Tillbaka till omgången" }
           }
           deskTitle={false}
-          refresh={<RefreshBoardButton data={data} />}
+          refresh={oddsOpen ? <RefreshBoardButton data={data} /> : undefined}
           deskMeta={
             <>
               {data.round.gameType} · {data.round.trackName} · {dayDate(data.round.date)} {data.round.date.slice(0, 4)}
@@ -460,7 +462,7 @@ function Workspace({
         </nav>
 
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
-          <RefreshBanner data={data} className="m10" />
+          {oddsOpen && <RefreshBanner data={data} className="m10" />}
           {showResult && !isDesktop && (
             <div className="m-only" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               <RaceResult data={data} race={race} now={now} selectedId={null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
@@ -559,7 +561,7 @@ function Workspace({
         </div>
 
         <aside className="daside" aria-label="Vald häst">
-          {view === "horse" && <RefreshBanner data={data} className="m10 m-only" />}
+          {view === "horse" && oddsOpen && <RefreshBanner data={data} className="m10 m-only" />}
           {start ? (
             <HorseCard ref={headingRef} data={data} race={race} start={start} onToggle={(v) => toggle(start, v)} />
           ) : (

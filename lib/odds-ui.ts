@@ -4,7 +4,7 @@
 // S10. Rena funktioner utan React, testade i lib/odds-ui.test.ts.
 
 import { MINUS, odds } from "@/lib/format";
-import { oddsClass, oddsDiff, spelbar as spelbarOf, TOLERANCE_MAX, TOLERANCE_MIN, type OddsClass, type Override } from "@/lib/spelbar";
+import { MIN_SPELBAR_ODDS, oddsClass, oddsDiff, spelbar as spelbarOf, TOLERANCE_MAX, TOLERANCE_MIN, type OddsClass, type Override } from "@/lib/spelbar";
 import type { MarkDto, RaceDto, StartDto } from "@/lib/types";
 import { trollspot } from "@/lib/trollspot";
 import { riktX } from "@/lib/xfactor-ui";
@@ -64,7 +64,7 @@ export function unmarkedItems(races: RaceDto[], now: number, tolerance: number):
       const t = troll.get(start.id) ?? null;
       const c = classOf(start, tolerance);
       if (t) inTroll.push({ race, start, diff: diffOf(start), troll: t });
-      else if (c === "over" || c === "near") rest.push({ race, start, diff: diffOf(start) ?? 0, troll: null });
+      else if ((c === "over" || c === "near") && (m?.unibetOdds ?? 0) >= MIN_SPELBAR_ODDS) rest.push({ race, start, diff: diffOf(start) ?? 0, troll: null });
     }
   }
   inTroll.sort((a, b) => a.troll!.rank - b.troll!.rank);
@@ -75,7 +75,12 @@ export function unmarkedItems(races: RaceDto[], now: number, tolerance: number):
 // Hjälptexten under rubriken "Inte markerade (n)".
 export const UNMARKED_HELP_TEXT = "Hästar du inte har markerat som är med i Trollspöt eller har spelbara odds. Tänd Intressant så kommer de med.";
 
-// Spelbara i S6 sorteras på skillnaden mot riktoddset med X-faktor, största först.
+// Spelbara i S6 sorteras per lopp och startnummer.
+export function byLegNumber<T extends { race: { leg: number }; start: { number: number } }>(a: T, b: T): number {
+  return a.race.leg - b.race.leg || a.start.number - b.start.number;
+}
+
+// Skillnaden mot riktoddset med X-faktor, största först.
 export function byDiffDesc<T extends { race: { leg: number }; start: Pick<StartDto, "riktodds" | "mark" | "number"> }>(a: T, b: T): number {
   return (diffOf(b.start) ?? -Infinity) - (diffOf(a.start) ?? -Infinity) || a.race.leg - b.race.leg || a.start.number - b.start.number;
 }

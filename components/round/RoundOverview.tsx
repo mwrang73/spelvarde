@@ -19,7 +19,7 @@ import { useFetchChain } from "./fetchChain";
 import { FetchBanners, FetchSteps, runChain } from "./FetchUi";
 import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
 import { Summary } from "./RaceResult";
-import { useRound } from "./RoundProvider";
+import { allRacesStarted, useRound } from "./RoundProvider";
 import { OddsFetchCard, RefreshBanner, RefreshBoardButton } from "./StreckOdds";
 import { needsOddsFetch } from "@/lib/streck-odds";
 
@@ -111,7 +111,7 @@ export function RoundOverview() {
 
   return (
     <>
-      <AppHeader brand title="Omgången" sub={roundSub(data)} refresh={<RefreshBoardButton data={data} />} actions={<HeaderActions roundId={data.round.id} gameId={data.round.atgGameId} />} />
+      <AppHeader brand title="Omgången" sub={roundSub(data)} refresh={allRacesStarted(data.races, now.getTime()) ? undefined : <RefreshBoardButton data={data} />} actions={<HeaderActions roundId={data.round.id} gameId={data.round.atgGameId} />} />
       <main className="page" id="main">
         <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} className="rail" />
         {!data.isCurrent && data.currentRoundId && (
@@ -127,7 +127,7 @@ export function RoundOverview() {
         {roundSummary && data.races.some((r) => r.resultAt && !r.cancelled) && (
           <Summary summary={roundSummary} heading={allLegsDone(data.races) ? "Omgången" : "Hittills"} label={allLegsDone(data.races) ? "Summering omgången" : "Summering hittills"} />
         )}
-        <RefreshBanner data={data} className="m10" />
+        {!allRacesStarted(data.races, now.getTime()) && <RefreshBanner data={data} className="m10" />}
         <p className="fetchline">
           {done && resultsAt ? (
             <>Resultat hämtade från ATG {relTime(resultsAt, now)}</>

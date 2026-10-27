@@ -17,6 +17,9 @@ export type SpelbarInput = "on" | "off" | "auto";
 export type OddsClass = "over" | "near" | "under";
 
 export const DEFAULT_GUIDELINE = 2.0;
+// Under det här Unibet-oddset föreslås aldrig Spelbar (Mikael 2026-10-27).
+// Spelbar satt för hand (ON) gäller ändå.
+export const MIN_SPELBAR_ODDS = 1.75;
 // UserSettings.spelbarTolerance: standard 0,10, tillåtet 0,00–0,50 (S10).
 export const DEFAULT_TOLERANCE = 0.1;
 export const TOLERANCE_MIN = 0;
@@ -38,6 +41,7 @@ export function oddsClass(unibetOdds: number | null, riktodds: number | null, to
 
 export function forslag(m: { interesting: boolean; unibetOdds: number | null; riktodds: number | null }, tolerance: number = DEFAULT_TOLERANCE): boolean {
   if (!m.interesting) return false;
+  if (m.unibetOdds !== null && m.unibetOdds < MIN_SPELBAR_ODDS - EPS) return false;
   const c = oddsClass(m.unibetOdds, m.riktodds, tolerance);
   return c === "over" || c === "near";
 }

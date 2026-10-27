@@ -9,7 +9,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useNow } from "@/components/hooks";
-import { useRound } from "@/components/round/RoundProvider";
+import { allRacesStarted, useRound } from "@/components/round/RoundProvider";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, Skeleton } from "@/components/ui/board";
 import { dayDate } from "@/lib/format";
@@ -88,7 +88,7 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
             Platsspel och {data.round.gameType}-rad
           </button>
         </div>
-        <RefreshRow data={data} />
+        {!allRacesStarted(data.races, now) && <RefreshRow data={data} />}
         {tab === "trollspot" && (
           <section id="p-troll" className="spel-p trollp" aria-labelledby="h-troll">
             <TrollPanel data={data} now={now} />

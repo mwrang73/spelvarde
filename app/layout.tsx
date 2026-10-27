@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Spelvärde", statusBarStyle: "black" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#101317" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

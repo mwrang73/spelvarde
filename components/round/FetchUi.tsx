@@ -8,6 +8,15 @@ import { Banner } from "@/components/ui/board";
 import type { ResumePoint } from "@/lib/types";
 import { clearChainError, startFetchChain, useFetchChain, type ChainState } from "./fetchChain";
 
+// Tre prickar som gungar efter steget som pågår.
+const Dots = () => (
+  <span className="dots" aria-hidden="true">
+    <i />
+    <i />
+    <i />
+  </span>
+);
+
 export function FetchSteps({ state }: { state: ChainState }) {
   const p = state.kind === "running" ? state.progress : null;
   return (
@@ -15,7 +24,7 @@ export function FetchSteps({ state }: { state: ChainState }) {
       {p && (
         <ol className="steps" aria-label="Hämtar omgången">
           <li className={p.gameDone ? "ok" : "cur"}>
-            Startlista {p.gameDone ? <span aria-label="klar">✓</span> : "…"}
+            Startlista {p.gameDone ? <span aria-label="klar">✓</span> : <Dots />}
           </li>
           <li className={p.legsDone >= 8 ? "ok" : p.step === "RACE" ? "cur" : undefined}>
             {p.legsDone >= 8 ? (
@@ -23,16 +32,18 @@ export function FetchSteps({ state }: { state: ChainState }) {
                 Avdelningar <span aria-label="klara">✓</span>
               </>
             ) : p.step === "RACE" && p.leg ? (
-              `Avd ${p.leg} av 8 …`
+              <>
+                Avd {p.leg} av 8 <Dots />
+              </>
             ) : (
               "Avdelningar"
             )}
           </li>
           <li className={p.statsDone ? "ok" : p.step === "STATS" ? "cur" : undefined}>
-            Statistik {p.statsDone ? <span aria-label="klar">✓</span> : p.step === "STATS" ? "…" : ""}
+            Statistik {p.statsDone ? <span aria-label="klar">✓</span> : p.step === "STATS" ? <Dots /> : ""}
           </li>
           <li className={p.riktoddsDone ? "ok" : p.step === "RIKTODDS" ? "cur" : undefined}>
-            Riktodds {p.riktoddsDone ? <span aria-label="klart">✓</span> : p.step === "RIKTODDS" ? "…" : ""}
+            Riktodds {p.riktoddsDone ? <span aria-label="klart">✓</span> : p.step === "RIKTODDS" ? <Dots /> : ""}
           </li>
         </ol>
       )}

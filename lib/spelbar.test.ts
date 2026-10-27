@@ -8,8 +8,8 @@ describe("Spelbar (6.1)", () => {
     expect(spelbar(m)).toBe(true);
     expect(spelbarState(m)).toEqual({ forslag: true, spelbar: true, override: "NONE", belowGuideline: false, diff: 0.7, oddsClass: "over" });
   });
-  it("Diva Ek: 1,25 mot 1,35 (−0,10) föreslås med toleransen 0,10, är nära och får riktlinjetaggen", () => {
-    const m = { interesting: true, unibetOdds: 1.25, riktodds: 1.35, override: "NONE" as const };
+  it("Diva Ek: 1,85 mot 1,95 (−0,10) föreslås med toleransen 0,10, är nära och får riktlinjetaggen", () => {
+    const m = { interesting: true, unibetOdds: 1.85, riktodds: 1.95, override: "NONE" as const };
     expect(forslag(m)).toBe(true);
     expect(spelbarState(m)).toEqual({ forslag: true, spelbar: true, override: "NONE", belowGuideline: true, diff: -0.1, oddsClass: "near" });
     // Med toleransen 0,00 föreslås den inte.
@@ -65,10 +65,10 @@ describe("Spelbar (6.1)", () => {
     const sugg = { interesting: true, unibetOdds: 3.1, riktodds: 2.4 };
     expect(applySpelbar(sugg, "off")).toEqual({ interesting: true, override: "OFF" });
     expect(applySpelbar(sugg, "on")).toEqual({ interesting: true, override: "NONE" });
-    const no = { interesting: true, unibetOdds: 1.24, riktodds: 1.35 };
+    const no = { interesting: true, unibetOdds: 1.84, riktodds: 1.95 };
     expect(applySpelbar(no, "on")).toEqual({ interesting: true, override: "ON" });
     // Nära räknas som förslaget: "on" ger NONE, "off" ger OFF.
-    const near = { interesting: true, unibetOdds: 1.25, riktodds: 1.35 };
+    const near = { interesting: true, unibetOdds: 1.85, riktodds: 1.95 };
     expect(applySpelbar(near, "on")).toEqual({ interesting: true, override: "NONE" });
     expect(applySpelbar(near, "off")).toEqual({ interesting: true, override: "OFF" });
     expect(applySpelbar(near, "on", 0)).toEqual({ interesting: true, override: "ON" });
@@ -94,7 +94,18 @@ describe("Spelbar (6.1)", () => {
     expect(belowGuideline(2)).toBe(false);
     expect(belowGuideline(2.4, 2.5)).toBe(true);
     expect(belowGuideline(null)).toBe(false);
-    expect(forslag({ interesting: true, unibetOdds: 1.6, riktodds: 1.5 })).toBe(true);
+    expect(forslag({ interesting: true, unibetOdds: 1.9, riktodds: 1.8 })).toBe(true);
     expect(oddsDiff(null, 2)).toBeNull();
+  });
+});
+
+describe("Spelbar föreslås inte under 1,75 i Unibet-odds", () => {
+  it("1,74 över riktoddset föreslås inte, 1,75 gör det", () => {
+    expect(forslag({ interesting: true, unibetOdds: 1.74, riktodds: 1.5 })).toBe(false);
+    expect(forslag({ interesting: true, unibetOdds: 1.75, riktodds: 1.5 })).toBe(true);
+  });
+  it("Spelbar satt för hand gäller ändå", () => {
+    expect(spelbar({ interesting: true, unibetOdds: 1.6, riktodds: 1.5, override: "ON" })).toBe(true);
+    expect(spelbar({ interesting: true, unibetOdds: 1.6, riktodds: 1.5, override: "NONE" })).toBe(false);
   });
 });

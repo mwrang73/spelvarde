@@ -215,11 +215,9 @@ export function RiktShort({ riktodds, x, rx }: { riktodds: number | null; x: XFa
 export function RoundLinks({ roundId, className }: { roundId: string; className?: string }) {
   return (
     <nav className={`qlinks${className ? ` ${className}` : ""}`} aria-label="Odds och spel">
-      <Link className="qlink troll-link" href={`/omgang/${roundId}/spel?flik=trollspot`}>
+      <Link className="qlink troll-link" href={`/omgang/${roundId}/spel?flik=trollspot`} title="10 hästar att bevaka">
         <WandSpark />
-        <span>
-          Trollspöt <small>10 hästar att bevaka</small>
-        </span>
+        <span>Trollspöt</span>
         <IconChev />
       </Link>
       <Link className="qlink" href={`/omgang/${roundId}/odds`}>
