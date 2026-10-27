@@ -16,6 +16,7 @@ import { byPlace, hitOf, nextResultsSyncAt, outcomeSummary } from "@/lib/outcome
 import { settleOutcomes } from "@/lib/outcomes-server";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
 import { lastOddsAttemptOf, latestOddsOf, unibetByStart, unibetHistoryOf, unibetSummary } from "@/lib/unibet-server";
+import { roundTipsSummary, startTipsByStart, startTipsDetail } from "@/lib/tips-server";
 import type {
   CurrentRoundResponse,
   FetchChanges,
@@ -413,6 +414,8 @@ export async function buildRoundResponse(
   ]);
   const settings = settingsDto(settingsRow);
   const lines = statsLines(round, stats, streck, posts, trackPosts);
+  // E5: godkända tips per start och tipsraden i S1.
+  const [tipsByStart, tipsSummary] = await Promise.all([startTipsByStart(db, userId, round.id), roundTipsSummary(db, userId, round.id, now)]);
 
   const year = date.slice(0, 4);
   const races: RaceDto[] = round.races.map((r) => {
@@ -448,6 +451,7 @@ export async function buildRoundResponse(
         signals: signals.get(s.id) ?? null,
         unibet: unibet.get(s.id) ?? null,
         outcome: outcomeDto(s.outcomes[0]),
+        tip: tipsByStart.get(s.id) ?? null,
       };
     });
     const review = r.reviews[0] ?? null;
@@ -528,6 +532,7 @@ export async function buildRoundResponse(
       nextSyncAt: iso(nextResultsSyncAt(phaseRaces, round.liveSyncAt, now)),
       summary,
     },
+    tips: tipsSummary,
   };
 }
 
@@ -616,6 +621,7 @@ export async function buildCurrentResponse(
     fetch: fetchNow,
     legs,
     nextAvailable: next,
+    tips: await roundTipsSummary(db, userId, round.id, now),
   };
 }
 
@@ -738,6 +744,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
     postTable(db, { method: s.race.startMethod, distance: s.race.distance, before: roundDate }).catch(() => null),
     unibetHistoryOf(db, s.id),
   ]);
+  const tipsDetail = await startTipsDetail(db, userId, s.id, s.race.roundId, now);
   const rikt = model ? await db.riktodds.findUnique({ where: { startId_modelVersionId: { startId: s.id, modelVersionId: model.id } } }) : null;
   const formRecords: FormRecord[] = records.map((r) => ({ date: dateStr(r.date), trackName: r.trackName, place: r.place, galloped: r.galloped, disqualified: r.disqualified }));
   const form = formSummary(formRecords, date);
@@ -778,6 +785,7 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
       raceName: s.race.name,
       startAt: s.race.startAt.toISOString(),
       started: started(s.race.startAt, now),
+      tip: tipsDetail.tip,
     },
     records: records.map((r) => ({
       date: dateStr(r.date),
@@ -808,7 +816,9 @@ export async function buildStartDetail(db: Db, startId: string, userId: string, 
     },
     comments: comments.map(commentDto),
     riktodds: rikt && model ? riktoddsDetailDto(rikt, model) : null,
-    tips: [],
+    tips: tipsDetail.tips,
+    tipSourceCount: tipsDetail.tipSourceCount,
+    tipsPending: tipsDetail.tipsPending,
     unibetHistory,
   };
 }

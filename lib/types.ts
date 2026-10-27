@@ -250,6 +250,9 @@ export type StartDto = {
   // E4a: frysta värden vid loppets start (se StartOutcomeDto). Äldre cachade
   // svar saknar fältet (läs med ?? null).
   outcome?: StartOutcomeDto | null;
+  // E5: rolltaggen i S2 och förslaget till källstöd i S3 (se StartTipDto).
+  // Äldre cachade svar saknar fältet (läs med ?? null).
+  tip?: StartTipDto | null;
 };
 
 // S2 statistikrad (3 värden). ok = false: "Statistik saknas just nu".
@@ -343,6 +346,9 @@ export type RoundResponse = {
   // ("Hittills"/"Omgången"), null tills någon avdelning har resultat.
   // Äldre cachade svar saknar fältet.
   results?: RoundResultsDto;
+  // E5: tipsraden i S1 (se RoundTipsDto). null utan tips och utan läsning.
+  // Äldre cachade svar saknar fältet (läs med ?? null).
+  tips?: RoundTipsDto | null;
 };
 
 export type RoundResultsDto = { syncedAt: string | null; nextSyncAt: string | null; summary: OutcomeSummary | null };
@@ -408,6 +414,9 @@ export type CurrentRoundResponse = {
   legs: LegSummary[];
   // Bara uppslagen när den behövs (ingen omgång, eller omgången är klar).
   nextAvailable: NextAvailableResponse | null;
+  // E5: samma som RoundResponse.tips, för Källor och S1. null utan omgång,
+  // utan tips och utan läsning.
+  tips?: RoundTipsDto | null;
 };
 
 // ---- Loppstatistik S2b -----------------------------------------------------------
@@ -519,8 +528,14 @@ export type StartDetailResponse = {
   comments: CommentDto[];
   // Riktodds med förklaring (7.4). null = saknas.
   riktodds: RiktoddsDetailDto | null;
-  // E5.
-  tips: [];
+  // E5: godkända tips för starten från alla källor (gällande först, sedan
+  // historik), nyast först inom varje grupp.
+  tips: TipDto[];
+  // E5: förslaget till källstöd (StartTipDto.support) från påslagna källor.
+  // null när starten inte har något godkänt, gällande tips.
+  tipSourceCount: number | null;
+  // E5 (tillägg): väntande tips för starten ("1 tips väntar på granskning").
+  tipsPending: number;
   // E2.2: Unibets odds för starten i varje ögonblicksbild där hästen fanns,
   // äldst först. place/win null = struken hos Unibet (status ≠ "Starter").
   unibetHistory: UnibetHistoryPoint[];
@@ -635,11 +650,210 @@ export type SourceDto = {
   lastReadAt: string | null;
   lastStatus: string | null;
   lastError: string | null;
+  // E5: antal tips (godkända och väntande) från källan i omgången vid senaste läsningen.
   lastFactCount: number | null;
   createdAt: string;
+  // E5: läsaren. null = väljs efter adressen (travstugan.se och travcash.se
+  // läses som samlingssida, annat som en sida).
+  kind: SourceKind | null;
+  // E5: relevanta artiklar vid senaste läsningen. null = inte läst än.
+  lastArticleCount: number | null;
 };
 export type SourcesResponse = { sources: SourceDto[] };
 export type SourceResponse = { source: SourceDto };
 
 // /api/auth/me och login
 export type MeResponse = { id: string; name: string; email: string; role: "USER" | "ADMIN" };
+
+// ---- Hämta tips (E5, docs/specs/e5-hamta-tips.md 12) ---------------------------------------
+//
+// Felsvar har formen ApiError ({ error, code? }). Koder:
+//   ROUND_CLOSED       409 Alla lopp har startat.
+//   SOURCE_DISABLED    409 Källan är avstängd.
+//   SCAN_LOCKED        429 Nyss läst (TipScanLockedError, med retryAfterSec).
+//   UNCHANGED          409 Artikeln är redan läst.
+//   DUPLICATE          409 Samma text som en annan artikel.
+//   BUSY               409 Artikeln läses redan.
+//   AI_QUOTA           429 Dagens gräns är nådd (TipAiError, med quota).
+//   AI_NOT_CONFIGURED  503 ANTHROPIC_API_KEY saknas. Inget räknades.
+//   AI_ERROR           502/503/504 AI-anropet misslyckades (TipAiError, med quota: läsningen räknades).
+//   RACE_STARTED       409 Loppet har startat.
+//   NOT_LINKED         409 Välj häst först.
+//   NOTHING_TO_UNDO    409 Det finns inget att ångra.
+//   NO_ROUND           409 Ingen omgång hämtad (Provläs).
+
+export type TipRole = "SPIK" | "FAVORIT" | "SKRALL" | "AVRADAN" | "NAMND";
+export type TipReview = "PENDING" | "APPROVED" | "REJECTED";
+export type TipMatch = "SURE" | "UNSURE" | "NONE";
+export type TipStage = "EARLY" | "FINAL";
+export type TipArticleStatus = "NEW" | "INTERPRETED" | "FAILED" | "DUPLICATE";
+export type SourceKind = "COLLECTION" | "PAGE";
+export type TipFlag =
+  | "NO_MATCH"
+  | "ROLE_WORD_UNKNOWN"
+  | "ROLE_CONFLICT"
+  | "ROLE_WORD_MISSING"
+  | "NAME_MISMATCH"
+  | "NAME_SPELLING"
+  | "NUMBER_MISMATCH"
+  | "NUMBER_MISSING"
+  | "LEG_MISMATCH"
+  | "LEG_MISSING"
+  | "QUOTE_NO_NAME"
+  | "SCRATCHED";
+
+// AI-läsningar i dag (svensk tid). resetsAt = nästa 00:00 i Stockholm (UTC-ISO).
+export type QuotaDto = { used: number; limit: number; resetsAt: string };
+
+export type TipArticleDto = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  url: string;
+  title: string;
+  publishedAt: string | null;
+  stage: TipStage;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  interpretedAt: string | null;
+  status: TipArticleStatus;
+  error: string | null;
+  tipCount: number | null;
+  discarded: number | null;
+  truncated: boolean;
+};
+
+// En start kort: avdelning, nummer och namn.
+export type TipStartRef = { startId: string; leg: number; number: number; name: string };
+// Ett annat tips i ersättningskedjan (samma källa och start).
+export type TipLinkRef = { id: string; role: TipRole; articleTitle: string; at: string };
+
+export type TipDto = {
+  id: string;
+  articleId: string;
+  sourceId: string;
+  sourceName: string;
+  // Som AI:n läste texten.
+  leg: number | null;
+  number: number | null;
+  rawHorseName: string;
+  role: TipRole;
+  roleWord: string | null;
+  quote: string;
+  // Kopplingen. horseName = startens namn, null när ej kopplat.
+  startId: string | null;
+  horseName: string | null;
+  // Tillägg: den kopplade startens avdelning och nummer (för "Avd 1" och
+  // fällbladsrutan). null när ej kopplat.
+  startLeg: number | null;
+  startNumber: number | null;
+  // NONE när startId är null, oavsett vad som sparades.
+  match: TipMatch;
+  flags: TipFlag[];
+  // Tillägg: texten för den första flaggan (6.11) och desktopens korta form.
+  flagText: string | null;
+  flagShort: string | null;
+  // "Närmast är 5 Mellby Harley" för ej kopplade.
+  suggestion: TipStartRef | null;
+  review: TipReview;
+  reviewedAt: string | null;
+  editedByUser: boolean;
+  aiRole: TipRole;
+  // Ersatt av ett nyare tips från samma källa (historik).
+  superseded: { byId: string; role: TipRole; articleTitle: string; at: string } | null;
+  // Godkänt tips från samma källa och start som det här ersätter (eller
+  // ersätter när det godkänns): "Ersätter tidiga tips: ~~Skräll~~ (tis 27 okt)".
+  replaces: (TipLinkRef & { stage: TipStage }) | null;
+  // Tillägg: artikeln (för S3: rubrikraden, titeln och "Artikeln ↗").
+  article: { title: string; url: string; publishedAt: string | null; firstSeenAt: string; stage: TipStage };
+  // Loppet har startat: tipset kan inte ändras.
+  locked: boolean;
+  // Senaste åtgärden kan ångras (POST /api/tips/undo).
+  canUndo: boolean;
+};
+
+// GET /api/rounds/[id]/tips. tips = alla utom borttagna.
+export type TipsResponse = {
+  roundId: string;
+  articles: TipArticleDto[];
+  tips: TipDto[];
+  counts: { pending: number; pendingSure: number; pendingUnsure: number; approved: number; approvedHorses: number };
+  quota: QuotaDto;
+  // Senaste läsningen av någon källa för omgången, och källans namn.
+  lastReadAt: string | null;
+  lastSourceName: string | null;
+};
+
+export type TipScanArticle = {
+  articleId: string;
+  title: string;
+  url: string;
+  publishedAt: string | null;
+  stage: TipStage;
+  change: "new" | "changed" | "unchanged" | "duplicate";
+  needsAi: boolean;
+};
+
+// POST /api/rounds/[id]/tips/sources/[sourceId]/scan. Fel från sajten ger 200
+// med ok: false, status "error" och error (felorsaken i källraden).
+export type TipScanResponse = {
+  sourceId: string;
+  ok: boolean;
+  status: "ok" | "noArticle" | "error";
+  error?: string;
+  articles: TipScanArticle[];
+  irrelevant: number;
+  quota: QuotaDto;
+};
+// 429 inom spärren (60 s per källa).
+export type TipScanLockedError = { error: string; code: "SCAN_LOCKED"; retryAfterSec: number };
+
+// POST /api/tips/articles/[articleId]/interpret
+export type TipInterpretResponse = {
+  articleId: string;
+  ok: boolean;
+  tips: TipDto[];
+  created: number;
+  // Summan av kastade poster (form, citat, dubbletter, tak).
+  discarded: number;
+  // Tillägg: uppdelningen ("2 tips kastades eftersom citatet inte fanns i texten").
+  discardedBy: { shape: number; quote: number; duplicate: number; overflow: number };
+  skippedStarted: number;
+  // Artikeln kortades före läsningen ("bara början lästes").
+  truncated: boolean;
+  // Svaret blev för långt (max_tokens), bara en del av tipsen lästes.
+  cutOff: boolean;
+  // Tillägg: tips som inte kunde kopplas till en häst.
+  unlinked: number;
+  quota: QuotaDto;
+};
+// 429 AI_QUOTA och 502/503/504 AI_ERROR.
+export type TipAiError = { error: string; code: "AI_QUOTA" | "AI_ERROR"; quota: QuotaDto };
+
+// Förslaget och taggen per start. Bara godkända, gällande tips från påslagna
+// källor. role = starkaste rollen, sources = antal källor, support = antal
+// källor med Spik, Favorit eller Skräll (förslaget till källstöd).
+export type StartTipDto = { role: TipRole; sources: number; support: number };
+
+// Svar på granskningens åtgärder. tips = de tips som ändrades (efter
+// ändringen). affected = starter vars StartDto.tip ändrades (patchStartTips).
+// message: t.ex. "Ett nyare tips från Travstugan gäller redan."
+export type TipActionResponse = {
+  tips: TipDto[];
+  affected: { startId: string; tip: StartTipDto | null }[];
+  message?: string;
+};
+
+// POST /api/sources/[id]/preview (Provläs). Inget sparas och inget räknas.
+export type TipPreviewResponse = {
+  sourceId: string;
+  ok: boolean;
+  error?: string;
+  links: { url: string; title: string; publishedAt: string | null; relevant: boolean; reason: string | null }[];
+};
+
+// Tipsraden i S1. approved = godkända, gällande tips från påslagna källor,
+// horses = starter med minst ett sådant, pending = att granska.
+// lastSourceName = källan som lästes senast, sourcesRead = antal olika
+// källor som har lästs för omgången.
+export type RoundTipsDto = { approved: number; horses: number; pending: number; lastReadAt: string | null; lastSourceName: string | null; sourcesRead: number };

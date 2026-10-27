@@ -13,6 +13,8 @@ export type Features = {
   stats: boolean;
   // E4a: resultatet i S2 och S1, automatisk hämtning och Nästa steg med länkar.
   results: boolean;
+  // E5: Hämta tips, granskningen, rolltaggen i S2 och Tips i S3.
+  tips: boolean;
 };
 
-export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: true };
+export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: true, tips: true };

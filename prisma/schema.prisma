@@ -128,6 +128,58 @@ enum TipKind {
   @@schema("spelvarde")
 }
 
+// ---- Hämta tips (E5, docs/specs/e5-hamta-tips.md 8.4) ----
+
+// Rollen som tipset ger hästen (6.11). Starkast först.
+enum TipRole {
+  SPIK
+  FAVORIT
+  SKRALL
+  AVRADAN
+  NAMND
+
+  @@schema("spelvarde")
+}
+
+enum TipReview {
+  PENDING // att granska
+  APPROVED // godkänt, syns och räknas (om supersededById är null)
+  REJECTED // borttaget av användaren
+
+  @@schema("spelvarde")
+}
+
+enum TipMatch {
+  SURE
+  UNSURE
+  NONE // ej kopplat
+
+  @@schema("spelvarde")
+}
+
+enum TipStage {
+  EARLY
+  FINAL
+
+  @@schema("spelvarde")
+}
+
+enum TipArticleStatus {
+  NEW // läst, inte tolkad (eller texten har ändrats)
+  INTERPRETED // tolkad, interpretedHash = textHash
+  FAILED // senaste tolkningen misslyckades
+  DUPLICATE // samma text som en annan artikel, tolkas inte
+
+  @@schema("spelvarde")
+}
+
+enum SourceKind {
+  COLLECTION // samlingssida: följ länkarna (Travstugan)
+  PAGE // läs sidan direkt som en artikel
+
+  @@schema("spelvarde")
+}
+
 // ---------------------------------------------------------------------------
 // Användare
 
@@ -153,6 +205,9 @@ model User {
   fetchLogs     FetchLog[]
   modelVersions ModelVersion[]
   oddsFetches   OddsFetch[]
+  tipArticles   TipArticle[]
+  tips          Tip[]
+  aiUsages      AiUsage[]
 
   @@schema("spelvarde")
 }
@@ -213,6 +268,9 @@ model Round {
   outcomes    Outcome[]
   tipFacts    TipFact[]
   oddsFetches OddsFetch[]
+  tipArticles TipArticle[]
+  tips        Tip[]
+  aiUsages    AiUsage[]
 
   @@index([date])
   @@schema("spelvarde")
@@ -272,6 +330,7 @@ model Horse {
   records  HorseRecord[]
   comments HorseComment[]
   tipFacts TipFact[]
+  tips     Tip[]
 
   @@schema("spelvarde")
 }
@@ -366,6 +425,7 @@ model Start {
   outcomes     Outcome[]
   tipFacts     TipFact[]
   unibetPrices UnibetPrice[]
+  tips         Tip[]
 
   @@unique([raceId, horseId])
   @@unique([raceId, number])
@@ -668,32 +728,32 @@ model LiveAlarm {
 }
 
 model Outcome {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startId       String
-  start         Start    @relation(fields: [startId], references: [id], onDelete: Cascade)
-  roundId       String
-  round         Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  interesting   Boolean
-  spelbar       Boolean
-  bet           Boolean
-  unibetOdds    Decimal? @db.Decimal(6, 2)
-  betOdds       Decimal? @db.Decimal(6, 2)
-  riktodds      Decimal? @db.Decimal(6, 2)
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startId          String
+  start            Start    @relation(fields: [startId], references: [id], onDelete: Cascade)
+  roundId          String
+  round            Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  interesting      Boolean
+  spelbar          Boolean
+  bet              Boolean
+  unibetOdds       Decimal? @db.Decimal(6, 2)
+  betOdds          Decimal? @db.Decimal(6, 2)
+  riktodds         Decimal? @db.Decimal(6, 2)
   // E2.1 (6.8). Skrivs av frysningen i E4 med värdena vid loppets start:
   // xFactor från Mark, xFactorValue = användarens faktor då (1,00 för NONE),
   // riktoddsX = riktoddset med X-faktor, sourceSupport från Mark och
   // sourceTotal = antal påslagna källor då.
-  xFactor       XFactor  @default(NONE)
-  xFactorValue  Decimal  @default(1.00) @db.Decimal(4, 2)
-  riktoddsX     Decimal? @db.Decimal(6, 2)
-  sourceSupport Int?
-  sourceTotal   Int?
-  frozenAt      DateTime @default(now())
-  place         Int?
-  disqualified  Boolean  @default(false)
-  hit           Boolean?
+  xFactor          XFactor  @default(NONE)
+  xFactorValue     Decimal  @default(1.00) @db.Decimal(4, 2)
+  riktoddsX        Decimal? @db.Decimal(6, 2)
+  sourceSupport    Int?
+  sourceTotal      Int?
+  frozenAt         DateTime @default(now())
+  place            Int?
+  disqualified     Boolean  @default(false)
+  hit              Boolean?
   // E4a (avsnitt 18): Trollspöt precis före loppets start, räknat med
   // trollspot(races, startAt − 1 ms, tolerans). Plats 1–10 i listan, minst X
   // och det uppskattade platsoddset. Alla NULL när hästen inte var med.
@@ -709,26 +769,35 @@ model Outcome {
 }
 
 model Source {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  url           String
-  enabled       Boolean   @default(true)
-  sortOrder     Int       @default(0)
-  lastReadAt    DateTime?
-  lastStatus    String?
-  lastError     String?
-  lastFactCount Int?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  url              String
+  enabled          Boolean     @default(true)
+  sortOrder        Int         @default(0)
+  lastReadAt       DateTime?
+  lastStatus       String?
+  lastError        String?
+  // E5: antal tips (godkända och väntande) från källan i omgången vid senaste läsningen.
+  lastFactCount    Int?
+  // E5 (10.6): läsaren. NULL = välj efter adressen (lib/tips/collection.ts readerFor).
+  kind             SourceKind?
+  // E5: relevanta artiklar vid senaste läsningen. NULL = inte läst än.
+  lastArticleCount Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   tipFacts TipFact[]
+  articles TipArticle[]
+  tips     Tip[]
 
   @@unique([userId, url])
   @@schema("spelvarde")
 }
 
+// Ersatt av Tip i E5. Tas bort i en senare städmigrering efter Mikaels ja.
+// Inga nya läsare eller skrivare får använda den.
 model TipFact {
   id        String   @id @default(cuid())
   userId    String
@@ -751,6 +820,125 @@ model TipFact {
   @@index([roundId])
   @@index([startId])
   @@index([horseId])
+  @@schema("spelvarde")
+}
+
+// En artikel som Hämta tips har hittat för en omgång (per användare, E5 8.4).
+model TipArticle {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId        String
+  source          Source           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  roundId         String
+  round           Round            @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  // Normaliserad: https, utan #, utan utm_*-parametrar, utan / sist.
+  url             String
+  title           String
+  publishedAt     DateTime?
+  stage           TipStage
+  // Brödtexten, högst 60 000 tecken.
+  text            String
+  // Texten kortades före AI-läsningen.
+  truncated       Boolean          @default(false)
+  // sha256 hex av den normaliserade texten.
+  textHash        String
+  interpretedHash String?
+  status          TipArticleStatus @default(NEW)
+  error           String?
+  firstSeenAt     DateTime         @default(now())
+  lastSeenAt      DateTime         @default(now())
+  interpretedAt   DateTime?
+  // Sparade tips och kastade poster vid senaste tolkningen.
+  tipCount        Int?
+  discarded       Int?
+
+  tips   Tip[]
+  usages AiUsage[]
+
+  @@unique([userId, roundId, url])
+  @@index([sourceId])
+  @@index([roundId])
+  @@index([userId, roundId, textHash])
+  @@schema("spelvarde")
+}
+
+// Ett tips om en häst, tolkat ur en artikel (E5 6.11 och 8.4).
+model Tip {
+  id               String     @id @default(cuid())
+  userId           String
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId         String
+  source           Source     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  roundId          String
+  round            Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  articleId        String
+  article          TipArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  // Som AI:n läste texten
+  leg              Int?
+  number           Int?
+  rawHorseName     String
+  role             TipRole
+  roleWord         String?
+  quote            String
+  // Kopplingen. startId = null läses som ej kopplat, oavsett match.
+  startId          String?
+  start            Start?     @relation(fields: [startId], references: [id], onDelete: SetNull)
+  horseId          String?
+  horse            Horse?     @relation(fields: [horseId], references: [id], onDelete: SetNull)
+  match            TipMatch
+  // TipFlag-koderna i 6.11.
+  flags            String[]
+  // "Närmast är …" för NONE (ingen relation, bara id).
+  suggestedStartId String?
+  // Granskningen
+  review           TipReview  @default(PENDING)
+  reviewedAt       DateTime?
+  editedByUser     Boolean    @default(false)
+  // AI:ns koppling och roll, för att visa vad som rättades.
+  aiStartId        String?
+  aiRole           TipRole
+  supersededById   String?
+  supersededBy     Tip?       @relation("TipSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes       Tip[]      @relation("TipSupersede")
+  // Ångra: tillståndet före senaste åtgärden (12, /api/tips/undo).
+  undo             Json?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([userId, roundId, review])
+  @@index([articleId])
+  @@index([startId])
+  @@index([horseId])
+  @@index([sourceId])
+  @@index([supersededById])
+  @@schema("spelvarde")
+}
+
+// Varje anrop till Claude-API:t. Dygnsgränsen räknas här (E5 10.7).
+model AiUsage {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roundId      String?
+  round        Round?      @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  articleId    String?
+  article      TipArticle? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  // "TIPS"
+  purpose      String
+  model        String
+  startedAt    DateTime    @default(now())
+  finishedAt   DateTime?
+  ok           Boolean     @default(false)
+  // Kort orsak, aldrig nyckeln.
+  error        String?
+  inputTokens  Int         @default(0)
+  outputTokens Int         @default(0)
+  costUsd      Decimal     @default(0) @db.Decimal(10, 6)
+
+  @@index([userId, startedAt])
+  @@index([roundId])
+  @@index([articleId])
   @@schema("spelvarde")
 }
 

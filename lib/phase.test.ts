@@ -97,9 +97,9 @@ describe("Nästa steg (3.2)", () => {
   it("5–7. Odds-steg bara när E2 är påslaget", () => {
     const oddsNow = at("2026-10-23T08:00:00Z");
     const rs = round(races({ reviewed: true }));
-    const e1 = { odds: false, coupon: false, live: false, raceView: false, stats: false, results: false };
+    const e1 = { odds: false, coupon: false, live: false, raceView: false, stats: false, results: false, tips: false };
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3, features: e1 }).kind).toBe("ALL_REVIEWED");
-    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true };
+    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true, tips: false };
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, interestingWithoutOdds: 3, features: f }).title).toBe("Fyll i Unibets odds – 3 kvar");
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, spelbarWithoutBet: 2, features: f }).title).toBe("Markera Bet – 2 spelbara");
     expect(nextStep({ now: oddsNow, round: rs, nextAvailable: null, features: f }).kind).toBe("BUILD_COUPON");
@@ -107,7 +107,7 @@ describe("Nästa steg (3.2)", () => {
   });
   it("3–4. Live: larm först, sedan nästa lopp", () => {
     const liveNow = at("2026-10-24T13:30:00Z");
-    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true };
+    const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true, tips: false };
     const rs = round(races());
     expect(nextStep({ now: liveNow, round: rs, nextAvailable: null, unackedAlarms: [{ leg: 7, horseName: "Mateo di Quattro", kind: "RUSH" }], features: f }).title).toBe("Rusning i avd 7 – Mateo di Quattro");
     const s = nextStep({ now: liveNow, round: rs, nextAvailable: null });
@@ -121,7 +121,7 @@ describe("Nästa steg (3.2)", () => {
     const rs = round(races({}, { 3: { mine: [{ name: "Blixt Lane", label: "Bet" }, { name: "Django Silver", label: "Intressant" }] } }));
     expect(nextStep({ now: liveNow, round: rs, nextAvailable: null }).text).toBe("Blixt Lane är Bet. Django Silver är Intressant.");
     // Före E4a: ingen knapp och loppnamnet.
-    const e1 = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: false };
+    const e1 = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: false, tips: false };
     expect(nextStep({ now: liveNow, round: rs, nextAvailable: null, features: e1 })).toMatchObject({ text: "Lopp 3", action: null });
   });
   it("4b. E4a: alla har startat, väntar på resultat med länk", () => {

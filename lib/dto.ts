@@ -177,6 +177,8 @@ export function sourceDto(s: Source): SourceDto {
     lastError: s.lastError,
     lastFactCount: s.lastFactCount,
     createdAt: s.createdAt.toISOString(),
+    kind: s.kind ?? null,
+    lastArticleCount: s.lastArticleCount ?? null,
   };
 }
 

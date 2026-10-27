@@ -4,6 +4,10 @@
 //   SPELVARDE_FIXTURES=atg,ts   båda från fixturer
 //   SPELVARDE_FIXTURES=ts       riktiga ATG, travstatistik från fixturer
 //   SPELVARDE_FIXTURES=unibet   Unibets odds från test/fixtures/unibet (E2.2)
+//   SPELVARDE_FIXTURES=tips     Hämta tips (E5): sidorna från
+//                               test/fixtures/travstugan och AI-svaren från
+//                               test/fixtures/tips-ai. Ingen nyckel behövs och
+//                               inget går ut på nätet.
 //
 // Fixturläget vägrar köras på Vercel (VERCEL är satt där).
 import { readFile } from "node:fs/promises";
@@ -14,6 +18,10 @@ import { prisma } from "@/lib/prisma";
 import { decodeHtml, tsFetch, type TsFetch } from "@/lib/travstatistik";
 import { UnibetError, unibetFetch, type UnibetFetch } from "@/lib/unibet";
 import type { UnibetDeps } from "@/lib/unibet-server";
+import { createClaudeAi, TIPS_MODEL, type TipsAi } from "@/lib/tips/ai";
+import { FETCH_ERR, TipFetchError } from "@/lib/tips/errors";
+import { fetchPage, fetchRobots, type FetchPage, type FetchRobots } from "@/lib/tips/fetch-page";
+import type { TipsDeps } from "@/lib/tips-server";
 
 function fixtureModes(): Set<string> {
   const raw = process.env.SPELVARDE_FIXTURES ?? "";
@@ -118,5 +126,53 @@ export function getUnibetDeps(): UnibetDeps {
     db: prisma,
     unibet: fixtureModes().has("unibet") ? fixtureUnibet : unibetFetch,
     warn: (m) => console.warn("[unibet]", m),
+  };
+}
+
+// ---- Hämta tips (E5 13) ------------------------------------------------------------
+
+// Sidan läses från test/fixtures/travstugan/<sökväg med / bytt mot _>.html
+// (startsidan: index.html), oavsett domän. Saknad fil svarar som 404.
+export const fixtureFetchPage: FetchPage = async (url) => {
+  const u = new URL(url);
+  const name = u.pathname.replace(/^\/+|\/+$/g, "").replace(/\//g, "_") || "index";
+  if (!/^[\w.-]+$/.test(name)) throw new TipFetchError(FETCH_ERR.notFound);
+  try {
+    return { url, html: await readFile(path.join(FIXTURES, "travstugan", `${name}.html`), "utf8") };
+  } catch {
+    throw new TipFetchError(FETCH_ERR.notFound);
+  }
+};
+
+export const fixtureRobots: FetchRobots = async () => {
+  try {
+    return await readFile(path.join(FIXTURES, "travstugan", "robots.txt"), "utf8");
+  } catch {
+    return null;
+  }
+};
+
+// AI-svaret läses från test/fixtures/tips-ai/<första 12 tecknen av textHash>.json
+// (ett sparat tool_use.input), annars en tom lista. Rapporterar 9 000 tokens
+// in och 800 ut, så att AiUsage och dygnsgränsen går att prova utan kostnad.
+export const fixtureAi: TipsAi = async ({ textHash }) => {
+  let input: unknown = { tips: [] };
+  try {
+    input = JSON.parse(await readFile(path.join(FIXTURES, "tips-ai", `${textHash.slice(0, 12)}.json`), "utf8"));
+  } catch {
+    // ingen fixtur: inga tips
+  }
+  return { input, stopReason: "tool_use", inputTokens: 9000, outputTokens: 800, model: TIPS_MODEL };
+};
+
+export function getTipsDeps(): TipsDeps {
+  const fixtures = fixtureModes().has("tips");
+  const key = process.env.ANTHROPIC_API_KEY?.trim();
+  return {
+    db: prisma,
+    fetchPage: fixtures ? fixtureFetchPage : fetchPage,
+    fetchRobots: fixtures ? fixtureRobots : fetchRobots,
+    ai: fixtures ? fixtureAi : key ? createClaudeAi(key) : null,
+    warn: (m) => console.warn("[tips]", m),
   };
 }

@@ -25,6 +25,9 @@ npm run dev                       # http://localhost:3000
 
 Provkörning utan nätet: `SPELVARDE_FIXTURES=atg,ts npm run dev` läser ATG och
 travstatistik.se från `test/fixtures/`. Med bara `ts` anropas riktiga ATG.
+Med `tips` läser Hämta tips (E5) Travstugan från `test/fixtures/travstugan`
+och AI-svaren från `test/fixtures/tips-ai`, utan nät och utan
+`ANTHROPIC_API_KEY`: `SPELVARDE_FIXTURES=atg,ts,tips npm run dev`.
 
 ## Kontroller
 
@@ -70,3 +73,6 @@ för Försök igen.
 - `lib/fetch-round.ts`: hämtningskedjan. `lib/round-server.ts`: läsningen.
 - `lib/phase.ts` (fas, Nästa steg), `lib/gallop.ts`, `lib/names.ts`, `lib/race-class.ts`.
 - `lib/outbox.ts`: utkorgen för klienten (9.3). `lib/types.ts`: API-svaren.
+- `lib/tips/` (rena funktioner) och `lib/tips-server.ts`: Hämta tips (E5,
+  `docs/specs/e5-hamta-tips.md`). Fixturerna i `test/fixtures/travstugan` är
+  upphovsrättsskyddad text och används bara i testerna.

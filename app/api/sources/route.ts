@@ -4,6 +4,7 @@ import { sourceDto } from "@/lib/dto";
 import { badRequest, jsonError, readJson } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { withUser } from "@/lib/route";
+import { readerFor } from "@/lib/tips/collection";
 import { SOURCES_MAX, normalizeSourceUrl, parseSourceName } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export const GET = withUser("sources/get", async ({ user }) => {
 });
 
 // { url, name?, enabled? }. Används också för Ångra efter borttagning.
+// E5: kind sätts efter adressen (samlingssida för travstugan.se och travcash.se).
 export const POST = withUser("sources/post", async ({ req, user }) => {
   const body = await readJson(req, 4_000);
   if (!body) return badRequest("Ogiltig begäran.");
@@ -28,7 +30,7 @@ export const POST = withUser("sources/post", async ({ req, user }) => {
   if (count >= SOURCES_MAX) return badRequest(`Högst ${SOURCES_MAX} källor.`);
   const last = await prisma.source.findFirst({ where: { userId: user.id }, orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
   try {
-    const source = await prisma.source.create({ data: { userId: user.id, url: url.value, name: name.value, enabled, sortOrder: (last?.sortOrder ?? -1) + 1 } });
+    const source = await prisma.source.create({ data: { userId: user.id, url: url.value, name: name.value, enabled, sortOrder: (last?.sortOrder ?? -1) + 1, kind: readerFor({ url: url.value }) } });
     return NextResponse.json({ source: sourceDto(source) }, { status: 201 });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return jsonError(409, "Källan finns redan.");

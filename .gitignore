@@ -7,5 +7,5 @@ next-env.d.ts
 .vercel
 *.tsbuildinfo
 .local-db/
-preview/
+/preview/
 .backtest-cache/

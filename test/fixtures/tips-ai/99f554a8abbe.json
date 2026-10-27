@@ -1,0 +1,11 @@
+{
+  "tips": [
+    { "leg": 1, "number": 10, "horseName": "Fly Express", "role": "SKRALL", "roleWord": "fynd", "quote": "Veckans fynd är Fly Express. Kan överraska från spår 10 om resan blir bra." },
+    { "leg": 2, "number": 2, "horseName": "Gigant Tider", "role": "SPIK", "roleWord": "spik", "quote": "Gigant Tider är vår spik. Överlägsen på papperet och har vunnit fyra raka." },
+    { "leg": 3, "number": null, "horseName": "Mellby Harly", "role": "NAMND", "roleWord": null, "quote": "Mellby Harly kan vara med och slåss om pengarna." },
+    { "leg": 4, "number": 1, "horseName": "Baron Tilly", "role": "FAVORIT", "roleWord": "starkast", "quote": "Baron Tilly är starkast i loppet, och från spår 1 ska han kunna styra." },
+    { "leg": 5, "number": 2, "horseName": "Peacekeeper", "role": "SKRALL", "roleWord": "Skrällen", "quote": "Skrällen: Peacekeeper har visat fin form och kan vara underskattad." },
+    { "leg": 6, "number": 3, "horseName": "Peggy Boko", "role": "SPIK", "roleWord": "lås", "quote": "Peggy Boko är ett lås i sexan." },
+    { "leg": 7, "number": 3, "horseName": "Blizzard Diamant", "role": "FAVORIT", "roleWord": "favorit", "quote": "Blizzard Diamant är rättmätig favorit, men vi gillar inte spåret." }
+  ]
+}

@@ -36,3 +36,11 @@ export async function readJson(request: Request, maxBytes = 64_000): Promise<Rec
 export function isId(value: unknown): value is string {
   return typeof value === "string" && /^[a-z][a-z0-9]{19,32}$/.test(value);
 }
+
+// Svar från lib/*-server.ts ({ status, body }). 429 med retryAfterSec får
+// också Retry-After.
+export function replyJson(res: { status: number; body: unknown }) {
+  const retry = (res.body as { retryAfterSec?: unknown } | null)?.retryAfterSec;
+  const headers = res.status === 429 && typeof retry === "number" ? { "Retry-After": String(retry) } : undefined;
+  return NextResponse.json(res.body, { status: res.status, headers });
+}

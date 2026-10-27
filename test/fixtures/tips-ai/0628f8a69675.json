@@ -1,0 +1,13 @@
+{
+  "_kommentar": "Skrivet för hand (inte ett sparat API-svar) utifrån test/fixtures/travstugan/tidiga-v85-baronen-ar-guldet.html, så som Claude väntas svara. Citaten står ordagrant i artikeltexten. Ersätt med ett riktigt svar när ANTHROPIC_API_KEY finns (E5 13b).",
+  "tips": [
+    { "leg": 2, "number": 2, "horseName": "Gigant Tider", "role": "SPIK", "roleWord": "SPIKARNA", "quote": "BÄSTA TIDIGA SPIKARNA V85-2 Femårige 2 Gigant Tider har haft en framgångsrik säsong och vunnit hälften av sina tolv starter." },
+    { "leg": 4, "number": 1, "horseName": "Baron Tilly", "role": "SPIK", "roleWord": "lösningen", "quote": "Jag tycker Baron Tilly känns mest spännande i loppet och tror han kan vara lösningen!" },
+    { "leg": 7, "number": 3, "horseName": "Blizzard Diamant", "role": "SPIK", "roleWord": "SPIKARNA", "quote": "här tror jag Robin Bakker till en början tar det piano med 3 Blizzard Diamant - men i ett andraskede kommer han köra framåt!" },
+    { "leg": 6, "number": 3, "horseName": "Peggy Boko", "role": "SPIK", "roleWord": "LÅSET", "quote": "LÅSET V85-6 Robin Bakker är även högaktuell i stonas upplaga av Axel Jensens Minneslopp. Man kan tycka att 3 Peggy Boko möter något enklare motstånd den här gången" },
+    { "leg": 6, "number": 1, "horseName": "Mimosa To Martini", "role": "NAMND", "roleWord": null, "quote": "Mimosa To Martini brukar kunna höja sig i täten!" },
+    { "leg": 1, "number": 10, "horseName": "Fly Express", "role": "SKRALL", "roleWord": "FYND", "quote": "TIDIGA FYND V85-1 10 Fly Express är mycket tidig i inledande Bronsdivisionen" },
+    { "leg": 1, "number": 1, "horseName": "Jaguar Godiva", "role": "NAMND", "roleWord": null, "quote": "Annan i loppet som är värd en varning är 1 Jaguar Godiva." },
+    { "leg": 5, "number": 2, "horseName": "Peacekeeper", "role": "SKRALL", "roleWord": "skrällbud", "quote": "Ett norskt skrällbud i loppet är 2 Peacekeeper som står perfekt till i spårtrappan" }
+  ]
+}
