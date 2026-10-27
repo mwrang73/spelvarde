@@ -580,6 +580,49 @@ export function withExtras(zr: ZRace[], keys: readonly ExtraKey[], ref: ReturnTy
   });
 }
 
+// ---- Bra form (backtest 2026-10-27) -----------------------------------------------------------
+//
+// Mikaels definition: platsat (topp 3, inte diskad) i båda de två senaste
+// starterna, och den senaste starten högst `maxDays` dagar före loppdagen.
+// Strukna räknas inte som starter (posterna i BtStart är redan utan strukna och
+// före loppdagen, nyast först). Färre än 2 tidigare starter: inte Bra form.
+// maxDays = Infinity ger "platsat i båda de två senaste" utan datumgräns.
+// Finns bara i backtestet; appen använder det inte.
+
+type BraRecord = Pick<BtStart["records"][number], "date" | "place" | "disqualified">;
+const placedIn = (r: BraRecord) => !r.disqualified && r.place !== null && r.place >= 1 && r.place <= 3;
+
+export function braForm(records: BraRecord[], raceDate: string, maxDays = 28): boolean {
+  if (records.length < 2) return false;
+  return placedIn(records[0]) && placedIn(records[1]) && daysBetween(records[0].date, raceDate) <= maxDays;
+}
+
+// braForm: 4 veckor · braForm6v: 6 veckor · plats2: båda de två senaste utan datumgräns.
+export const BRA_KEYS = ["braForm", "braForm6v", "plats2"] as const;
+export type BraKey = (typeof BRA_KEYS)[number];
+export const BRA_DAYS: Record<BraKey, number> = { braForm: 28, braForm6v: 42, plats2: Infinity };
+
+// 0/1 per startande häst (samma ordning som running/predsFor).
+export function braFeatures(race: BtRace): Record<BraKey, number[]> {
+  const run = race.starts.filter((s) => !s.scratched);
+  return Object.fromEntries(BRA_KEYS.map((k) => [k, run.map((s) => (braForm(s.records, race.date, BRA_DAYS[k]) ? 1 : 0))])) as Record<BraKey, number[]>;
+}
+
+// z inom loppet för valda Bra form-varianter, tillagt i z-raderna (alla lika → 0).
+export function withBraForm(zr: ZRace[], keys: readonly BraKey[]): ZRace[] {
+  return zr.map(({ race, z }) => {
+    const raw = braFeatures(race);
+    const add = z.map((zi) => ({ ...zi }) as Record<string, number>);
+    for (const k of keys) {
+      const vals = raw[k];
+      const m = vals.reduce((a, b) => a + b, 0) / (vals.length || 1);
+      const sd = Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / (vals.length || 1));
+      vals.forEach((v, i) => (add[i][k] = sd > 1e-12 ? (v - m) / sd : 0));
+    }
+    return { race, z: add as Record<InputKey, number>[] };
+  });
+}
+
 // ---- Antal positiva signaler (backtest 2026-10-20) ----------------------------------------
 // Samma räkning som appen (lib/positive-signals.ts).
 export { SIGNAL_KEYS, type SignalKey } from "@/lib/positive-signals";

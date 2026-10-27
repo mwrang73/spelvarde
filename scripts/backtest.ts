@@ -36,6 +36,11 @@ import {
   toFacts,
   type SignalKey,
   applyPlatt,
+  BRA_DAYS,
+  BRA_KEYS,
+  braFeatures,
+  withBraForm,
+  type BraKey,
   EXTRA_KEYS,
   extraFeatures,
   fitPlatt,
@@ -70,7 +75,7 @@ import {
   type RoiRow,
 } from "@/lib/backtest";
 import { kmRef } from "@/lib/kmref";
-import { computeRace, harvilleTop3, INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
+import { computeRace, harvilleTop3, INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 
 const ROOT = process.cwd();
@@ -375,6 +380,7 @@ async function main() {
   // Antal positiva signaler: topp 3 mot strecket (marknaden) och v3, på hela underlaget.
   const counts = signalCountAnalysis(races, cut);
   const troll = trollAnalysis(races, cut);
+  const bra = braFormAnalysis(races, cut, { zTrainS, zTestS, zTrain, zTest });
   console.log(`Mikaels regel (v3 ≥ 50 %, platsodds ≥ 2,0): ${troll.rules[0].n} spel, träff ${p1(troll.rules[0].hit)}, ROI ${signedPct(troll.rules[0].roi)}`);
 
   const fixed: { name: string; beta: number }[] = o.betas.map((b) => ({ name: `v1 β = ${String(b).replace(".", ",")}`, beta: b }));
@@ -410,6 +416,7 @@ async function main() {
     signals: { rows: signals, baseS, baseN, allS: allS.weights, allN: allN.weights, platt, plattAll, v3, v3n, plattV3, capV3 },
     counts,
     troll,
+    bra,
     variants: variants.map((v) => ({
       name: v.name,
       kind: v.kind,
@@ -564,6 +571,202 @@ function trollAnalysis(races: BtRace[], testFrom: string) {
   return { rounds, roundsTest, k, rules, troll };
 }
 
+// ---- Bra form (backtest 2026-10-27) ------------------------------------------------------------
+//
+// Bra form = platsat i båda de två senaste starterna och senaste starten högst
+// 28 dagar före loppdagen (lib/backtest.ts, braForm). Varianter: 6 veckor och
+// utan datumgräns. 1) Hur vanlig och hur bra mot strecket och v3. 2) Som extra
+// indata ovanpå v2 och v3, med och utan streck. 3) Som bricka: favoriter,
+// Mikaels regel och spelbart (proxy: ATG:s platsodds mot riktoddset).
+
+type BraRow = CountRow & { bra: Record<BraKey, boolean>; few: boolean; daysLast: number | null; v3Rank: number; odds: number | null; gameId: string };
+
+// Bootstrap över lopp: 95 % intervall för Δ log loss (b − a) på samma starter.
+function bootDelta(a: Pred[], b: Pred[], n = 1000): { lo: number; hi: number } {
+  const per = new Map<string, { d: number; k: number }>();
+  const ll = (x: Pred) => -(x.y ? Math.log(Math.min(1 - 1e-6, Math.max(1e-6, x.p))) : Math.log(1 - Math.min(1 - 1e-6, Math.max(1e-6, x.p))));
+  a.forEach((x, i) => {
+    const e = per.get(x.raceKey) ?? { d: 0, k: 0 };
+    e.d += ll(b[i]) - ll(x);
+    e.k++;
+    per.set(x.raceKey, e);
+  });
+  const rs = [...per.values()];
+  let seed = 12345;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const out: number[] = [];
+  for (let it = 0; it < n; it++) {
+    let d = 0;
+    let k = 0;
+    for (let j = 0; j < rs.length; j++) {
+      const r = rs[Math.floor(rnd() * rs.length)];
+      d += r.d;
+      k += r.k;
+    }
+    out.push(d / k);
+  }
+  out.sort((x, y) => x - y);
+  return { lo: out[Math.floor(n * 0.025)], hi: out[Math.floor(n * 0.975)] };
+}
+
+type BraModelRow = { label: string; key: BraKey; w: number; base: number; ll: number; delta: number; lo: number; hi: number };
+
+function braFormAnalysis(races: BtRace[], testFrom: string, zs: { zTrainS: ReturnType<typeof zRaces>; zTestS: ReturnType<typeof zRaces>; zTrain: ReturnType<typeof zRaces>; zTest: ReturnType<typeof zRaces> }) {
+  // 1) Förekomst och träff, hela underlaget.
+  const v3Params = { ...V1_PARAMS, beta: 1, ...RECOMMENDED_CALIBRATION };
+  const rows: BraRow[] = [];
+  const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+  for (const race of races) {
+    const run = race.starts.filter((s) => !s.scratched);
+    const flags = positiveSignals(race);
+    const bf = braFeatures(race);
+    const st = run.map((s) => Math.max(s.streck ?? 0, 1e-4));
+    const sum = st.reduce((a, b) => a + b, 0);
+    const pm = harvilleTop3(st.map((v) => v / sum));
+    const v3 = computeRace(toFacts(race, true), RECOMMENDED_WEIGHTS, v3Params).map((r) => r.probTop3);
+    const order = [...st.keys()].sort((a, b) => st[b] - st[a]);
+    const v3Order = [...v3.keys()].sort((a, b) => v3[b] - v3[a]);
+    run.forEach((s, i) => {
+      rows.push({
+        gameId: race.gameId,
+        date: race.date,
+        count: SIGNAL_KEYS.filter((k) => flags[i][k]).length,
+        flags: flags[i],
+        y: s.top3,
+        pMarket: pm[i],
+        pV3: v3[i] ?? NaN,
+        streckRank: order.indexOf(i) + 1,
+        v3Rank: v3Order.indexOf(i) + 1,
+        payout: s.placePayout,
+        hasPool: race.placesPaid !== null && s.placeOdds !== null,
+        odds: race.placesPaid !== null ? s.placeOdds : null,
+        bra: Object.fromEntries(BRA_KEYS.map((k) => [k, bf[k][i] === 1])) as Record<BraKey, boolean>,
+        few: s.records.length < 2,
+        daysLast: s.records[0] ? daysBetween(s.records[0].date, race.date) : null,
+      });
+    });
+  }
+  const train = rows.filter((r) => r.date < testFrom);
+  const test = rows.filter((r) => r.date >= testFrom);
+  const B = (r: BraRow) => r.bra.braForm;
+  const prevalence = {
+    starts: rows.length,
+    bra: rows.filter(B).length,
+    bra6v: rows.filter((r) => r.bra.braForm6v).length,
+    plats2: rows.filter((r) => r.bra.plats2).length,
+    few: rows.filter((r) => r.few).length,
+    testStarts: test.length,
+    testBra: test.filter(B).length,
+  };
+  const groups = [
+    groupOf("Alla", rows),
+    groupOf("Bra form (4 v)", rows.filter(B)),
+    groupOf("Inte Bra form", rows.filter((r) => !B(r))),
+    groupOf("· varav färre än 2 tidigare starter", rows.filter((r) => r.few)),
+    groupOf("Bra form (4 v) · träning", train.filter(B)),
+    groupOf("Bra form (4 v) · test", test.filter(B)),
+    groupOf("Bra form 6 v", rows.filter((r) => r.bra.braForm6v)),
+    groupOf("Platsat i båda senaste, vilken vila som helst", rows.filter((r) => r.bra.plats2)),
+    groupOf("Platsat i båda senaste, senaste 29–42 dagar", rows.filter((r) => r.bra.braForm6v && !B(r))),
+    groupOf("Platsat i båda senaste, senaste mer än 42 dagar", rows.filter((r) => r.bra.plats2 && !r.bra.braForm6v)),
+  ];
+  const byForm = [
+    groupOf("Bra form och form (≥ 2 ettor/tvåor av 5)", rows.filter((r) => B(r) && r.flags.form)),
+    groupOf("Bra form men inte form", rows.filter((r) => B(r) && !r.flags.form)),
+    groupOf("Form men inte Bra form", rows.filter((r) => !B(r) && r.flags.form)),
+    groupOf("Varken eller", rows.filter((r) => !B(r) && !r.flags.form)),
+  ];
+  const byStreck = [
+    groupOf("Streckfavorit · Bra form", rows.filter((r) => r.streckRank === 1 && B(r))),
+    groupOf("Streckfavorit · inte", rows.filter((r) => r.streckRank === 1 && !B(r))),
+    groupOf("Streck 2–3 · Bra form", rows.filter((r) => r.streckRank >= 2 && r.streckRank <= 3 && B(r))),
+    groupOf("Streck 2–3 · inte", rows.filter((r) => r.streckRank >= 2 && r.streckRank <= 3 && !B(r))),
+    groupOf("Streck 4–6 · Bra form", rows.filter((r) => r.streckRank >= 4 && r.streckRank <= 6 && B(r))),
+    groupOf("Streck 4–6 · inte", rows.filter((r) => r.streckRank >= 4 && r.streckRank <= 6 && !B(r))),
+    groupOf("Streck 7+ · Bra form", rows.filter((r) => r.streckRank >= 7 && B(r))),
+    groupOf("Streck 7+ · inte", rows.filter((r) => r.streckRank >= 7 && !B(r))),
+  ];
+
+  // 2) Som indata. En variant i taget, bara dess vikt anpassas på träningsdelen.
+  const { zTrainS, zTestS, zTrain, zTest } = zs;
+  const bases: { label: string; w: Weights; s: boolean }[] = [
+    { label: "v2 med streck", w: V2_WEIGHTS, s: true },
+    { label: "v2 utan streck", w: V2_NO_STRECK, s: false },
+    { label: "v3 med streck (har form och vila)", w: RECOMMENDED_WEIGHTS, s: true },
+    { label: "v3 utan streck (har form och vila)", w: RECOMMENDED_NO_STRECK, s: false },
+  ];
+  const model: BraModelRow[] = [];
+  for (const b of bases) {
+    const tr = b.s ? zTrainS : zTrain;
+    const te = b.s ? zTestS : zTest;
+    const basePreds = zPreds(te, b.w, 1);
+    const base = logLoss(basePreds);
+    for (const k of BRA_KEYS) {
+      const fit = fitWeights(withBraForm(tr, [k]), { ...b.w, [k]: 0 } as Weights, 1, [k as InputKey]);
+      const preds = zPreds(withBraForm(te, [k]), fit.weights, 1);
+      const ll = logLoss(preds);
+      const ci = bootDelta(basePreds, preds);
+      model.push({ label: b.label, key: k, w: (fit.weights as Record<string, number>)[k], base, ll, delta: ll - base, lo: ci.lo, hi: ci.hi });
+    }
+    console.log(`  Bra form ovanpå ${b.label}: ${model.slice(-3).map((m) => `${m.key} ${f(m.w, 2)} Δ ${f(m.delta, 4)}`).join(" · ")}`);
+  }
+  // Alla vikter anpassas på nytt, med och utan Bra form (4 v): ändras form och vila?
+  const keysS = [...INPUT_KEYS] as InputKey[];
+  const keysN = INPUT_KEYS.filter((k) => k !== "streck") as InputKey[];
+  const refit = (s: boolean) => {
+    const tr = s ? zTrainS : zTrain;
+    const te = s ? zTestS : zTest;
+    const start = s ? RECOMMENDED_WEIGHTS : RECOMMENDED_NO_STRECK;
+    const keys = s ? keysS : keysN;
+    const without = fitWeights(tr, start, 1, keys).weights;
+    const withB = fitWeights(withBraForm(tr, ["braForm"]), { ...without, braForm: 0 } as Weights, 1, [...keys, "braForm" as InputKey]).weights;
+    const pa = zPreds(te, without, 1);
+    const pb = zPreds(withBraForm(te, ["braForm"]), withB, 1);
+    const ci = bootDelta(pa, pb);
+    return { without, with: withB, llWithout: logLoss(pa), llWith: logLoss(pb), lo: ci.lo, hi: ci.hi };
+  };
+  const refitS = refit(true);
+  const refitN = refit(false);
+  console.log(`  Bra form, alla vikter om: med streck Δ ${f(refitS.llWith - refitS.llWithout, 4)}, utan ${f(refitN.llWith - refitN.llWithout, 4)}`);
+
+  // 3) Som bricka.
+  const favourites = [
+    groupOf("v3-favorit (högst chans i loppet) · Bra form", rows.filter((r) => r.v3Rank === 1 && B(r))),
+    groupOf("v3-favorit · inte Bra form", rows.filter((r) => r.v3Rank === 1 && !B(r))),
+    groupOf("v3-favorit · Bra form · test", test.filter((r) => r.v3Rank === 1 && B(r))),
+    groupOf("v3-favorit · inte Bra form · test", test.filter((r) => r.v3Rank === 1 && !B(r))),
+    groupOf("v3 topp 3 i loppet · Bra form", rows.filter((r) => r.v3Rank <= 3 && B(r))),
+    groupOf("v3 topp 3 i loppet · inte Bra form", rows.filter((r) => r.v3Rank <= 3 && !B(r))),
+  ];
+  const withOdds = rows.filter((r) => r.odds !== null);
+  const rule = (r: BraRow) => r.pV3 >= 0.5 && (r.odds as number) >= 2;
+  // Proxy för Spelbar (lib/spelbar.ts): platsodds ≥ 1,75 och ≥ riktodds − 0,10.
+  const spel = (r: BraRow) => (r.odds as number) >= 1.75 && (r.odds as number) >= 1 / r.pV3 - 0.1;
+  const spelInt = (r: BraRow) => spel(r) && r.pV3 >= 0.35;
+  const play = [
+    groupOf("Mikaels regel (v3 ≥ 50 %, platsodds ≥ 2,0) · Bra form", withOdds.filter((r) => rule(r) && B(r))),
+    groupOf("Mikaels regel · inte Bra form", withOdds.filter((r) => rule(r) && !B(r))),
+    groupOf("Spelbar-proxy (platsodds ≥ 1,75 och ≥ riktodds − 0,10) · Bra form", withOdds.filter((r) => spel(r) && B(r))),
+    groupOf("Spelbar-proxy · inte Bra form", withOdds.filter((r) => spel(r) && !B(r))),
+    groupOf("Spelbar-proxy och v3 ≥ 35 % · Bra form", withOdds.filter((r) => spelInt(r) && B(r))),
+    groupOf("Spelbar-proxy och v3 ≥ 35 % · inte Bra form", withOdds.filter((r) => spelInt(r) && !B(r))),
+    groupOf("Spelbar-proxy och v3 ≥ 35 % · Bra form · test", withOdds.filter((r) => spelInt(r) && B(r) && r.date >= testFrom)),
+    groupOf("Spelbar-proxy och v3 ≥ 35 % · inte Bra form · test", withOdds.filter((r) => spelInt(r) && !B(r) && r.date >= testFrom)),
+  ];
+  // Som elfte signal: antal och Lågt streck (minst 4 signaler, streck 4:e+).
+  const c11 = (r: BraRow) => r.count + (B(r) ? 1 : 0);
+  const byCount11 = [0, 1, 2, 3, 4, 5, 6].map((c) => groupOf(c === 6 ? "6+" : String(c), rows.filter((r) => (c === 6 ? c11(r) >= 6 : c11(r) === c))));
+  const low = [
+    groupOf("Lågt streck i dag (10 signaler) · test", test.filter((r) => r.count >= 4 && r.streckRank >= 4)),
+    groupOf("Lågt streck med Bra form som 11:e · test", test.filter((r) => c11(r) >= 4 && r.streckRank >= 4)),
+    groupOf("Lågt streck i dag · träning", train.filter((r) => r.count >= 4 && r.streckRank >= 4)),
+    groupOf("Lågt streck med Bra form som 11:e · träning", train.filter((r) => c11(r) >= 4 && r.streckRank >= 4)),
+    groupOf("Streck 4:e+ och Bra form (oavsett antal)", rows.filter((r) => r.streckRank >= 4 && B(r))),
+    groupOf("Streck 4:e+ och Bra form · test", test.filter((r) => r.streckRank >= 4 && B(r))),
+  ];
+  return { prevalence, groups, byForm, byStreck, model, refitS, refitN, favourites, play, byCount11, low, days: BRA_DAYS.braForm };
+}
+
 type SignalRow = { key: string; coverage: number; starts: number; wS: number; dS: number; wN: number; dN: number };
 
 type PostInfo = { from: string; to: string; races: number; starts: number; withPost: number };
@@ -618,6 +821,7 @@ type Result = {
   signals: { rows: SignalRow[]; baseS: number; baseN: number; allS: Weights; allN: Weights; platt: Platt; plattAll: Platt; v3: Weights; v3n: Weights; plattV3: Platt; capV3: number };
   counts: ReturnType<typeof signalCountAnalysis>;
   troll: ReturnType<typeof trollAnalysis>;
+  bra: ReturnType<typeof braFormAnalysis>;
   variants: VariantResult[];
 };
 
@@ -709,6 +913,12 @@ function report(r: Result): string {
   } else L("- Spår: inte prövat i den här körningen (--utan-spar): `spar` = 0 för alla.");
   L("- Streck används inte i modellen (vikt 0), bara i referensen Marknaden (streck) och i den extra varianten med streck.");
   L();
+  const gTable = (gs: Group[]) => {
+    L("| Grupp | Starter | Topp 3 verklig | Strecket säger | v3 säger | Verklig / streck | ROI platspool |\n|---|---:|---:|---:|---:|---:|---:|");
+    for (const g of gs) L(`| ${g.label} | ${g.n} | ${p1(g.top3)} | ${p1(g.market)} | ${p1(g.v3)} | ${f(g.top3 / g.market, 2)} | ${signedPct(g.roi)} (${g.poolN}) |`);
+    L();
+  };
+  braReport(r.bra, L, gTable);
   L("## Mått, testdelen");
   L();
   L(metricsTable(r.variants.map((v) => ({ name: v.name, m: v.test }))));
@@ -766,11 +976,6 @@ function report(r: Result): string {
     L();
   }
   const ct = r.counts;
-  const gTable = (gs: Group[]) => {
-    L("| Grupp | Starter | Topp 3 verklig | Strecket säger | v3 säger | Verklig / streck | ROI platspool |\n|---|---:|---:|---:|---:|---:|---:|");
-    for (const g of gs) L(`| ${g.label} | ${g.n} | ${p1(g.top3)} | ${p1(g.market)} | ${p1(g.v3)} | ${f(g.top3 / g.market, 2)} | ${signedPct(g.roi)} (${g.poolN}) |`);
-    L();
-  };
   const tr = r.troll;
   const rTable = (rs: RuleResult[]) => {
     L("| Regel | Spel | Per omgång | Träff | Medelodds | ROI | ROI testdelen (spel) |\n|---|---:|---:|---:|---:|---:|---:|");
@@ -833,6 +1038,56 @@ function report(r: Result): string {
   L(bandsTable(v1.roiAll!["1"].bands));
   L();
   return lines.join("\n");
+}
+
+function braReport(b: ReturnType<typeof braFormAnalysis>, L: (x?: string) => void, gTable: (gs: Group[]) => void) {
+  const pv = b.prevalence;
+  const pc = (a: number, n: number) => (n ? p1(a / n) : "–");
+  const ws = (w: Weights) => Object.entries(w).filter(([, v]) => Math.abs(v) >= 0.005).map(([k, v]) => `${k} ${f(v, 2)}`).join(" · ");
+  L("## Bra form");
+  L();
+  L(`Bra form = platsat (topp 3, inte diskad) i båda de två senaste starterna och den senaste starten högst ${b.days} dagar före loppdagen. Strukna räknas inte som starter; färre än 2 tidigare starter = inte Bra form. Räknat ur hästens poster före loppdagen (samma som form och vila). Varianter: **braForm6v** (42 dagar) och **plats2** (ingen datumgräns).`);
+  L();
+  L(`Hela underlaget: ${pv.starts} starter. Bra form ${pv.bra} (${pc(pv.bra, pv.starts)}), 6 veckor ${pv.bra6v} (${pc(pv.bra6v, pv.starts)}), utan datumgräns ${pv.plats2} (${pc(pv.plats2, pv.starts)}). Färre än 2 tidigare starter: ${pv.few}. Testdelen: ${pv.testBra} av ${pv.testStarts} (${pc(pv.testBra, pv.testStarts)}).`);
+  L();
+  L("### Träff mot strecket och v3");
+  L();
+  gTable(b.groups);
+  L("### Mot den befintliga signalen form");
+  L();
+  gTable(b.byForm);
+  L("### Inom streckplacering i loppet");
+  L();
+  gTable(b.byStreck);
+  L("### Som indata i modellen (testdelen)");
+  L();
+  L("En variant i taget: bara dess vikt anpassas på träningsdelen (z inom loppet). Δ = ändring i log loss på testdelen (negativt = bättre), 95 % intervall med bootstrap över lopp.");
+  L();
+  L("| Grundmodell | Variant | Vikt | Log loss före | Efter | Δ | 95 % intervall |\n|---|---|---:|---:|---:|---:|---|");
+  for (const m of b.model) L(`| ${m.label} | ${m.key} | ${f(m.w, 2)} | ${f(m.base, 4)} | ${f(m.ll, 4)} | ${f(m.delta, 4)} | ${f(m.lo, 4)} – ${f(m.hi, 4)} |`);
+  L();
+  L("Alla vikter anpassade på nytt (startpunkt v3), utan och med Bra form (4 v):");
+  L();
+  for (const [lbl, x] of [["Med streck", b.refitS], ["Utan streck", b.refitN]] as const) {
+    L(`- **${lbl}:** log loss ${f(x.llWithout, 4)} → ${f(x.llWith, 4)} (Δ ${f(x.llWith - x.llWithout, 4)}, 95 % ${f(x.lo, 4)} – ${f(x.hi, 4)}).`);
+    L(`  - Utan Bra form: ${ws(x.without)}`);
+    L(`  - Med Bra form: ${ws(x.with)}`);
+  }
+  L();
+  L("### Som bricka: favoriter och spelbara");
+  L();
+  L("v3 = rekommenderad modell med kalibrering. ROI = 1 kr på plats i ATG:s platspool. Spelbar-proxy: ATG:s platsodds (slutodds) står i för Unibets, Intressant går inte att backtesta.");
+  L();
+  gTable(b.favourites);
+  gTable(b.play);
+  L("### Bra form som elfte positiv signal");
+  L();
+  L("Per antal signaler (10 + Bra form), hela underlaget:");
+  L();
+  gTable(b.byCount11);
+  L("Lågt streck (minst 4 signaler, inte bland loppets 3 mest streckade):");
+  L();
+  gTable(b.low);
 }
 
 main().catch((e) => {

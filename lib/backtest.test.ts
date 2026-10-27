@@ -3,6 +3,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   attachPosts,
+  braFeatures,
+  braForm,
+  withBraForm,
   extraFeatures,
   fitPlatt,
   kmReference,
@@ -344,5 +347,31 @@ describe("signalerna och kalibreringen", () => {
     const c = fitPlatt(preds);
     expect(Math.abs(c.a)).toBeLessThan(0.2);
     expect(Math.abs(c.b - 1)).toBeLessThan(0.2);
+  });
+});
+
+describe("Bra form (backtest 2026-10-27)", () => {
+  const r = (date: string, place: number | null, disqualified = false) => ({ date, place, disqualified });
+  it("topp 3 i båda de två senaste och senaste start högst 28 dagar före loppdagen", () => {
+    expect(braForm([r("2026-10-01", 3), r("2026-09-10", 1)], "2026-10-29")).toBe(true);
+    expect(braForm([r("2026-10-01", 3), r("2026-09-10", 1)], "2026-10-30")).toBe(false);
+    expect(braForm([r("2026-10-01", 3), r("2026-09-10", 1)], "2026-10-30", 42)).toBe(true);
+    expect(braForm([r("2025-01-01", 2), r("2024-12-01", 2)], "2026-10-30", Infinity)).toBe(true);
+  });
+  it("diskning, fyra eller sämre och färre än två starter ger inte Bra form", () => {
+    expect(braForm([r("2026-10-20", 1, true), r("2026-10-01", 1)], "2026-10-27")).toBe(false);
+    expect(braForm([r("2026-10-20", 1), r("2026-10-01", 4)], "2026-10-27")).toBe(false);
+    expect(braForm([r("2026-10-20", 1), r("2026-10-01", null)], "2026-10-27")).toBe(false);
+    expect(braForm([r("2026-10-20", 1)], "2026-10-27")).toBe(false);
+    expect(braForm([], "2026-10-27")).toBe(false);
+  });
+  it("braFeatures och withBraForm: 0/1 per startande, z inom loppet, strukna hoppas över", () => {
+    const st = (n: number, records: ReturnType<typeof r>[], scratched = false) => ({ number: n, scratched, records }) as unknown as BtStart;
+    const race = { key: "r", date: "2026-10-27", gameType: "V85", gameId: "g", leg: 1, distance: 2140, startMethod: "AUTO" as const, placesPaid: 3, starts: [st(1, [r("2026-10-20", 1), r("2026-10-01", 2)]), st(2, [], true), st(3, [r("2026-09-01", 1), r("2026-08-01", 2)]), st(4, [])] };
+    expect(braFeatures(race)).toEqual({ braForm: [1, 0, 0], braForm6v: [1, 0, 0], plats2: [1, 1, 0] });
+    const z = withBraForm([{ race, z: [{}, {}, {}] as never }], ["braForm"])[0].z as unknown as Record<string, number>[];
+    expect(z[0].braForm).toBeGreaterThan(0);
+    expect(z[1].braForm).toBeCloseTo(z[2].braForm, 9);
+    expect(z.reduce((a, x) => a + x.braForm, 0)).toBeCloseTo(0, 9);
   });
 });

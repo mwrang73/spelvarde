@@ -201,6 +201,21 @@ uppstår bara om Unibets fasta odds är högre än vad marknaden (strecket och
 platspoolen) säger. Jämför därför Unibets odds mot marknadens chans, inte bara
 mot v3, och samla Unibet-odds med utfall för att mäta det.
 
+## Bra form (27 okt)
+
+Rapport: `2026-10-27-bra-form.md`. Bra form = platsat i båda de två senaste
+starterna och senaste starten högst 4 veckor före loppdagen (Mikaels
+definition). Underlaget har nu 2 320 lopp, test 695 (utländska hästar med sedan
+commit 9dbc83b), samma delningsdatum.
+
+| Signal | Andel | Topp 3 / strecket säger | Δ med streck | Δ utan streck | Bedömning |
+|---|---:|---:|---:|---:|---|
+| Bra form (4 v) | 19 % | 36,2 % / 39,3 % | 0 (vikt 0) | −0,0001 (vikt 0,03) | Inget. Redan inprisad, något överskattad. |
+
+6 veckor eller ingen datumgräns gav samma resultat. Som bricka ändrade den inte
+träffen för v3-favoriter, Mikaels regel eller spelbara (proxy) i testdelen.
+**Beslut (förslag):** läggs inte in i modellen eller bland de positiva signalerna.
+
 ## Det som inte går att backtesta än
 
 - **Unibets odds:** det enda som kan visa en verklig fördel. Appen sparar
