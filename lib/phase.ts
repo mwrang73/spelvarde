@@ -1,7 +1,7 @@
 // Fas (3.1) och Nästa steg (3.2). Rena funktioner, all tid i Europe/Stockholm.
 
 import { FEATURES, type Features } from "@/lib/features";
-import { addDaysToDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
+import { addDaysToDateString, stockholmDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
 import { DEFAULT_GAME_TYPE, gameTypeOfId } from "@/lib/game-type";
 import { summaryText } from "@/lib/outcomes";
 import type { OutcomeSummary } from "@/lib/types";
@@ -29,6 +29,12 @@ export function phaseBounds(date: string) {
 export function isRoundFinished(races: PhaseRace[]): boolean {
   if (!races.length) return false;
   return races.every((r) => r.hasResult || r.cancelled) && races.some((r) => r.hasResult);
+}
+
+// Omgångens dag är slut (Stockholm). Gäller även när ett resultat saknas, så
+// att en omgång som aldrig blir Klart inte stänger vägen till nästa.
+export function roundDayPassed(date: string, now: Date): boolean {
+  return stockholmDateString(now) > date;
 }
 
 export function computePhase(date: string, races: PhaseRace[], now: Date): Phase {
@@ -159,7 +165,7 @@ export function nextStep(input: NextStepInput): NextStep {
   // 1. Ingen omgång, eller nästa spel finns men är inte hämtat.
   if (!round) return fetchStep(nextAvailable, gameType);
   const phase = computePhase(round.date, round.races, now);
-  if (phase === "KLART" && nextAvailable && !nextAvailable.fetched) return fetchStep(nextAvailable, gameType);
+  if ((phase === "KLART" || roundDayPassed(round.date, now)) && nextAvailable && !nextAvailable.fetched) return fetchStep(nextAvailable, gameType);
   const roundGame = round.gameType ?? DEFAULT_GAME_TYPE;
 
   // 2. Hämtningen ofullständig.

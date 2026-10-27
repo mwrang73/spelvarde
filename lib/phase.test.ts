@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePhase, dayDateLabel, isRoundFinished, nextStep, phaseBounds, phaseRail, type NextStepRace } from "@/lib/phase";
+import { computePhase, dayDateLabel, isRoundFinished, nextStep, phaseBounds, phaseRail, roundDayPassed, type NextStepRace } from "@/lib/phase";
 
 const D = "2026-10-24";
 // 8 lopp från 15:00 svensk tid (13:00Z, sommartid) med 22 min mellanrum.
@@ -65,6 +65,21 @@ describe("Nästa steg (3.2)", () => {
     expect(s.title).toBe("Hämta omgång – V75 Solvalla lör 28 nov");
     expect(s.text).toBe("Hämta veckans V75 från ATG. Startlistan brukar finnas från söndag kväll.");
     expect(nextStep({ now, gameType: "V75", round: null, nextAvailable: null }).text).toContain("veckans V75");
+  });
+  it("1. klar omgång: Hämta nästa omgång när den inte är hämtad", () => {
+    const tue = at("2026-10-27T10:00:00Z");
+    const nxt = { gameId: "V85_2026-10-31_5_5", trackName: "Solvalla", date: "2026-10-31", fetched: false };
+    const done = round(races({ hasResult: true, reviewed: true }));
+    expect(nextStep({ now: tue, round: done, nextAvailable: nxt })).toMatchObject({ kind: "FETCH_ROUND", action: { type: "fetch", gameId: "V85_2026-10-31_5_5" } });
+    expect(nextStep({ now: tue, round: done, nextAvailable: { ...nxt, fetched: true } }).kind).not.toBe("FETCH_ROUND");
+  });
+  it("1. ett resultat saknas men dagen har passerat: Hämta nästa omgång ändå", () => {
+    const nxt = { gameId: "V85_2026-10-31_5_5", trackName: "Solvalla", date: "2026-10-31", fetched: false };
+    const stuck = round(races({ hasResult: true, reviewed: true }, { 8: { hasResult: false } }));
+    expect(nextStep({ now: at("2026-10-24T21:00:00Z"), round: stuck, nextAvailable: nxt }).kind).toBe("LIVE_WAITING");
+    expect(nextStep({ now: at("2026-10-25T08:00:00Z"), round: stuck, nextAvailable: nxt }).kind).toBe("FETCH_ROUND");
+    expect(roundDayPassed(D, at("2026-10-24T21:59:00Z"))).toBe(false);
+    expect(roundDayPassed(D, at("2026-10-24T22:00:00Z"))).toBe(true);
   });
   it("2. ofullständig hämtning går före allt annat", () => {
     expect(nextStep({ now, round: round(races(), "PARTIAL"), nextAvailable: null }).kind).toBe("RESUME_FETCH");

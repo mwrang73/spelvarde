@@ -11,7 +11,7 @@ import { positiveSignals, type SignalResult } from "@/lib/positive-signals";
 import { barefoot, isCalibrated, parseParams } from "@/lib/riktodds";
 import { bestNumbers, MIN_RACES_TRACK_BEST, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
-import { computePhase, mineLabel, nextStep, phaseRail, type NextStepRace } from "@/lib/phase";
+import { computePhase, mineLabel, nextStep, phaseRail, roundDayPassed, type NextStepRace } from "@/lib/phase";
 import { byPlace, hitOf, nextResultsSyncAt, outcomeSummary } from "@/lib/outcomes";
 import { settleOutcomes } from "@/lib/outcomes-server";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
@@ -382,7 +382,14 @@ function raceSignals(
 
 // ---- GET /api/rounds/[id] -------------------------------------------------------------
 
-export async function buildRoundResponse(db: Db, roundId: string, userId: string, now: Date): Promise<RoundResponse | null> {
+// getNextAvailable saknas = Nästa steg erbjuder aldrig nästa omgång (tester).
+export async function buildRoundResponse(
+  db: Db,
+  roundId: string,
+  userId: string,
+  now: Date,
+  getNextAvailable?: (gameType: GameType) => Promise<NextAvailableResponse>,
+): Promise<RoundResponse | null> {
   const round = await loadSettledRound(db, roundId, userId, now);
   if (!round) return null;
   const date = dateStr(round.date);
@@ -485,6 +492,9 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
   const summary = roundSummary(round);
   const phase = computePhase(date, phaseRaces, now);
   const open = races.filter((r) => !r.started).flatMap((r) => r.starts).filter((s) => !s.scratched);
+  // Den aktuella omgången är klar (eller dess dag har passerat): slå upp nästa
+  // spel, så att Nästa steg blir Hämta omgång som i /api/rounds/current.
+  const next = getNextAvailable && currentId === round.id && (phase === "KLART" || roundDayPassed(date, now)) ? await getNextAvailable(settings.gameType) : null;
   return {
     serverTime: now.toISOString(),
     rev: round.rev,
@@ -497,7 +507,7 @@ export async function buildRoundResponse(db: Db, roundId: string, userId: string
       now,
       gameType: settings.gameType,
       round: { id: round.id, date, gameType: round.gameType, fetchStatus: fetch.resumeFrom ? "PARTIAL" : round.fetchStatus, races: phaseRaces },
-      nextAvailable: null,
+      nextAvailable: next?.game ? { gameId: next.game.gameId, trackName: next.game.trackName, date: next.game.date, fetched: next.fetched } : null,
       interestingWithoutOdds: open.filter((s) => s.mark?.interesting && s.mark.unibetOdds === null).length,
       spelbarWithoutBet: open.filter((s) => s.mark?.spelbar && !s.mark.bet).length,
       hasCoupon: !!coupon,
@@ -567,7 +577,7 @@ export async function buildCurrentResponse(
     mine: mineOf(r.starts.map((s, j) => ({ name: s.horse.name, scratched: s.scratched, mark: marksByRace[i][j] }))),
   }));
   const phase = computePhase(date, phaseRaces, now);
-  const next = phase === "KLART" ? await getNextAvailable(gameType) : null;
+  const next = phase === "KLART" || roundDayPassed(date, now) ? await getNextAvailable(gameType) : null;
   const legs: LegSummary[] = round.races.map((r, i) => {
     const marks = marksByRace[i];
     return {
