@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxVerdict, classOf, movementOf, movementShort, movementSr, parseTolerance, replacedNote, scratchedAtUnibet, signedOdds, sparkPoints, svSr, unmarkedItems } from "@/lib/odds-ui";
+import { boxVerdict, classOf, movementOf, movementShort, movementSr, parseTolerance, replacedNote, scratchedAtUnibet, signedOdds, sparkPoints, svSr, unmarkedItems, crossedUnderMax, overMaxRikt } from "@/lib/odds-ui";
 import { historyChart, historyRows } from "@/lib/odds-history";
 import { mkMark, mkRace, mkStart } from "@/lib/test-round";
 import type { UnibetHistoryPoint } from "@/lib/types";
@@ -25,11 +25,23 @@ describe("skillnaden sv", () => {
   });
 });
 
+describe("Riktodds över 5", () => {
+  it("overMaxRikt och crossedUnderMax", () => {
+    expect(overMaxRikt(mkStart("x", 1, { riktodds: 5.01 }))).toBe(true);
+    expect(overMaxRikt(mkStart("x", 1, { riktodds: 5 }))).toBe(false);
+    const before = mkRace(1, [mkStart("a", 1, { riktodds: 6 }), mkStart("b", 2, { riktodds: 4 }), mkStart("c", 3, { riktodds: 7 })]);
+    const after = mkRace(1, [mkStart("a", 1, { riktodds: 4.5 }), mkStart("b", 2, { riktodds: 3 }), mkStart("c", 3, { riktodds: 5.5 })]);
+    expect(crossedUnderMax([before], [after])).toEqual(["a"]);
+  });
+});
+
 describe("Inte markerade men spelbara odds", () => {
   it("bara omarkerade, utan Bet, inte strukna, före start, över eller nära; störst först", () => {
     const rows = [
       mkStart("a", 4, { riktodds: 4.8, mark: mkMark("a", { unibetOdds: 5.5, oddsClass: "over" }) }),
-      mkStart("b", 9, { riktodds: 5.1, mark: mkMark("b", { unibetOdds: 5.05, oddsClass: "near" }) }),
+      mkStart("b", 9, { riktodds: 4.1, mark: mkMark("b", { unibetOdds: 4.05, oddsClass: "near" }) }),
+      // Riktodds över 5: inte intressant även om oddset är bättre.
+      mkStart("h", 7, { riktodds: 6, mark: mkMark("h", { unibetOdds: 9, oddsClass: "over" }) }),
       mkStart("c", 2, { riktodds: 3, mark: mkMark("c", { unibetOdds: 4, oddsClass: "over", interesting: true }) }),
       mkStart("d", 3, { riktodds: 3, mark: mkMark("d", { unibetOdds: 4, oddsClass: "over", bet: true }) }),
       mkStart("e", 5, { riktodds: 3, scratched: true, mark: mkMark("e", { unibetOdds: 4, oddsClass: "over" }) }),
@@ -80,7 +92,7 @@ describe("rörelsen", () => {
     const up = mkStart("a", 1, { unibet: u(2.2), mark: mkMark("a", { unibetOdds: 2.45, unibetOddsSource: "UNIBET" }) });
     const mv = movementOf(up);
     expect(movementShort(mv, 2.45)).toBe("▲ fr 2,20");
-    expect(movementSr(mv, () => "tors 18:02")).toBe("Upp från 2,20 sedan tors 18:02");
+    expect(movementSr(mv, () => "tors 18:02")).toBe("Upp från 2,20 sedan tors 18:02, lägre chans enligt marknaden");
     expect(movementShort(movementOf({ ...up, unibet: u(2.6) }), 2.45)).toBe("▼ fr 2,60");
     expect(movementShort(movementOf({ ...up, unibet: u(2.45) }), 2.45)).toBe("= 2,45");
     // Bara en ögonblicksbild med odds: "Ny".

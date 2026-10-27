@@ -21,13 +21,13 @@ import { useIsDesktop } from "@/components/hooks";
 import { MovementCell, Sv, TrendCell } from "@/components/odds/OddsMark";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
 import { RiktCell, RiktShort } from "@/components/round/parts";
-import { useUndoReplaced } from "@/components/round/streckOddsStore";
+import { useUnderMaxIds, useUndoReplaced } from "@/components/round/streckOddsStore";
 import { Badge, BetBadge, BetToggle, FlapNumber, LampToggle, LowStreckTag, signalsSr, TrollBadge, XBadge } from "@/components/ui/board";
 import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds, relTime } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
-import { byLegNumber, byValueDesc, valueOf, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
+import { byLegNumber, byValueDesc, movementOf, overMaxRikt, valueOf, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
 import { toleranceOf } from "@/lib/round-overlay";
 import { signalTags } from "@/lib/signals";
 import type { OddsClass } from "@/lib/spelbar";
@@ -252,6 +252,7 @@ export function PlatsGroup(props: GroupProps) {
 
 function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId, showValue }: GroupProps & { item: Item }) {
   const { setBet, setInteresting, roundId } = useRound();
+  const underIds = useUnderMaxIds(roundId);
   const { race, start } = item;
   const troll = item.troll ?? null;
   const m = start.mark;
@@ -280,6 +281,10 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
       <XBadge x={x} />
       {odds4 && newIds?.has(start.id) && <span className="tag new">Ny</span>}
       {m?.belowGuideline && <span className="tag gl">{guidelineTag(guideline)}</span>}
+      {/* Sent på lördagen: sjunkande Unibet-odds och ändå spelbar är det starkaste läget. */}
+      {m?.spelbar && !started && movementOf(start).kind === "down" && <span className="tag good">Sjunker</span>}
+      {underIds.has(start.id) && !started && <span className="tag good">Ny under 5</span>}
+      {!unmarked && overMaxRikt(start) && <span className="tag">Rikt över 5</span>}
       {scrUnibet && <span className="tag scr-u">Struken hos Unibet</span>}
       {started && <span className="tag">Startat</span>}
       {start.scratched && <span className="tag scr-tag">Struken</span>}

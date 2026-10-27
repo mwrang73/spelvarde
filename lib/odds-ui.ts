@@ -64,7 +64,7 @@ export function unmarkedItems(races: RaceDto[], now: number, tolerance: number):
       const t = troll.get(start.id) ?? null;
       const c = classOf(start, tolerance);
       if (t) inTroll.push({ race, start, diff: diffOf(start), troll: t });
-      else if ((c === "over" || c === "near") && (m?.unibetOdds ?? 0) >= MIN_SPELBAR_ODDS) rest.push({ race, start, diff: diffOf(start) ?? 0, troll: null });
+      else if ((c === "over" || c === "near") && (m?.unibetOdds ?? 0) >= MIN_SPELBAR_ODDS && !overMaxRikt(start)) rest.push({ race, start, diff: diffOf(start) ?? 0, troll: null });
     }
   }
   inTroll.sort((a, b) => a.troll!.rank - b.troll!.rank);
@@ -78,6 +78,29 @@ export const UNMARKED_HELP_TEXT = "Hästar du inte har markerat som är med i Tr
 // Spelbara i S6 sorteras per lopp och startnummer.
 export function byLegNumber<T extends { race: { leg: number }; start: { number: number } }>(a: T, b: T): number {
   return a.race.leg - b.race.leg || a.start.number - b.start.number;
+}
+
+// Riktodds över gränsen (chans till topp 3 under 20 %) är inte intressant för
+// platsspelet (Mikael 2026-10-27): de visas inte i "Inte markerade" och får
+// taggen "Rikt över 5" i listorna. Fast gräns tills vidare.
+export const MAX_RIKT = 5;
+export function overMaxRikt(start: Pick<StartDto, "riktodds" | "mark">): boolean {
+  const r = riktX(start);
+  return r !== null && r > MAX_RIKT;
+}
+
+// Hästar som kom in under gränsen vid hämtningen (före > MAX_RIKT, efter ≤).
+export function crossedUnderMax(before: RaceDto[], after: RaceDto[]): string[] {
+  const prev = new Map(before.flatMap((r) => r.starts.map((s) => [s.id, riktX(s)] as const)));
+  const out: string[] = [];
+  for (const r of after) {
+    for (const s of r.starts) {
+      const was = prev.get(s.id) ?? null;
+      const now = riktX(s);
+      if (!s.scratched && was !== null && was > MAX_RIKT && now !== null && now <= MAX_RIKT) out.push(s.id);
+    }
+  }
+  return out;
 }
 
 // Loppet hos Unibet (samma nyckel som oddshämtningen). Utan nyckel: travsidan.
@@ -137,7 +160,7 @@ export function movementSr(mv: Movement, when: (iso: string) => string): string 
   if (mv.kind === "none") return "";
   if (mv.kind === "new") return "Nytt odds";
   if (mv.kind === "same") return `Oförändrat sedan ${when(mv.since)}`;
-  return `${mv.kind === "up" ? "Upp" : "Ned"} från ${odds(mv.from)} sedan ${when(mv.since)}`;
+  return `${mv.kind === "up" ? "Upp" : "Ned"} från ${odds(mv.from)} sedan ${when(mv.since)}, ${mv.kind === "up" ? "lägre" : "högre"} chans enligt marknaden`;
 }
 
 // Punkterna i den lilla kurvan (bredd w, höjd h) och riktoddsets linje.

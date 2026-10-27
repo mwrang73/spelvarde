@@ -14,7 +14,7 @@ import { rawPost } from "@/components/api";
 import { useNow, useOnline } from "@/components/hooks";
 import { useToast } from "@/components/ui/Toast";
 import { odds } from "@/lib/format";
-import { unmarkedItems } from "@/lib/odds-ui";
+import { crossedUnderMax, unmarkedItems } from "@/lib/odds-ui";
 import { recountRace, toleranceOf } from "@/lib/round-overlay";
 import { bannerFor, boardView, idleOdds, idleStreck, runOdds, runStreck, summarize, type BannerModel, type BoardView, type OddsPart, type RunMode, type RunSummary, type StreckPart } from "@/lib/streck-odds";
 import type { RoundResponse, UnibetUndoResponse } from "@/lib/types";
@@ -33,6 +33,42 @@ export type StreckOddsRun = {
   // Starter som blev Spelbara vid hämtningen: taggen "Ny" i S4 tills vyn lämnas.
   newIds: string[];
 };
+
+// Starter som kom in under riktodds 5 vid den senaste hämtningen: taggen
+// "Ny under 5" tills nästa hämtning. Sparas i webbläsaren per omgång.
+const UNDER_KEY = (roundId: string) => `sv-under5-${roundId}`;
+const underCache = new Map<string, string[]>();
+const EMPTY_IDS: string[] = [];
+function readUnder(roundId: string): string[] {
+  if (!underCache.has(roundId)) {
+    let ids: string[] = [];
+    try {
+      const raw = localStorage.getItem(UNDER_KEY(roundId));
+      const v: unknown = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(v)) ids = v.filter((x): x is string => typeof x === "string");
+    } catch {
+      // ingen lagring
+    }
+    underCache.set(roundId, ids);
+  }
+  return underCache.get(roundId)!;
+}
+function writeUnder(roundId: string, ids: string[]) {
+  underCache.set(roundId, ids);
+  try {
+    localStorage.setItem(UNDER_KEY(roundId), JSON.stringify(ids));
+  } catch {
+    // ingen lagring
+  }
+}
+export function useUnderMaxIds(roundId: string): ReadonlySet<string> {
+  const ids = useSyncExternalStore(
+    subscribe,
+    () => readUnder(roundId),
+    () => EMPTY_IDS,
+  );
+  return new Set(ids);
+}
 
 const runs = new Map<string, StreckOddsRun>();
 const listeners = new Set<() => void>();
@@ -129,6 +165,7 @@ export async function runStreckOdds(roundId: string, mode: RunMode, origin: stri
   clearDetails();
   const legsThisRun = doOdds ? oddsPart.legs : [];
   const summary = summarize(before, after, legsThisRun);
+  if (doStreck && streck.state === "ok") writeUnder(roundId, crossedUnderMax(before.races, after.races));
   const tolerance = toleranceOf(after.settings);
   const unmarked = unmarkedItems(after.races, Date.now(), tolerance).length;
   const shown = { streck: doStreck ? streck : { ...streck, state: streck.state === "ok" ? ("idle" as const) : streck.state }, odds: doOdds ? oddsPart : { ...oddsPart, state: "idle" as const }, summary };

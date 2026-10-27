@@ -988,8 +988,10 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
 .brow .notes, .brow .pmain > .note { white-space: normal; }
 .spkc { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
 .mic { font: 600 11px/1 var(--f-label); letter-spacing: .03em; color: var(--ink-2); white-space: nowrap; }
-.up-t { color: var(--up) !important; }
-.dn-t { color: var(--down) !important; }
+/* Oddsrörelsen: pilen följer oddset, färgen följer chansen. Sjunkande odds
+   (marknaden tror mer) är grönt, stigande rött. */
+.up-t { color: var(--down) !important; }
+.dn-t { color: var(--up) !important; }
 .spk { display: block; overflow: visible; }
 .spk polyline { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; }
 .spk circle { fill: var(--accent); }
