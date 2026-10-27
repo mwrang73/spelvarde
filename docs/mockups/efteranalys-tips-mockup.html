@@ -1,0 +1,932 @@
+<title>Spelvärde · Efteranalys och Hämta tips</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens (kopia av styles/tokens.css) ===== */
+:root{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--fill-deep:#A45F00;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;
+--led-off:#C5CCD3;--glow:rgba(242,154,0,.40);--up:#0E7A3B;--up-soft:#DDF3E5;
+--sig:#0E7A3B;--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--sig-fill-2:#BFE6CB;--sig-fill-2-ink:#0A4721;--sig-soft:#DDF3E5;--sig-text:#0A4721;
+--down:#C42B1F;--down-soft:#FBE1DD;--gal:#C42B1F;--gal-ink:#FFFFFF;--bet:#0D1014;--bet-ink:#FFFFFF;
+--chip-auto-bg:#DCE7F3;--chip-auto-ink:#0D2A4A;--chip-volte-bg:#FBDCD6;--chip-volte-ink:#6E140C;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--flap-ink:#C9CED4;--flap-glow:rgba(255,178,46,.5);--phase-ink:#9AA2AC;--btn-fill:linear-gradient(#FFC85C,#F4A51F);--btn-edge:#9A5A00;--btn-line:#C47A00;--btn-glow:rgba(244,165,31,.25);--btn-glow-hover:rgba(255,178,46,.45);
+--key-on:linear-gradient(#FFCB60,#F39A00);--key-on-ring:#A45F00;--key-on-edge:#6B3E00;--key-off:linear-gradient(#FFFFFF,#E2E6EB);--key-off-shadow:inset 0 0 0 1px #AEB6BF,0 2px 0 #9AA3AD;--key-dot:#B4BCC5;
+--board-chip-line:#3A4048;--board-auto:#A8D4FF;--board-auto-line:#2F4A66;--board-btn-line:#4A5058;--tick:#46D37E;--head-down:#FF8A7A;--head-up:#46D37E;
+--bet-board:#F3EFE4;--bet-board-ink:#0C0E11;--bet-board-ink-2:#3A4048;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+--row-h:44px;--focus-ring:3px solid var(--focus);--focus-offset:2px}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill-deep:#8F5200;--focus:#7CC4FF;
+--head:#050607;--head-ink-2:#B9C0C8;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--led-off:#2A3038;--glow:rgba(255,178,46,.55);--up:#46D37E;--up-soft:rgba(70,211,126,.14);
+--sig:#46D37E;--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--sig-fill-2:rgba(70,211,126,.30);--sig-fill-2-ink:#C8F7DA;--sig-soft:rgba(70,211,126,.16);--sig-text:#8BEDB3;
+--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--gal:#FF5A45;--gal-ink:#1A0400;--bet:#F3EFE4;--bet-ink:#0C0E11;
+--chip-auto-bg:#13263A;--chip-auto-ink:#A8D4FF;--chip-volte-bg:#3A1610;--chip-volte-ink:#FFB8AA;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);--key-off:linear-gradient(#2C3138,#1C2026);--key-off-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 2px 0 #000;--key-dot:#4A515A}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+.mk{padding:24px 24px 64px;max-width:1360px}
+.mk-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mk-top .ctl{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.mk-top .ctl label{font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-right:6px}
+.mk h1.mt{margin:0;font:700 26px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk .lead{max-width:1000px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.mk h2.sec{margin:48px 0 4px;font:700 24px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em}
+.mk h2.part0{margin:64px 0 4px;padding-top:18px;border-top:3px solid var(--line-strong);font:700 30px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em}
+.mk h3.part{margin:24px 0 8px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.mk p.sub{margin:0 0 12px;max-width:1000px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.mk p.sub b{color:var(--ink)}
+.scrollx{overflow-x:auto;padding-bottom:6px}
+.note{max-width:1300px;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}
+.note > div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.note > div.rec{border-left-color:var(--sig-fill)}
+.note > div.st{border-left-color:var(--line-strong)}
+.note h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.note h3 + p{margin-top:0}
+.note p{margin:6px 0 0}
+.note ul,.note ol{margin:0;padding-left:18px}
+.note li+li{margin-top:3px}
+.note code{font:500 12px var(--f-num)}
+.note table{border-collapse:collapse;width:100%;font-size:13px;margin-top:4px}
+.note th,.note td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.note th{font:700 11.5px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.altcard{max-width:1300px;margin:6px 0 10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.altcard > div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.altcard h4{margin:0 0 4px;font:700 17px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.altcard .rk2{display:inline-block;margin-left:6px;padding:2px 6px;border-radius:4px;background:var(--sig-fill);color:var(--sig-fill-ink);font:700 11px/1.2 var(--f-label);letter-spacing:.07em;vertical-align:2px}
+.bf{width:1282px;border:1px solid #000;border-radius:10px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);background:#2a2d31}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:620px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.vp{width:1280px;height:760px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+.phwrap{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+.phc{display:grid;gap:8px;justify-items:start}
+.phc > span{font:700 12px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);max-width:410px}
+.phc > span b{color:var(--ink)}
+.ph{width:410px;height:864px;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;position:relative;background:var(--bg);box-shadow:0 20px 50px rgba(0,0,0,.35);flex:none}
+.ph-in{width:390px;height:844px;position:relative;overflow:hidden}
+.vnote{max-width:860px;font-size:13px;line-height:1.4;color:var(--ink-2);margin:12px 0 0}
+.vnote b{color:var(--ink)}
+.states{margin-top:12px;max-width:1300px;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px 22px;background:var(--surface-2);border:1px solid var(--line)}
+.states figure{margin:0;display:grid;gap:6px;align-content:start}
+.states figcaption{font:700 11.5px/1.25 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.states figcaption b{color:var(--ink)}
+.states .box{background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden;padding-bottom:6px;width:390px;max-width:100%}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+
+/* ===== Från styles/app.css ===== */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.n,.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+button{font:inherit;cursor:pointer;color:inherit}
+.help{font-size:12.5px;color:var(--ink-2);margin:0;line-height:1.4}
+.logo{display:inline-grid;place-items:center;width:40px;color:var(--head-ink);flex:none}
+.logo svg{width:26px;height:26px}
+.ah-brand{font:800 27px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:60px;display:flex;align-items:center;gap:16px;padding:0 20px}
+.dnav{display:flex;gap:2px;margin-left:20px;flex:1}
+.dnav a{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;text-decoration:none;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);border-radius:6px}
+.dnav a[aria-current="page"]{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2);text-align:right;line-height:1.35}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 4px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:none;color:var(--head-ink-2);flex:none;border-radius:8px}
+.ibtn svg{width:22px;height:22px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);height:64px;padding-bottom:10px;background:var(--surface);border-top:1px solid var(--line);z-index:3}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);position:relative;text-decoration:none}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.btn{position:relative;min-height:44px;padding:0 16px;border-radius:7px;border:1.5px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;white-space:nowrap;font:700 15.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:inherit}
+.btn svg{width:18px;height:18px;flex:none}
+.btn.primary{background:var(--btn-fill);color:var(--fill-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 3px 0 var(--btn-edge),0 6px 14px var(--btn-glow)}
+.btn.secondary{background:linear-gradient(var(--surface),var(--surface-2));border:1px solid var(--line-strong);color:var(--ink);box-shadow:0 3px 0 var(--line-strong)}
+.btn.ghost{color:var(--accent);padding:0 10px}
+.brd .btn.ghost{color:var(--head-ink)}
+.brd .btn.secondary{background:rgba(255,255,255,.06);color:var(--head-text);border-color:var(--board-btn-line);box-shadow:0 2px 0 #000}
+.btn.sm{min-height:36px;padding:0 10px;font-size:13.5px}
+.btn.full{width:100%}
+.btn:disabled{background:var(--surface-3);color:var(--ink-2);border-color:transparent;cursor:not-allowed;box-shadow:none}
+.linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:24px}
+.seg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{flex:1;min-height:44px;padding:0 14px;border:0;background:transparent;font:700 14.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"],.seg button[aria-selected="true"],.seg button[aria-checked="true"]{background:var(--ink);color:var(--bg)}
+.segw{padding:8px 10px;display:flex}
+.segw .seg{width:100%}
+.segw .seg button{flex:1;padding:0 6px;font-size:13.5px}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr.sm{width:24px;height:28px;font-size:14px}
+.nr.lg{width:46px;height:56px;font-size:28px}
+.nr.pl{background:var(--flap-on);color:var(--flap-on-ink);text-shadow:none}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.i{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.bdg.g{background:var(--gal);color:var(--gal-ink)}
+.bdg.x,.bdg.xp{background:var(--head);color:var(--head-ink);box-shadow:inset 0 0 0 1px var(--head-line)}
+.bdg.xp{padding:0 2px;max-width:22px;letter-spacing:0}
+.bdg.tsb{background:var(--head);color:var(--head-ink);box-shadow:inset 0 0 0 1px var(--fill-deep);padding:0 1px}
+.bdg.tsb svg{width:13px;height:13px;filter:drop-shadow(0 0 3px var(--glow))}
+.form{display:flex;gap:1px;justify-self:center}
+.form i{display:grid;place-items:center;width:9.6px;height:18px;font:700 11px/1 var(--f-num);font-style:normal;background:var(--surface-3);color:var(--ink);border-radius:2px}
+.form i.w{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.form i.w2{background:var(--sig-fill-2);color:var(--sig-fill-2-ink)}
+.form i.gx{background:var(--gal);color:var(--gal-ink)}
+.tag{display:inline-flex;align-items:center;gap:4px;min-height:18px;padding:1px 5px;border-radius:4px;font:700 10.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none;white-space:nowrap}
+.tag.gl{background:var(--accent-soft);color:var(--accent)}
+.tag.good{background:var(--up-soft);color:var(--up)}
+.tag.bad{background:var(--down-soft);color:var(--down)}
+.tag.thin{background:transparent;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--ink-2)}
+.lamp,.betk{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:transparent;padding:0;border-radius:8px;flex:none}
+.lamp-i{display:inline-grid;place-items:center;position:relative;width:28px;height:28px;border-radius:6px;background:var(--key-off);box-shadow:var(--key-off-shadow)}
+.lamp-i::before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--key-dot);box-shadow:inset 0 1px 1px rgba(0,0,0,.4)}
+.lamp-i svg{width:18px;height:18px;opacity:0;color:var(--fill-ink)}
+.lamp[aria-pressed="true"] .lamp-i{background:var(--key-on);box-shadow:0 0 0 1px var(--key-on-ring),0 0 16px var(--glow),0 1px 0 var(--key-on-edge)}
+.lamp[aria-pressed="true"] .lamp-i::before{opacity:0}
+.lamp[aria-pressed="true"] .lamp-i svg{opacity:1}
+.lamp.lab,.betk.lab{width:auto;min-height:44px;padding:0 10px 0 6px;gap:6px;display:inline-flex;align-items:center;border:1.5px solid var(--line-strong);background:var(--surface);font:700 13.5px/1 var(--f-label);letter-spacing:.04em;text-transform:uppercase;border-radius:8px}
+.lamp.lab[aria-pressed="true"]{border-color:var(--fill-deep)}
+.betk .lamp-i::before{display:none}
+.betk .lamp-i svg{opacity:.55;color:var(--ink-2)}
+.sptg{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 10px 0 6px;border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);font:700 13.5px/1 var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+.sptg .bdg{height:20px;min-width:20px;font-size:12px}
+.avd{display:flex;gap:3px;padding:2px 8px 8px}
+.avd-t{flex:1;min-width:0;min-height:44px;position:relative;border:0;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--flap-ink);font:700 17px/1 var(--f-num);box-shadow:0 1px 0 rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07);display:grid;place-items:center}
+.avd-t::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.75)}
+.avd-t[aria-selected="true"]{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:0 0 16px var(--flap-glow),0 1px 0 #000}
+.avd-t .tick{position:absolute;bottom:1px;left:0;right:0;font:700 9px/1 var(--f-label);color:var(--tick);z-index:1;text-align:center}
+.strip{padding:0 10px 8px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--head-line)}
+.chips{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:1px 8px;border-radius:5px;font:700 12.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;flex:0 0 auto;background:rgba(255,255,255,.04);color:var(--head-text);border:1px solid var(--board-chip-line)}
+.chip-auto{color:var(--board-auto);border-color:var(--board-auto-line)}
+.chip-btn{margin-left:auto;color:var(--head-ink);border-color:rgba(255,178,46,.5);background:transparent;min-height:28px}
+.statline{margin:0;font:500 12.5px/1.3 var(--f-body);color:var(--head-ink-2);display:flex;gap:4px 10px;flex-wrap:wrap}
+.statline b{color:var(--head-ink);font-family:var(--f-num);font-weight:700}
+.cols,.row{display:grid;column-gap:6px;align-items:center}
+.cols{height:24px;background:var(--surface-3);font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.cols .r{text-align:right}.cols .c{text-align:center}
+.list{list-style:none;margin:0;padding:0}
+.row{height:var(--row-h);border-bottom:1px solid var(--line);background:var(--surface);position:relative}
+.list > .row:nth-child(even){background:var(--surface-2)}
+.g-an{grid-template-columns:32px minmax(0,1fr) 52px 38px 44px;padding:0 2px 0 8px}
+.row.is-i::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:3px;border-radius:0 3px 3px 0;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.row.is-i .hn{color:var(--accent)}
+.row.scr .hn{text-decoration:line-through;color:var(--ink-2)}
+.row.scr .form,.row.scr .nr{opacity:.45}
+.who{min-width:0;height:44px;display:flex;flex-direction:column;justify-content:center;text-decoration:none;color:inherit}
+.hl{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}
+.hn{font:700 17px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:min(6em,100%)}
+.kt{display:block;font-size:12px;line-height:1.25;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk{font:700 13.5px/1 var(--f-num);text-align:right;color:var(--ink);white-space:nowrap}
+.rk.xa{color:var(--accent)}
+.sl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.ban{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:8px;font-size:14px;line-height:1.35;background:var(--surface-2);border-left:4px solid var(--line-strong)}
+.ban>svg{flex:none;width:18px;height:18px;margin-top:1px}
+.ban p{margin:0}
+.ban .acts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.ban.warn{background:var(--accent-soft);border-left-color:var(--fill)}.ban.warn>svg{color:var(--accent)}
+.ban.err{background:var(--down-soft);border-left-color:var(--down)}.ban.err>svg{color:var(--down)}
+.ban.ok{background:var(--up-soft);border-left-color:var(--up)}.ban.ok>svg{color:var(--up)}
+.ban.info>svg{color:var(--ink-2)}
+.ban.m{margin:8px 10px 0}
+.phase{list-style:none;margin:0;padding:2px 8px 10px;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.phase li{position:relative;border-radius:4px;text-align:center;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--phase-ink);box-shadow:0 1px 0 rgba(0,0,0,.9)}
+.phase li > a{display:block;padding:7px 4px 6px;min-height:44px;text-decoration:none;color:inherit;border-radius:4px}
+.phase b{display:block;font:700 13.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.phase small{display:block;font:500 10.5px/1.2 var(--f-label);letter-spacing:.05em;text-transform:uppercase;margin-top:2px}
+.phase li.done{color:var(--head-ink)}
+.phase li[aria-current="step"]{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:0 0 16px var(--btn-glow-hover)}
+.next{margin:10px;padding:12px 12px 12px 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.next .lbl{font:700 11.5px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.next h2{margin:0;font:700 20px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.next p{margin:0;font-size:13.5px;color:var(--ink-2)}
+.next p b{color:var(--ink);font-family:var(--f-num)}
+.fetchline{margin:0;padding:4px 12px;font-size:12.5px;color:var(--ink-2)}
+.olist{list-style:none;margin:0;padding:0}
+.orow{display:grid;grid-template-columns:30px minmax(0,1fr) auto 18px;gap:8px;align-items:center;padding:7px 8px 7px 10px;min-height:56px;border-bottom:1px solid var(--line);background:var(--surface);text-decoration:none;color:inherit}
+.olist > li:nth-child(even) .orow{background:var(--surface-2)}
+.o-mid{min-width:0;display:flex;flex-direction:column;gap:3px}
+.orow .on{font:700 16px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .om{font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .chev{width:16px;height:16px;color:var(--ink-2)}
+.orow .hit{font-size:11.5px;padding:4px 6px}
+.sumb{margin:10px;border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.sumb div{background:rgba(255,255,255,.05);border:1px solid var(--head-line);border-radius:6px;padding:8px;min-width:0}
+.sumb small{display:block;font:700 10.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+.sumb b{display:block;font:700 22px/1.1 var(--f-num);color:var(--head-ink);margin-top:4px;text-shadow:0 0 10px var(--glow);white-space:nowrap}
+.sumb span{display:block;font-size:12px;color:var(--head-text);margin-top:2px}
+.hit{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:4px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;flex:none}
+.hit.y{background:var(--up);color:var(--surface)}
+.hit.n{background:var(--down-soft);color:var(--down);box-shadow:inset 0 0 0 1.5px var(--down)}
+.hit svg{width:12px;height:12px}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--surface)}
+.tbl caption{caption-side:top;text-align:left;padding:12px 0 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.tbl th{font:700 11.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:0 6px;height:36px;white-space:nowrap;overflow:hidden;border-bottom:1.5px solid var(--line-strong);background:var(--surface-3)}
+.tbl td{padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+.tbl td:first-child,.tbl th:first-child{padding-left:12px}
+.tbl tbody tr:nth-child(even) td{background:var(--surface-2)}
+.tbl .r{text-align:right}.tbl .c{text-align:center}
+.tbl .hn{font-size:18px}
+.tbl tr.is-b td:first-child{box-shadow:inset 5px 0 0 var(--bet)}
+.tbl .kt{white-space:normal}
+.dim{color:var(--ink-2)}
+.hk-hero{padding:12px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center}
+.hk-name{font:700 28px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);margin:0}
+.hk-hero p{margin:4px 0 0;font-size:13px;color:var(--head-ink-2)}
+.hk-sec{padding:12px 12px 4px}
+.hk-sec > h3{margin:0 0 8px;font:700 13px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;justify-content:space-between}
+.acts-row{display:flex;gap:6px;padding:12px 12px 0;flex-wrap:wrap;align-items:flex-start}
+.xseg{margin-top:8px;width:100%}
+.xseg button{min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 4px}
+.xseg .xl{font:700 13.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.xseg .xf{font:500 11px/1 var(--f-num);letter-spacing:0;text-transform:none}
+.xeff{margin:6px 0 0;font-size:13.5px}
+.xeff b{font-family:var(--f-num)}
+.xsrc{margin-top:12px;display:grid;gap:6px}
+.xsrc-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.xsrc-t{margin:0;flex:1 1 170px;font-size:14.5px}
+.flbl{font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.stp{display:flex;align-items:center;gap:2px}
+.stp button{width:40px;height:44px;border-radius:7px;border:1px solid var(--line-strong);background:linear-gradient(var(--surface),var(--surface-2));box-shadow:0 2px 0 var(--line-strong);font:700 20px/1 var(--f-num);color:var(--ink);padding:0}
+.stp output{min-width:28px;text-align:center;font:700 15px/1 var(--f-num)}
+.cm{margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cm li{padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--line);font-size:13.5px;display:grid;gap:5px}
+.cm li:last-child{border-bottom:0}
+.cm .cmh{font:600 11.5px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.steps{list-style:none;margin:10px 12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:4px 14px;border-radius:8px;background:var(--surface-2);border-left:4px solid var(--fill);font:700 13px/1.3 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.steps li.ok{color:var(--up)}
+.steps li.cur{color:var(--ink)}
+.steps li+li::before{content:"·";margin-right:14px;color:var(--ink-2)}
+.steps .dots{display:inline-flex;gap:3px;margin-left:2px;vertical-align:middle}
+.steps .dots i{width:5px;height:5px;border-radius:50%;background:var(--fill);animation:dotHop 1.1s ease-in-out infinite}
+.steps .dots i:nth-child(2){animation-delay:.15s}.steps .dots i:nth-child(3){animation-delay:.3s}
+@keyframes dotHop{0%,60%,100%{transform:none;opacity:.35}30%{transform:translateY(-4px);opacity:1}}
+.prog{height:4px;background:var(--surface-3);margin:0 12px;border-radius:2px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--fill);box-shadow:0 0 8px var(--glow)}
+.tips-box{padding:12px;display:grid;gap:8px}
+.srclist{list-style:none;margin:0;padding:0}
+.srcrow{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
+.srclist > li:nth-child(even){background:var(--surface-2)}
+.src-main{display:grid;gap:3px;min-width:0}
+.srcrow .sn{font:700 16px/1.1 var(--f-name);letter-spacing:.01em}
+.srcrow .su{font:500 12px/1.2 var(--f-num);color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srcrow .ss{font-size:13px;color:var(--ink-2)}
+.srcrow .ss.bad{color:var(--down);font-weight:600}
+.src-acts{display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin-left:-6px}
+.switch{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 8px;border:0;background:none;font:700 13.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.sw-track{position:relative;width:38px;height:22px;border-radius:11px;background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.sw-dot{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch[aria-pressed="true"]{color:var(--ink)}
+.switch[aria-pressed="true"] .sw-track{background:var(--fill);box-shadow:inset 0 0 0 1px var(--fill-deep)}
+.switch[aria-pressed="true"] .sw-dot{transform:translateX(16px)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input{width:100%;min-height:44px;padding:10px 12px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--bg);color:var(--ink);font-size:16px}
+.inline{display:flex;gap:8px}.inline > :first-child{flex:1;min-width:0}
+.add-src{padding:16px 12px}
+.empty{padding:26px 22px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty .ic{width:84px;height:84px;border-radius:16px;display:grid;place-items:center}
+.empty .ic svg{width:44px;height:44px;color:var(--head-ink);filter:drop-shadow(0 0 8px var(--glow))}
+.empty h2{margin:0;font:700 22px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.empty p{margin:0;font-size:14.5px;color:var(--ink-2);max-width:32ch}
+.sk{display:block;height:12px;border-radius:3px;background:linear-gradient(90deg,var(--surface-3) 25%,var(--surface-2) 50%,var(--surface-3) 75%);background-size:200% 100%;animation:shim 1.2s linear infinite}
+@keyframes shim{to{background-position:-200% 0}}
+/* Bet: biljetten (markeringar-live, alternativ A) */
+.tkt{display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 7px;border-radius:3px;background:var(--bet);color:var(--bet-ink);font:700 11px/1 var(--f-label);letter-spacing:.04em;flex:none;
+  -webkit-mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat;
+  mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat}
+.tkt b{font:700 11.5px/1 var(--f-num)}
+.is-b{position:relative}
+.row.is-b::before,.play.is-b::before,.orow.is-b::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bet);z-index:1}
+.row.is-b .hn{color:var(--ink)}
+
+/* ===== Desktop-layout ===== */
+.sphead{min-height:64px;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.sphead .k{margin:0;font:700 12.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink)}
+.sphead h1{margin:4px 0 0;font:700 26px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title)}
+.sphead .seg{border-color:var(--board-btn-line);background:transparent}
+.sphead .seg button{color:var(--head-ink-2)}
+.sphead .seg button+button{border-left-color:var(--board-btn-line)}
+.sphead .seg button[aria-pressed="true"]{background:var(--head-text);color:var(--head)}
+.dsec{margin:18px 0 8px;font:700 20px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:baseline;gap:10px}
+.dsec small{font:600 13px/1 var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink-2)}
+.d2{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px;padding:4px 20px 20px}
+.d2.wl{grid-template-columns:260px minmax(0,1fr);padding:0;gap:0;height:calc(100% - 124px)}
+.dleft{background:var(--surface);border-right:1px solid var(--line);overflow:hidden}
+.dmain{padding:4px 24px 20px;min-width:0}
+.kgrid{display:grid;grid-template-columns:420px minmax(0,1fr);height:calc(100% - 124px)}
+.kgrid > aside{background:var(--surface);border-right:1px solid var(--line);overflow:hidden}
+.kgrid > section{padding:4px 24px 20px;min-width:0;position:relative}
+
+/* ===== NYTT: Efteranalys ===== */
+.eah{margin:10px;border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.eah.w4{grid-template-columns:repeat(4,minmax(0,1fr));margin:12px 0}
+.eah.w3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.eah .bx{background:rgba(255,255,255,.05);border:1px solid var(--head-line);border-radius:6px;padding:8px 10px;min-width:0}
+.eah .bx small{display:block;font:700 10.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+.eah .bx strong{display:block;font:700 28px/1.1 var(--f-num);color:var(--head-ink);margin-top:4px;text-shadow:0 0 10px var(--glow);white-space:nowrap}
+.eah.w3 .bx strong{font-size:23px}
+.eah .bx strong.pos{color:var(--head-up);text-shadow:0 0 10px rgba(70,211,126,.35)}
+.eah .bx strong.neg{color:var(--head-down);text-shadow:none}
+.eah .bx span{display:block;font-size:12px;color:var(--head-text);margin-top:2px}
+.eah p{grid-column:1/-1;margin:4px 0 0;font-size:13px;line-height:1.4;color:var(--head-text)}
+.eah p b{font-family:var(--f-num);color:var(--head-ink);font-weight:700}
+.ccl{list-style:none;margin:0;padding:0 10px;display:grid;gap:6px}
+.ccl.g2{grid-template-columns:repeat(2,minmax(0,1fr));padding:0;gap:8px}
+.ccl li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong)}
+.ccl .ci{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--surface-3);color:var(--ink-2)}
+.ccl .ci svg{width:16px;height:16px}
+.ccl li.good{border-left-color:var(--up)}.ccl li.good .ci{background:var(--up-soft);color:var(--up)}
+.ccl li.warn{border-left-color:var(--fill)}.ccl li.warn .ci{background:var(--accent-soft);color:var(--accent)}
+.ccl li.bad{border-left-color:var(--down)}.ccl li.bad .ci{background:var(--down-soft);color:var(--down)}
+.ccl p{margin:0;font-size:14px;line-height:1.35;font-weight:600}
+.ccl p.s{margin-top:3px;font-size:12.5px;font-weight:400;color:var(--ink-2)}
+.ccl p.s b{font-family:var(--f-num);color:var(--ink);font-weight:700}
+.ccl .tag{margin-top:5px}
+.cmp{margin:0 10px;padding:12px;border-radius:10px;display:grid;gap:12px}
+.cmp.flat{margin:0}
+.cmp .cr{display:grid;grid-template-columns:82px minmax(0,1fr) auto;gap:5px 10px;align-items:center}
+.cmp .cl{font:700 12.5px/1.1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-text)}
+.cmp .cv{font:700 14px/1 var(--f-num);color:var(--head-ink);text-align:right;white-space:nowrap}
+.cmp .tr{position:relative;height:12px;border-radius:3px;background:rgba(255,255,255,.10)}
+.cmp .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--fill);box-shadow:0 0 8px var(--glow)}
+.cmp .tr em{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1px;border-radius:1px;background:var(--head-title);box-shadow:0 0 0 1px var(--head)}
+.cmp .cs{grid-column:2/-1;font-size:12px;color:var(--head-ink-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cmp .cs b{color:var(--head-text);font-family:var(--f-num)}
+.vt{display:inline-flex;align-items:center;min-height:17px;padding:0 5px;border-radius:3px;font:700 10.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--board-chip-line);color:var(--head-text)}
+.vt.up{color:var(--head-up);border-color:rgba(70,211,126,.5)}
+.vt.dn{color:var(--head-down);border-color:rgba(255,138,122,.5)}
+.vt.thin{color:var(--head-ink-2);border-style:dashed}
+.cmp .leg{font-size:11.5px;color:var(--head-ink-2);display:flex;gap:14px;align-items:center}
+.cmp .leg i{display:inline-block;width:14px;height:8px;border-radius:2px;background:var(--fill);margin-right:5px;vertical-align:0}
+.cmp .leg em{display:inline-block;width:3px;height:12px;background:var(--head-title);margin-right:5px;vertical-align:-2px}
+.plays{list-style:none;margin:0;padding:0}
+.play{display:grid;grid-template-columns:24px minmax(0,1fr) 76px;gap:8px;align-items:start;padding:9px 10px 9px 13px;border-bottom:1px solid var(--line);background:var(--surface)}
+.plays > li:nth-child(even){background:var(--surface-2)}
+.pmain{min-width:0;display:flex;flex-direction:column;gap:3px}
+.play .pm,.miss2 .pm{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.play .pm b,.miss2 .pm b{font-family:var(--f-num);color:var(--ink)}
+.pos{color:var(--up)!important}.neg{color:var(--down)!important}
+.why{display:flex;gap:5px;flex-wrap:wrap;align-items:center;font-size:12px;line-height:1.3;color:var(--ink-2)}
+.res{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.u{font:700 15px/1 var(--f-num);white-space:nowrap}
+.plx{font:600 12px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+.miss2{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px 8px 13px;border-bottom:1px solid var(--line);background:var(--surface)}
+.plays > li.miss2:nth-child(even){background:var(--surface-2)}
+.tgw{padding:0 12px;display:grid;gap:12px}
+.tgw.flat{padding:0}
+.tgw h4{margin:0 0 6px;font:700 12px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);display:flex;gap:6px;align-items:center}
+.tgw h4 .hit{font-size:10.5px;padding:3px 5px}
+.tgc{display:flex;flex-wrap:wrap;gap:5px}
+.tgc .tag{min-height:26px;font-size:12px;padding:2px 8px;gap:6px}
+.tgc .tag b{font:700 12px/1 var(--f-num)}
+.trend{margin:0 10px;padding:12px;border-radius:10px}
+.trend.flat{margin:0}
+.trend h3{margin:0 0 10px;font:700 11.5px/1.1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);display:flex;justify-content:space-between}
+.tbars{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;height:120px;position:relative}
+.tbars::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--head-line)}
+.tb{position:relative}
+.tb i{position:absolute;left:16%;right:16%}
+.tb i.p{bottom:50%;background:var(--head-up);border-radius:2px 2px 0 0;box-shadow:0 0 8px rgba(70,211,126,.3)}
+.tb i.n{top:50%;background:var(--head-down);border-radius:0 0 2px 2px}
+.tb b{position:absolute;left:-4px;right:-4px;text-align:center;font:700 10.5px/1 var(--f-num);color:var(--head-text);white-space:nowrap}
+.tlab{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:6px;font:600 10.5px/1.25 var(--f-num);color:var(--head-ink-2);text-align:center}
+.tlab small{display:block;color:var(--head-text);font-size:10.5px}
+.trend p{margin:10px 0 0;font-size:13px;color:var(--head-text);line-height:1.4}
+.trend p b{font-family:var(--f-num);color:var(--head-ink)}
+.pick{min-height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);width:100%;text-align:left;font:700 15px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase}
+.pick svg{width:18px;height:18px;margin-left:auto;color:var(--ink-2)}
+.pickw{padding:4px 10px 0}
+.lnk{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 10px;padding:0 12px;min-height:48px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--accent);font:700 14.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;text-decoration:none}
+.lnk svg{width:16px;height:16px}
+
+/* ===== NYTT: Singlar mot dubbelsystem ===== */
+.dbl{margin:0 10px;border-radius:10px;padding:12px;display:grid;gap:10px}
+.dbl.flat{margin:0}
+.dbl .dh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font:700 11.5px/1.1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.dtab{width:100%;border-collapse:collapse;table-layout:fixed}
+.dtab th,.dtab td{padding:5px 6px;border-bottom:1px solid var(--head-line);text-align:right;white-space:nowrap}
+.dtab th:first-child,.dtab td:first-child{text-align:left;padding-left:0}
+.dtab thead th{font:700 11px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+.dtab thead th.win{color:var(--head-ink)}
+.dtab tbody th{font:600 12.5px/1.2 var(--f-body);color:var(--head-ink-2)}
+.dtab td{font:700 14px/1.2 var(--f-num);color:var(--head-text)}
+.dtab td.pos{color:var(--head-up)!important}.dtab td.neg{color:var(--head-down)!important}
+.dtab tr.big td{font-size:17px;color:var(--head-ink)}
+.dbl p{margin:0;font-size:13px;line-height:1.4;color:var(--head-text)}
+.dbl p b{font-family:var(--f-num);color:var(--head-ink)}
+.pairs{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pairs li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 10px;min-height:40px;background:var(--surface);border-bottom:1px solid var(--line);font-size:13.5px}
+.pairs li:nth-child(even){background:var(--surface-2)}
+.pairs li:last-child{border-bottom:0}
+.pairs .pp{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 15px/1.1 var(--f-name)}
+.pairs .pp .n{font-size:12px;color:var(--ink-2);font-weight:500}
+.pairs .po{font:700 13.5px/1 var(--f-num)}
+.pairs .hit{font-size:11px;padding:3px 6px}
+.pairw{padding:0 10px}
+.explain{max-width:1300px;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.explain > div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.explain h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.explain table{border-collapse:collapse;width:100%;font-size:13px}
+.explain th,.explain td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+.explain th:first-child,.explain td:first-child{text-align:left}
+.explain th{font:700 11.5px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.explain td{font-family:var(--f-num)}
+.explain ul{margin:0;padding-left:18px}
+
+/* ===== NYTT: Hämta tips ===== */
+.role{display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 6px;border-radius:4px;font:700 11px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;flex:none;white-space:nowrap}
+.role.spik{background:var(--ink);color:var(--bg)}
+.role.fav{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.role.skr{background:var(--accent-soft);color:var(--accent)}
+.role.avr{background:var(--down-soft);color:var(--down)}
+.role.nmd{background:var(--surface-3);color:var(--ink)}
+.tipt{display:inline-flex;align-items:center;height:14px;margin-left:5px;padding:0 4px;border-radius:3px;font:700 10px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent);vertical-align:1px}
+.art{margin:10px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);display:grid;gap:3px}
+.art.flat{margin:0 0 10px}
+.art .ak{font:700 11.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:flex;gap:8px;align-items:center}
+.art h2{margin:2px 0 0;font:700 19px/1.15 var(--f-name);text-transform:uppercase;letter-spacing:.01em}
+.art p{margin:0;font-size:13px;color:var(--ink-2)}
+.art a{color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px;min-height:32px}
+.art a svg{width:14px;height:14px}
+.tipl{list-style:none;margin:0;padding:0}
+.tipc{padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface);display:grid;gap:7px;position:relative}
+.tipl > li:nth-child(even){background:var(--surface-2)}
+.tipc .th{display:flex;align-items:center;gap:8px;min-width:0}
+.tipc .av{font:700 12px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);flex:none}
+.tipc .pn{font:700 17px/1.1 var(--f-name);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tipc .th .role{margin-left:auto}
+.quote{margin:0;padding:6px 10px;border-left:3px solid var(--line-strong);background:var(--surface-2);font-size:13.5px;line-height:1.4;font-style:italic;color:var(--ink)}
+.tipl > li:nth-child(even) .quote{background:var(--surface)}
+.quote mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:2px;font-style:normal;font-weight:700}
+.tipc .ta{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.okl{display:inline-flex;align-items:center;gap:4px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--up);margin-left:auto}
+.okl svg{width:14px;height:14px}
+.tipc.flag{box-shadow:inset 4px 0 0 var(--fill)}
+.flg{display:flex;gap:6px;align-items:flex-start;font-size:13px;line-height:1.35;color:var(--ink);font-weight:600;margin:0}
+.flg svg{width:16px;height:16px;color:var(--accent);flex:none;margin-top:1px}
+.tipc.err{box-shadow:inset 4px 0 0 var(--down)}
+.tipc.err .flg svg{color:var(--down)}
+.revbar{position:absolute;left:0;right:0;bottom:64px;padding:10px 12px 12px;background:var(--surface);border-top:1px solid var(--line);display:grid;gap:6px;box-shadow:0 -8px 18px rgba(0,0,0,.12);z-index:2}
+.revbar .help{text-align:center}
+.quota{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-2)}
+.quota b{font-family:var(--f-num);color:var(--ink)}
+.meter{flex:1;height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden;max-width:140px}
+.meter i{display:block;height:100%;background:var(--fill)}
+.meter.full i{background:var(--down)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:4}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:3px solid var(--fill);border-radius:14px 14px 0 0;padding:4px 12px 24px;display:grid;gap:12px;box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.grip{justify-self:center;width:40px;height:5px;border-radius:3px;background:var(--line-strong);margin:6px 0 0}
+.shh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.shh h2{margin:0;font:700 21px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.shh .ibtn{color:var(--ink-2)}
+.rolepick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.rolepick button{min-height:46px;padding:0 8px;border-radius:7px;border:1.5px solid var(--line-strong);background:var(--surface);font:700 14px/1.1 var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);display:flex;align-items:center;justify-content:center;gap:4px}
+.rolepick button[aria-checked="true"]{background:var(--btn-fill);color:var(--fill-ink);border-color:var(--btn-line);box-shadow:0 0 12px var(--glow)}
+.rolepick button[aria-checked="true"]::before{content:"✓"}
+.shbtns{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.sugg{margin:4px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 10px;border-radius:8px;background:var(--accent-soft);font-size:13.5px}
+.sugg b{font-family:var(--f-num)}
+.sugg .btn{margin-left:auto}
+.hist{font-size:12.5px;color:var(--ink-2);display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0}
+.added{list-style:none;margin:0;padding:0}
+.added li{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:6px 6px 6px 12px;min-height:52px;border-bottom:1px solid var(--line);background:var(--surface)}
+.added li:nth-child(even){background:var(--surface-2)}
+.added .pn{font:700 16px/1.1 var(--f-name);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.added .av{font:700 12px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+.newt{background:var(--sig-fill);color:var(--sig-fill-ink)}
+</style>
+
+<div class="mk">
+  <div class="mk-top">
+    <h1 class="mt">Efteranalys och Hämta tips</h1>
+    <div class="ctl">
+      <span><label>Tema</label><span class="seg" role="group" aria-label="Tema"><button type="button" data-t="light" aria-pressed="false">Ljust</button><button type="button" data-t="dark" aria-pressed="true">Mörkt</button></span></span>
+    </div>
+  </div>
+  <p class="lead">All data är påhittad och gäller <b>V85 på Bjerke lördag 31 oktober 2026</b> med norska och svenska hästar. <b>Del 1</b> visar efteranalysen söndag 1 november, alltså vad omgången gav, varför och vad Mikael kan lära sig, och samma sak över tid. Där ingår jämförelsen mellan singlar och dubbelsystem. <b>Del 2</b> visar Hämta tips från Travstugan tisdag 27 oktober, med granskning av det som AI:n tolkade. Markeringarna följer alternativ A från <code>markeringar-live</code>: Bet är en biljett med oddset ("B 2,60") och raden har en tjock kant i <code>--bet</code>.</p>
+
+  <div class="note" style="margin-top:16px">
+    <div class="rec"><h3>Rekommendation</h3>
+      <p><b>Del 1: A · Egen vy.</b> Efteranalysen blir en egen vy under Omgången (<code>/omgang/[id]/analys</code>). I fas Klart leder Nästa steg dit. Statistik får fliken <b>Över tid</b> med samma slutsatser för 4 eller 8 omgångar, och varje omgång i listan länkar till sin analys. Allt som hör till veckan ligger då under Omgången, som DESIGN.md säger.</p>
+      <p><b>Singlar mot dubbelsystem</b> är ett block i båda vyerna. Det är tydligt märkt som en efterhandsberäkning, och ingenting spelas. Slutsatsen dras först från 8 omgångar.</p>
+      <p><b>Del 2: A · Granska först.</b> Hämta tips sparar det AI:n tolkade som <b>att granska</b>. Inget syns i hästkortet eller räknas i källstödet förrän du har godkänt det. Säkra tips godkänner du med ett tryck. Osäkra tips väntar tills du har rättat eller godkänt dem ett och ett.</p>
+      <p><b>Slutsatserna räknas med regler, inte med AI.</b> Alla regler och gränser för underlaget står längst ned på sidan.</p></div>
+    <div class="st"><h3>Läget i koden (kontrollerat)</h3><ul>
+      <li><b>Statistik (S9) är inte byggd.</b> <code>app/(app)/statistik/page.tsx</code> visar bara tomt läge.</li>
+      <li><b>Allt som behövs till del 1 fryses redan</b> i <code>Outcome</code>: <code>betOdds</code>, <code>unibetOdds</code>, <code>riktodds</code>, <code>riktoddsX</code>, <code>xFactor</code>, <code>trollspotRank</code>/<code>EstOdds</code>, <code>sourceSupport</code>, <code>place</code> och <code>hit</code>. Taggarna finns i <code>HorseComment.tags</code> (RACE) och <code>lib/quick-tags.ts</code>. Summeringen <code>outcomeSummary</code> finns i <code>lib/outcomes.ts</code>. Dubbelsystemet räknas i efterhand ur <code>betOdds</code> och <code>hit</code>.</li>
+      <li><b>Specen 15 säger "kronor i statistiken" är utanför.</b> Del 1 räknar enheter (insats 1 × Bet-odds). Det beslutet behöver ändras (fråga 2).</li>
+      <li><b>Hämta tips är avstängd</b> (<code>components/sources/SourcesView.tsx</code>, <code>FetchTips</code>). <code>TipFact</code> finns men saknar roll, avdelning, nummer, artikel och granskning.</li></ul></div>
+    <div><h3>Öppna frågor</h3><ol>
+      <li><b>Del 1:</b> A (egen vy under Omgången) eller B (allt i Statistik)?</li>
+      <li><b>Kronor:</b> specen utesluter kronor. Räcker <b>enheter</b> (1 per spel × Bet-oddset) plus kronor med en fast insats per spel i Inställningar (förslag 100 kr)? Eller vill du skriva in den faktiska insatsen per Bet?</li>
+      <li><b>Bra eller svagt spel</b> bedöms på beslutet, inte på utfallet. Bra spel = Bet-oddset var högre än riktoddset med X när du spelade och minst 2,00. Är det rätt definition?</li>
+      <li><b>Gränser för underlag:</b> se tabellen längst ned. Det gäller till exempel minst 5 hästar per grupp för "mot väntat" i en omgång, minst 20 Bet för träffprocent över tid och 8 omgångar för trend och dubbelsystem. Är det rimligt?</li>
+      <li><b>Taggar</b> räknas bara på dina hästar (I, S, B eller Trollspöt). Ska alla hästar du har taggat räknas?</li>
+      <li>Ska Nästa steg i fas Klart vara <b>Se efteranalysen</b> i stället för "Se statistik" (3.2 punkt 9)?</li>
+      <li><b>Dubbelsystem med 4 eller fler Bet:</b> alla par med insatsen delad lika (förslaget, 4 Bet = 6 dubblar à 0,67), eller bara de 3 Bet med högst värde vid spel, som i ditt planerade system med 3 hästar?</li>
+      <li><b>Dubbelsystem, vilken brytpunkt:</b> 1 / snittoddset (som du beskrev) eller singlarnas ROI? De kan peka åt olika håll. I exemplet har träffarna lägre odds (2,02) än missarna (2,99). Då är träffprocenten 55 % klart över brytpunkten 41 %, men dubblarna har ändå gått sämre hittills. Mockupen visar båda.</li>
+      <li><b>Dubbelns odds:</b> Bet-oddset gånger Bet-oddset. Unibet kan ge ett annat odds på en kombination. Räcker det som approximation?</li>
+      <li><b>Del 2:</b> A (granska först) eller B (räknas direkt, rätta i efterhand)?</li>
+      <li><b>Roller:</b> Spik, Favorit, Skräll, Avrådan och Nämnd. AI:n översätter "lås" till Spik och "starkast" till Favorit. "Fynd" blir Skräll men flaggas som osäkert. Stämmer det?</li>
+      <li><b>Tidiga och slutliga tips:</b> en senare artikel från samma källa ersätter rollen för samma häst, och den gamla rollen syns som historik. Källstödet räknar källan en gång. Är det okej?</li>
+      <li><b>Kostnad:</b> förslaget är en gräns på 20 AI-läsningar per dygn. Samma artikel skickas aldrig två gånger om texten är oförändrad. Det kostar ungefär 0,30 kr per artikel, men det är uppskattat. Vilken gräns vill du ha?</li>
+      <li><b>Tips i hästkortet</b> flyttas upp, direkt under X-faktor och källstöd (specen har dem som punkt 8). Är det okej?</li>
+      <li><b>Travstugans villkor:</b> får sidan läsas automatiskt? Det är samma fråga som för travstatistik.se (17.3).</li>
+      <li>Ska Hämta tips också köras av sig själv, till exempel tisdag och fredag kväll? Förslaget är att vänta med det.</li>
+    </ol></div>
+  </div>
+
+  <!-- ===================== DEL 1 ===================== -->
+  <h2 class="part0">Del 1 · Efteranalys med slutsatser</h2>
+  <div class="altcard">
+    <div><h4>A · Egen vy under Omgången <span class="rk2">Rekommenderas</span></h4>När omgången är klar visar Nästa steg <b>Efteranalysen är klar</b> med två siffror och knappen Se efteranalysen. Vyn har resultattavlan, 2–4 slutsatser, Mot väntat, Dina spel med varför, Singlar mot dubbelsystem, spelbara du lät bli och taggar. <b>Över tid</b> ligger i Statistik med 4 eller 8 omgångar, trend, dubbelsystem och en lista över omgångar där varje rad länkar till sin analys. <b>Ger:</b> analysen finns där veckan finns, och vägen dit är ett tryck på söndagen. <b>Kostar:</b> en ny rutt, och analysen och statistiken ligger på två ställen.</div>
+    <div><h4>B · Allt i Statistik</h4>Statistik får segmentet <b>Omgång | Över tid</b> och en väljare för omgången. Omgången visar bara summeringen och en länk "Efteranalysen finns i Statistik". <b>Ger:</b> allt om utfall ligger på ett ställe, och det blir ingen ny rutt. <b>Kostar:</b> ett steg till på söndagen, och du måste välja omgång i en lista. Det bryter också mot principen att allt om veckan ligger under Omgång.</div>
+  </div>
+  <p class="sub">Alla skärmar visar samma påhittade omgång. Mikael spelade <b>4 Bet</b>: Fly Express 2,60 (2:a), Baron Tilly 2,15 (1:a), Peacekeeper 3,40 (6:a) och Vardø Storm 1,90 (galopp). Det ger <b>2 av 4 träff och +0,75 enheter</b>. Han hade 5 Spelbara, 14 Intressanta, 10 hästar i Trollspöt och 3 med X-faktor. <b>Enhet</b> betyder 1 insats per spel. En träff ger Bet-oddset − 1, och en miss ger −1.</p>
+
+  <h3 class="part">A · Mobil 390 px</h3>
+  <div class="phwrap">
+    <div class="phc"><span><b>1 · Omgången, fas Klart</b> · Nästa steg</span><div class="ph"><div class="ph-in js" data-k="a1"></div></div></div>
+    <div class="phc"><span><b>2 · Efteranalysen</b> · överst</span><div class="ph"><div class="ph-in js" data-k="a2"></div></div></div>
+  </div>
+  <div class="phwrap" style="margin-top:22px">
+    <div class="phc"><span><b>3 · Efteranalysen</b> · skrollad: dina spel och taggar</span><div class="ph"><div class="ph-in js" data-k="a3"></div></div></div>
+    <div class="phc"><span><b>4 · Statistik · Över tid</b> · 8 omgångar</span><div class="ph"><div class="ph-in js" data-k="a4"></div></div></div>
+  </div>
+  <p class="vnote"><b>Ordningen i vyn:</b> tavlan med resultatet, Slutsatser, Mot väntat, Dina spel, Singlar mot dubbelsystem, Spelbara du inte spelade och Taggar. Slutsatserna står först, eftersom de är skälet till att öppna vyn. Varje slutsats har en ikon och ett ord, inte bara en färg: ✓ bra, ! se upp, i info. Vid tunt underlag får slutsatsen taggen "Tunt underlag". Ett tryck på ett spel öppnar hästkortet för den starten, med resultat och dina taggar.</p>
+
+  <h3 class="part">Singlar mot dubbelsystem · efterhandsberäkning (gäller A och B)</h3>
+  <p class="sub">Blocket räknar i efterhand vad omgångens Bet hade gett som <b>dubbelsystem</b> i stället för singlar. Ingenting spelas, och appen föreslår inget spel. <b>Regel:</b> alla par av omgångens Bet, och insatsen delas lika så att den blir lika stor som för singlarna. 3 Bet ger 1×2, 1×3 och 2×3 à 1 enhet, alltså ditt planerade system. 4 Bet ger 6 dubblar à 0,67 enhet. En dubbel ger platsodds A × platsodds B om båda kommer topp 3, annars 0. Bet-oddset används. I efteranalysen ligger blocket efter Dina spel. I Över tid ligger det efter Slutsatser. På desktop ligger det i högerkolumnen respektive under slutsatserna.</p>
+  <div class="phwrap">
+    <div class="phc"><span><b>5 · Efteranalysen</b> · omgångens 4 Bet</span><div class="ph"><div class="ph-in js" data-k="d1"></div></div></div>
+    <div class="phc"><span><b>6 · Statistik · Över tid</b> · 8 omgångar</span><div class="ph"><div class="ph-in js" data-k="d2"></div></div></div>
+  </div>
+  <div class="explain">
+    <div><h3>Varför: brytpunkten 1 / odds</h3><p style="margin:0 0 6px">Är träffprocenten högre än 1 / snittoddset går singlarna plus, och då <b>förstärker</b> dubblar vinsten. Är den lägre förstärker de förlusten. Väntad ROI för en dubbel ≈ (1 + singel-ROI)² − 1, om hästarna går i olika lopp.</p>
+      <table><thead><tr><th>Chans</th><th>Odds</th><th>Brytpunkt</th><th>Singel</th><th>Dubbel</th></tr></thead><tbody>
+        <tr><td>50 %</td><td>2,20</td><td>45 %</td><td style="color:var(--up)">+10 %</td><td style="color:var(--up)">+21 %</td></tr>
+        <tr><td>45 %</td><td>2,00</td><td>50 %</td><td style="color:var(--down)">−10 %</td><td style="color:var(--down)">−19 %</td></tr></tbody></table>
+      <p style="margin:6px 0 0">Förlustveckorna kommer lika ofta, men en dubbel kräver att båda hästarna i paret placerar sig. Med 3 hästar krävs alltså minst 2 av 3, och 1 av 3 ger noll. Därför svänger dubblar mer.</p></div>
+    <div><h3>Regel för antal Bet</h3><ul>
+      <li><b>0–1 Bet:</b> ingen jämförelse. Texten blir "Dubbelsystem kräver minst 2 Bet i olika lopp."</li>
+      <li><b>2 Bet:</b> 1 dubbel à 2 enheter mot 2 singlar.</li>
+      <li><b>3 Bet:</b> ditt planerade system, 3 dubblar à 1 enhet.</li>
+      <li><b>4 Bet:</b> 6 dubblar à 0,67 enhet (förslag, se öppen fråga 7).</li>
+      <li><b>5 eller fler:</b> alla par (10 dubblar à 0,5 för 5 Bet), eller de 3 med högst värde vid spel.</li>
+      <li>Två Bet i <b>samma lopp</b> paras aldrig ihop. Bet utan odds räknas inte.</li></ul></div>
+    <div><h3>Slutsatsen i klartext (regel)</h3><ul>
+      <li><b>Färre än 8 omgångar:</b> bara siffrorna, med "Tunt underlag · säkrare från 10 omgångar".</li>
+      <li><b>Från 8 omgångar och träff % &gt; brytpunkt:</b> "Dina Bet träffar över brytpunkten. Om det håller förstärker dubblar vinsten: väntat +23 % mot +11 %."</li>
+      <li><b>Från 8 omgångar och träff % ≤ brytpunkt:</b> "Dina Bet träffar under brytpunkten. Dubblar skulle förstärka förlusten."</li>
+      <li>Det som faktiskt hände står alltid bredvid: ROI för båda, och i hur många omgångar dubblar slog singlar.</li></ul></div>
+  </div>
+
+  <h3 class="part">A · Desktop · Efteranalysen</h3>
+  <div class="scrollx"><div class="bf"><div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-2026-10-31/analys</span></div><div class="vp js" data-k="da1" style="height:1180px"></div></div></div>
+  <h3 class="part">A · Desktop · Statistik, Över tid</h3>
+  <div class="scrollx"><div class="bf"><div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/statistik?period=8</span></div><div class="vp js" data-k="da2" style="height:1130px"></div></div></div>
+  <p class="vnote"><b>Desktop:</b> två kolumner. Till vänster står tavlan, slutsatserna och tabellen Dina spel. Till höger står Mot väntat, Taggar och Singlar mot dubbelsystem (i Över tid: Mot väntat och omgångarna). Kolumnbredderna i tabellen Dina spel är räknade så att namnet får cirka 240 px: Avd 52, Nr 48, Spelat 72, Rikt m X 80, Värde 80, Plac 64, Utfall 92 och Resultat 84. Varför-raden bryts under namnet i stället för att klippas. Befintliga S9-delar (Dela upp på, X-faktorrutan) står under Över tid och är oförändrade. De syns inte i mockupen.</p>
+
+  <h3 class="part">B · Allt i Statistik · mobil och desktop</h3>
+  <div class="phwrap">
+    <div class="phc"><span><b>B1 · Omgången, fas Klart</b></span><div class="ph"><div class="ph-in js" data-k="b1"></div></div></div>
+    <div class="phc"><span><b>B2 · Statistik · Omgång</b></span><div class="ph"><div class="ph-in js" data-k="b2"></div></div></div>
+  </div>
+  <div class="scrollx" style="margin-top:22px"><div class="bf"><div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/statistik?vy=omgang&amp;omgang=v85-2026-10-31</span></div><div class="vp js" data-k="db1" style="height:760px"></div></div></div>
+
+  <h3 class="part">Lägen (gäller A och B)</h3>
+  <div class="states js" data-k="st1"></div>
+
+  <!-- ===================== DEL 2 ===================== -->
+  <h2 class="part0">Del 2 · Hämta tips från Travstugan (E5)</h2>
+  <div class="altcard">
+    <div><h4>A · Granska först <span class="rk2">Rekommenderas</span></h4>Hämta tips läser Travstugans samlingssida, hittar artiklarna för omgången och låter AI:n tolka dem till tips: avdelning, nummer, roll och citat. Tipsen hamnar i <b>Att granska</b>. Där ser du citatet bredvid tolkningen och kan <b>Rätta</b> eller <b>Ta bort</b>. <b>Godkänn 5 tips</b> tar alla säkra på en gång. Först därefter syns tipsen i avdelningen och hästkortet och räknas i källstödet. <b>Ger:</b> en felaktig tolkning kan aldrig smyga in i källstödet. <b>Kostar:</b> ett steg till, i praktiken ett tryck per artikel.</div>
+    <div><h4>B · Räknas direkt</h4>Tipsen läggs på hästarna direkt och märks "Ny" tills du har sett dem. Källor visar en lista över det som lades till, med Ta bort per rad. Hästkortet har länken "Fel tolkning?". <b>Ger:</b> inget extra steg. <b>Kostar:</b> ett feltolkat tips syns som förslag i källstödet tills du upptäcker det. Lätt att missa när tipsen kommer på tisdagen och du analyserar på torsdagen.</div>
+  </div>
+  <p class="sub">Exemplet gäller tisdag 27 oktober 21:14. Travstugans samlingssida <code>travstugan.se/v85</code> är påslagen som källa. Artikeln <b>"Tidiga V85: Baronen är guldet"</b> ger 6 tips: avd 1 fynd 10 Fly Express, avd 2 spik 2 Gigant Tider, avd 4 1 Baron Tilly starkast, avd 5 skräll 2 Peacekeeper, avd 6 lås 3 Peggy Boko och avd 7 favorit 3 Blizzard Diamant. "Fynd" har ingen given roll och flaggas därför som osäkert.</p>
+
+  <h3 class="part">A · Mobil 390 px</h3>
+  <div class="phwrap">
+    <div class="phc"><span><b>1 · Källor</b> · Hämta tips</span><div class="ph"><div class="ph-in js" data-k="t1"></div></div></div>
+    <div class="phc"><span><b>2 · Förloppet</b> · läser och tolkar</span><div class="ph"><div class="ph-in js" data-k="t2"></div></div></div>
+  </div>
+  <div class="phwrap" style="margin-top:22px">
+    <div class="phc"><span><b>3 · Granska tips</b> · citat bredvid tolkning</span><div class="ph"><div class="ph-in js" data-k="t3"></div></div></div>
+    <div class="phc"><span><b>4 · Rätta</b> · bottenark</span><div class="ph"><div class="ph-in js" data-k="t4"></div></div></div>
+  </div>
+  <div class="phwrap" style="margin-top:22px">
+    <div class="phc"><span><b>5 · Avdelningen</b> · rollen i underraden</span><div class="ph"><div class="ph-in js" data-k="t5"></div></div></div>
+    <div class="phc"><span><b>6 · Hästkortet</b> · tips och källstöd</span><div class="ph"><div class="ph-in js" data-k="t6"></div></div></div>
+  </div>
+  <p class="vnote"><b>Var Hämta tips finns:</b> som primärknapp överst i Källor, och som länk i Omgångens tipsrad ("Tips: 6 på 6 hästar · Hämta igen"). <b>Avdelningen:</b> rollen står som en liten tagg efter kusken i underraden, så att raden behåller 44 px och kolumnerna inte påverkas. Har hästen tips från flera källor står den starkaste rollen och antalet: "Spik · 2". <b>Hästkortet:</b> Tips ligger direkt under X-faktor och källstöd. Där finns också förslaget "Hämta tips räknade 1 · Använd", som aldrig skriver över ditt eget värde (6.8).</p>
+
+  <h3 class="part">A · Desktop · Källor med granskningen</h3>
+  <div class="scrollx"><div class="bf"><div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/kallor/granska</span></div><div class="vp js" data-k="dt1" style="height:860px"></div></div></div>
+  <p class="vnote"><b>Desktop:</b> källorna och Hämta tips till vänster (420 px), och granskningen som tabell till höger. Kolumnerna är Avd 52, Nr 48, Häst 180, Roll 104, Citat (resten, cirka 230 px, bryts på flera rader) och Åtgärd 184. Rätta öppnar en dialog med samma innehåll som bottenarket. Tangentbord: ↑/↓ flyttar mellan tips, <b>G</b> godkänner, <b>R</b> rättar och <b>Delete</b> tar bort. I avdelningen på desktop står rollen i namnets underrad, som i mobilen, så att tabellens kolumner inte ändras.</p>
+
+  <h3 class="part">B · Räknas direkt · mobil</h3>
+  <div class="phwrap">
+    <div class="phc"><span><b>B1 · Källor efter hämtningen</b></span><div class="ph"><div class="ph-in js" data-k="tb1"></div></div></div>
+    <div class="phc"><span><b>B2 · Hästkortet</b> · Fel tolkning?</span><div class="ph"><div class="ph-in js" data-k="tb2"></div></div></div>
+  </div>
+
+  <h3 class="part">Lägen (gäller A, och B där det passar)</h3>
+  <div class="states js" data-k="st2"></div>
+
+  <!-- ===================== REGLER ===================== -->
+  <h2 class="sec">Regler som mockupen föreslår</h2>
+  <div class="note">
+    <div><h3>Del 1 · Slutsatser med regler (ingen AI)</h3>
+      <table><thead><tr><th>Slutsats</th><th>Regel</th><th>Visas när</th></tr></thead><tbody>
+        <tr><td>Bet-resultatet</td><td>träff/antal, enheter = Σ(hit ? betOdds − 1 : −1), jämnt vid 1 / medel(betOdds)</td><td>Minst 1 Bet med odds. Alltid först.</td></tr>
+        <tr><td>Spel utan värde</td><td>betOdds ≤ riktoddsX eller betOdds &lt; riktlinjen 2,00</td><td>Minst ett sådant Bet</td></tr>
+        <tr><td>Spelbara du lät bli</td><td>spelbar &amp;&amp; !bet, med vad de hade gett till Unibet-oddset vid start</td><td>Minst en av dem kom topp 3</td></tr>
+        <tr><td>Mot väntat (S, I, Trollspöt, X)</td><td>faktiskt antal topp 3 mot Σ 1/riktoddsX (för X också Σ 1/riktodds). "Bättre/sämre än väntat" bara om skillnaden ≥ 1 standardavvikelse, √Σp(1−p). Annars "i linje".</td><td>Gruppen har minst 5 hästar, annars "Tunt underlag"</td></tr>
+        <tr><td>Singlar mot dubbelsystem</td><td>alla par av Bet i olika lopp, insatsen delad lika. Dubbel = oddsA × oddsB om båda topp 3. Över tid: träff % mot 1 / snittodds, väntad dubbel-ROI = (1 + singel-ROI)² − 1</td><td>Minst 2 Bet. Slutsats från 8 omgångar.</td></tr>
+        <tr><td>Taggar</td><td>taggar på dina hästar, uppdelat på topp 3 och utanför</td><td>Taggen finns på minst 2 hästar</td></tr>
+        <tr><td>Källa (när E5 finns)</td><td>"Travstugans 6 tips: 4 topp 3", bara godkända tips</td><td>Minst 3 tips från källan</td></tr>
+      </tbody></table>
+      <p><b>Urval:</b> högst 4 slutsatser, i ordningen ovan. "Se upp" går före "info". Övriga finns bakom "Visa alla".</p></div>
+    <div><h3>Gränser för underlag</h3>
+      <table><thead><tr><th>Vad</th><th>För lite</th><th>Tunt</th><th>Räcker</th></tr></thead><tbody>
+        <tr><td>Grupp i en omgång (mot väntat)</td><td>&lt; 3</td><td>3–4</td><td>≥ 5</td></tr>
+        <tr><td>Bet-träff över tid</td><td>&lt; 10</td><td>10–39</td><td>≥ 40</td></tr>
+        <tr><td>Delgrupp över tid (odds under 2,00, X Tror på)</td><td>&lt; 6</td><td>6–19</td><td>≥ 20</td></tr>
+        <tr><td>Tagg över tid</td><td>&lt; 6</td><td>6–14</td><td>≥ 15</td></tr>
+        <tr><td>Dubbelsystem över tid</td><td>&lt; 4 omg.</td><td>4–9 omg.</td><td>≥ 10 omg.</td></tr>
+        <tr><td>Trend (senaste 4 mot 4 före)</td><td colspan="3">8 omgångar och minst 10 Bet per halva</td></tr>
+      </tbody></table>
+      <p><b>För lite:</b> bara fakta, ingen slutsatsrad. <b>Tunt:</b> slutsatsen visas med taggen "Tunt underlag" och ordet "hittills". <b>Över tid</b> visas från 4 klara omgångar eller 20 Bet. Innan dess visas ett tomt läge.</p></div>
+    <div><h3>Del 2 · Hämta tips</h3><ul>
+      <li><b>Källan</b> är en samlingssida. Appen följer länkar som nämner omgången (V85, datum, "Bjerke"). Varje artikel läses en gång. Har texten inte ändrats (hash) skickas den inte till AI:n igen.</li>
+      <li><b>AI:n</b> får artikeltexten och omgångens lista över avdelningar, nummer och hästar, och svarar med JSON <code>[{leg, number, horseName, role, quote}]</code>. Citatet måste finnas ordagrant i texten, annars kastas tipset.</li>
+      <li><b>Koppling:</b> avdelning + nummer + namn stämmer = säker. Om bara två av tre stämmer, eller om rollen kom från ett ord som inte finns i listan ("fynd"), blir tipset osäkert. Om inget stämmer kan tipset inte kopplas, och du väljer häst själv.</li>
+      <li><b>Låsning:</b> efter loppets start går tips inte att ändra. Källstödet fryses i <code>Outcome</code> som i dag.</li>
+      <li><b>Fler källor:</b> lägg till en i taget i Källor och tryck <b>Provläs</b>. Provläsningen visar vad som hittades utan att något sparas. Instruktionen till AI:n är densamma för alla källor. Det enda som skiljer är hur artiklarna hittas: samlingssida med länkar (Travstugan, travcash.se) eller en sida som läses direkt. travcash.se är en rimlig källa nummer två.</li></ul></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  root.setAttribute('data-theme','dark');
+  document.querySelectorAll('[data-t]').forEach(function(b){b.addEventListener('click',function(){root.setAttribute('data-theme',b.dataset.t);document.querySelectorAll('[data-t]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))})})});
+
+  var MI='−';
+  var I={
+    wheel:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.6"/><g stroke="currentColor" stroke-width="1.5"><path d="M16 16L16 4M16 16L24.5 7.5M16 16L28 16M16 16L24.5 24.5M16 16L16 28M16 16L7.5 24.5M16 16L4 16M16 16L7.5 7.5"/></g><circle cx="16" cy="16" r="3.4" fill="currentColor"/></svg>',
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+    refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 11v7M12 6.5h.01"/></svg>',
+    infoc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke-width="2"/><path d="M12 11v6M12 7.5h.01"/></svg>',
+    bang:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v9M12 19h.01"/></svg>',
+    warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l10 18H2z" stroke-linejoin="round"/><path d="M12 10v5M12 18h.01"/></svg>',
+    ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke-width="2"/><path d="M7.5 12.3l3 3 6-6.3"/></svg>',
+    ticket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg>',
+    wand:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5 13.5 10.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12.6 9.6l1.8 1.8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M17 2.5v4M15 4.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M20.5 9v3M19 10.5h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10.5 3v2.4M9.3 4.2h2.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/></svg>',
+    chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"/></svg>',
+    doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7M9 7h4" stroke-linecap="round"/></svg>',
+    spark:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/></svg>',
+    stat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>',
+    offline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0M12 19h.01M3 3l18 18"/></svg>'
+  };
+  function od(v){return v.toFixed(2).replace('.',',')}
+  function un(v){return (v>0.004?'+':v<-0.004?MI:'±')+od(Math.abs(v))}
+
+  // ---------- Skal ----------
+  var TABS=[['omg','Omgång','<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>'],['kal','Källor','<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'],['sta','Statistik','<path d="M5 20V10M12 20V4M19 20v-7"/>']];
+  function tabbar(a){return '<nav class="tabbar" aria-label="Huvudmeny">'+TABS.map(function(t){return '<a class="tab" href="#"'+(t[0]===a?' aria-current="page"':'')+'><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'+t[2]+'</svg>'+t[1]+'</a>'}).join('')+'</nav>'}
+  var backBtn='<button class="ibtn" type="button" aria-label="Tillbaka">'+I.back+'</button>';
+  function ah(title,sub,acts){return '<div class="brd"><header class="ah">'+backBtn+'<div class="ah-t"><h1 class="ah-title">'+title+'</h1><span class="ah-sub">'+sub+'</span></div>'+(acts||'')+'</header></div>'}
+  function brandHead(sub,acts){return '<div class="brd"><header class="ah"><span class="logo">'+I.wheel+'</span><div class="ah-t"><h1 class="ah-brand">Spelvärde</h1><span class="ah-sub">'+sub+'</span></div>'+(acts||'')+'</header></div>'}
+  var s1acts='<button class="ibtn" type="button" aria-label="Hämta omgången igen">'+I.refresh+'</button><button class="ibtn" type="button" aria-label="Inställningar">'+I.gear+'</button>';
+  function dhead(active,meta){return '<header class="dhead brd"><span class="logo">'+I.wheel+'</span><span class="ah-brand">Spelvärde</span><nav class="dnav" aria-label="Huvudmeny">'+[['omg','Omgång'],['kal','Källor'],['sta','Statistik']].map(function(t){return '<a href="#"'+(t[0]===active?' aria-current="page"':'')+'>'+t[1]+'</a>'}).join('')+'</nav><div class="dmeta">'+meta+'</div></header>'}
+  function phase(cur){var P=[['Analys','sön–tor'],['Odds','tor–lör'],['Live','lör'],['Klart','lör 18:41']];var ci=P.findIndex(function(p){return p[0]===cur});return '<ol class="phase brd" aria-label="Faser">'+P.map(function(p,i){var d=i<ci;return '<li class="'+(d?'done':'')+'"'+(i===ci?' aria-current="step"':'')+'><a href="#"><b>'+p[0]+'</b><small>'+(d?'✓ ':'')+p[1]+'</small></a></li>'}).join('')+'</ol>'}
+  function tkt(o){return '<span class="tkt" role="img" aria-label="Bet, spelad till '+od(o)+'">B<b>'+od(o)+'</b></span>'}
+  var XB='<span class="bdg x" role="img" aria-label="X-faktor: Tror på">X</span>';
+  var SB='<span class="bdg s" role="img" aria-label="Spelbar">S</span>';
+  var HY='<span class="hit y">'+I.check+'Träff</span>', HN='<span class="hit n">'+I.x+'Miss</span>';
+
+  // ---------- Del 1: data ----------
+  var PLAYS=[
+    {a:1,n:10,h:'Fly Express',x:XB,bo:2.60,rx:2.20,val:'+18,2 %',vp:1,pl:'2:a',hit:1,res:1.60,ql:['good','Bra spel'],why:'Spurtade i tredjespår · Stark avslutning'},
+    {a:4,n:1,h:'Baron Tilly',x:'',bo:2.15,rx:1.95,val:'+10,3 %',vp:1,pl:'1:a',hit:1,res:1.15,ql:['good','Bra spel'],why:'Tog spets · Ledde hela vägen'},
+    {a:5,n:2,h:'Peacekeeper',x:XB,bo:3.40,rx:2.88,val:'+18,1 %',vp:1,pl:'6:a',hit:0,res:-1,ql:['good','Bra spel'],why:'Otur i loppet: Satt fast i rygg · Stark avslutning'},
+    {a:7,n:6,h:'Vardø Storm',x:'',bo:1.90,rx:2.10,val:MI+'9,5 %',vp:0,pl:'Galopp',hit:0,res:-1,ql:['bad','Svagt spel'],why:'Under riktoddset och under 2,00 · Galopp'}
+  ];
+  function playRow(p){
+    return '<li class="play is-b"><span class="nr sm" aria-hidden="true"><b>'+p.n+'</b></span><div class="pmain"><span class="hl"><span class="sr">Avd '+p.a+', nr '+p.n+', </span><span class="hn">'+p.h+'</span>'+tkt(p.bo)+p.x+'</span>'+
+      '<span class="pm">Avd '+p.a+' · rikt m X <b>'+od(p.rx)+'</b> · värde <b class="'+(p.vp?'pos':'neg')+'">'+p.val+'</b></span>'+
+      '<span class="why"><span class="tag '+p.ql[0]+'">'+p.ql[1]+'</span>'+p.why+'</span></div>'+
+      '<div class="res">'+(p.hit?HY:HN)+'<span class="plx">'+p.pl+'</span><b class="u '+(p.res>0?'pos':'neg')+'">'+un(p.res)+'</b></div></li>';
+  }
+  var CCL_R=[
+    ['good',I.check,'Du träffade 2 av 4 Bet och gick plus 0,75 enheter.','Målet är 50 %. Med veckans snittodds <b>2,51</b> räckte <b>40 %</b> för att gå jämnt.'],
+    ['warn',I.bang,'Vardø Storm var veckans enda spel utan värde, och det missade.','Spelad till <b>1,90</b>, under riktoddset <b>2,10</b> och under riktlinjen 2,00.'],
+    ['info',I.info,'Du spelade inte Mellby Harley, som kom 3:a.','Spelbar med Unibet <b>2,30</b> mot riktodds <b>2,10</b>. Hade gett <b>+1,30</b>.'],
+    ['info',I.info,'Hästarna med X-faktor gick 2 av 3 topp 3.','Riktoddset väntade <b>1,3</b> utan X och <b>1,8</b> med X.','Tunt underlag · följs i Över tid']
+  ];
+  function ccl(list,cls){return '<ul class="ccl'+(cls?' '+cls:'')+'" aria-label="Slutsatser">'+list.map(function(c){return '<li class="'+c[0]+'"><span class="ci" aria-hidden="true">'+c[1]+'</span><div><span class="sr">'+(c[0]==='good'?'Bra: ':c[0]==='warn'||c[0]==='bad'?'Se upp: ':'Info: ')+'</span><p>'+c[2]+'</p><p class="s">'+c[3]+'</p>'+(c[4]?'<span class="tag thin">'+c[4]+'</span>':'')+'</div></li>'}).join('')+'</ul>'}
+  var CMP_R=[
+    ['Spelbar',3,5,2.2,'3 av 5','väntat <b>2,2</b>','I linje',''],
+    ['Intressant',7,14,5.6,'7 av 14','väntat <b>5,6</b>','I linje',''],
+    ['Trollspöt',4,10,4.6,'4 av 10','väntat <b>4,6</b>','I linje',''],
+    ['X-faktor',2,3,1.3,'2 av 3','väntat <b>1,3</b> utan X · <b>1,8</b> med X','Tunt underlag','thin']
+  ];
+  var CMP_T=[
+    ['Spelbar',21,38,17.9,'21 av 38','väntat <b>17,9</b>','I linje',''],
+    ['Intressant',61,128,55.0,'61 av 128','väntat <b>55,0</b>','I linje',''],
+    ['Trollspöt',33,80,35.2,'33 av 80','väntat <b>35,2</b>','I linje',''],
+    ['X Tror på',9,14,6.3,'9 av 14','väntat <b>6,3</b> utan X · <b>7,8</b> med X','Bättre · tunt','up']
+  ];
+  function cmp(rows,flat,title){return '<div class="cmp brd'+(flat?' flat':'')+'" role="group" aria-label="'+(title||'Mot väntat')+'">'+rows.map(function(r){var f=r[1]/r[2]*100,e=r[3]/r[2]*100;return '<div class="cr"><span class="cl">'+r[0]+'</span><span class="tr" aria-hidden="true"><i style="width:'+f.toFixed(1)+'%"></i><em style="left:'+e.toFixed(1)+'%"></em></span><span class="cv">'+r[4]+'</span><span class="cs"><span class="sr">'+r[0]+': '+r[4]+' topp 3, </span>'+r[5]+' <span class="vt '+r[7]+'">'+r[6]+'</span></span></div>'}).join('')+'<div class="leg" aria-hidden="true"><span><i></i>topp 3</span><span><em></em>väntat enligt riktoddset</span></div></div>'}
+  function eah(cls){return '<div class="eah brd'+(cls?' '+cls:'')+'" role="group" aria-label="Resultat för omgången"><div class="bx"><small>Bet</small><strong>2/4</strong><span>träff · 50 %</span></div><div class="bx"><small>Resultat</small><strong class="pos">+0,75</strong><span>enheter · +75 kr</span></div>'+(cls==='w4'?'<div class="bx"><small>Snittodds</small><strong>2,51</strong><span>på dina Bet</span></div><div class="bx"><small>Jämnt vid</small><strong>40 %</strong><span>träff med de oddsen</span></div>':'<p>Snittodds <b>2,51</b>, så <b>40 %</b> träff räckte för att gå jämnt. Kronor räknas med 100 kr per spel.</p>')+'</div>'}
+  var MISSED='<ul class="plays"><li class="miss2"><span class="nr sm" aria-hidden="true"><b>5</b></span><div class="pmain"><span class="hl"><span class="hn">Mellby Harley</span>'+SB+'</span><span class="pm">Avd 3 · Unibet <b>2,30</b> · rikt <b>2,10</b></span></div><div class="res"><span class="plx">3:e</span><b class="u pos">+1,30</b></div></li><li class="miss2"><span class="nr sm" aria-hidden="true"><b>4</b></span><div class="pmain"><span class="hl"><span class="hn">Tangen Haap</span>'+SB+'</span><span class="pm">Avd 8 · Unibet <b>2,85</b> · rikt <b>2,60</b></span></div><div class="res"><span class="plx">7:e</span><b class="u neg">'+MI+'1,00</b></div></li></ul><p class="help" style="padding:6px 12px">Hade du spelat båda: <b class="n">+0,30</b> enheter till. "Hade gett" räknas på Unibet-oddset vid start.</p>';
+  function tags(flat){return '<div class="tgw'+(flat?' flat':'')+'"><div><h4>'+HY.replace('Träff','Topp 3')+' 7 hästar</h4><div class="tgc"><span class="tag">Tog spets <b>×3</b></span><span class="tag">Ledde hela vägen <b>×2</b></span><span class="tag">Satt i rygg ledaren <b>×2</b></span><span class="tag">Stark avslutning <b>×2</b></span></div></div><div><h4>'+HN.replace('Miss','Utanför')+' 7 hästar</h4><div class="tgc"><span class="tag">Dödens <b>×2</b></span><span class="tag">Satt fast i rygg <b>×2</b></span><span class="tag">Galopp <b>×2</b></span><span class="tag">Tröttnade <b>×1</b></span></div></div><p class="help">Räknat på 12 av dina 16 hästar (I, S, B eller Trollspöt) som du har taggat. Taggar som bara finns på en häst står sist.</p></div>'}
+
+  // ---------- Singlar mot dubbelsystem ----------
+  var PAIRS=[['10 Fly Express','1 Baron Tilly',5.59,1],['10 Fly Express','2 Peacekeeper',8.84,0],['10 Fly Express','6 Vardø Storm',4.94,0],['1 Baron Tilly','2 Peacekeeper',7.31,0],['1 Baron Tilly','6 Vardø Storm',4.09,0],['2 Peacekeeper','6 Vardø Storm',6.46,0]];
+  function dblTable(rows,cap){return '<table class="dtab"><caption class="sr">'+cap+'</caption><thead><tr><th></th><th class="win">Singlar</th><th>Dubbelsystem</th></tr></thead><tbody>'+rows.map(function(r){return '<tr'+(r[3]?' class="big"':'')+'><th scope="row">'+r[0]+'</th><td'+(r[4]?' class="'+r[4]+'"':'')+'>'+r[1]+'</td><td'+(r[5]?' class="'+r[5]+'"':'')+'>'+r[2]+'</td></tr>'}).join('')+'</tbody></table>'}
+  function dblRound(flat){return '<div class="dbl brd'+(flat?' flat':'')+'" role="group" aria-label="Singlar mot dubbelsystem, efterhandsberäkning"><div class="dh"><span>Singlar mot dubbelsystem</span><span class="vt thin">Efterhandsberäkning · inget spelat</span></div>'+
+    dblTable([['Spel','4 singlar','6 à 0,67'],['Insats','4,00','4,00'],['Återbäring','4,75','3,73'],['Netto','+0,75','−0,27',1,'pos','neg'],['I kronor','+75 kr','−27 kr',0,'pos','neg'],['ROI','+19 %','−7 %',0,'pos','neg']],'Singlar mot dubbelsystem för omgången')+
+    '<p><b>Singlarna vann.</b> Bara ett par satt: Fly Express × Baron Tilly, <b>2,60 × 2,15 = 5,59</b>. Med 2 av 4 placerade sitter 1 av 6 dubblar.</p></div>'}
+  function pairList(){return '<ul class="pairs" aria-label="Dubblarna">'+PAIRS.map(function(p){return '<li><span class="pp">'+p[0]+' <span class="n">×</span> '+p[1]+'</span><span class="po">'+od(p[2])+'</span>'+(p[3]?HY:HN)+'</li>'}).join('')+'</ul>'}
+  function dblTime(flat){return '<div class="dbl brd'+(flat?' flat':'')+'" role="group" aria-label="Singlar mot dubbelsystem över tid, efterhandsberäkning"><div class="dh"><span>Singlar mot dubbelsystem · 8 omgångar</span><span class="vt thin">Efterhandsberäkning · inget spelat</span></div>'+
+    dblTable([['Insats','31,00','31,00'],['Återbäring','34,40','30,19'],['Netto','+3,40','−0,81',1,'pos','neg'],['ROI','+11,0 %','−2,6 %',0,'pos','neg'],['Bäst i','6 av 8 omg.','2 av 8 omg.']],'Singlar mot dubbelsystem över tid')+
+    '<p>Bet-träff <b>55 %</b> mot brytpunkten <b>41 %</b> (1 / snittodds 2,46).</p></div>'}
+  var DBL_CCL=[['good',I.check,'Dina Bet träffar över brytpunkten. Om det håller förstärker dubblar vinsten.','Väntat på sikt: dubblar <b>+23 %</b> mot singlar <b>+11 %</b>, alltså (1 + 0,11)² − 1. Hittills har dubblarna ändå gett <b>'+MI+'2,6 %</b> och slog singlarna 2 av 8 omgångar. De svänger mer, och 1 av 3 placerade ger noll.','Tunt underlag · säkrare från 10 omgångar']];
+
+  // Över tid
+  var ROUNDS=[['12/9','Eskilstuna',2,3,0.80],['19/9','Romme',2,5,-1.35],['26/9','Bergsåker',2,3,0.85],['3/10','Åby',2,4,-0.20],['10/10','Solvalla',3,4,2.10],['17/10','Halmstad',1,3,-0.95],['24/10','Jägersro',3,5,1.40],['31/10','Bjerke',2,4,0.75]];
+  function trend(flat){var mx=2.2,H=54;return '<div class="trend brd'+(flat?' flat':'')+'" role="img" aria-label="Netto i enheter per omgång, 12 sep till 31 okt: +0,80, −1,35, +0,85, −0,20, +2,10, −0,95, +1,40, +0,75"><h3><span>Netto per omgång · enheter</span><span>Bet träff</span></h3><div class="tbars">'+ROUNDS.map(function(r){var h=Math.abs(r[4])/mx*H;return '<div class="tb"><i class="'+(r[4]>=0?'p':'n')+'" style="height:'+h.toFixed(0)+'px"></i><b style="'+(r[4]>=0?'bottom:calc(50% + '+(h+3).toFixed(0)+'px)':'top:calc(50% + '+(h+3).toFixed(0)+'px)')+'">'+un(r[4])+'</b></div>'}).join('')+'</div><div class="tlab">'+ROUNDS.map(function(r){return '<span>'+r[0]+'<small>'+r[2]+'/'+r[3]+'</small></span>'}).join('')+'</div><p>Senaste 4: <b>56 %</b> och <b>+3,30</b>. De 4 före: <b>53 %</b> och <b>+0,10</b>. Ingen tydlig skillnad än.</p></div>'}
+  var CCL_T=[
+    ['good',I.check,'Bet träffar 55 % (17 av 31), över målet 50 %.','Med snittodds <b>2,46</b> går du jämnt vid <b>41 %</b>. Netto <b>+3,40</b> enheter, <b>+11 %</b> per spel.','Tunt underlag · säkrare från 40 Bet'],
+    ['warn',I.bang,'Spel under 2,00 har gått sämst hittills: 2 av 6 träff.','<b>'+MI+'2,30</b> enheter. Från 2,00: <b>15 av 25</b> och <b>+5,70</b>.','Tunt underlag'],
+    ['info',I.info,'Trollspöt gav 33 av 80 topp 3, i linje med riktoddset.','Alla Trollspöts hästar till Unibets odds hade gett <b>'+MI+'6,80</b> enheter.'],
+    ['warn',I.bang,'Dödens: 1 av 9 av dina hästar gick topp 3.','Alla dina hästar: <b>48 %</b> topp 3.','Tunt underlag']
+  ];
+
+  // ---------- Del 1: skärmar ----------
+  var S={};
+  S.a1=function(){return brandHead('V85 · Bjerke · lör 31 okt · klar',s1acts)+phase('Klart')+
+    '<section class="next" aria-labelledby="n1"><span class="lbl">Nästa steg</span><h2 id="n1">Efteranalysen är klar</h2><p>Bet <b>2/4</b> träff och <b>+0,75</b> enheter. 4 slutsatser om veckans spel.</p><a class="btn primary" href="#">Se efteranalysen</a></section>'+
+    '<p class="fetchline">Resultat hämtade från ATG lör 19:02</p><h2 class="sl" style="padding-bottom:0">Omgången</h2>'+
+    '<div class="sumb brd" role="group" aria-label="Summering omgången"><div><small>Bet</small><b>2/4</b><span>träff</span></div><div><small>Spelbar</small><b>3/5</b><span>topp 3</span></div><div><small>Intressant</small><b>7/14</b><span>topp 3</span></div><div><small>Trollspöt</small><b>4/10</b><span>topp 3</span></div></div>'+
+    '<ul class="olist"><li><a class="orow is-b" href="#"><span class="nr sm"><b>1</b></span><span class="o-mid"><span class="on">Vinnare 3 Lannem Lyn</span><span class="om">Bet: 10 Fly Express 2:a</span></span>'+HY.replace('Träff','Träff 1/1')+'<span class="chev">'+I.chev+'</span></a></li>'+
+    '<li><a class="orow" href="#"><span class="nr sm"><b>2</b></span><span class="o-mid"><span class="on">Vinnare 2 Gigant Tider</span><span class="om">Intressant 1/2 topp 3</span></span><span></span><span class="chev">'+I.chev+'</span></a></li>'+
+    '<li><a class="orow" href="#"><span class="nr sm"><b>3</b></span><span class="o-mid"><span class="on">Vinnare 7 Rälsen Rask</span><span class="om">Intressant 1/2 topp 3</span></span><span></span><span class="chev">'+I.chev+'</span></a></li></ul>'+tabbar('omg')};
+  S.a2=function(){return ah('Efteranalys','V85 · Bjerke · lör 31 okt')+eah()+'<h2 class="sl">Slutsatser <span>4 av 6 · <button class="linkish" type="button">Visa alla</button></span></h2>'+ccl(CCL_R)+'<h2 class="sl">Mot väntat</h2>'+cmp(CMP_R)+tabbar('omg')};
+  S.a3=function(){return ah('Efteranalys','V85 · Bjerke · lör 31 okt')+'<h2 class="sl">Dina spel (4) <span class="n" style="letter-spacing:0">+0,75 enh</span></h2><ul class="plays" aria-label="Dina spel">'+PLAYS.map(playRow).join('')+'</ul><h2 class="sl">Spelbara du inte spelade (2)</h2>'+MISSED+'<h2 class="sl">Taggar</h2>'+tags()+tabbar('omg')};
+  S.a4=function(){return brandHead('Statistik · över tid')+'<div class="segw"><div class="seg" role="group" aria-label="Period"><button type="button" aria-pressed="false">4 omg.</button><button type="button" aria-pressed="true">8 omg.</button><button type="button" aria-pressed="false">Säsong</button></div></div>'+
+    '<div class="eah brd w3" style="margin-top:0" role="group" aria-label="Bet senaste 8 omgångarna"><div class="bx"><small>Bet</small><strong>17/31</strong><span>55 % träff</span></div><div class="bx"><small>Netto</small><strong class="pos">+3,40</strong><span>enheter · +11 %</span></div><div class="bx"><small>Jämnt vid</small><strong>41 %</strong><span>snittodds 2,46</span></div></div>'+
+    trend()+'<h2 class="sl">Slutsatser</h2>'+ccl(CCL_T.slice(0,3))+tabbar('sta')};
+  S.d1=function(){return ah('Efteranalys','V85 · Bjerke · lör 31 okt')+'<h2 class="sl">Singlar mot dubbelsystem</h2>'+dblRound()+'<h2 class="sl">Dubblarna (6)</h2><div class="pairw">'+pairList()+'</div><p class="help" style="padding:8px 12px">Alla par av dina 4 Bet, med insatsen delad lika (4 enheter / 6 = 0,67 per dubbel). Utdelning = odds A × odds B om båda kom topp 3. Bet-oddset används. Med 3 Bet blir det ditt system: 1×2, 1×3 och 2×3 à 1 enhet.</p>'+tabbar('omg')};
+  S.d2=function(){return brandHead('Statistik · över tid')+'<div class="segw"><div class="seg" role="group" aria-label="Period"><button type="button" aria-pressed="false">4 omg.</button><button type="button" aria-pressed="true">8 omg.</button><button type="button" aria-pressed="false">Säsong</button></div></div>'+dblTime()+'<h2 class="sl">Slutsats</h2>'+ccl(DBL_CCL)+'<p class="help" style="padding:8px 12px">Över tid: alla par av Bet i varje omgång, med samma insats som singlarna. Omgångar med 1 Bet räknas bara för singlarna. "Bäst i" räknar omgångar där det ena gav mer netto än det andra.</p>'+tabbar('sta')};
+
+  S.da1=function(){
+    var cg=[52,48,0,72,80,80,64,92,84].map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('');
+    var tb='<table class="tbl"><caption class="sr">Dina spel</caption><colgroup>'+cg+'</colgroup><thead><tr><th>Avd</th><th>Nr</th><th>Häst</th><th class="r">Spelat</th><th class="r">Rikt m X</th><th class="r">Värde</th><th class="c">Plac</th><th class="c">Utfall</th><th class="r">Resultat</th></tr></thead><tbody>'+
+      PLAYS.map(function(p){return '<tr class="is-b"><td class="n">'+p.a+'</td><td><span class="nr sm"><b>'+p.n+'</b></span></td><td><span class="hl"><span class="hn">'+p.h+'</span>'+tkt(p.bo)+p.x+'</span><span class="kt why" style="margin-top:3px"><span class="tag '+p.ql[0]+'">'+p.ql[1]+'</span>'+p.why+'</span></td><td class="r n">'+od(p.bo)+'</td><td class="r n">'+od(p.rx)+'</td><td class="r n '+(p.vp?'pos':'neg')+'" style="font-weight:700">'+p.val+'</td><td class="c plx">'+p.pl+'</td><td class="c">'+(p.hit?HY:HN)+'</td><td class="r"><b class="u '+(p.res>0?'pos':'neg')+'">'+un(p.res)+'</b></td></tr>'}).join('')+'</tbody></table>';
+    return dhead('omg','V85 · Bjerke · lör 31 okt 2026<br>Fas: Klart')+'<div class="sphead brd"><div><p class="k">V85 · Bjerke · lör 31 okt · resultat hämtade lör 19:02</p><h1>Efteranalys</h1></div><a class="btn secondary sm" href="#" style="color:var(--head-text)">'+I.back+'Till omgången</a></div>'+
+      '<div class="d2"><div style="min-width:0">'+eah('w4')+'<h2 class="dsec">Slutsatser <small>4 av 6 · <button class="linkish" type="button">Visa alla</button></small></h2>'+ccl(CCL_R,'g2')+
+      '<h2 class="dsec">Dina spel <small>4 Bet · +0,75 enheter</small></h2>'+tb+
+      '<h2 class="dsec">Spelbara du inte spelade <small>2 · hade gett +0,30</small></h2>'+MISSED+'</div>'+
+      '<div style="min-width:0"><h2 class="dsec">Mot väntat</h2>'+cmp(CMP_R,1)+'<h2 class="dsec">Taggar</h2>'+tags(1)+'<h2 class="dsec">Singlar mot dubbelsystem</h2>'+dblRound(1)+'<div style="margin-top:8px">'+pairList()+'</div></div></div>'};
+
+  S.da2=function(){
+    var cg=[92,0,58,92,30].map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('');
+    var tb='<table class="tbl"><caption class="sr">Omgångar</caption><colgroup>'+cg+'</colgroup><thead><tr><th>Datum</th><th>Bana</th><th class="r">Bet</th><th class="r">Netto</th><th></th></tr></thead><tbody>'+ROUNDS.slice().reverse().map(function(r){return '<tr><td class="n">lör '+r[0]+'</td><td><a href="#" style="color:var(--ink);font-weight:600">'+r[1]+'</a><span class="kt">Efteranalys</span></td><td class="r n">'+r[2]+'/'+r[3]+'</td><td class="r"><b class="u '+(r[4]>=0?'pos':'neg')+'">'+(r[4]>=0?'▲ ':'▼ ')+un(r[4])+'</b></td><td class="c" style="color:var(--ink-2)">'+I.chev.replace('<svg','<svg width="16" height="16"')+'</td></tr>'}).join('')+'</tbody></table>';
+    return dhead('sta','V85 · Bjerke · lör 31 okt 2026<br>Fas: Klart')+'<div class="sphead brd"><div><p class="k">12 sep – 31 okt · 8 klara omgångar</p><h1>Statistik · över tid</h1></div><span class="seg" role="group" aria-label="Period"><button type="button" aria-pressed="false">4 omgångar</button><button type="button" aria-pressed="true">8 omgångar</button><button type="button" aria-pressed="false">Säsong</button></span></div>'+
+      '<div class="d2"><div style="min-width:0"><div class="eah brd w4" role="group" aria-label="Bet senaste 8 omgångarna"><div class="bx"><small>Bet</small><strong>17/31</strong><span>55 % träff · mål 50 %</span></div><div class="bx"><small>Netto</small><strong class="pos">+3,40</strong><span>enheter · +340 kr</span></div><div class="bx"><small>Per spel</small><strong class="pos">+11 %</strong><span>avkastning</span></div><div class="bx"><small>Jämnt vid</small><strong>41 %</strong><span>snittodds 2,46</span></div></div>'+
+      trend(1)+'<h2 class="dsec">Slutsatser <small>4 av 5</small></h2>'+ccl(CCL_T,'g2')+
+      '<h2 class="dsec">Singlar mot dubbelsystem <small>efterhandsberäkning, inget spelat</small></h2><div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start">'+dblTime(1)+ccl(DBL_CCL,'g2" style="grid-template-columns:1fr')+'</div></div>'+
+      '<div style="min-width:0"><h2 class="dsec">Mot väntat <small>8 omgångar</small></h2>'+cmp(CMP_T,1,'Mot väntat över tid')+'<h2 class="dsec">Omgångar</h2>'+tb+'</div></div>'};
+
+  S.b1=function(){return brandHead('V85 · Bjerke · lör 31 okt · klar',s1acts)+phase('Klart')+
+    '<section class="next" aria-labelledby="nb1"><span class="lbl">Nästa steg</span><h2 id="nb1">Omgången är klar</h2><p>Bet <b>2/4</b> träff · Spelbar <b>3/5</b> topp 3 · Intressant <b>7/14</b> topp 3.</p><a class="btn primary" href="#">Se statistik</a></section>'+
+    '<a class="lnk" href="#">Efteranalysen finns i Statistik'+I.chev+'</a>'+
+    '<p class="fetchline">Resultat hämtade från ATG lör 19:02</p><h2 class="sl" style="padding-bottom:0">Omgången</h2><div class="sumb brd"><div><small>Bet</small><b>2/4</b><span>träff</span></div><div><small>Spelbar</small><b>3/5</b><span>topp 3</span></div><div><small>Intressant</small><b>7/14</b><span>topp 3</span></div><div><small>Trollspöt</small><b>4/10</b><span>topp 3</span></div></div>'+tabbar('omg')};
+  S.b2=function(){return brandHead('Statistik · omgång')+'<div class="segw"><div class="seg" role="group" aria-label="Visa"><button type="button" aria-pressed="true">Omgång</button><button type="button" aria-pressed="false">Över tid</button></div></div><div class="pickw"><button type="button" class="pick" aria-haspopup="listbox">V85 · Bjerke · lör 31 okt'+I.down+'</button></div>'+eah()+'<h2 class="sl">Slutsatser</h2>'+ccl(CCL_R.slice(0,3))+tabbar('sta')};
+  S.db1=function(){
+    var left='<aside class="dleft"><h2 class="sl" style="padding-top:14px">Omgångar</h2><ol class="olist">'+ROUNDS.slice().reverse().map(function(r,i){return '<li><a class="orow" href="#" style="grid-template-columns:minmax(0,1fr) auto;'+(i===0?'background:var(--accent-soft);box-shadow:inset 4px 0 0 var(--fill)':'')+'"'+(i===0?' aria-current="true"':'')+'><span class="o-mid"><span class="on">lör '+r[0]+' · '+r[1]+'</span><span class="om">Bet '+r[2]+'/'+r[3]+'</span></span><b class="u '+(r[4]>=0?'pos':'neg')+'">'+un(r[4])+'</b></a></li>'}).join('')+'</ol></aside>';
+    return dhead('sta','V85 · Bjerke · lör 31 okt 2026<br>Fas: Klart')+'<div class="sphead brd"><div><p class="k">Statistik</p><h1>V85 · Bjerke · lör 31 okt</h1></div><span class="seg" role="group" aria-label="Visa"><button type="button" aria-pressed="true">Omgång</button><button type="button" aria-pressed="false">Över tid</button></span></div>'+
+      '<div class="d2 wl">'+left+'<div class="dmain">'+eah('w4')+'<h2 class="dsec">Slutsatser</h2>'+ccl(CCL_R,'g2')+'<h2 class="dsec">Mot väntat</h2>'+cmp(CMP_R,1)+'</div></div>'};
+
+  S.st1=function(){
+    function fig(cap,html){return '<figure><figcaption>'+cap+'</figcaption><div class="box">'+html+'</div></figure>'}
+    return [
+      fig('<b>Omgången inte klar</b> · analysen hittills',ah('Efteranalys','V85 · Bjerke · hittills')+'<div class="ban info m">'+I.infoc+'<p><b>Avd 7 och 8 har inte resultat än.</b> Analysen gäller 6 av 8 avdelningar och uppdateras när resultaten kommer.</p></div><div class="eah brd"><div class="bx"><small>Bet</small><strong>2/3</strong><span>träff hittills</span></div><div class="bx"><small>Resultat</small><strong class="pos">+1,75</strong><span>enheter hittills</span></div></div><p class="help" style="padding:0 12px">S1 visar då länken "Se analysen hittills" under summeringen Hittills, inte i Nästa steg.</p>'),
+      fig('<b>Inga Bet</b> i omgången','<div class="eah brd"><div class="bx"><small>Bet</small><strong>–</strong><span>inga spel</span></div><div class="bx"><small>Spelbar</small><strong>2/3</strong><span>topp 3</span></div></div>'+ccl([['info',I.info,'Du spelade inga av dina 3 Spelbara.','Två gick topp 3. Till Unibets odds hade de gett <b>+1,45</b> enheter.']])),
+      fig('<b>Bet utan odds</b> · räknas inte i enheter','<ul class="plays"><li class="play is-b"><span class="nr sm"><b>8</b></span><div class="pmain"><span class="hl"><span class="hn">Lome Kongen</span><span class="tkt" role="img" aria-label="Bet utan odds">B<b>–</b></span></span><span class="pm">Avd 3 · rikt <b>2,40</b> · odds saknas</span><span class="why"><span class="tag thin">Kan inte bedömas</span>Bet-oddset fylldes aldrig i</span></div><div class="res">'+HY+'<span class="plx">3:e</span><b class="u">–</b></div></li></ul><p class="help" style="padding:6px 12px">Tavlan: "1 Bet saknar odds och räknas i träff men inte i enheter."</p>'),
+      fig('<b>Dubbelsystem med 1 Bet</b>','<div class="dbl brd" style="margin-top:10px"><div class="dh"><span>Singlar mot dubbelsystem</span><span class="vt thin">Efterhandsberäkning</span></div><p>Dubbelsystem kräver minst 2 Bet i olika lopp. Den här omgången hade 1 Bet, så det finns inget att jämföra.</p></div>'),
+      fig('<b>Dubbelsystem med 3 Bet</b> · ditt system','<div class="dbl brd" style="margin-top:10px"><div class="dh"><span>Singlar mot dubbelsystem</span><span class="vt thin">Efterhandsberäkning · inget spelat</span></div>'+dblTable([['Spel','3 singlar','3 dubblar'],['Insats','3,00','3,00'],['Netto','+1,75','+2,59',1,'pos','pos']],'Tre Bet')+'<p><b>Dubblarna vann</b>, eftersom 2 av 3 placerade sig på odds över 2: <b>2,60 × 2,15 = 5,59</b>.</p></div>'),
+      fig('<b>För lite underlag</b> · Över tid med 2 omgångar','<div class="empty"><div class="ic brd">'+I.stat+'</div><h2>Över tid kommer snart</h2><p>Slutsatser över tid visas från 4 klara omgångar eller 20 Bet. Nu har du 2 omgångar och 7 Bet.</p><a class="btn secondary" href="#">Se senaste efteranalysen</a></div>'),
+      fig('<b>Inställt lopp</b>','<div class="ban info m">'+I.infoc+'<p>Avd 5 ställdes in. Dess hästar räknas inte, och Bet där (Peacekeeper 3,40) räknas varken i enheter eller i dubbelsystemet.</p></div>'),
+      fig('<b>Laddar</b>','<div class="eah brd" aria-busy="true"><div class="bx"><small>&nbsp;</small><strong style="opacity:.25">––</strong><span>&nbsp;</span></div><div class="bx"><small>&nbsp;</small><strong style="opacity:.25">––</strong><span>&nbsp;</span></div></div><div style="padding:0 12px;display:grid;gap:10px"><span class="sk" style="width:80%;height:14px"></span><span class="sk" style="width:60%"></span><span class="sk" style="width:90%;height:14px"></span><span class="sk" style="width:50%"></span></div>'),
+      fig('<b>Fel</b> vid hämtning','<div class="ban err m" role="alert">'+I.warn+'<div><p><b>Kunde inte hämta efteranalysen.</b> Servern svarade inte. Försök igen om en stund.</p><div class="acts"><button class="btn secondary sm" type="button">Försök igen</button></div></div></div>'),
+      fig('<b>Offline</b>','<div class="ban warn m">'+I.offline+'<p>Ingen uppkoppling. Du ser analysen som den var lör 19:02.</p></div>'+eah())
+    ].join('')};
+
+  // ---------- Del 2: data och skärmar ----------
+  var TIPS=[
+    {a:1,n:10,h:'Fly Express',r:['skr','Skräll'],q:'Veckans <mark>fynd</mark> är Fly Express. Kan överraska från spår 10 om resan blir bra.',flag:'Osäker roll: texten säger "fynd", som tolkades som Skräll.'},
+    {a:2,n:2,h:'Gigant Tider',r:['spik','Spik'],q:'Gigant Tider är vår <mark>spik</mark>. Överlägsen på papperet och har vunnit fyra raka.'},
+    {a:4,n:1,h:'Baron Tilly',r:['fav','Favorit'],q:'Baron Tilly är <mark>starkast</mark> i loppet, och från spår 1 ska han kunna styra.'},
+    {a:5,n:2,h:'Peacekeeper',r:['skr','Skräll'],q:'<mark>Skrällen</mark>: Peacekeeper har visat fin form och kan vara underskattad.'},
+    {a:6,n:3,h:'Peggy Boko',r:['spik','Spik'],q:'Peggy Boko är ett <mark>lås</mark> i sexan.'},
+    {a:7,n:3,h:'Blizzard Diamant',r:['fav','Favorit'],q:'Blizzard Diamant är rättmätig <mark>favorit</mark>, men vi gillar inte spåret.'}
+  ];
+  function role(r){return '<span class="role '+r[0]+'">'+r[1]+'</span>'}
+  function tipCard(t){
+    return '<li class="tipc'+(t.flag?' flag':'')+'"><div class="th"><span class="av">Avd '+t.a+'</span><span class="nr sm" aria-hidden="true"><b>'+t.n+'</b></span><span class="pn">'+t.h+'</span>'+role(t.r)+'</div>'+
+      (t.flag?'<p class="flg">'+I.warn+t.flag+'</p>':'')+
+      '<blockquote class="quote"><span class="sr">Citat: </span>'+t.q+'</blockquote>'+
+      '<div class="ta">'+(t.flag?'<button class="btn secondary sm" type="button">Godkänn</button>':'')+'<button class="btn secondary sm" type="button">Rätta</button><button class="btn ghost sm" type="button">Ta bort</button></div></li>';
+  }
+  var ARTICLE='<div class="art"><span class="ak">'+I.doc.replace('<svg','<svg width="14" height="14"')+'Travstugan · tidiga tips</span><h2>Tidiga V85: Baronen är guldet</h2><p>Publicerad tis 27 okt 08:30 · läst i dag 21:14 · 6 tips</p><a href="#">Öppna artikeln'+I.ext+'</a></div>';
+  function quota(n,full){return '<div class="quota"><span>AI-läsningar i dag <b>'+n+' av 20</b></span><span class="meter'+(full?' full':'')+'" aria-hidden="true"><i style="width:'+(n/20*100)+'%"></i></span></div>'}
+  var SRC_ROW='<li class="srcrow"><div class="src-main"><span class="sn">Travstugan</span><span class="su">https://travstugan.se/v85</span><span class="ss">Läst i dag 08:41 · inga tips för omgången ännu</span></div><div class="src-acts"><button type="button" class="switch" aria-pressed="true" aria-label="Läs Travstugan vid Hämta tips"><span class="sw-track" aria-hidden="true"><span class="sw-dot"></span></span><span aria-hidden="true">På</span></button><button type="button" class="btn ghost sm">Provläs</button><button type="button" class="btn ghost sm">Byt namn</button><button type="button" class="btn ghost sm">Ta bort</button></div></li>';
+  var ADD='<form class="field add-src"><label class="flbl" for="as1">Lägg till källa</label><div class="inline"><input id="as1" type="url" placeholder="Klistra in en länk, t.ex. https://…"><button type="button" class="btn secondary">Lägg till</button></div></form>';
+  S.t1=function(){return brandHead('Källor · 1 länk')+'<div class="tips-box"><button type="button" class="btn primary full">'+I.spark+'Hämta tips</button><p class="help">Läser dina påslagna källor för V85 Bjerke lör 31 okt. AI:n tolkar tipsen, och du granskar dem innan de räknas.</p>'+quota(2)+'</div><h2 class="sl">Källor</h2><ul class="srclist">'+SRC_ROW+'</ul>'+ADD+tabbar('kal')};
+  S.t2=function(){return brandHead('Källor · 1 länk')+'<div class="tips-box"><button type="button" class="btn primary full" disabled>'+I.spark+'Hämtar tips …</button></div><ul class="steps" aria-live="polite"><li class="ok">✓ Travstugan: 1 ny artikel</li><li class="ok">✓ Läser "Tidiga V85: Baronen är guldet"</li><li class="cur">Tolkar med AI<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></li></ul><div class="prog" aria-hidden="true"><i style="width:68%"></i></div><p class="help" style="padding:8px 12px">Det brukar ta 10–20 sekunder per artikel. Inget räknas förrän du har granskat.</p><h2 class="sl">Källor</h2><ul class="srclist">'+SRC_ROW.replace('Läst i dag 08:41 · inga tips för omgången ännu','Läser nu …')+'</ul>'+tabbar('kal')};
+  S.t3=function(){return ah('Granska tips','Travstugan · 6 att granska')+ARTICLE+'<p class="help" style="padding:0 12px 8px">Kontrollera att varje tips har hamnat på rätt häst och har rätt roll. Först när du har godkänt ett tips syns det i hästkortet och räknas i källstödet.</p><ul class="tipl" aria-label="Tips att granska">'+tipCard(TIPS[0])+tipCard(TIPS[1])+tipCard(TIPS[2])+tipCard(TIPS[3])+'</ul>'+
+    '<div class="revbar"><button type="button" class="btn primary full">Godkänn 5 tips</button><p class="help">1 osäkert tips väntar: Fly Express i avd 1</p></div>'+tabbar('kal')};
+  S.t4=function(){return ah('Granska tips','Travstugan · 6 att granska')+ARTICLE+'<ul class="tipl">'+tipCard(TIPS[0])+tipCard(TIPS[1])+'</ul><div class="scrim"></div>'+
+    '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rt"><span class="grip" aria-hidden="true"></span><div class="shh"><h2 id="rt">Rätta tips</h2><button class="ibtn" type="button" aria-label="Stäng">'+I.x+'</button></div>'+
+    '<div class="field"><span class="flbl" id="rh">Häst</span><button type="button" class="pick" aria-labelledby="rh" aria-haspopup="listbox"><span class="nr sm" aria-hidden="true"><b>10</b></span>Avd 1 · Fly Express'+I.down+'</button></div>'+
+    '<div class="field"><span class="flbl" id="rr">Roll</span><div class="rolepick" role="radiogroup" aria-labelledby="rr"><button type="button" role="radio" aria-checked="false">Spik</button><button type="button" role="radio" aria-checked="false">Favorit</button><button type="button" role="radio" aria-checked="true">Skräll</button><button type="button" role="radio" aria-checked="false">Avrådan</button><button type="button" role="radio" aria-checked="false">Nämnd</button></div></div>'+
+    '<div class="field"><span class="flbl">Citat från artikeln</span><blockquote class="quote">Veckans <mark>fynd</mark> är Fly Express. Kan överraska från spår 10 om resan blir bra.</blockquote></div>'+
+    '<div class="shbtns"><button type="button" class="btn primary">Spara och godkänn</button><button type="button" class="btn ghost">Ta bort tipset</button></div></div>'};
+  var H5=[
+    {n:1,h:'Moe Odin',k:'Tom Erik Solberg',f:['1','3','2','0','4'],r:'4,10'},
+    {n:2,h:'Peacekeeper',k:'Magnus A Djuse',f:['2','1','4','2','3'],r:'2,88',xa:1,i:1,x:1,tip:'Skräll'},
+    {n:3,h:'Bokli Lynet',k:'Gunnar Austevoll',f:['0','5','3','6','2'],r:'7,80'},
+    {n:4,h:'Stjerne Brage',k:'Eirik Høitomt',f:['1','1','2','5','3'],r:'2,20',i:1},
+    {n:5,h:'Mellby Hymn',k:'Örjan Kihlström',f:['3','2','g','1','4'],r:'3,10',g:1},
+    {n:6,h:'Tangen Kongen',k:'Vidar Hop',f:['4','0','3','2','6'],r:'5,40'},
+    {n:7,h:'Lyra Sjø',k:'Kristian Malmin',f:['6','4','5','0','3'],r:'9,50'},
+    {n:8,h:'Global Trotter',k:'Björn Goop',f:['2','3','1','2','1'],r:'2,45'},
+    {n:9,h:'Ragnar Rask',k:'Frode Hamre',scr:1},
+    {n:10,h:'Ville Kronos',k:'Erik Adielsson',f:['5','3','2','4','2'],r:'6,20'},
+    {n:11,h:'Fjord Prinsen',k:'Magnus Teien Gundersen',f:['3','6','0','2','5'],r:'8,40'},
+    {n:12,h:'Diva Maren',k:'Åsbjørn Tengsareid',f:['1','4','3','3','0'],r:'5,90'}
+  ];
+  function form(f){if(!f)return '<span class="form" aria-hidden="true"></span>';return '<span class="form" role="img" aria-label="Form, senaste först">'+f.map(function(x){var c=x==='1'?'w':x==='2'?'w2':x==='g'?'gx':'';return '<i class="'+c+'">'+x+'</i>'}).join('')+'</span>'}
+  function lamp(n,on){return '<button type="button" class="lamp" aria-pressed="'+(on?'true':'false')+'" aria-label="Intressant: '+n+'"><span class="lamp-i">'+I.check+'</span></button>'}
+  S.t5=function(){
+    var rows=H5.map(function(h){var c='row g-an'+(h.i?' is-i':'')+(h.scr?' scr':'');return '<li class="'+c+'"><span class="nr" aria-hidden="true"><b>'+h.n+'</b></span><a class="who" href="#"><span class="hl"><span class="sr">Nr '+h.n+', </span><span class="hn">'+h.h+'</span>'+(h.x?XB:'')+(h.g?'<span class="bdg g" role="img" aria-label="Galopp i någon av de 5 senaste">G</span>':'')+(h.scr?'<span class="tag">Struken</span>':'')+'</span><span class="kt">'+h.k+(h.tip?'<span class="tipt" aria-label="Tips: '+h.tip+'">'+h.tip+'</span>':'')+'</span></a>'+form(h.f)+'<span class="rk'+(h.xa?' xa':'')+'">'+(h.scr?'–':h.r)+'</span>'+lamp(h.h,h.i)+'</li>'}).join('');
+    return ah('Avd 5 · 16:40','Bjerke · Bronsdivisionen')+'<div class="avd brd" role="tablist" aria-label="Avdelningar">'+[1,2,3,4,5,6,7,8].map(function(i){return '<button type="button" role="tab" class="avd-t" aria-selected="'+(i===5)+'">'+i+(i<5?'<span class="tick" aria-hidden="true">✓</span>':'')+'</button>'}).join('')+'</div>'+
+      '<div class="strip brd"><div class="chips"><span class="chip">2100 m</span><span class="chip chip-auto">Auto</span><span class="chip">Bronsdiv.</span><button type="button" class="chip chip-btn">Loppstatistik ›</button></div><p class="statline">Spår 2 vinner <b>13,4 %</b><span>Favorit vinner <b>41,0 %</b></span></p></div>'+
+      '<div class="cols g-an" aria-hidden="true"><span>Nr</span><span>Häst · kusk</span><span class="c">Form</span><span class="r">Rikt</span><span class="c">Intr.</span></div><ul class="list">'+rows+'</ul>'+tabbar('omg')};
+  S.t6=function(){return ah('Avd 5 · 16:40','Hästkort')+'<div class="hk-hero brd"><span class="nr lg"><b>2</b></span><div><h2 class="hk-name">Peacekeeper</h2><p>6 år valack · 1.11,9ak</p><p>Magnus A Djuse · tr Frode Hamre</p></div></div>'+
+    '<div class="acts-row"><button type="button" class="lamp lab" aria-pressed="true"><span class="lamp-i">'+I.check+'</span>Intressant</button><button type="button" class="sptg" aria-pressed="false"><span class="bdg s">S</span>Spelbar</button><button type="button" class="betk lab" aria-pressed="false"><span class="lamp-i">'+I.ticket+'</span>Bet</button></div>'+
+    '<section class="hk-sec"><h3>X-faktor</h3><div class="seg xseg" role="radiogroup" aria-label="X-faktor"><button type="button" role="radio" aria-checked="false"><span class="xl">Ingen</span><span class="xf">÷1,00</span></button><button type="button" role="radio" aria-checked="true"><span class="xl">✓ Tror på</span><span class="xf">÷1,25</span></button><button type="button" role="radio" aria-checked="false"><span class="xl">Stark känsla</span><span class="xf">÷1,50</span></button></div><p class="xeff">Riktodds <b>3,60</b> · med X-faktor <b>2,88</b></p>'+
+    '<div class="xsrc"><span class="flbl">Källstöd</span><div class="xsrc-row"><p class="xsrc-t">Inte ifyllt · 1 påslagen källa</p><div class="stp"><button type="button" aria-label="En källa färre">−</button><output>–</output><button type="button" aria-label="En källa till">+</button></div></div><p class="sugg">Hämta tips räknade <b>1</b><button type="button" class="btn ghost sm">Använd</button></p></div></section>'+
+    '<section class="hk-sec"><h3><span>Tips (1)</span><a class="linkish" href="#" style="font:600 13px var(--f-body);letter-spacing:0;text-transform:none">Alla tips</a></h3><ul class="cm"><li><span class="cmh">Travstugan · tis 27 okt 08:30 · tidiga tips</span><span style="display:flex;gap:6px;align-items:center">'+role(['skr','Skräll'])+'<span style="font-size:13px;font-weight:600">Tidiga V85: Baronen är guldet</span></span><blockquote class="quote">Skrällen: Peacekeeper har visat fin form och kan vara underskattad.</blockquote><span style="display:flex;gap:4px"><button class="btn ghost sm" type="button">Rätta</button><a class="btn ghost sm" href="#">Artikeln'+I.ext+'</a></span></li></ul></section>'};
+
+  S.dt1=function(){
+    var cg=[52,48,180,104,0,184].map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('');
+    var tb='<table class="tbl"><caption class="sr">Tips att granska</caption><colgroup>'+cg+'</colgroup><thead><tr><th>Avd</th><th>Nr</th><th>Häst</th><th>Roll</th><th>Citat</th><th>Åtgärd</th></tr></thead><tbody>'+
+      TIPS.map(function(t,i){return '<tr'+(t.flag?' style="box-shadow:inset 4px 0 0 var(--fill)"':'')+'><td class="n">'+t.a+'</td><td><span class="nr sm"><b>'+t.n+'</b></span></td><td><span class="hn">'+t.h+'</span>'+(t.flag?'<span class="kt" style="color:var(--accent);font-weight:600">Osäker roll: "fynd"</span>':'')+'</td><td>'+role(t.r)+'</td><td><blockquote class="quote" style="background:transparent;padding:2px 8px">'+t.q+'</blockquote></td><td>'+(i===2?'<span class="okl" style="margin:0">'+I.ok+'Godkänd</span> <button class="btn ghost sm" type="button">Ångra</button>':(t.flag?'<button class="btn secondary sm" type="button">Godkänn</button> ':'')+'<button class="btn secondary sm" type="button">Rätta</button> <button class="btn ghost sm" type="button">Ta bort</button>')+'</td></tr>'}).join('')+'</tbody></table>';
+    return dhead('kal','V85 · Bjerke · lör 31 okt 2026<br>Fas: Analys')+'<div class="sphead brd"><div><p class="k">1 påslagen källa · tips för V85 Bjerke lör 31 okt</p><h1>Källor</h1></div></div>'+
+      '<div class="kgrid"><aside><div class="tips-box"><button type="button" class="btn primary full">'+I.spark+'Hämta tips</button><p class="help">Läser dina påslagna källor för V85 Bjerke lör 31 okt. AI:n tolkar tipsen, och du granskar dem innan de räknas.</p>'+quota(3)+'<div class="ban ok">'+I.ok+'<p><b>6 tips på 6 hästar</b> från 1 artikel. 1 godkänt, 5 kvar att granska.</p></div></div><h2 class="sl">Källor</h2><ul class="srclist">'+SRC_ROW.replace('Läst i dag 08:41 · inga tips för omgången ännu','Läst i dag 21:14 · 1 artikel · 6 tips')+'</ul>'+ADD+'</aside>'+
+      '<section><h2 class="dsec">Att granska <small>5 av 6 kvar</small></h2>'+ARTICLE.replace('class="art"','class="art flat"')+tb+
+      '<div style="display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:14px"><p class="help">1 osäkert tips väntar: Fly Express i avd 1. Tangenter: G godkänn · R rätta · Delete ta bort</p><button type="button" class="btn primary">Godkänn 4 tips</button></div></section></div>'};
+
+  S.tb1=function(){return brandHead('Källor · 1 länk')+'<div class="tips-box"><button type="button" class="btn primary full">'+I.spark+'Hämta tips</button>'+quota(3)+'</div><div class="ban ok m">'+I.ok+'<p><b>6 tips lades på 6 hästar.</b> Källstödet föreslås i hästkorten. Ta bort det som blev fel.</p></div><h2 class="sl">Hämtat i dag 21:14 · Travstugan</h2><ul class="added">'+
+    TIPS.map(function(t){return '<li><span class="av">Avd '+t.a+'</span><span class="pn"><span class="n" style="font-size:13px;color:var(--ink-2)">'+t.n+'</span> '+t.h+'</span>'+role(t.r)+'<button class="btn ghost sm" type="button" aria-label="Ta bort tipset om '+t.h+'">Ta bort</button></li>'}).join('')+'</ul>'+tabbar('kal')};
+  S.tb2=function(){return ah('Avd 1 · 15:00','Hästkort')+'<div class="hk-hero brd"><span class="nr lg"><b>10</b></span><div><h2 class="hk-name">Fly Express</h2><p>5 år hingst · 1.12,8ak</p><p>Magnus Teien Gundersen · tr Geir Mikkelsen</p></div></div>'+
+    '<section class="hk-sec"><h3>Källstöd</h3><div class="xsrc-row"><p class="xsrc-t">Inte ifyllt · 1 påslagen källa</p><div class="stp"><button type="button" aria-label="En källa färre">−</button><output>–</output><button type="button" aria-label="En källa till">+</button></div></div><p class="sugg">Hämta tips räknade <b>1</b><button type="button" class="btn ghost sm">Använd</button></p></section>'+
+    '<section class="hk-sec"><h3><span>Tips (1)</span></h3><ul class="cm"><li><span class="cmh"><span class="tag newt">Ny</span> Travstugan · tis 27 okt 08:30</span><span style="display:flex;gap:6px;align-items:center">'+role(['skr','Skräll'])+'<span style="font-size:13px;font-weight:600">Tidiga V85: Baronen är guldet</span></span><blockquote class="quote">Veckans fynd är Fly Express. Kan överraska från spår 10 om resan blir bra.</blockquote><span style="display:flex;gap:4px;align-items:center"><span class="help">Fel tolkning?</span><button class="btn ghost sm" type="button">Rätta</button><button class="btn ghost sm" type="button">Ta bort</button></span></li></ul></section>'};
+
+  S.st2=function(){
+    function fig(cap,html){return '<figure><figcaption>'+cap+'</figcaption><div class="box">'+html+'</div></figure>'}
+    var srcBad='<ul class="srclist"><li class="srcrow"><div class="src-main"><span class="sn">Travstugan</span><span class="su">https://travstugan.se/v85</span><span class="ss bad">Kunde inte läsas: sidan svarade inte inom 10 sekunder.</span></div><div class="src-acts"><button type="button" class="btn secondary sm" style="margin-left:6px">Försök igen</button></div></li></ul>';
+    return [
+      fig('<b>Ingen artikel än</b> · ingen AI-läsning','<div class="tips-box"><button type="button" class="btn primary full">'+I.spark+'Hämta tips</button></div><div class="ban info m" style="margin-top:0">'+I.infoc+'<p><b>Travstugan har ingen artikel om V85 Bjerke än.</b> Tidiga tips brukar komma måndag eller tisdag. Inget skickades till AI:n.</p></div>'),
+      fig('<b>Samma artikel redan läst</b>','<div class="ban info m">'+I.infoc+'<p><b>Inget nytt sedan i dag 21:14.</b> Artikeln är oförändrad, så den lästes inte igen. Det kostade ingenting.</p></div>'),
+      fig('<b>Tidiga och slutliga</b> · två artiklar samma vecka','<div class="art"><span class="ak">'+I.doc.replace('<svg','<svg width="14" height="14"')+'Travstugan · slutliga tips</span><h2>V85-analys: Bjerke lördag</h2><p>Publicerad fre 30 okt 17:10 · 9 tips · 3 ändrar tidiga tips</p></div><ul class="tipl"><li class="tipc"><div class="th"><span class="av">Avd 5</span><span class="nr sm"><b>2</b></span><span class="pn">Peacekeeper</span>'+role(['nmd','Nämnd'])+'</div><p class="hist">Ersätter tidiga tips: <s>Skräll</s> (tis 27 okt)</p><blockquote class="quote">Peacekeeper får spåret emot sig och blir svår att lita på.</blockquote><div class="ta"><button class="btn secondary sm" type="button">Rätta</button><button class="btn ghost sm" type="button">Ta bort</button></div></li></ul><p class="help" style="padding:6px 12px">Artiklarna visas nyast först. Den tidiga artikeln ligger kvar under "Tidigare artiklar (1)".</p>'),
+      fig('<b>Häst kunde inte kopplas</b>','<ul class="tipl"><li class="tipc err"><div class="th"><span class="av">Avd 3</span><span class="pn">"Mellby Harly"</span>'+role(['nmd','Nämnd'])+'</div><p class="flg">'+I.warn+'Kunde inte kopplas till en häst i avd 3. Närmast är 5 Mellby Harley.</p><blockquote class="quote">Mellby Harly kan vara med och slåss om pengarna.</blockquote><div class="ta"><button class="btn secondary sm" type="button">Välj 5 Mellby Harley</button><button class="btn secondary sm" type="button">Välj annan</button><button class="btn ghost sm" type="button">Ta bort</button></div></li></ul>'),
+      fig('<b>Fel</b> per källa · stoppar inte övriga',srcBad+'<div class="ban err m">'+I.warn+'<div><p><b>AI:n kunde inte tolka "Tidiga V85: Baronen är guldet".</b> Svaret gick inte att läsa. Försök igen räknas som en ny läsning.</p><div class="acts"><button class="btn secondary sm" type="button">Försök igen</button></div></div></div>'),
+      fig('<b>Dygnsgräns nådd</b>','<div class="tips-box"><button type="button" class="btn primary full" disabled aria-describedby="dg">'+I.spark+'Hämta tips</button><p class="help" id="dg">Dagens gräns för AI-läsning är nådd. Hämta tips fungerar igen i morgon kl. 00:00.</p>'+quota(20,1)+'</div>'),
+      fig('<b>Låst</b> efter loppets start','<ul class="tipl"><li class="tipc"><div class="th"><span class="av">Avd 4</span><span class="nr sm"><b>1</b></span><span class="pn">Baron Tilly</span>'+role(['fav','Favorit'])+'</div><blockquote class="quote">Baron Tilly är starkast i loppet, och från spår 1 ska han kunna styra.</blockquote><p class="help">Loppet har startat. Tipset kan inte ändras, och källstödet är fryst.</p></li></ul>'),
+      fig('<b>Omgången</b> · tipsraden (S1)','<p class="fetchline" style="padding:10px 12px;font-size:13px">Tips: <b>6</b> på 6 hästar · Travstugan i dag 21:14 · <a class="linkish" href="#">1 att granska</a> · <a class="linkish" href="#">Hämta igen</a></p>'),
+      fig('<b>Offline</b> och <b>inga påslagna källor</b>','<div class="tips-box"><button type="button" class="btn primary full" disabled>'+I.spark+'Hämta tips</button><p class="help">Ingen uppkoppling. Hämta tips kräver nät.</p></div><div class="tips-box" style="border-top:1px solid var(--line)"><button type="button" class="btn primary full" disabled>'+I.spark+'Hämta tips</button><p class="help">Slå på minst en källa för att hämta tips.</p></div>')
+    ].join('')};
+
+  document.querySelectorAll('.js').forEach(function(el){var f=S[el.dataset.k];if(f)el.innerHTML=f()});
+})();
+</script>
