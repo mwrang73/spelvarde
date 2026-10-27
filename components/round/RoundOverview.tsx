@@ -145,7 +145,7 @@ export function RoundOverview() {
             </>
           )}
         </p>
-        <RoundLinks roundId={data.round.id} />
+        <RoundLinks roundId={data.round.id} analysis={data.phase === "KLART"} />
         <div className="sl">
           <h2 className="sl-h">Avdelningar</h2>
           {resume && <span className="todo">Hämtning ej klar</span>}

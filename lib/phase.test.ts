@@ -131,15 +131,15 @@ describe("Nästa steg (3.2)", () => {
     expect(s).toMatchObject({ kind: "LIVE_WAITING", title: "Väntar på resultat i avd 7", text: "Placeringen hämtas automatiskt från ATG." });
     expect(s.action).toEqual({ type: "link", label: "Till avd 7", href: "/omgang/r1/avd/7" });
   });
-  it("9. E4a: Omgången är klar med summeringen", () => {
+  it("9. Efteranalysen är klar, med summeringen", () => {
     const done = round(races({ hasResult: true }));
     const later = at("2026-10-25T19:00:00Z");
     const summary = { bet: { hits: 2, total: 4 }, spelbar: { hits: 3, total: 6 }, interesting: { hits: 6, total: 13 }, trollspot: { hits: 2, total: 3 } };
     expect(nextStep({ now: later, round: done, nextAvailable: null, summary })).toMatchObject({
-      kind: "ROUND_DONE",
-      title: "Omgången är klar",
+      kind: "SEE_ANALYSIS",
+      title: "Efteranalysen är klar",
       text: "Bet 2/4 träff · Spelbar 3/6 topp 3 · Intressant 6/13 topp 3 · Trollspöt 2/3 topp 3.",
-      action: null,
+      action: { type: "link", label: "Se efteranalysen", href: "/omgang/r1/analys" },
     });
     const noTroll = { ...summary, trollspot: { hits: 0, total: 0 } };
     expect(nextStep({ now: later, round: done, nextAvailable: null, summary: noTroll }).text).toBe("Bet 2/4 träff · Spelbar 3/6 topp 3 · Intressant 6/13 topp 3.");
@@ -148,6 +148,6 @@ describe("Nästa steg (3.2)", () => {
     const done = round(races({ hasResult: true }));
     const later = at("2026-10-25T19:00:00Z");
     expect(nextStep({ now: later, round: done, nextAvailable: { ...next, gameId: "V85_2026-10-31_5_5", date: "2026-10-31", trackName: "Solvalla" } }).title).toBe("Hämta omgång – V85 Solvalla lör 31 okt");
-    expect(nextStep({ now: later, round: done, nextAvailable: null }).kind).toBe("ROUND_DONE");
+    expect(nextStep({ now: later, round: done, nextAvailable: null }).kind).toBe("SEE_ANALYSIS");
   });
 });

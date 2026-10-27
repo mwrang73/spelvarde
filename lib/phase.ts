@@ -90,6 +90,7 @@ export type NextStepKind =
   | "ANALYZE_LEG"
   | "ALL_REVIEWED"
   | "SEE_STATS"
+  | "SEE_ANALYSIS"
   | "ROUND_DONE";
 
 export type NextStepAction =
@@ -264,5 +265,9 @@ export function nextStep(input: NextStepInput): NextStep {
     return { kind: "SEE_STATS", title: "Se statistik", text: "Omgången är klar.", action: { type: "link", label: "Se statistik", href: "/statistik" } };
   }
   const sum = f.results && input.summary ? summaryText(input.summary) : null;
+  // Efteranalysen (mockupen efteranalys-tips, del 1 A).
+  if (f.results) {
+    return { kind: "SEE_ANALYSIS", title: "Efteranalysen är klar", text: sum ?? "Vad omgången gav och vad du kan lära dig.", action: { type: "link", label: "Se efteranalysen", href: `${base}/analys` } };
+  }
   return { kind: "ROUND_DONE", title: "Omgången är klar", text: sum ?? `Nästa ${gameType} kan hämtas när ATG har publicerat den.`, action: null };
 }

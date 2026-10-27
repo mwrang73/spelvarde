@@ -212,9 +212,16 @@ export function RiktShort({ riktodds, x, rx }: { riktodds: number | null; x: XFa
 }
 
 // Länkar till S4 och S6 (navigeringen inom omgången).
-export function RoundLinks({ roundId, className }: { roundId: string; className?: string }) {
+// analysis = omgången är klar: Efteranalys först.
+export function RoundLinks({ roundId, className, analysis }: { roundId: string; className?: string; analysis?: boolean }) {
   return (
     <nav className={`qlinks${className ? ` ${className}` : ""}`} aria-label="Odds och spel">
+      {analysis && (
+        <Link className="qlink" href={`/omgang/${roundId}/analys`}>
+          <span>Efteranalys</span>
+          <IconChev />
+        </Link>
+      )}
       <Link className="qlink troll-link" href={`/omgang/${roundId}/spel?flik=trollspot`} title="10 hästar att bevaka">
         <WandSpark />
         <span>Trollspöt</span>

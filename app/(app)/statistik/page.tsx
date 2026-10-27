@@ -1,15 +1,6 @@
-import { AppHeader } from "@/components/shell/AppHeader";
-import { EmptyState } from "@/components/ui/board";
-import { IconStat } from "@/components/ui/icons";
+import { OverTimeView } from "@/components/analysis/OverTimeView";
 
-// S9 Statistik byggs i E4. Tills dess visas specens tomma läge.
+// S9 Statistik: Över tid (mockupen efteranalys-tips, del 1 A).
 export default function StatsPage() {
-  return (
-    <>
-      <AppHeader brand title="Statistik" sub="Statistik" />
-      <main className="page" id="main">
-        <EmptyState icon={<IconStat />} title="Ingen statistik än" text="Statistik visas när din första omgång är klar." />
-      </main>
-    </>
-  );
+  return <OverTimeView />;
 }
