@@ -175,6 +175,8 @@ export type ParsedRace = {
   hasResult: boolean;
   cancelled: boolean;
   starts: ParsedStart[];
+  // Antal starter i ATG:s svar. Fler än starts = några gick inte att läsa.
+  atgStarts: number;
 };
 
 export type ParsedGame = {
@@ -305,18 +307,34 @@ function horseStats(x: unknown): HorseStats | null {
   return { years, life };
 }
 
+// Utländska hästar och personer (t.ex. norska kallblod) saknar id hos ATG,
+// och kuskarna har id 0. De får ett eget negativt id av namnet (FNV-1a), så
+// att de går att spara och känns igen nästa hämtning. ATG:s egna id är > 0.
+export function syntheticId(key: string): number {
+  let h = 0x811c9dc5;
+  for (const ch of key.normalize("NFC").toLowerCase()) {
+    h ^= ch.codePointAt(0)!;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return -((h % 2_000_000_000) + 1);
+}
+
+const realId = (x: unknown): number | null => {
+  const n = int(x);
+  return n !== null && n > 0 ? n : null;
+};
+
 export function parsePerson(x: unknown, warn?: Warn, where = "person"): ParsedPerson | null {
   const o = obj(x);
   if (!o) return null;
-  const id = int(o.id);
   const firstName = str(o.firstName);
   const lastName = str(o.lastName);
-  if (id === null || !lastName) {
-    warn?.(`${where}: saknar id eller efternamn`);
+  if (!lastName) {
+    warn?.(`${where}: saknar efternamn`);
     return null;
   }
   return {
-    atgPersonId: id,
+    atgPersonId: realId(o.id) ?? syntheticId(`person|${firstName ?? ""}|${lastName}`),
     firstName: firstName ?? "",
     lastName,
     shortName: str(o.shortName),
@@ -394,15 +412,17 @@ function parseStart(x: unknown, raceDate: string, warn: Warn, where: string, gam
   const number = int(s.number);
   const distance = int(s.distance);
   const horse = obj(s.horse);
-  const horseId = int(horse?.id);
   const horseName = str(horse?.name);
-  if (number === null || distance === null || !horse || horseId === null || !horseName) {
+  if (number === null || distance === null || !horse || !horseName) {
     warn(`${where}: start saknar nummer, distans eller häst`);
     return null;
   }
   const w = `${where} nr ${number}`;
   const age = int(horse.age);
   const raceYear = parseInt(raceDate.slice(0, 4), 10);
+  const birthYear = age !== null && Number.isFinite(raceYear) ? raceYear - age : null;
+  const country = str(horse.nationality) ?? str(horse.country) ?? null;
+  const horseId = realId(horse.id) ?? syntheticId(`horse|${horseName}|${country ?? ""}|${birthYear ?? ""}`);
   const pools = obj(s.pools);
   const scratched = bool(s.scratched);
   const streck = int(obj(pools?.[gameType])?.betDistribution);
@@ -418,8 +438,8 @@ function parseStart(x: unknown, raceDate: string, warn: Warn, where: string, gam
       name: horseName,
       sex: str(horse.sex),
       age,
-      birthYear: age !== null && Number.isFinite(raceYear) ? raceYear - age : null,
-      country: str(horse.nationality) ?? str(horse.country) ?? null,
+      birthYear,
+      country,
     },
     record: formatRecord(horse.record),
     earnings: money,
@@ -460,9 +480,8 @@ export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | nu
     if (!startMethod) warn(`${where}: okänd startmetod ${String(r.startMethod)}`);
     const status = str(r.status);
     const prizeText = str(r.prize);
-    const starts = arr(r.starts)
-      .map((s) => parseStart(s, date, warn, where, gameType))
-      .filter((s): s is ParsedStart => s !== null);
+    const rawStarts = arr(r.starts);
+    const starts = rawStarts.map((s) => parseStart(s, date, warn, where, gameType)).filter((s): s is ParsedStart => s !== null);
     races.push({
       atgRaceId,
       leg: index + 1,
@@ -479,6 +498,7 @@ export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | nu
       hasResult: status === "results" && starts.some((s) => s.result !== null),
       cancelled: !!status && status.toLowerCase().includes("cancel"),
       starts,
+      atgStarts: rawStarts.length,
     });
   });
   const first = obj(arr(g.races)[0]);
@@ -566,7 +586,7 @@ export function parseStartDetail(json: unknown, warn: Warn = () => {}): ParsedSt
   return {
     raceId: str(o.raceId),
     startNumber: int(o.startNumber),
-    atgHorseId: int(horse.id),
+    atgHorseId: realId(horse.id),
     horseStats: horseStats(horse.statistics),
     driver: parsePerson(o.driver, warn, "start kusk"),
     trainer: parsePerson(horse.trainer, warn, "start tränare"),

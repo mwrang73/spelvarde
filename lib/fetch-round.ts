@@ -19,9 +19,10 @@ import {
   pickNextGame,
   type AtgFetch,
   type CalendarGame,
+  type ParsedGame,
   type ParsedPerson,
 } from "@/lib/atg";
-import { DEFAULT_GAME_TYPE, GAME_ID_RE, legsFor, type GameType } from "@/lib/game-type";
+import { DEFAULT_GAME_TYPE, GAME_ID_RE, gameTypeOfId, legsFor, type GameType } from "@/lib/game-type";
 import { matchPerson, normalizeName, parseShortName } from "@/lib/names";
 import { raceClass } from "@/lib/race-class";
 import { computeRoundRiktodds } from "@/lib/riktodds-server";
@@ -100,6 +101,15 @@ async function upsertPerson(db: PrismaClient, p: ParsedPerson, now: Date): Promi
   return row.id;
 }
 
+// "avd 2: 0 av 11 hästar" för avdelningar där starter föll bort i
+// tolkningen, eller fel antal avdelningar. null = allt kom med.
+export function incompleteLegs(parsed: ParsedGame): string | null {
+  const parts = parsed.races.filter((r) => r.starts.length < r.atgStarts).map((r) => `avd ${r.leg}: ${r.starts.length} av ${r.atgStarts} hästar`);
+  const legs = legsFor(gameTypeOfId(parsed.atgGameId) ?? DEFAULT_GAME_TYPE);
+  if (parsed.races.length !== legs) parts.unshift(`${parsed.races.length} av ${legs} avdelningar`);
+  return parts.length ? parts.join(", ") : null;
+}
+
 // skipRiktodds: räkna inte om riktoddset vid strykning här (Uppdatera streck
 // räknar om efteråt i ett eget anrop).
 export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | null; userId: string | null; gameType?: GameType; skipRiktodds?: boolean }): Promise<GameStepResult | null> {
@@ -122,6 +132,9 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
 
   const parsed = parseGame(await atg(atgPaths.game(gameId)), warn);
   if (!parsed) throw new FetchStepError("ATG svarade med ett spel som inte gick att läsa.");
+  // En halv startlista får aldrig sparas i tysthet: stoppa innan något skrivs.
+  const incomplete = incompleteLegs(parsed);
+  if (incomplete) throw new FetchStepError(`ATG:s startlista gick inte att läsa helt (${incomplete}). Inget sparades.`, 502, { warnings: warnings.slice(0, 10) });
 
   const existing = await db.round.findUnique({
     where: { atgGameId: parsed.atgGameId },
@@ -227,7 +240,8 @@ export async function fetchGameStep(deps: FetchDeps, input: { gameId?: string | 
 
       let prevDriverId = old?.prevDriverId ?? null;
       let changed = !old;
-      if (old && old.driverId && driverId && old.driverId !== driverId) {
+      // Kusk med ATG-id 0 (sparad före syntheticId) räknas inte som kuskbyte.
+      if (old && old.driverId && driverId && old.driverId !== driverId && old.driver?.atgPersonId !== 0) {
         prevDriverId = old.driverId;
         changed = true;
         changes.driverChanges.push({

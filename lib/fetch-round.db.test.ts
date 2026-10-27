@@ -23,6 +23,7 @@ const games: Record<string, unknown> = {
   upcoming: atgFx("game-V85_2026-10-24_7_5.json"),
   bettable: atgFx("game-V85_2026-10-24_7_5-bettable.json"),
   results: atgFx("game-V85_2026-10-17_16_5-results.json"),
+  foreign: atgFx("game-V85_2026-10-31_78_5-foreign.json"),
 };
 const startFx = atgFx("start-2026-10-24_7_11-1.json");
 
@@ -274,5 +275,36 @@ describe.skipIf(skip)("hämtningskedjan mot Postgres", () => {
     expect(res.legs).toHaveLength(8);
     expect(res.legs[6]).toMatchObject({ interesting: 1, reviewed: true });
     expect(res.nextAvailable).toBeNull();
+  });
+  it("utländska hästar utan id (2026-10-31): Hämta igen fyller i det som saknades, utan falska kuskbyten", async () => {
+    // Läget i drift före rättelsen: bara hästar med ATG-id sparades, och
+    // utländska kuskar (id 0) blev en och samma person med id 0.
+    const full = games.foreign as { races: { starts: { horse: { id?: number } }[] }[] };
+    const pruned = structuredClone(full);
+    for (const r of pruned.races) r.starts = r.starts.filter((st) => st.horse.id);
+    games.foreignPruned = pruned;
+    const now = new Date("2026-10-27T10:00:00Z");
+    const gameId = "V85_2026-10-31_78_5";
+    const first = (await fetchGameStep(deps(makeAtg("foreignPruned" as never), now), { gameId, userId }))!;
+    expect(await db.start.count({ where: { race: { roundId: first.roundId } } })).toBe(50);
+    const zero = await db.person.create({ data: { atgPersonId: 0, firstName: "Per Oleg", lastName: "Midtfjeld" } });
+    const moved = await db.start.updateMany({ where: { race: { roundId: first.roundId }, driver: { atgPersonId: { lt: 0 } } }, data: { driverId: zero.id } });
+    expect(moved.count).toBeGreaterThan(0);
+
+    const again = (await fetchGameStep(deps(makeAtg("foreign"), now), { gameId, userId }))!;
+    expect(again.roundId).toBe(first.roundId);
+    expect(again.legs.map((l) => l.starts)).toEqual([12, 11, 12, 10, 15, 12, 10, 15]);
+    expect(await db.start.count({ where: { race: { roundId: first.roundId } } })).toBe(97);
+    expect(again.changes.driverChanges).toEqual([]);
+    expect(again.changes.skipped).toEqual([]);
+    expect(await db.start.count({ where: { race: { roundId: first.roundId }, OR: [{ driverId: null }, { trainerId: null }, { driverId: zero.id }] } })).toBe(0);
+    // Hästar som inte går att läsa alls: hämtningen stoppas och inget sparas.
+    const broken = structuredClone(full) as { races: { starts: { horse: { name?: string } }[] }[] };
+    delete broken.races[1].starts[0].horse.name;
+    games.foreignBroken = broken;
+    await expect(fetchGameStep(deps(makeAtg("foreignBroken" as never), now), { gameId, userId })).rejects.toThrow("ATG:s startlista gick inte att läsa helt (avd 2: 10 av 11 hästar). Inget sparades.");
+    expect(await db.start.count({ where: { race: { roundId: first.roundId } } })).toBe(97);
+    // Steg 2–9 klarar starter där ATG inte har något häst-id.
+    expect((await fetchRaceStep(deps(makeAtg("foreign"), now), { roundId: first.roundId, leg: 2, userId })).ok).toBe(true);
   });
 });

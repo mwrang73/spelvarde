@@ -8,9 +8,11 @@ import {
   parseCalendarDay,
   parseFirstPrize,
   parseGame,
+  parsePerson,
   parseRecord,
   parseStartDetail,
   pickNextGame,
+  syntheticId,
 } from "@/lib/atg";
 
 const fx = (f: string) => JSON.parse(readFileSync(path.join(__dirname, "..", "test", "fixtures", "atg", f), "utf8"));
@@ -19,6 +21,47 @@ const bettable = fx("game-V85_2026-10-24_7_5-bettable.json");
 const results = fx("game-V85_2026-10-17_16_5-results.json");
 const startDetail = fx("start-2026-10-24_7_11-1.json");
 const calendar = fx("calendar-2026-10-24.json");
+const foreign = fx("game-V85_2026-10-31_78_5-foreign.json");
+
+describe("parseGame – utländska hästar utan id (Sverige–Norge, 2026-10-31)", () => {
+  const warnings: string[] = [];
+  const g = parseGame(foreign, (m) => warnings.push(m))!;
+  const all = g.races.flatMap((r) => r.starts);
+
+  it("tar med alla 97 hästar i alla 8 avdelningar", () => {
+    expect(g.races.map((r) => r.starts.length)).toEqual([12, 11, 12, 10, 15, 12, 10, 15]);
+    expect(warnings).toEqual([]);
+  });
+  it("hästar utan ATG-id får ett eget negativt id, unikt i omgången", () => {
+    const baias = g.races[1].starts.find((s) => s.horse.name === "Baias")!;
+    expect(baias.horse.atgHorseId).toBeLessThan(0);
+    expect(baias.horse.atgHorseId).toBe(syntheticId("horse|Baias|NO|2018"));
+    expect(new Set(all.map((s) => s.horse.atgHorseId)).size).toBe(all.length);
+    expect(all.filter((s) => s.horse.atgHorseId > 0).length).toBe(50);
+  });
+  it("kuskar med id 0 slås inte ihop, och alla starter har kusk och tränare", () => {
+    expect(all.every((s) => s.driver && s.trainer)).toBe(true);
+    expect(all.every((s) => s.driver!.atgPersonId !== 0)).toBe(true);
+    expect(new Set(all.map((s) => s.driver!.atgPersonId)).size).toBeGreaterThan(30);
+  });
+});
+
+describe("parsePerson och syntheticId", () => {
+  it("id 0 eller saknat id ger samma negativa id för samma namn", () => {
+    const a = parsePerson({ id: 0, firstName: "Per Oleg", lastName: "Midtfjeld" })!;
+    const b = parsePerson({ firstName: "Per Oleg", lastName: "Midtfjeld" })!;
+    expect(a.atgPersonId).toBeLessThan(0);
+    expect(a.atgPersonId).toBe(b.atgPersonId);
+    expect(parsePerson({ id: 0, firstName: "Gunnar", lastName: "Austevoll" })!.atgPersonId).not.toBe(a.atgPersonId);
+    expect(parsePerson({ id: 1234, firstName: "Örjan", lastName: "Kihlström" })!.atgPersonId).toBe(1234);
+  });
+  it("är stabilt och ryms i en Postgres int", () => {
+    const n = syntheticId("horse|Tripsson Ø.K.|NO|2015");
+    expect(n).toBe(syntheticId("horse|Tripsson Ø.K.|NO|2015"));
+    expect(n).toBeGreaterThanOrEqual(-2_000_000_000);
+    expect(n).toBeLessThan(0);
+  });
+});
 
 describe("parseGame – kommande omgång (game.json, Jägersro 2026-10-24)", () => {
   const warnings: string[] = [];
