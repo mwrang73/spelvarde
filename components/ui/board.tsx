@@ -1,6 +1,7 @@
 // Små delar av tavlan och listorna (DESIGN.md, Komponenter): FlapNumber,
 // Badge, FormStrip, LampToggle, Banner, EmptyState och Skeleton.
 
+import { odds } from "@/lib/format";
 import type { FormBox } from "@/lib/gallop";
 import { MANY_SIGNALS } from "@/lib/positive-signals";
 import type { Override } from "@/lib/spelbar";
@@ -52,6 +53,16 @@ export function Badge({ kind, wide }: { kind: keyof typeof BADGE; wide?: boolean
   return (
     <span className={`bdg ${kind}${wide ? " wide" : ""}`} role="img" aria-label={b.label}>
       {wide ? b.wide : b.short}
+    </span>
+  );
+}
+
+// Bet som biljett med oddset du fick ("B 2,40"), alternativ A i mockupen
+// markeringar-live. Utan Bet-odds bara "B".
+export function BetBadge({ odds: o }: { odds: number | null | undefined }) {
+  return (
+    <span className="tkt" role="img" aria-label={o != null ? `Bet, spelad till ${odds(o)}` : "Bet"}>
+      B{o != null && <b>{odds(o)}</b>}
     </span>
   );
 }
@@ -145,12 +156,15 @@ export function BetToggle({
   on,
   horseName,
   labeled,
+  betOdds,
   disabledReason,
   onToggle,
 }: {
   on: boolean;
   horseName: string;
   labeled?: boolean;
+  // Med etikett och tänd: "Bet 2,40" (oddset du fick).
+  betOdds?: number | null;
   disabledReason?: string | null;
   onToggle: () => void;
 }) {
@@ -171,7 +185,11 @@ export function BetToggle({
       <span className="lamp-i" aria-hidden="true">
         <IconTicket />
       </span>
-      {labeled && <span>Bet</span>}
+      {labeled && (
+        <span>
+          Bet{on && betOdds != null && <b className="num"> {odds(betOdds)}</b>}
+        </span>
+      )}
       {disabled && !labeled && <span className="sr">, {disabledReason}</span>}
     </button>
   );

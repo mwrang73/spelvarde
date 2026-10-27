@@ -80,6 +80,26 @@ export function byLegNumber<T extends { race: { leg: number }; start: { number: 
   return a.race.leg - b.race.leg || a.start.number - b.start.number;
 }
 
+// Loppet hos Unibet (samma nyckel som oddshämtningen). Utan nyckel: travsidan.
+export const UNIBET_RACING_URL = "https://www.unibet.se/betting/racing";
+export function unibetRaceUrl(race: { unibetEventKey?: string | null }): string {
+  const key = race.unibetEventKey;
+  return key && /^[\w.-]+$/.test(key) ? `${UNIBET_RACING_URL}#/event/${key}` : UNIBET_RACING_URL;
+}
+
+// Värde = Unibet ÷ riktodds med X − 1: vad en krona ger tillbaka om
+// riktoddset stämmer. null om något saknas.
+export function valueOf(start: Pick<StartDto, "riktodds" | "mark">): number | null {
+  const u = start.mark?.unibetOdds ?? null;
+  const r = riktX(start);
+  return u === null || r === null || r <= 0 ? null : u / r - 1;
+}
+
+// Bästa spel först: störst värde, sedan lopp och startnummer.
+export function byValueDesc<T extends { race: { leg: number }; start: Pick<StartDto, "riktodds" | "mark" | "number"> }>(a: T, b: T): number {
+  return (valueOf(b.start) ?? -Infinity) - (valueOf(a.start) ?? -Infinity) || a.race.leg - b.race.leg || a.start.number - b.start.number;
+}
+
 // Skillnaden mot riktoddset med X-faktor, största först.
 export function byDiffDesc<T extends { race: { leg: number }; start: Pick<StartDto, "riktodds" | "mark" | "number"> }>(a: T, b: T): number {
   return (diffOf(b.start) ?? -Infinity) - (diffOf(a.start) ?? -Infinity) || a.race.leg - b.race.leg || a.start.number - b.start.number;

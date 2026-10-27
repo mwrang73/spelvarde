@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { useIsDesktop } from "@/components/hooks";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
-import { Badge, FlapNumber, LampToggle, LowStreckTag, signalsSr } from "@/components/ui/board";
+import { Badge, BetBadge, FlapNumber, LampToggle, LowStreckTag, signalsSr } from "@/components/ui/board";
 import { odds, pct } from "@/lib/format";
 import { signalTags } from "@/lib/signals";
 import { TROLL_MIN_EST, trollspot, type TrollItem } from "@/lib/trollspot";
@@ -142,6 +142,7 @@ function TrollRow({ item: it, index, base, now, desk }: { item: TrollItem; index
       <span className="sr">{signalsSr(start.signals?.count)}</span>
       {start.signals?.lowStreck && <LowStreckTag />}
       {start.mark?.spelbar && <Badge kind="s" />}
+      {start.mark?.bet && <BetBadge odds={start.mark.betOdds} />}
     </span>
   );
   const lamp = <LampToggle on={on} horseName={start.horse.name} disabledReason={started ? "Loppet har startat" : null} onToggle={() => setInteresting(race, start, !on)} />;
@@ -153,7 +154,7 @@ function TrollRow({ item: it, index, base, now, desk }: { item: TrollItem; index
   );
   if (desk)
     return (
-      <tr className={on ? "is-i" : undefined}>
+      <tr className={`${on ? "is-i" : ""}${start.mark?.bet ? " is-b" : ""}` || undefined}>
         <td className="num">{index + 1}</td>
         <td className="num">{race.leg}</td>
         <td>
@@ -184,7 +185,7 @@ function TrollRow({ item: it, index, base, now, desk }: { item: TrollItem; index
       </tr>
     );
   return (
-    <li className={`brow trow${on ? " is-i" : ""}`}>
+    <li className={`brow trow${on ? " is-i" : ""}${start.mark?.bet ? " is-b" : ""}`}>
       <FlapNumber n={start.number} size="sm" signals={start.signals?.count} />
       <div className="pmain">
         {name}

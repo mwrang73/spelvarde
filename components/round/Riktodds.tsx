@@ -133,7 +133,10 @@ export function RiktoddsBox({
         <p className="verdict">
           {green ? (
             <>
-              <span className="hsv">{green.diff}</span>
+              <span className={`hsv${green.cls === "near" ? " near" : ""}`}>
+                {green.diff}
+                {green.cls === "near" && " NÄRA"}
+              </span>
               <span className="sr">{green.cls === "over" ? " över riktoddset" : " under riktoddset, nära"}</span>{" "}
               {green.lead && <b className="hsv-l">{green.lead}</b>}
               {green.text}

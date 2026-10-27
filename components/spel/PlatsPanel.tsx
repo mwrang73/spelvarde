@@ -22,12 +22,12 @@ import { MovementCell, Sv, TrendCell } from "@/components/odds/OddsMark";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
 import { RiktCell, RiktShort } from "@/components/round/parts";
 import { useUndoReplaced } from "@/components/round/streckOddsStore";
-import { Badge, BetToggle, FlapNumber, LampToggle, LowStreckTag, signalsSr, TrollBadge, XBadge } from "@/components/ui/board";
+import { Badge, BetBadge, BetToggle, FlapNumber, LampToggle, LowStreckTag, signalsSr, TrollBadge, XBadge } from "@/components/ui/board";
 import { IconChev, IconWarn } from "@/components/ui/icons";
 import { hhmm, odds, relTime } from "@/lib/format";
 import { guidelineTag } from "@/lib/odds-keypad";
 import { parseOddsText } from "@/lib/odds-input";
-import { byLegNumber, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
+import { byLegNumber, byValueDesc, valueOf, classOf, diffOf, replacedNote, scratchedAtUnibet, UNMARKED_HELP_TEXT, unmarkedItems } from "@/lib/odds-ui";
 import { toleranceOf } from "@/lib/round-overlay";
 import { signalTags } from "@/lib/signals";
 import type { OddsClass } from "@/lib/spelbar";
@@ -57,6 +57,11 @@ function Signals({ item }: { item: Item }) {
 
 export const UNMARKED_HELP = UNMARKED_HELP_TEXT;
 
+const BEST_KEY = "sv-basta-spel";
+
+// "+15,6 %"
+const pctSigned = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v * 100).toFixed(1).replace(".", ",")} %`;
+
 // "Inte markerade (n)" (e4a avsnitt 18, tidigare "Inte markerade men spelbara odds").
 export const unmarkedTitle = (n: number) => `Inte markerade (${n})`;
 
@@ -71,7 +76,24 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
     if (add.length) setFrozen((f) => new Set([...f, ...add.map((i) => i.start.id)]));
   }, [all, frozen]);
 
-  const spelbara = all.filter((i) => frozen.has(i.start.id)).sort(byLeg);
+  // Bästa spel först (kryssrutan), sparas i webbläsaren. Av = per lopp.
+  const [best, setBest] = useState(false);
+  useEffect(() => {
+    try {
+      setBest(localStorage.getItem(BEST_KEY) === "1");
+    } catch {
+      // ingen lagring
+    }
+  }, []);
+  const toggleBest = (v: boolean) => {
+    setBest(v);
+    try {
+      localStorage.setItem(BEST_KEY, v ? "1" : "0");
+    } catch {
+      // ingen lagring
+    }
+  };
+  const spelbara = all.filter((i) => frozen.has(i.start.id)).sort(best ? byValueDesc : byLeg);
   const betOnly = all.filter((i) => i.start.mark?.bet && !frozen.has(i.start.id)).sort(byLeg);
   const rest = all.filter((i) => i.start.mark?.interesting && !i.start.mark.spelbar && !i.start.mark.bet && !frozen.has(i.start.id) && !i.start.scratched).sort(byLeg);
   const unmarked = unmarkedItems(data.races, now, tolerance);
@@ -91,7 +113,16 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
           Inga spelbara hästar än. Spelbar föreslås när Unibets platsodds når riktoddset eller ligger högst {odds(tolerance)} under det. <Link href={`${base}/odds`}>Till Unibets odds</Link>
         </p>
       ) : (
-        <PlatsGroup title={`Spelbara (${spelbara.length})`} items={spelbara} right={`Bet ${betCount}`} {...common} />
+        <>
+          <div className="sortbar">
+            <label className="chk">
+              <input type="checkbox" checked={best} onChange={(e) => toggleBest(e.target.checked)} />
+              Bästa spel först
+            </label>
+            <span className="help">{best ? "Värde = Unibet ÷ riktodds − 1" : "Sorterat per lopp"}</span>
+          </div>
+          <PlatsGroup title={`Spelbara (${spelbara.length})`} items={spelbara} right={`Bet ${betCount}`} showValue={best} {...common} />
+        </>
       )}
       <PlatsGroup title={`Med Bet men inte spelbara (${betOnly.length})`} items={betOnly} {...common} />
       {rest.length > 0 && (
@@ -136,6 +167,8 @@ type GroupProps = {
   latestFetchId: string | null;
   // id på gruppen (S4: "omarkerade" för länken "Visa n omarkerade").
   id?: string;
+  // Bästa spel först: värdet i underraden.
+  showValue?: boolean;
 };
 
 const ODDS_COLS = [56, 0, 66, 92, 96, 118, 70, 56];
@@ -217,7 +250,7 @@ export function PlatsGroup(props: GroupProps) {
   );
 }
 
-function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId }: GroupProps & { item: Item }) {
+function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId, showValue }: GroupProps & { item: Item }) {
   const { setBet, setInteresting, roundId } = useRound();
   const { race, start } = item;
   const troll = item.troll ?? null;
@@ -243,7 +276,7 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
       {!odds4 && <span className="sr">{signalsSr(start.signals?.count)}</span>}
       {!odds4 && start.signals?.lowStreck && <LowStreckTag />}
       {m?.spelbar && <Badge kind="s" />}
-      {m?.bet && <Badge kind="b" />}
+      {m?.bet && <BetBadge odds={m.betOdds} />}
       <XBadge x={x} />
       {odds4 && newIds?.has(start.id) && <span className="tag new">Ny</span>}
       {m?.belowGuideline && <span className="tag gl">{guidelineTag(guideline)}</span>}
@@ -273,10 +306,17 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
   const minHint = troll && m?.unibetOdds == null ? `minst ${odds(troll.minOdds)}` : null;
   const sv = minHint ? <span className="sv tmin-h">{minHint}</span> : <Sv diff={d} cls={cls} />;
   const win = start.unibet && !scrUnibet ? start.unibet.win : null;
+  const v = showValue ? valueOf(start) : null;
+  const value = v !== null && (
+    <>
+      {" · värde "}
+      <b className={`num vl${v > 0 ? " pos" : ""}`}>{pctSigned(v)}</b>
+    </>
+  );
 
   if (desk)
     return (
-      <tr className={start.scratched ? "scr" : undefined}>
+      <tr className={`${m?.bet ? "is-b" : ""}${start.scratched ? " scr" : ""}` || undefined}>
         <td>
           <FlapNumber n={start.number} signals={odds4 ? undefined : start.signals?.count} />
         </td>
@@ -284,6 +324,7 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
           {name}
           <span className="kt">
             {odds4 ? (unmarked ? `Avd ${race.leg} · ${start.driver?.name ?? "Kusk saknas"}` : start.driver?.name ?? "Kusk saknas") : `Avd ${race.leg} · ${hhmm(race.startAt)} · ${start.driver?.name ?? "Kusk saknas"}`}
+            {value}
           </span>
           {!odds4 && <Signals item={item} />}
           <span className="notes">{notes}</span>
@@ -309,13 +350,14 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
       </tr>
     );
   return (
-    <li className={`brow ${odds4 ? "xb" : "xa"}${start.scratched ? " scr" : ""}`}>
+    <li className={`brow ${odds4 ? "xb" : "xa"}${m?.bet ? " is-b" : ""}${start.scratched ? " scr" : ""}`}>
       <FlapNumber n={start.number} size="sm" signals={odds4 ? undefined : start.signals?.count} />
       <div className="pmain">
         {name}
         <span className="pm">
           Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={rx} />
           {unmarked && " · inte markerad"}
+          {value}
         </span>
         {!odds4 && <Signals item={item} />}
         {notes}

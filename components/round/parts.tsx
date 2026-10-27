@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { Badge, TrollBadge, XBadge } from "@/components/ui/board";
+import { Badge, BetBadge, TrollBadge, XBadge } from "@/components/ui/board";
 import { IconChev } from "@/components/ui/icons";
 import { odds, shortRaceName } from "@/lib/format";
 import type { PhaseStep } from "@/lib/phase";
@@ -128,7 +128,7 @@ export function MarkBadges({ s }: { s: StartDto }) {
   return (
     <>
       {s.mark?.spelbar && <Badge kind="s" />}
-      {s.mark?.bet && <Badge kind="b" />}
+      {s.mark?.bet && <BetBadge odds={s.mark.betOdds} />}
       <XBadge x={xOf(s.mark)} />
     </>
   );
@@ -136,13 +136,13 @@ export function MarkBadges({ s }: { s: StartDto }) {
 
 // Märkena I, S, B och X ur de frysta värdena (E4a, resultatvyn), och
 // Trollspöt-märket när hästen var i Trollspöt vid start.
-export function OutcomeBadges({ o }: { o: StartOutcomeDto | null }) {
+export function OutcomeBadges({ o, betOdds }: { o: StartOutcomeDto | null; betOdds?: number | null }) {
   if (!o) return null;
   return (
     <>
       {o.interesting && <Badge kind="i" />}
       {o.spelbar && <Badge kind="s" />}
-      {o.bet && <Badge kind="b" />}
+      {o.bet && <BetBadge odds={betOdds} />}
       <XBadge x={o.xFactor} />
       {o.trollspotRank !== null && <TrollBadge />}
     </>

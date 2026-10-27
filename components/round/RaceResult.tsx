@@ -66,7 +66,7 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
             {view.placed.map((p, i) => (
               <li key={p.start.id}>
                 <a
-                  className={`rrow${p.start.id === selectedId ? " sel" : ""}`}
+                  className={`rrow${p.outcome?.bet ? " is-b" : ""}${p.start.id === selectedId ? " sel" : ""}`}
                   data-start={p.start.id}
                   href={hrefFor(p.start)}
                   aria-label={placedRowSr(p)}
@@ -86,7 +86,7 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
                     </span>
                   </span>
                   <span className="rr">
-                    <OutcomeBadges o={p.outcome} />
+                    <OutcomeBadges o={p.outcome} betOdds={p.start.mark?.betOdds} />
                     <Verdict v={p.bet} />
                   </span>
                 </a>
@@ -99,7 +99,7 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
               {view.betMisses.map((b) => (
                 <li key={b.start.id}>
                   <a
-                    className={`rrow${b.start.id === selectedId ? " sel" : ""}`}
+                    className={`rrow is-b${b.start.id === selectedId ? " sel" : ""}`}
                     data-start={b.start.id}
                     href={hrefFor(b.start)}
                     aria-label={`${b.disqualified ? "Diskad" : "5:e eller sämre"}, nummer ${b.start.number}, ${b.start.horse.name}${b.galloped ? ", galopp" : ""}. ${marksSr(b.outcome, "miss")}`}
@@ -120,7 +120,7 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
                       </span>
                     </span>
                     <span className="rr">
-                      <OutcomeBadges o={{ ...b.outcome, xFactor: "NONE" }} />
+                      <OutcomeBadges o={{ ...b.outcome, xFactor: "NONE" }} betOdds={b.start.mark?.betOdds} />
                       <Verdict v="miss" />
                     </span>
                   </a>

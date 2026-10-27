@@ -11,15 +11,18 @@ import { rawPost } from "@/components/api";
 import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { Badge, Banner, BetToggle, FlapNumber, LampToggle, LowStreckTag, Skeleton, SpelbarToggle } from "@/components/ui/board";
+import { IconTicket } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, distShort, money, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay } from "@/lib/format";
 import { applyPendingComments, toleranceOf, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
+import { unibetRaceUrl } from "@/lib/odds-ui";
 import { riktX } from "@/lib/xfactor-ui";
 import { UnibetHistory } from "./UnibetHistory";
 import type { CommentDto, RaceDto, RoundResponse, StartDetailResponse, StartDto, YearStatsDto } from "@/lib/types";
 import { RiktoddsBox } from "./Riktodds";
 import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
+import { openTagging } from "./tagStore";
 import { XFactorBlock } from "./XFactor";
 import { pctSignal, signalClass, signalLines, signalSr } from "@/lib/signals";
 import { MANY_SIGNALS, SIGNAL_KEYS, TOP3_BY_COUNT } from "@/lib/positive-signals";
@@ -93,6 +96,23 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
             </p>
           )}
         </div>
+        {mark?.bet && (
+          <div className="bstub" role="note">
+            <span className="bs-k">
+              <IconTicket /> Bet
+            </span>
+            <b className="num">{mark.betOdds != null ? odds(mark.betOdds) : "–"}</b>
+            <span className="bs-t">
+              {mark.betAt ? `Spelad ${relTime(mark.betAt, now)}` : "Spelad"}
+              {mark.unibetOdds != null && mark.unibetOdds !== mark.betOdds && (
+                <>
+                  <br />
+                  Unibet nu {odds(mark.unibetOdds)}
+                </>
+              )}
+            </span>
+          </div>
+        )}
         {warning && (
           <div className={`galwarn${warning.kind === "GD" ? " gd" : ""}`}>
             <Badge kind={warning.kind === "GD" ? "gd" : "g"} />
@@ -113,9 +133,12 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
         <LampToggle labeled on={on} horseName={start.horse.name} disabledReason={locked} onToggle={() => onToggle(!on)} />
         <SpelbarToggle id={`sp-${start.id}`} on={isSpelbar} override={override} disabledReason={locked} onToggle={() => setSpelbar(race, start, isSpelbar ? "off" : "on")} />
         <span className="sp-wrap">
-          <BetToggle labeled on={!!mark?.bet} horseName={start.horse.name} disabledReason={started || (start.scratched && !mark?.bet) ? locked : null} onToggle={() => setBet(race, start, !mark?.bet)} />
-          <span className="sp-orig">{mark?.bet ? (mark.betOdds !== null ? `Odds ${odds(mark.betOdds)}` : "Utan odds") : "Inte spelad"}</span>
+          <BetToggle labeled on={!!mark?.bet} betOdds={mark?.betOdds} horseName={start.horse.name} disabledReason={started || (start.scratched && !mark?.bet) ? locked : null} onToggle={() => setBet(race, start, !mark?.bet)} />
+          <span className="sp-orig">{mark?.bet ? (mark.betOdds !== null ? "Spelad" : "Utan odds") : "Inte spelad"}</span>
         </span>
+        <a className="btn ghost sm unib" href={unibetRaceUrl(race)} target="_blank" rel="noopener noreferrer" aria-label={`Avd ${race.leg} hos Unibet (öppnas i ny flik)`}>
+          Unibet ↗
+        </a>
       </div>
       {override !== "NONE" && !locked && (
         <p className="acts-sub">
@@ -125,6 +148,13 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
         </p>
       )}
       {started && <p className="acts-sub help">Loppet har startat. Intressant, Spelbar, Bet, X-faktor och källstöd är låsta.</p>}
+      {started && !race.cancelled && !start.scratched && (
+        <p className="acts-sub">
+          <button type="button" className="btn secondary sm" onClick={() => openTagging(race.id, start.id)}>
+            Tagga i loppet
+          </button>
+        </p>
+      )}
 
       <XFactorBlock key={start.id} race={race} start={start} factors={factors} sourcesEnabled={data.sourcesEnabled ?? 0} tolerance={tolerance} />
 

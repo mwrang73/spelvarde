@@ -297,6 +297,9 @@ export type RaceDto = {
   // E4a: summeringen för avdelningen från de frysta Outcome. null före
   // resultat och när loppet är inställt. Äldre cachade svar saknar fältet.
   summary?: OutcomeSummary | null;
+  // Unibets nyckel för loppet (sparas vid oddshämtningen), för länken
+  // "Spela hos Unibet". Saknas = länken går till Unibets travsida.
+  unibetEventKey?: string | null;
 };
 
 // GET /api/rounds/[id]

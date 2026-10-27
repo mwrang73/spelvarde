@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ageSex, dayDate, hhmm, kr, methodLabel, money, pct, shortRaceName } from "@/lib/format";
 import { PHASE_LABELS } from "@/lib/phase";
 import { resultMode, showsResultToggle } from "@/lib/results-ui";
+import { unibetRaceUrl } from "@/lib/odds-ui";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { nextXFactor } from "@/lib/xfactor";
 import { xOf } from "@/lib/xfactor-ui";
@@ -35,6 +36,7 @@ import { RaceResult, ResultSkeleton } from "./RaceResult";
 import { RaceStatsContent } from "./RaceStats";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
 import { raceStarted, useRound } from "./RoundProvider";
+import { TagCta, TagRace } from "./TagRace";
 import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
 import { pctSignal, signalClass, signalSr } from "@/lib/signals";
@@ -385,6 +387,7 @@ function Workspace({
                 <button type="button" className="chip chip-btn" aria-haspopup="dialog" onClick={() => setStatsOpen(true)}>
                   Loppstatistik ›
                 </button>
+                <UnibetChip race={race} />
               </div>
               <div className="statline">
                 {race.statsLine.ok ? (
@@ -463,6 +466,7 @@ function Workspace({
 
         <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
           {oddsOpen && <RefreshBanner data={data} className="m10" />}
+          <TagCta data={data} race={race} now={now} />
           {showResult && !isDesktop && (
             <div className="m-only" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               <RaceResult data={data} race={race} now={now} selectedId={null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
@@ -493,6 +497,7 @@ function Workspace({
                 <button type="button" className="chip chip-btn" aria-expanded={statsOpen} aria-controls="dstats-panel" onClick={() => setStatsOpen((v) => !v)}>
                   Loppstatistik {statsOpen ? "‹" : "›"}
                 </button>
+                <UnibetChip race={race} />
               </div>
             </div>
             {race.statsLine.ok ? <DeskStats race={race} roundId={roundId} gameType={data.round.gameType} trackName={data.round.trackName} /> : <div className="statline d-miss">{missingStats}</div>}
@@ -572,6 +577,7 @@ function Workspace({
           )}
         </aside>
       </main>
+      <TagRace data={data} race={race} />
 
       <Sheet open={statsOpen && !isDesktop} onClose={() => setStatsOpen(false)} title="Loppstatistik" sub={`Avd ${leg} · ${race.distance} m ${methodLabel(race.startMethod)} · ${data.round.trackName}`}>
         <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
@@ -602,6 +608,15 @@ function Driver({ s }: { s: StartDto }) {
   );
 }
 
+// Öppnar loppet hos Unibet i en ny flik (Unibet går inte att bädda in).
+function UnibetChip({ race }: { race: RaceDto }) {
+  return (
+    <a className="chip chip-btn chip-u" href={unibetRaceUrl(race)} target="_blank" rel="noopener noreferrer" aria-label={`Avd ${race.leg} hos Unibet (öppnas i ny flik)`}>
+      Unibet ↗
+    </a>
+  );
+}
+
 const SORT_KEY = "sv-sort";
 
 // Flest positiva signaler först, sedan startnummer. Strukna sist.
@@ -622,7 +637,7 @@ function SortButton({ bySignals, onToggle }: { bySignals: boolean; onToggle: () 
 function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
   const on = !!s.mark?.interesting;
   return (
-    <li className={`row g-an${on ? " is-i" : ""}${s.scratched ? " scr" : ""}`} data-start={s.id}>
+    <li className={`row g-an${on ? " is-i" : ""}${s.mark?.bet ? " is-b" : ""}${s.scratched ? " scr" : ""}`} data-start={s.id}>
       <FlapNumber n={s.number} index={index} signals={s.signals?.count} />
       <a
         className="who"
@@ -635,8 +650,8 @@ function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
         <span className="hl">
           <span className="sr">Nr {s.number}{signalsSr(s.signals?.count)}, </span>
           <span className="hn">{s.horse.name}</span>
-          {s.signals?.lowStreck && <LowStreckTag />}
           <MarkBadges s={s} />
+          {s.signals?.lowStreck && <LowStreckTag />}
           {!s.scratched && <GallopBadge flag={s.form.gallop} />}
           {s.scratched && <span className="tag scr-tag">Struken</span>}
         </span>
@@ -652,7 +667,7 @@ function StartRow({ s, index, started, href, onOpen, onToggle }: RowProps) {
 function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowProps & { selected: boolean }) {
   const on = !!s.mark?.interesting;
   return (
-    <tr className={`${on ? "is-i " : ""}${selected ? "sel " : ""}${s.scratched ? "scr" : ""}`} data-start={s.id} onClick={() => onOpen(s)} aria-current={selected ? "true" : undefined}>
+    <tr className={`${on ? "is-i " : ""}${s.mark?.bet ? "is-b " : ""}${selected ? "sel " : ""}${s.scratched ? "scr" : ""}`} data-start={s.id} onClick={() => onOpen(s)} aria-current={selected ? "true" : undefined}>
       <td>
         <FlapNumber n={s.number} index={index} signals={s.signals?.count} />
       </td>

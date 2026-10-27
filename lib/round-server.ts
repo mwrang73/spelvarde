@@ -464,6 +464,7 @@ export async function buildRoundResponse(
       terms: r.terms,
       cancelled: r.cancelled,
       resultAt: iso(r.resultAt),
+      unibetEventKey: r.unibetEventKey ?? null,
       started: started(r.startAt, now),
       reviewed: reviewedRace(r),
       review: review ? { reviewedAt: review.reviewedAt.toISOString(), noneInteresting: review.noneInteresting } : null,
