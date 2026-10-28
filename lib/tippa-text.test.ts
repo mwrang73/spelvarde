@@ -22,6 +22,9 @@ import {
   ownSpikValue,
   previewChangeText,
   previewPickedLabel,
+  copyBlockedReason,
+  prelimText,
+  spikPreviewTexts,
   reasonClass,
   reasonLabel,
   rulesDontFitText,
@@ -206,5 +209,36 @@ describe("V75", () => {
     expect(favHelp(x)).toContain("högst **3 lopp på V75**");
     expect(favStripLabel(x)).toContain("Högst 3 på V75.");
     expect(favValue(x)).toMatch(/ av 7$/);
+  });
+});
+
+describe("Arket Välj egen spik (A5)", () => {
+  it("egen spik 7 Dreamliner Sund i avd 6: favoriten tas bort i avd 3", () => {
+    const after = buildRad(legs, bjerkeRules({ locked: { 4: [1], 6: [7] } }));
+    expect(spikPreviewTexts(r, after, 6, 7)).toEqual(["**Favoriten blir med i 5 av 8.** Appen tar då bort favoriten i avd 3 i stället (5 Mellby Harley, S och B 2,40), eftersom ditt val går först."]);
+  });
+  it("spik i den allgarderade avdelningen och fler egna spikar än antalet", () => {
+    const before = buildRad(legs, bjerkeRules({ spikCount: 1 }));
+    const after = buildRad(legs, bjerkeRules({ spikCount: 2, locked: { 4: [1], 5: [2] } }));
+    const t = spikPreviewTexts(before, after, 5, 2);
+    expect(t).toContain(`Avd 5 allgarderas nu. Allgarderingen flyttar till avd ${after.allgLeg}, näst mest öppna loppet.`);
+    expect(t).toContain("Du har redan 1 egen spik. Antal spikar blir 2.");
+  });
+  it("vald allgardering blir Auto", () => {
+    const before = buildRad(legs, bjerkeRules({ allgMode: "CHOSEN", allgLeg: 3 }));
+    const after = buildRad(legs, bjerkeRules({ locked: { 4: [1], 3: [2] } }));
+    expect(spikPreviewTexts(before, after, 3, 2)).toContain("Avd 3 är din allgardering. Väljer du spik här blir allgarderingen Auto.");
+  });
+});
+
+describe("Vyns banderoller", () => {
+  it("strecket kommer måndag före omgångens vecka, annars saknas än", () => {
+    expect(prelimText("2026-10-31", new Date("2026-10-24T10:00:00Z"))).toMatch(/^\*\*Strecket kommer måndag\.\*\* Raden är preliminär/);
+    expect(prelimText("2026-10-31", new Date("2026-10-26T08:00:00Z"))).toMatch(/^\*\*Strecket saknas än\.\*\*/);
+  });
+  it("orsaken till att Kopiera är avstängd", () => {
+    expect(copyBlockedReason(r)).toBeNull();
+    expect(copyBlockedReason(buildRad(legs, bjerkeRules({ budget: 100 })))).toBe("Raden ryms inte i budgeten.");
+    expect(copyBlockedReason(buildRad(withStart(legs, 4, 1, { scratched: true }), bjerkeRules()))).toBe("Välj en ny spik i avd 4 först.");
   });
 });

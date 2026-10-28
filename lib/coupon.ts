@@ -1,7 +1,7 @@
-// Raden för omgångens spel, V85 eller V75 (specen 6.5 och S6b): rader, kostnad, ordningen för förslag,
-// "Föreslå inom budget" och texten för Kopiera rad. Rena funktioner, testade
-// i lib/coupon.test.ts. Förslaget räknas i klienten; servern sparar bara
-// kupongen (PUT /api/rounds/[id]/coupon) och kontrollerar den.
+// Raden för omgångens spel, V85 eller V75 (specen 6.5 och S6b): rader,
+// kostnad, texten för Kopiera rad och kroppen till PUT. Rena funktioner,
+// testade i lib/coupon.test.ts. Raden räknas i klienten (lib/tippa.ts, E6);
+// servern sparar kupongen (PUT /api/rounds/[id]/coupon) och kontrollerar den.
 
 import { legsFor } from "@/lib/game-type";
 import { stockholmParts } from "@/lib/stockholm-time";
@@ -20,20 +20,6 @@ export const BUDGET_SLIDER = { min: 20, max: 1000, step: 10 } as const;
 // Valda startnummer per avdelning, { 1: [3, 10], 2: [5], … }.
 export type Selections = Record<number, number[]>;
 
-export type CouponStart = {
-  number: number;
-  scratched: boolean;
-  spelbar: boolean;
-  interesting: boolean;
-  // Riktoddset som ordningen följer: från E2.1 riktoddset med X-faktor
-  // (MarkDto.riktoddsX), annars det vanliga.
-  riktodds: number | null;
-  // Streck i procent.
-  streck: number | null;
-};
-
-export type CouponLeg = { leg: number; starts: CouponStart[]; started?: boolean };
-
 const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
 
 // Rader över spelets avdelningar 1..legs (8 för V85, 7 för V75).
@@ -44,78 +30,6 @@ export function rowCount(selections: Selections, legs = 8): number {
 }
 
 export const couponCost = (rows: number, rowPrice: number) => r2(rows * rowPrice);
-
-// Ordningen för förslag i en avdelning: Spelbar (lägst riktodds först, från
-// E2.1 riktoddset med X-faktor, se CouponStart.riktodds),
-// övriga Intressant (lägst riktodds först), sist resten efter högst streck.
-// Saknas riktodds sorteras hästen på streck, efter dem som har riktodds.
-// Strukna är inte med.
-export function suggestionOrder(starts: CouponStart[]): number[] {
-  const group = (s: CouponStart) => (s.spelbar ? 0 : s.interesting ? 1 : 2);
-  const streck = (s: CouponStart) => s.streck ?? -1;
-  return starts
-    .filter((s) => !s.scratched)
-    .sort((a, b) => {
-      const g = group(a) - group(b);
-      if (g) return g;
-      if (group(a) < 2) {
-        if (a.riktodds !== null && b.riktodds !== null && a.riktodds !== b.riktodds) return a.riktodds - b.riktodds;
-        if (a.riktodds !== null && b.riktodds === null) return -1;
-        if (a.riktodds === null && b.riktodds !== null) return 1;
-      }
-      return streck(b) - streck(a) || a.number - b.number;
-    })
-    .map((s) => s.number);
-}
-
-// Favoritens streck i avdelningen (högst streck bland de ej strukna). Saknas = 0.
-export function favoriteStreck(starts: CouponStart[]): number {
-  return Math.max(0, ...starts.filter((s) => !s.scratched).map((s) => s.streck ?? 0));
-}
-
-// "Föreslå inom budget" (6.5), girig:
-// 1. 1 häst i varje avdelning som inte är låst (eller har startat).
-// 2. Varv efter varv genom avdelningarna, sorterade efter lägst streck för
-//    favoriten (mest öppna lopp först): lägg till nästa häst i ordningen om
-//    kostnaden ryms i budgeten.
-// 3. Sluta när ett helt varv inte lade till något.
-// Låsta avdelningar behåller sitt val och räknas in i kostnaden.
-export function suggestCoupon(legs: CouponLeg[], opts: { budget: number; rowPrice: number; locked: number[]; current: Selections }): Selections {
-  const locked = new Set(opts.locked);
-  const out: Selections = {};
-  const orders = new Map<number, number[]>();
-  for (const l of legs) {
-    if (locked.has(l.leg) || l.started) {
-      out[l.leg] = [...(opts.current[l.leg] ?? [])];
-      continue;
-    }
-    const order = suggestionOrder(l.starts);
-    orders.set(l.leg, order);
-    out[l.leg] = order.slice(0, 1);
-  }
-  const free = legs
-    .filter((l) => orders.has(l.leg))
-    .sort((a, b) => favoriteStreck(a.starts) - favoriteStreck(b.starts) || a.leg - b.leg)
-    .map((l) => l.leg);
-  // Raderna räknas över avdelningarna som skickades in.
-  const rows = (sel: Selections) => legs.reduce((a, l) => a * (sel[l.leg]?.length ?? 0), 1);
-  const fits = (sel: Selections) => couponCost(rows(sel), opts.rowPrice) <= opts.budget + 1e-9;
-  for (;;) {
-    let added = false;
-    for (const leg of free) {
-      const order = orders.get(leg)!;
-      const have = out[leg].length;
-      if (have >= order.length) continue;
-      const trial = { ...out, [leg]: order.slice(0, have + 1) };
-      if (fits(trial)) {
-        out[leg] = trial[leg];
-        added = true;
-      }
-    }
-    if (!added) break;
-  }
-  return out;
-}
 
 // "lör 24 okt 2026" för ett datum "2026-10-24".
 export function couponDateLabel(date: string): string {

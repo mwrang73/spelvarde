@@ -1,30 +1,13 @@
 // V85-raden i S6b: det som vyn behöver utöver lib/coupon.ts. Rena funktioner
 // utan React, testade i lib/coupon-ui.test.ts.
 
-import { BUDGET_MAX, BUDGET_MIN, couponCost, LEGS, rowCount, suggestionOrder, type CouponLeg, type Selections } from "@/lib/coupon";
+import { BUDGET_MAX, BUDGET_MIN, couponCost, LEGS, rowCount, type Selections } from "@/lib/coupon";
 import { legsFor } from "@/lib/game-type";
 import type { CouponBody, CouponBodyE6 } from "@/lib/round-overlay";
 import type { TippaLeg } from "@/lib/tippa";
 import type { CouponDto, RoundResponse } from "@/lib/types";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 import type { XFactorSettings } from "@/lib/xfactor";
-
-// Avdelningarna i omgången som indata till förslaget (6.5).
-export function couponLegs(data: RoundResponse): CouponLeg[] {
-  return data.races.map((r) => ({
-    leg: r.leg,
-    started: r.started,
-    starts: r.starts.map((s) => ({
-      number: s.number,
-      scratched: s.scratched,
-      spelbar: !!s.mark?.spelbar,
-      interesting: !!s.mark?.interesting,
-      // Från E2.1 sorteras på riktoddset med X-faktor (6.5). Utan Mark = riktodds.
-      riktodds: s.mark?.riktoddsX ?? s.riktodds,
-      streck: s.streck,
-    })),
-  }));
-}
 
 // E6: avdelningarna 1..legsFor(gameType) som indata till buildRad (6.5.1).
 // riktX = riktoddset med X-faktor (räknat med factors när de finns, annars
@@ -68,28 +51,7 @@ export function selectionsOf(c: CouponDto | null): Selections {
   return out;
 }
 
-// Stepper: + lägger till nästa häst i förslagets ordning som inte är vald,
-// − tar bort den valda som kommer sist i ordningen. Minst 1 när något är
-// valt, högst antal startande.
-export function stepLeg(leg: CouponLeg, current: number[], delta: 1 | -1): number[] {
-  const order = suggestionOrder(leg.starts);
-  const have = new Set(current);
-  if (delta > 0) {
-    const next = order.find((n) => !have.has(n));
-    return next === undefined ? current : [...current, next].sort((a, b) => a - b);
-  }
-  if (current.length <= 1) return current;
-  const rank = (n: number) => {
-    const i = order.indexOf(n);
-    return i < 0 ? Number.MAX_SAFE_INTEGER : i;
-  };
-  const drop = [...current].sort((a, b) => rank(b) - rank(a))[0];
-  return current.filter((n) => n !== drop);
-}
-
-export const legMax = (leg: CouponLeg) => leg.starts.filter((s) => !s.scratched).length;
-
-// Ett tryck på en häst i arket "Eget val".
+// Ett tryck på en häst i arket Ändra avdelning (A4).
 export function toggleNumber(current: number[], n: number): number[] {
   return current.includes(n) ? current.filter((x) => x !== n) : [...current, n].sort((a, b) => a - b);
 }

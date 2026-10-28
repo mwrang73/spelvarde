@@ -442,3 +442,81 @@ export function copyChangedText(copiedAt: string | null | undefined, copied: Rec
   const which = legs.length === 1 ? `Avd ${legs[0]} är ändrad.` : `Avd ${joinSv(legs)} är ändrade.`;
   return `**Raden har ändrats sedan du kopierade den** ${relTime(copiedAt, now)}. ${which} Kopiera igen om du vill spela den nya raden.`;
 }
+
+// ---- Arket Välj egen spik (A5) ------------------------------------------------------------------
+
+// Märkena i texten: "S och B 2,40".
+function marksText(h: TippaHorse): string {
+  const m: string[] = [];
+  if (h.spelbar) m.push("S");
+  else if (h.interesting) m.push("I");
+  if (h.bet) m.push(h.betOdds !== null ? `B ${riktText(h.betOdds)}` : "B");
+  return joinSv(m);
+}
+
+// Förhandsbanderollen i A5. before = raden nu, after = med hästen number som
+// egen spik i leg. Tom lista = inget att säga.
+export function spikPreviewTexts(before: TippaResult, after: TippaResult, leg: number, number: number): string[] {
+  const out: string[] = [];
+  const l = legOf(before, leg);
+  const fav = l?.favorite ?? null;
+  const isFav = fav?.number === number;
+  const hadFav = !!(l && fav && l.selection.includes(fav.number));
+  if (isFav && !hadFav) {
+    if (after.favCount > after.favLimit) {
+      out.push(`**Favoriten blir med i ${after.favCount} av ${after.legCount}, över spärren på ${after.favLimit}.** Ditt val går först, och inget blockeras.`);
+    } else {
+      const lost = before.legs.filter((b) => {
+        if (b.leg === leg || !b.favorite || !b.selection.includes(b.favorite.number)) return false;
+        const a = legOf(after, b.leg);
+        return !!a && !a.selection.includes(b.favorite.number);
+      });
+      if (lost.length) {
+        const who = lost.map((b) => {
+          const m = marksText(b.favorite!);
+          return `${horseName(b.favorite!)}${m ? `, ${m}` : ""}`;
+        });
+        out.push(`**Favoriten blir med i ${before.favCount + 1} av ${before.legCount}.** Appen tar då bort favoriten i avd ${joinSv(lost.map((b) => b.leg))} i stället (${who.join("; ")}), eftersom ditt val går först.`);
+      }
+    }
+  }
+  if (before.allgLeg === leg) {
+    if (!before.allgAuto) out.push(`Avd ${leg} är din allgardering. Väljer du spik här blir allgarderingen Auto.`);
+    else if (after.allgLeg !== null) out.push(`Avd ${leg} allgarderas nu. Allgarderingen flyttar till avd ${after.allgLeg}, näst mest öppna loppet.`);
+    else out.push(`Avd ${leg} allgarderas nu. Ingen annan avdelning kan allgarderas.`);
+  }
+  if (after.spikEffective > before.spikEffective) {
+    const own = before.ownSpikes === 1 ? "1 egen spik" : `${before.ownSpikes} egna spikar`;
+    out.push(`Du har redan ${own}. Antal spikar blir ${after.spikEffective}.`);
+  }
+  return out;
+}
+
+// ---- Vyns banderoller (Lägen) -------------------------------------------------------------------
+
+// Datum (YYYY-MM-DD) i svensk tid.
+const stockholmDate = (d: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+
+// Preliminär rad: "Strecket kommer måndag." före måndagen i omgångens vecka,
+// annars "Strecket saknas än.".
+export function prelimText(roundDate: string, now: Date): string {
+  const round = new Date(`${roundDate}T12:00:00Z`);
+  const monday = new Date(round.getTime() - ((round.getUTCDay() + 6) % 7) * 86_400_000).toISOString().slice(0, 10);
+  const head = stockholmDate(now) < monday ? "**Strecket kommer måndag.**" : "**Strecket saknas än.**";
+  return `${head} Raden är preliminär: topp 3, mellan och skräll räknas på modellens ordning, och favoriten är hästen med lägst riktodds. Raden räknas om när strecket finns.`;
+}
+
+export const NO_DATA_TEXT = "**Raden kan inte räknas än.** Den behöver riktodds eller streck. Hämta omgången igen när riktoddsen är räknade.";
+export const NO_RIKT_TEXT = "Riktodds saknas. Raden bygger på strecket och dina markeringar, och appen väljer inga spikar.";
+export const LEGACY_TEXT = "Raden sparades före de nya reglerna och visas som den är.";
+export const OFFLINE_TEXT = "Ingen uppkoppling. Raden räknas om här och sparas när du är online igen. Kopiera fungerar ändå.";
+export const startedText = (gameType: string) => `${gameType} har startat – raden kan inte längre spelas. Den finns kvar för statistiken.`;
+
+// Orsaken till att Kopiera till ATG är avstängd (aria-describedby). null = aktiv.
+export function copyBlockedReason(r: TippaResult): string | null {
+  if (r.noData) return "Raden kan inte räknas än.";
+  if (r.status === "RULES_DONT_FIT") return "Raden ryms inte i budgeten.";
+  if (r.struckOwnSpik.length) return `Välj en ny spik i avd ${r.struckOwnSpik[0]} först.`;
+  if (r.noStarters.length) return `Avd ${r.noStarters[0]} har inga startande.`;
+  return null;
+}

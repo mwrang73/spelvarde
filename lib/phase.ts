@@ -239,9 +239,9 @@ export function nextStep(input: NextStepInput): NextStep {
     if (f.coupon && !input.hasCoupon) {
       return {
         kind: "BUILD_COUPON",
-        title: `Bygg ${roundGame}-raden`,
-        text: "Välj hästar per avdelning inom din budget.",
-        action: { type: "link", label: "Bygg raden", href: `${base}/spel?flik=rad` },
+        title: `Gör ${roundGame}-raden`,
+        text: "Appen föreslår raden inom din budget. Kopiera den till ATG.",
+        action: { type: "link", label: "Till raden", href: `${base}/spel?flik=rad` },
       };
     }
   }

@@ -1,10 +1,10 @@
 "use client";
 
-// S6 Spelförslag (specen S6): Trollspöt, Platsspel (S6a) och raden för V85/V75
-// (S6b). I mobilen tre flikar (?flik=trollspot|plats|rad, byts med
-// history.replaceState utan omladdning). På desktop två: Trollspöt i full
-// bredd, eller Platsspel och raden sida vid sida. Allt läses ur omgångens cache
-// och sparas optimistiskt via utkorgen.
+// S6 Spelförslag (specen S6 och E6): Trollspöt, Platsspel (S6a) och raden för
+// V85/V75 (S6b). Tre flikar (?flik=trollspot|plats|rad, byts med
+// history.replaceState utan omladdning): segmentet i mobilen och .dtabs på
+// desktop, där varje flik visar sin panel i full bredd. Allt läses ur
+// omgångens cache och sparas optimistiskt via utkorgen.
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -84,8 +84,11 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
           <button type="button" className="troll-btn" aria-pressed={tab === "trollspot"} aria-controls="p-troll" onClick={() => choose("trollspot")}>
             <WandSpark /> Trollspöt
           </button>
-          <button type="button" aria-pressed={tab !== "trollspot"} aria-controls="p-plats p-rad" onClick={() => choose("plats")}>
-            Platsspel och {data.round.gameType}-rad
+          <button type="button" aria-pressed={tab === "plats"} aria-controls="p-plats" onClick={() => choose("plats")}>
+            Platsspel
+          </button>
+          <button type="button" aria-pressed={tab === "rad"} aria-controls="p-rad" onClick={() => choose("rad")}>
+            {data.round.gameType}-rad
           </button>
         </div>
         {!allRacesStarted(data.races, now) && <RefreshRow data={data} />}
@@ -94,14 +97,12 @@ export function Spelforslag({ initialTab }: { initialTab: Tab }) {
             <TrollPanel data={data} now={now} />
           </section>
         )}
-        <div className="dcols">
-          <section id="p-plats" className="spel-p plats" aria-labelledby="h-plats">
-            <PlatsPanel data={data} now={now} />
-          </section>
-          <section id="p-rad" className="spel-p rad" aria-labelledby="h-rad">
-            <RadPanel data={data} now={now} />
-          </section>
-        </div>
+        <section id="p-plats" className="spel-p plats" aria-labelledby="h-plats">
+          <PlatsPanel data={data} now={now} />
+        </section>
+        <section id="p-rad" className="spel-p rad" aria-labelledby="h-rad">
+          <RadPanel data={data} now={now} />
+        </section>
       </main>
     </>
   );

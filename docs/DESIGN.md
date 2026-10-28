@@ -79,7 +79,7 @@ Färg är aldrig ensam informationsbärare. Varje färg har alltid en bokstav, e
 - **Namn kortas med ellipsis och märken krymper inte.** Galopp-, Intressant- och Spelbar-märket ligger direkt efter namnet med `flex: none`.
 - **Kort och luftigare rader** (Omgång 56 px, Spelförslag 60 px, odds 52 px) används bara där raden har två rader text eller ett fält.
 - Små inbördes avstånd är 3–6 px. Grupprubriker har 12 px luft ovanför och 6 px under.
-- **Desktop (≥ 1024 px):** tre kolumner med avdelningar (240 px), huvudinnehåll (`1fr`) och sidopanel (380 px, hästkort eller larm). Spelförslaget visar två kolumner sida vid sida.
+- **Desktop (≥ 1024 px):** tre kolumner med avdelningar (240 px), huvudinnehåll (`1fr`) och sidopanel (380 px, hästkort eller larm). Spelförslaget har tre flikar (Trollspöt, Platsspel, V85-rad) som var och en visar sin panel i full bredd (E6, beslut av Mikael). Platsspel är högst 900 px brett. V85-raden har två kolumner, `380px minmax(0, 1fr)`: budget och regler till vänster (fast vid skrollning), avdelningskorten i två kolumner till höger.
 
 ## Komponenter
 Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för varje komponent står i komponentarket och i flödesmockupen.
@@ -123,13 +123,16 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 - `Skeleton`: skelettrader som skimrar och avstängs vid minskad rörelse.
 - `CompareBars`: tre staplar på tavlan för Intressant, Spelbar och Bet.
 - `StatsTable`: tabell med kolumnrubriker i versaler och procent under bråktalet.
+- `RadLegCard` (V85-raden, E6): kort per avdelning med rubrik (fällbladsnummer, "Avd 1 · 16:20", typtagg och penna), hästrader på minst 52 px med skälen som taggar, varför-raden och spärrraden.
+- Skälstaggen `.rs`: 10,5 px versaler med ett ord per skäl ("Topp 3", "Mellan", "Skräll", "▲ Felstreckad", "4 signaler", "Favorit", "Spärr", "Prel."). Färgen bär aldrig ensam.
+- `Kupong`: kupongbilden i arket Spela hos ATG, en kolumn per avdelning som på ATG:s kupong. Valda nummer bärnstensgula, favoriten med ring, strukna med snedstreck.
 
 ## Layoutmönster
 - **Navigation:** bottenmeny i mobilen med Omgång, Källor och Statistik (64 px, 22 px ikon och etikett). Aktiv del har `aria-current="page"` och en bärnstensgul list överst. På desktop är det toppmeny på tavlan.
 - **Omgång är navet.** Allt som hör till veckan (Avdelning, Häst, Odds, Live, Spelförslag och Under loppet) ligger under Omgång. Inställningar nås från ikonknappen i Omgångs vyrubrik.
 - **En primär handling per vy.** På Omgång är den primära handlingen knappen i Nästa steg.
 - **Ordning i listor:** det som kräver handling kommer först. I Live ligger egna hästar (I, S och B) överst och sedan övriga efter störst rörelse. I Spelförslag kommer Spelbara först.
-- **Mobil och desktop:** samma innehåll och samma funktioner. Desktop kombinerar vyer: avdelning och hästkort, live och larm, platsspel och V85-rad.
+- **Mobil och desktop:** samma innehåll och samma funktioner. Desktop kombinerar vyer: avdelning och hästkort, live och larm. Platsspel och V85-rad är egna flikar i Spelförslaget.
 
 ## Rörelse
 | Rörelse | Var | Värden |
