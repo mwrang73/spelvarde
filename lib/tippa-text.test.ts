@@ -122,7 +122,7 @@ describe("Avdelningskortet", () => {
   });
 
   it("rubrikerna", () => {
-    expect(listSummary(r)).toBe("27 hästar · 576 rader");
+    expect(listSummary(r)).toBe("27 hästar · 576 rader · 9 understreckade");
     expect(desktopSummary(r)).toBe("27 hästar · spikar i avd 2, 4, 6 och 8 · allgardering i avd 5 · favoriten bortvald i avd 1 och 7");
     expect(boldParts("a **b** c")).toEqual([
       { text: "a ", bold: false },
@@ -158,7 +158,7 @@ describe("Budgeten", () => {
 describe("Förhandsvisningen (A4)", () => {
   it("meningarna", () => {
     const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [3, 4, 8, 11, 14] } }));
-    expect(previewChangeText(r, x, 7)).toContain("Avd 1 går från 3 till 2 hästar (12 Kaptein Sabeltann tas bort) för att raden ska komma nära **288 kr**.");
+    expect(previewChangeText(r, x, 7)).toBe("Avd 3 går från 4 till 3 hästar (1 Järvsö Elina tas bort) för att raden ska komma nära **288 kr**. Övriga avdelningar ändras inte.");
     const spik = buildRad(legs, bjerkeRules({ locked: { 4: [1], 6: [3, 7] } }));
     expect(previewChangeText(r, spik, 6)).toContain("Spiken flyttar från avd 6 till avd 7.");
     const allg = buildRad(legs, bjerkeRules({ locked: { 4: [1], 5: [6, 2] } }));

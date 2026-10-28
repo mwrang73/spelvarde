@@ -137,6 +137,20 @@ export function rankScore(h: { riktX: number | null; signals: number | null; fel
   return base + 300 * (h.signals ?? 0) + (h.fel ? 1000 : 0) + mark;
 }
 
+// Värde (Mikael 2026-10-29: spela för stor utdelning): hur mycket bättre
+// chans modellen ger hästen än strecket, i hundradelar av procentenheter,
+// plus signaler och markeringar. X-faktorn ingår redan via riktX → share.
+// Understreckade hästar och halvskrällar med signaler hamnar före en tredje
+// favorit. Används för vilka extra hästar som läggs till.
+export function valueScore(h: Pick<HorseFact, "share" | "v" | "signals" | "bet" | "spelbar" | "interesting" | "xFactor">): number {
+  const edge = h.share !== null ? Math.round((h.share - h.v) * 100) : 0;
+  const interesting = h.interesting || h.xFactor !== "NONE";
+  const mark = h.bet ? 1500 : h.spelbar ? 1000 : interesting ? 500 : 0;
+  return edge + 300 * h.signals + mark;
+}
+export const isUnderbet = (h: Pick<HorseFact, "share" | "v">) => h.share !== null && h.share > h.v;
+const byValue = (a: HorseFact, b: HorseFact) => valueScore(b) - valueScore(a) || compareRank(a, b);
+
 const nullLast = (a: number | null, b: number | null, dir: 1 | -1) => {
   if (a === null && b === null) return 0;
   if (a === null) return 1;
@@ -253,7 +267,7 @@ export function minimumPicks(facts: LegFacts, favBanned: boolean): MinPicks {
     const nm = free()[0];
     if (take(nm)) sub[nm.number] = "NOMEL";
   }
-  return { picks, lo: picks.length, rest: free(), sub, few: false };
+  return { picks, lo: picks.length, rest: [...free()].sort(byValue), sub, few: false };
 }
 
 // ---- Allgardering (6.5.4) ---------------------------------------------------------------------
@@ -439,6 +453,7 @@ export type TippaResult = {
   // hästar som allgarderingen tappade och öppna lopp med bara 2 hästar.
   allgDropped: number;
   relaxedLegs: number[];
+  underbet: number;
   gameType: string;
   legCount: number;
   favLimit: number;
@@ -674,6 +689,9 @@ export function suggestions(legs: TippaLeg[], rules: TippaRules, result: Pick<Ti
 // kostar en poäng, och vid samma avstånd till budgeten vinner minst avvikelse,
 // sedan flest hästar och högst rangpoäng.
 export const BUDGET_OVER_MAX = 0.05;
+// Bandet under budgeten: inom [BUDGET_UNDER_MAX, BUDGET_OVER_MAX] runt summan
+// väljs flest hästar, inte närmast summan.
+export const BUDGET_UNDER_MAX = 0.1;
 export const ALLG_DROP_MAX = 2;
 export const OPEN_RELAXED_MIN = 2;
 
@@ -688,7 +706,7 @@ function openSelection(o: Open, k: number): number[] {
   return [first, ...pool.slice(0, k - 1).map((h) => h.number)].filter((n) => n !== undefined);
 }
 function openOptions(o: Open): Opt[] {
-  const byNum = new Map(o.prep.facts.runners.map((h) => [h.number, h.score]));
+  const byNum = new Map(o.prep.facts.runners.map((h) => [h.number, valueScore(h)]));
   const lo = o.min.few ? o.min.lo : Math.min(o.min.lo, OPEN_RELAXED_MIN);
   const out: Opt[] = [];
   for (let k = lo; k <= openHi(o); k++) {
@@ -699,16 +717,16 @@ function openOptions(o: Open): Opt[] {
 function allgOptions(runners: HorseFact[]): Opt[] {
   const n = runners.length;
   const out: Opt[] = [];
-  for (let k = Math.max(1, n - ALLG_DROP_MAX); k <= n; k++) out.push({ k, pen: n - k, score: runners.slice(0, k).reduce((a, h) => a + h.score, 0) });
+  for (let k = Math.max(1, n - ALLG_DROP_MAX); k <= n; k++) out.push({ k, pen: n - k, score: runners.slice(0, k).reduce((a, h) => a + valueScore(h), 0) });
   return out;
 }
 const minK = (opts: Opt[]) => Math.min(...opts.map((o) => o.k));
 
 type Target = { k: number[]; product: number; pen: number; states: number };
-// Exakt: välj ett alternativ per lopp så att fast × Π k ligger närmast B
-// (högst upper), vid lika avstånd under hellre än över, sedan minst avvikelse,
-// flest hästar, högst poäng.
-export function targetRows(legOpts: Opt[][], fast: number, B: number, upper: number): Target | null {
+// Exakt: välj ett alternativ per lopp. Kostnaden ska ligga i bandet
+// [lower, upper] rader; där vinner minst avvikelse, flest hästar, högst värde
+// och sist närmast B. Når ingen kombination bandet: den närmast under upper.
+export function targetRows(legOpts: Opt[][], fast: number, B: number, upper: number, lower = 0): Target | null {
   const capP = Math.floor(upper / fast);
   type St = { pen: number; h: number; s: number; prev: number; k: number };
   const stages: Map<number, St>[] = [];
@@ -732,7 +750,9 @@ export function targetRows(legOpts: Opt[][], fast: number, B: number, upper: num
   }
   let bestP = -1;
   let best: St | null = null;
+  const anyInBand = [...cur.keys()].some((p) => fast * p >= lower);
   for (const [p, st] of cur) {
+    if (anyInBand && fast * p < lower) continue;
     if (!best) {
       best = st;
       bestP = p;
@@ -740,7 +760,10 @@ export function targetRows(legOpts: Opt[][], fast: number, B: number, upper: num
     }
     const d = Math.abs(fast * p - B);
     const db = Math.abs(fast * bestP - B);
-    if (d < db || (d === db && (p < bestP || (p === bestP && better(st, best))))) {
+    const wins = anyInBand
+      ? better(st, best) || (!better(best, st) && (d < db || (d === db && p < bestP)))
+      : p > bestP || (p === bestP && better(st, best));
+    if (wins) {
       best = st;
       bestP = p;
     }
@@ -767,6 +790,7 @@ function targetParts(prep: Prep[], d: Decision) {
   const minProd = legOpts.reduce((a, o) => a * minK(o), 1);
   return { allgPrep, fastX, fastOwnX, legOpts, minProd };
 }
+const lowerRowsOf = (budget: number, rowPrice: number) => Math.max(0, Math.ceil((Math.round(Math.max(0, budget) * 100) * (1 - BUDGET_UNDER_MAX)) / priceOre(rowPrice) - EPS));
 const upperRowsOf = (budget: number, rowPrice: number) => Math.max(0, Math.floor((Math.round(Math.max(0, budget) * 100) * (1 + BUDGET_OVER_MAX)) / priceOre(rowPrice) + EPS));
 
 // ---- buildRad --------------------------------------------------------------------------------
@@ -788,7 +812,7 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
   let allFit = false;
   let dpStates = 0;
   if (minRows <= upperRows) {
-    const t = targetRows(tp.legOpts, tp.fastX, maxRows, upperRows)!;
+    const t = targetRows(tp.legOpts, tp.fastX, maxRows, upperRows, lowerRowsOf(rules.budget, rules.rowPrice))!;
     ks = t.k.slice(0, d.open.length);
     if (tp.allgPrep) allgK = t.k[d.open.length];
     dpStates = t.states;
@@ -927,6 +951,8 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     suggestions: [],
     legRoles: { v: 1, prelim: false, favLimit, legs: {} },
     dpStates,
+    // Understreckade bland valda hästar utanför allgarderingen (radens "värde").
+    underbet: results.filter((l) => l.kind !== "ALLG").reduce((a, l) => a + l.horses.filter(isUnderbet).length, 0),
     allgDropped: tp.allgPrep ? tp.allgPrep.facts.runners.length - allgK : 0,
     relaxedLegs: d.open.filter((o, i) => !o.min.few && ks[i] < o.min.lo).map((o) => o.prep.leg).sort((a, b) => a - b),
   };

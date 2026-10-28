@@ -2,7 +2,7 @@
 // egen frögenerator (mulberry32, fröet 20261028), och prestandatestet.
 import { describe, expect, it } from "vitest";
 import { spikMaxFor } from "@/lib/game-type";
-import { buildRad, legFacts, maximizeHorses, minimumPicks, type TippaLeg, type TippaResult, type TippaRules, type TippaStart, openHiOf, BUDGET_OVER_MAX, ALLG_DROP_MAX } from "@/lib/tippa";
+import { buildRad, legFacts, maximizeHorses, minimumPicks, type TippaLeg, type TippaResult, type TippaRules, type TippaStart, openHiOf, BUDGET_OVER_MAX, ALLG_DROP_MAX, BUDGET_UNDER_MAX } from "@/lib/tippa";
 import { bjerkeLegs, bjerkeRules } from "@/lib/tippa.fixture";
 
 function mulberry32(seed: number) {
@@ -149,7 +149,7 @@ describe("egenskaper (1 000 omgångar, fröet 20261028)", () => {
     expect(status.OWN_OVER_BUDGET ?? 0).toBeGreaterThan(0);
   });
 
-  it("9. optimal: kostnaden ligger lika nära budgeten som en uttömmande sökning", () => {
+  it("9. optimal: inom budgetbandet minst avvikelse och flest hästar, som en uttömmande sökning", () => {
     const r = mulberry32(20261028 + 9);
     let checked = 0;
     for (let i = 0; checked < 300 && i < 20_000; i++) {
@@ -163,20 +163,33 @@ describe("egenskaper (1 000 omgångar, fröet 20261028)", () => {
       if (x.status !== "OK" || open.length > 3) continue;
       checked++;
       const upper = Math.floor((rules.budget * (1 + BUDGET_OVER_MAX)) / rules.rowPrice + 1e-9);
+      const lower = Math.ceil((rules.budget * (1 - BUDGET_UNDER_MAX)) / rules.rowPrice - 1e-9);
       const fixed = x.legs.filter((l) => l.kind !== "OPEN" && l !== allg).reduce((a, l) => a * Math.max(1, l.selection.length), 1);
-      const ranges = open.map((l) => [l.lo, l.hi]);
-      if (allg) ranges.push([Math.max(1, allg.field.length - ALLG_DROP_MAX), allg.field.length]);
-      let best = Infinity;
-      const walk = (k: number, prod: number) => {
+      // [min, max, mallens minsta] per lopp; under mallens minsta = 1 avvikelse (allgarderingen: per häst).
+      const ranges = open.map((l) => {
+        const m = minimumPicks(legFacts(legs[l.leg - 1]), l.favBanned);
+        return { lo: l.lo, hi: l.hi, tmpl: m.lo, allg: false };
+      });
+      if (allg) ranges.push({ lo: Math.max(1, allg.field.length - ALLG_DROP_MAX), hi: allg.field.length, tmpl: allg.field.length, allg: true });
+      type B = { pen: number; h: number; rows: number };
+      const all: B[] = [];
+      const walk = (k: number, prod: number, pen: number, h: number) => {
         if (fixed * prod > upper) return;
-        if (k === ranges.length) {
-          best = Math.min(best, Math.abs(fixed * prod - x.maxRows));
-          return;
-        }
-        for (let v = ranges[k][0]; v <= ranges[k][1]; v++) walk(k + 1, prod * v);
+        if (k === ranges.length) return void all.push({ pen, h, rows: fixed * prod });
+        const g = ranges[k];
+        for (let v = g.lo; v <= g.hi; v++) walk(k + 1, prod * v, pen + (g.allg ? g.tmpl - v : v < g.tmpl ? 1 : 0), h + v);
       };
-      walk(0, 1);
-      expect(Math.abs(x.rows - x.maxRows)).toBe(best);
+      walk(0, 1, 0, 0);
+      const inBand = all.filter((b) => b.rows >= lower);
+      const got = { pen: x.allgDropped + x.relaxedLegs.length, h: open.reduce((a, l) => a + l.selection.length, 0) + (allg?.selection.length ?? 0) };
+      if (inBand.length) {
+        expect(x.rows).toBeGreaterThanOrEqual(lower);
+        const minPen = Math.min(...inBand.map((b) => b.pen));
+        const maxH = Math.max(...inBand.filter((b) => b.pen === minPen).map((b) => b.h));
+        expect(got).toEqual({ pen: minPen, h: maxH });
+      } else {
+        expect(x.rows).toBe(Math.max(...all.map((b) => b.rows)));
+      }
     }
     expect(checked).toBe(300);
   });

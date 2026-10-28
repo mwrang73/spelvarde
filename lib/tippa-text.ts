@@ -239,7 +239,7 @@ export function favOutText(r: TippaResult, leg: number): string | null {
 }
 
 // "27 hästar · 576 rader"
-export const listSummary = (r: TippaResult) => `${r.horses} ${r.horses === 1 ? "häst" : "hästar"} · ${rowsText(r.rows)}`;
+export const listSummary = (r: TippaResult) => `${r.horses} ${r.horses === 1 ? "häst" : "hästar"} · ${rowsText(r.rows)}${r.underbet ? ` · ${r.underbet} understreckade` : ""}`;
 
 // Desktop: "27 hästar · spikar i avd 2, 4, 6 och 8 · allgardering i avd 5 · favoriten bortvald i avd 1 och 7".
 export function desktopSummary(r: TippaResult): string {

@@ -90,10 +90,10 @@ describe("Bjerke (fixturen)", () => {
     const best = maximizeHorses(open, 50)!;
     expect(best.k).toEqual([3, 4, 4]);
     expect(best.horses).toBe(11);
-    expect(best.score).toBe(12052);
+    // Poängen är den högsta bland alla 11-hästarsrader som ryms (de extra
+    // hästarna står nu i värdeordning, valueScore).
     const scoreOf = (k: number[]) => k.reduce((a, x, i) => a + open[i].gains[x - open[i].lo], 0);
-    expect(scoreOf([4, 3, 4])).toBe(10394);
-    expect(scoreOf([3, 5, 3])).toBe(10104);
+    expect(best.score).toBe(Math.max(scoreOf([3, 4, 4]), scoreOf([4, 3, 4]), scoreOf([4, 4, 3]), scoreOf([3, 5, 3])));
   });
 
   it("5. 30 kr: reglerna ryms inte ens med avvikelser", () => {
@@ -109,11 +109,12 @@ describe("Bjerke (fixturen)", () => {
     );
   });
 
-  it("5b. budgeten som mål: 100 kr ger exakt 100 kr med avvikelser från mallen", () => {
+  it("5b. budgetbandet: 100 kr ger en rad inom 90–105 kr, med avvikelser när mallen inte ryms", () => {
     const x = buildRad(legs, bjerkeRules({ budget: 100 }));
     expect(x.status).toBe("OK");
-    expect(x.cost).toBe(100);
-    expect(x.allgDropped + x.relaxedLegs.length).toBeGreaterThan(0);
+    expect(x.cost).toBe(96);
+    expect(x.relaxedLegs).toEqual([1, 3]);
+    expect(x.allgDropped).toBe(0);
   });
 
   it("6. 5 spikar", () => {
@@ -126,13 +127,13 @@ describe("Bjerke (fixturen)", () => {
 
   it("7. eget val i avd 7 (A4) och förhandsvisningen", () => {
     const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [3, 4, 8, 11, 14] } }));
-    // Närmast 288 kr: 600 rader · 300 kr (inom 5 % över), avd 1 får 2 hästar.
-    expect(x.rows).toBe(600);
-    expect(x.cost).toBe(300);
-    expect(x.selections[3]).toEqual([1, 2, 5, 9, 13]);
-    expect(x.relaxedLegs).toEqual([1]);
+    // Inom bandet (259–302 kr) vinner mallen utan avvikelser: 540 rader · 270 kr.
+    expect(x.rows).toBe(540);
+    expect(x.cost).toBe(270);
+    expect(x.selections[3]).toEqual([5, 9, 13]);
+    expect(x.relaxedLegs).toEqual([]);
     expect(x.legs[6].kind).toBe("OWN");
-    expect(previewChangeText(r, x, 7)).toContain("Avd 1 går från 3 till 2 hästar (12 Kaptein Sabeltann tas bort) för att raden ska komma nära **288 kr**.");
+    expect(previewChangeText(r, x, 7)).toContain("Avd 3 går från 4 till 3 hästar (1 Järvsö Elina tas bort) för att raden ska komma nära **288 kr**.");
   });
 
   it("8. eget val i avd 7 med 9 hästar ryms inte", () => {
