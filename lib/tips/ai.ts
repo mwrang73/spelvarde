@@ -6,22 +6,26 @@
 // - Avvikelse: specen anger temperature: 0, men @anthropic-ai/sdk 1.3 har inte
 //   längre parametern för de aktuella modellerna. Den skickas därför inte.
 //   Stabiliteten kommer i stället av instruktionen och valideringen.
-// - Klienten har timeout 50 s och maxRetries 1 (specen). Eftersom Vercel
-//   avbryter efter 60 s har anropet dessutom en total gräns på 55 s, så att
-//   ett nytt försök efter en timeout aldrig kan dra över.
+// - Klienten har timeout 100 s och maxRetries 1. Tolkningsrutten har
+//   maxDuration 120 s, så anropet har dessutom en total gräns på 110 s, så att
+//   ett nytt försök efter en timeout aldrig kan dra över. (Specen sa 50/55/60 s
+//   och 4096 tokens, men långa artiklar som Aftonbladets V85-tips med alla
+//   avdelningar klipptes då av mitt i verktygsanropet.)
 // - Råfel loggas på servern, aldrig nyckeln. Klienten får bara de korta
 //   orsakerna nedan.
 import Anthropic, { APIConnectionTimeoutError, APIError, APIUserAbortError, AuthenticationError, PermissionDeniedError } from "@anthropic-ai/sdk";
 import { TIP_TOOL, TIP_TOOL_NAME } from "@/lib/tips/prompt";
 
 export const TIPS_MODEL = "claude-sonnet-5-5";
-export const AI_TIMEOUT_MS = 50_000;
-export const AI_TOTAL_MS = 55_000;
-export const AI_MAX_TOKENS = 4096;
+export const AI_TIMEOUT_MS = 100_000;
+export const AI_TOTAL_MS = 110_000;
+export const AI_MAX_TOKENS = 8192;
 
 export const AI_ERR = {
   unreadable: "Svaret gick inte att läsa.",
-  timeout: "AI:n svarade inte inom 50 sekunder.",
+  cutOff: "Artikeln hade fler tips än AI:n hann skriva, så svaret klipptes av.",
+  noTool: "AI:n svarade med text i stället för tips.",
+  timeout: "AI:n svarade inte inom 100 sekunder.",
   overloaded: "AI-tjänsten är överbelastad just nu.",
   badKey: "AI-nyckeln fungerar inte. Kontrollera ANTHROPIC_API_KEY i Vercel.",
   other: "AI-tjänsten svarade med fel.",

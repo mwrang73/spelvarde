@@ -345,7 +345,11 @@ export async function interpretArticle(deps: TipsDeps, input: { userId: string; 
     return failWith(err.status, err.message);
   }
   const tokens = { inputTokens: Math.max(0, Math.floor(res.inputTokens || 0)), outputTokens: Math.max(0, Math.floor(res.outputTokens || 0)) };
-  if (res.input === null || res.input === undefined) return failWith(502, AI_ERR.unreadable, tokens);
+  if (res.input === null || res.input === undefined) {
+    const reason = res.stopReason === "max_tokens" ? AI_ERR.cutOff : res.stopReason === "end_turn" ? AI_ERR.noTool : AI_ERR.unreadable;
+    console.error("[tips-ai] inget verktygssvar", res.stopReason, `${tokens.outputTokens} tokens ut`);
+    return failWith(502, reason, tokens);
+  }
 
   // 3. Validera och spara (en transaktion).
   const after = nowOf(deps);

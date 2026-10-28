@@ -363,6 +363,12 @@ describe.skipIf(skip)("Hämta tips mot Postgres", () => {
     expect(await db.aiUsage.findFirstOrThrow({ where: { articleId: a1 } })).toMatchObject({ ok: false, error: "AI:n svarade inte inom 50 sekunder." });
     expect((await db.tipArticle.findUniqueOrThrow({ where: { id: a1 } })).status).toBe("FAILED");
 
+    // Avklippt svar utan verktygsanrop (max_tokens) säger varför.
+    const cut = await interpretArticle(deps({ ai: async () => ({ input: null, stopReason: "max_tokens", inputTokens: 9000, outputTokens: 8192, model: "claude-sonnet-5-5" }) }), { userId, articleId: a1 });
+    expect(cut.status).toBe(502);
+    expect(errOf(cut).error).toContain("svaret klipptes av");
+    expect(await db.aiUsage.count({ where: { articleId: a1, ok: false, outputTokens: 8192 } })).toBe(1);
+
     // Fyll upp till 19 av 20 i dag, och lägg en gammal rad från i går som inte räknas.
     const today = await db.aiUsage.count({ where: { userId, startedAt: { gte: new Date("2026-10-27T23:00:00Z") } } });
     await db.aiUsage.createMany({ data: Array.from({ length: 19 - today }, () => ({ userId, purpose: "TIPS", model: "claude-sonnet-5-5", startedAt: clock, finishedAt: clock, ok: true })) });

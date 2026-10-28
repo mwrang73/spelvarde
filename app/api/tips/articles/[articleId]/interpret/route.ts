@@ -4,7 +4,7 @@ import { withUser } from "@/lib/route";
 import { interpretArticle } from "@/lib/tips-server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // AI-tolkningen av en artikel (E5 10.7 och 12). Kropp {}. Svarar
 // TipInterpretResponse. 409 UNCHANGED, DUPLICATE, BUSY och ROUND_CLOSED.

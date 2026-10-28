@@ -36,7 +36,7 @@ export const SYSTEM_PROMPT = `Du läser en svensk eller norsk travartikel och pl
 
 Regler:
 1. Ta bara med hästar i omgångens lista som artikeln säger något bedömande om. Hitta aldrig på något.
-2. quote ska vara en mening, eller del av en mening, som står ordagrant i artikeln och visar vad artikeln säger om hästen. Kopiera tecken för tecken. Högst 300 tecken.
+2. quote ska vara en mening, eller del av en mening, som står ordagrant i artikeln och visar vad artikeln säger om hästen. Kopiera tecken för tecken. Högst 200 tecken, hellre kort.
 3. role:
    SPIK – artikeln kallar hästen spik, lås eller singel.
    FAVORIT – artikeln kallar hästen favorit eller starkast, eller säger att den är huvudchansen.
