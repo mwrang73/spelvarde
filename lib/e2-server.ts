@@ -285,7 +285,7 @@ export function parseModelBody(body: Record<string, unknown>): Result<ModelInput
     if (!ns) return { ok: false, error: "noStreck ska vara ett objekt eller null." };
     const nr = readWeights(ns);
     if (!nr.ok) return nr;
-    noStreck = { ...Object.fromEntries(INPUT_KEYS.map((k) => [k, 0])), ...nr.value, streck: 0 } as Weights;
+    noStreck = { ...Object.fromEntries(INPUT_KEYS.map((k) => [k, 0])), ...nr.value, streck: 0, streckLog: 0 } as Weights;
   }
   const params: Partial<Omit<ModelParams, "noStreck">> = {};
   for (const [k, v] of Object.entries(p)) {

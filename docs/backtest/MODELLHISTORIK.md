@@ -1,4 +1,4 @@
-# Modellhistorik: riktodds v1 → v3
+# Modellhistorik: riktodds v1 → v3 → v1.2
 
 Sammanfattning av backtesterna 19–20 oktober 2026 och besluten de ledde till.
 De fullständiga tabellerna finns i rapporterna bredvid:
@@ -215,6 +215,10 @@ commit 9dbc83b), samma delningsdatum.
 6 veckor eller ingen datumgräns gav samma resultat. Som bricka ändrade den inte
 träffen för v3-favoriter, Mikaels regel eller spelbara (proxy) i testdelen.
 **Beslut (förslag):** läggs inte in i modellen eller bland de positiva signalerna.
+
+## Favoriträttning – v1.2 (28 okt)
+
+Rapport: `2026-10-28-favoritratt.md`. **v1.2 = strecket som log-streck utan skalning per lopp (`streckLog` 0,56) i stället för z-värdet (`streck` 0), övriga vikter omanpassade, kalibrering a −0,016 · b 0,979 · högst 80 %: log loss 0,4889 → 0,4864 (Δ −0,0025, 95 % −0,0041 – −0,0007, 695 testlopp).** Direkta favoriträttningar (indikator för mest streckad, streck över 30–50 %, log-streck i kvadrat, lägre streckvikt, β, tak) gav inget: v3 gav redan storfavoriterna *för låg* chans till topp 3 (≥ 60 %: 78 % mot 83 % verkligt), eftersom z-värdet trycker ihop favoriten i utspridda fält. **Beslut (förslag):** Fyll i rekommenderad modell → Spara som ny version.
 
 ## Det som inte går att backtesta än
 

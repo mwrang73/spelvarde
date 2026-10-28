@@ -20,6 +20,7 @@ import {
   INPUT_KEYS,
   oddsFromP3,
   softmax,
+  usesStreck,
   type Counts,
   type InputKey,
   type ModelParams,
@@ -392,7 +393,7 @@ function predsFor(race: BtRace, p3: number[], marginal: number): Pred[] {
 export function modelPreds(races: BtRace[], weights: Weights, params: ModelParams): Pred[] {
   const out: Pred[] = [];
   for (const race of races) {
-    const res = computeRace(toFacts(race, weights.streck !== 0), weights, params);
+    const res = computeRace(toFacts(race, usesStreck(weights)), weights, params);
     if (!res.length) continue;
     out.push(...predsFor(race, res.map((r) => r.probTop3), params.marginal));
   }

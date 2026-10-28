@@ -75,7 +75,7 @@ import {
   type RoiRow,
 } from "@/lib/backtest";
 import { kmRef } from "@/lib/kmref";
-import { computeRace, harvilleTop3, INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, V1_PARAMS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
+import { computeRace, harvilleTop3, INPUT_KEYS, parseWeights, RECOMMENDED_CALIBRATION, RECOMMENDED_KEY, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, V1_PARAMS, V3_CALIBRATION, V3_WEIGHTS, V1_WEIGHTS, type InputKey, type Weights } from "@/lib/riktodds";
 import { addDaysToDateString, stockholmDateString } from "@/lib/stockholm-time";
 
 const ROOT = process.cwd();
@@ -366,8 +366,8 @@ async function main() {
   // v3: modellens egna indata (barfota, vila, galopp vid volte och tid finns nu i
   // computeRace). Alla vikter anpassas på träningsdelen, små vikter (< 0,03) sätts
   // till 0 och resten avrundas, sedan kalibreras med Platt och en övre gräns.
-  const keysS = [...INPUT_KEYS] as InputKey[];
-  const keysN = INPUT_KEYS.filter((k) => k !== "streck") as InputKey[];
+  const keysS = INPUT_KEYS.filter((k) => k !== "streckLog") as InputKey[];
+  const keysN = INPUT_KEYS.filter((k) => k !== "streck" && k !== "streckLog") as InputKey[];
   const simplify = (w: Weights) => Object.fromEntries(Object.entries(w).map(([k, v]) => [k, Math.abs(v) < 0.03 ? 0 : Math.round(v * 100) / 100])) as Weights;
   const v3 = simplify(fitWeights(zTrainS, V2_WEIGHTS, 1, keysS).weights);
   const v3n = simplify(fitWeights(zTrain, V2_NO_STRECK, 1, keysN).weights);
@@ -397,7 +397,8 @@ async function main() {
     { name: "v2 + signaler", kind: "anpassad", test: zPreds(withExtras(zTestS, EXTRA_KEYS, ref), allS.weights, 1), all: null },
     { name: "v2 + signaler, kalibrerad", kind: "anpassad", test: applyPlatt(zPreds(withExtras(zTestS, EXTRA_KEYS, ref), allS.weights, 1), plattAll), all: null },
     { name: "Utan streck (v2)", kind: "anpassad", test: zPreds(zTest, V2_NO_STRECK, 1), all: null },
-    { name: "v3 (rekommenderad i appen)", kind: "anpassad", test: applyPlatt(zPreds(zTestS, RECOMMENDED_WEIGHTS, 1), { a: RECOMMENDED_CALIBRATION.plattA, b: RECOMMENDED_CALIBRATION.plattB }, false, RECOMMENDED_CALIBRATION.maxP3), all: null },
+    { name: "v3 (i appen 20–28 okt)", kind: "anpassad", test: applyPlatt(zPreds(zTestS, V3_WEIGHTS, 1), { a: V3_CALIBRATION.plattA, b: V3_CALIBRATION.plattB }, false, V3_CALIBRATION.maxP3), all: null },
+    { name: `${RECOMMENDED_KEY} (rekommenderad i appen)`, kind: "anpassad", test: applyPlatt(zPreds(zTestS, RECOMMENDED_WEIGHTS, 1), { a: RECOMMENDED_CALIBRATION.plattA, b: RECOMMENDED_CALIBRATION.plattB }, false, RECOMMENDED_CALIBRATION.maxP3), all: null },
     { name: "v3", kind: "anpassad", test: zPreds(zTestS, v3, 1), all: null },
     { name: "v3 kalibrerad", kind: "anpassad", test: applyPlatt(zPreds(zTestS, v3, 1), plattV3), all: null },
     { name: "v3 kalibrerad, högst 80 %", kind: "anpassad", test: applyPlatt(zPreds(zTestS, v3, 1), plattV3, false, capV3), all: null },
@@ -466,7 +467,7 @@ function groupOf(label: string, rows: CountRow[]): Group {
 type CountRow = { date: string; count: number; flags: Record<SignalKey, boolean>; y: boolean; pMarket: number; pV3: number; streckRank: number; payout: number; hasPool: boolean };
 
 function signalCountAnalysis(races: BtRace[], testFrom: string) {
-  const v3Params = { ...V1_PARAMS, beta: 1, ...RECOMMENDED_CALIBRATION };
+  const v3Params = { ...V1_PARAMS, beta: 1, ...V3_CALIBRATION };
   const rows: CountRow[] = [];
   for (const race of races) {
     const run = race.starts.filter((s) => !s.scratched);
@@ -474,7 +475,7 @@ function signalCountAnalysis(races: BtRace[], testFrom: string) {
     const st = run.map((s) => Math.max(s.streck ?? 0, 1e-4));
     const sum = st.reduce((a, b) => a + b, 0);
     const pm = harvilleTop3(st.map((v) => v / sum));
-    const v3 = computeRace(toFacts(race, true), RECOMMENDED_WEIGHTS, v3Params).map((r) => r.probTop3);
+    const v3 = computeRace(toFacts(race, true), V3_WEIGHTS, v3Params).map((r) => r.probTop3);
     const order = [...st.keys()].sort((a, b) => st[b] - st[a]);
     run.forEach((s, i) => {
       rows.push({
@@ -508,7 +509,7 @@ type TrollRow = { gameId: string; date: string; p: number; pm: number; odds: num
 type RuleResult = { label: string; n: number; perRound: number; hit: number; meanOdds: number; roi: number; roiTest: number; nTest: number };
 
 function trollAnalysis(races: BtRace[], testFrom: string) {
-  const v3Params = { ...V1_PARAMS, beta: 1, ...RECOMMENDED_CALIBRATION };
+  const v3Params = { ...V1_PARAMS, beta: 1, ...V3_CALIBRATION };
   const rows: TrollRow[] = [];
   for (const race of races) {
     if (race.placesPaid === null) continue;
@@ -516,7 +517,7 @@ function trollAnalysis(races: BtRace[], testFrom: string) {
     const st = run.map((s) => Math.max(s.streck ?? 0, 1e-4));
     const sum = st.reduce((a, b) => a + b, 0);
     const pm = harvilleTop3(st.map((v) => v / sum));
-    const p = computeRace(toFacts(race, true), RECOMMENDED_WEIGHTS, v3Params).map((r) => r.probTop3);
+    const p = computeRace(toFacts(race, true), V3_WEIGHTS, v3Params).map((r) => r.probTop3);
     const flags = positiveSignals(race);
     run.forEach((s, i) =>
       rows.push({ gameId: race.gameId, date: race.date, p: p[i] ?? 0, pm: pm[i], odds: s.placeOdds, payout: s.placePayout, y: s.top3, count: SIGNAL_KEYS.filter((k) => flags[i][k]).length }),
@@ -613,7 +614,7 @@ type BraModelRow = { label: string; key: BraKey; w: number; base: number; ll: nu
 
 function braFormAnalysis(races: BtRace[], testFrom: string, zs: { zTrainS: ReturnType<typeof zRaces>; zTestS: ReturnType<typeof zRaces>; zTrain: ReturnType<typeof zRaces>; zTest: ReturnType<typeof zRaces> }) {
   // 1) Förekomst och träff, hela underlaget.
-  const v3Params = { ...V1_PARAMS, beta: 1, ...RECOMMENDED_CALIBRATION };
+  const v3Params = { ...V1_PARAMS, beta: 1, ...V3_CALIBRATION };
   const rows: BraRow[] = [];
   const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
   for (const race of races) {
@@ -623,7 +624,7 @@ function braFormAnalysis(races: BtRace[], testFrom: string, zs: { zTrainS: Retur
     const st = run.map((s) => Math.max(s.streck ?? 0, 1e-4));
     const sum = st.reduce((a, b) => a + b, 0);
     const pm = harvilleTop3(st.map((v) => v / sum));
-    const v3 = computeRace(toFacts(race, true), RECOMMENDED_WEIGHTS, v3Params).map((r) => r.probTop3);
+    const v3 = computeRace(toFacts(race, true), V3_WEIGHTS, v3Params).map((r) => r.probTop3);
     const order = [...st.keys()].sort((a, b) => st[b] - st[a]);
     const v3Order = [...v3.keys()].sort((a, b) => v3[b] - v3[a]);
     run.forEach((s, i) => {
@@ -692,7 +693,7 @@ function braFormAnalysis(races: BtRace[], testFrom: string, zs: { zTrainS: Retur
   const bases: { label: string; w: Weights; s: boolean }[] = [
     { label: "v2 med streck", w: V2_WEIGHTS, s: true },
     { label: "v2 utan streck", w: V2_NO_STRECK, s: false },
-    { label: "v3 med streck (har form och vila)", w: RECOMMENDED_WEIGHTS, s: true },
+    { label: "v3 med streck (har form och vila)", w: V3_WEIGHTS, s: true },
     { label: "v3 utan streck (har form och vila)", w: RECOMMENDED_NO_STRECK, s: false },
   ];
   const model: BraModelRow[] = [];
@@ -711,12 +712,12 @@ function braFormAnalysis(races: BtRace[], testFrom: string, zs: { zTrainS: Retur
     console.log(`  Bra form ovanpå ${b.label}: ${model.slice(-3).map((m) => `${m.key} ${f(m.w, 2)} Δ ${f(m.delta, 4)}`).join(" · ")}`);
   }
   // Alla vikter anpassas på nytt, med och utan Bra form (4 v): ändras form och vila?
-  const keysS = [...INPUT_KEYS] as InputKey[];
-  const keysN = INPUT_KEYS.filter((k) => k !== "streck") as InputKey[];
+  const keysS = INPUT_KEYS.filter((k) => k !== "streckLog") as InputKey[];
+  const keysN = INPUT_KEYS.filter((k) => k !== "streck" && k !== "streckLog") as InputKey[];
   const refit = (s: boolean) => {
     const tr = s ? zTrainS : zTrain;
     const te = s ? zTestS : zTest;
-    const start = s ? RECOMMENDED_WEIGHTS : RECOMMENDED_NO_STRECK;
+    const start = s ? V3_WEIGHTS : RECOMMENDED_NO_STRECK;
     const keys = s ? keysS : keysN;
     const without = fitWeights(tr, start, 1, keys).weights;
     const withB = fitWeights(withBraForm(tr, ["braForm"]), { ...without, braForm: 0 } as Weights, 1, [...keys, "braForm" as InputKey]).weights;

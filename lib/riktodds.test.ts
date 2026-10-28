@@ -11,13 +11,18 @@ import {
   oddsFromP3,
   parseParams,
   parseWeights,
+  RECOMMENDED_KEY,
+  RECOMMENDED_NO_STRECK,
+  RECOMMENDED_WEIGHTS,
   round2,
   sentence,
   softmax,
   V1_PARAMS,
   V1_WEIGHTS,
+  V3_WEIGHTS,
   zScores,
   type StartFacts,
+  type Weights,
 } from "@/lib/riktodds";
 
 const NBSP = "\u00a0";
@@ -268,5 +273,65 @@ describe("v3: barfota, vila, galopp vid volte, tid och kalibrering", () => {
     expect(res[3].probTop3).toBeLessThan(res[1].probTop3);
     expect(sentence("barfota", res[0].inputs.facts, true)).toBe("Barfota runt om");
     expect(sentence("vila", res[3].inputs.facts, false)).toBe("176 dagar sedan senaste start");
+  });
+});
+
+describe("v1.2: strecket utan skalning per lopp (streckLog)", () => {
+  const only = (o: Partial<Weights>): Weights => ({ ...V1_WEIGHTS, plats: 0, vinst: 0, form: 0, spar: 0, kusk: 0, tranare: 0, galopp: 0, ...o });
+  const field = (streck: (number | null)[]) => streck.map((st, i) => start(i + 1, { streck: st }));
+
+  it("vikten är en exponent på strecket: vinstchansen följer streck^w i alla lopp", () => {
+    for (const st of [[10, 20, 30, 40], [70, 10, 10, 5, 5], [25, 25, 20, 15, 10, 5]]) {
+      const res = computeRace(field(st), only({ streckLog: 0.56 }), V1_PARAMS);
+      const pw = st.map((x) => x ** 0.56);
+      const sum = pw.reduce((a, b) => a + b, 0);
+      res.forEach((r, i) => expect(r.inputs.winProb).toBeCloseTo(pw[i] / sum, 9));
+      // Centrerat men inte skalat: z = log-streck minus loppets medel.
+      const m = st.reduce((a, b) => a + Math.log(b), 0) / st.length;
+      expect(res[0].inputs.z.streckLog).toBeCloseTo(Math.log(st[0]) - m, 9);
+    }
+    // Vikt 1 ger exakt strecket som vinstchans.
+    const one = computeRace(field([10, 20, 30, 40]), only({ streckLog: 1 }), V1_PARAMS);
+    expect(one.map((r) => r.inputs.winProb)).toEqual([0.1, 0.2, 0.3, 0.4].map((x) => expect.closeTo(x, 9)));
+  });
+  it("skiljer sig från streck (z-värdet), som skalar om varje lopp efter fältets spridning", () => {
+    // Samma två översta hästar (40 % och 20 %), olika svans.
+    const tight = field([40, 20, 15, 15, 10]);
+    const wide = field([40, 20, 20, 10, 5, 2, 1, 1, 1]);
+    const ratio = (res: ReturnType<typeof computeRace>) => res[0].inputs.winProb / res[1].inputs.winProb;
+    const w = only({ streckLog: 0.56 });
+    expect(ratio(computeRace(tight, w, V1_PARAMS))).toBeCloseTo(2 ** 0.56, 9);
+    expect(ratio(computeRace(wide, w, V1_PARAMS))).toBeCloseTo(2 ** 0.56, 9);
+    // Med z-värdet beror förhållandet på resten av fältet.
+    const z = only({ streck: 0.86 });
+    expect(Math.abs(ratio(computeRace(tight, z, V1_PARAMS)) - ratio(computeRace(wide, z, V1_PARAMS)))).toBeGreaterThan(0.1);
+  });
+  it("bakåtkompatibelt: saknad vikt för streckLog = 0, gamla versioner räknar som förut", () => {
+    expect(parseWeights({ streck: 0.86 }).streckLog).toBe(0);
+    expect(V1_WEIGHTS.streckLog).toBe(0);
+    expect(V3_WEIGHTS.streckLog).toBe(0);
+    const { streckLog: _, ...old } = V3_WEIGHTS;
+    const st = field([40, 25, 15, 10, 6, 4]);
+    const a = computeRace(st, old as Weights, V1_PARAMS);
+    const b = computeRace(st, V3_WEIGHTS, V1_PARAMS);
+    expect(a.map((r) => r.probTop3)).toEqual(b.map((r) => r.probTop3));
+    expect(b[0].contributions.streckLog).toBe(0);
+  });
+  it("utan streck i loppet används vikterna utan streck även när bara streckLog har vikt", () => {
+    const params = { ...V1_PARAMS, noStreck: only({ plats: 1 }) };
+    const res = computeRace(field([null, null, null, null]), only({ streckLog: 0.56 }), params);
+    expect(res[0].inputs.noStreck).toBe(true);
+    expect(parseParams({ noStreck: { pengar: 0.4, streckLog: 2 } }).noStreck).toMatchObject({ pengar: 0.4, streck: 0, streckLog: 0 });
+  });
+  it("meningen är samma som för streck", () => {
+    const res = computeRace(field([40, 30, 20, 10]), only({ streckLog: 0.56 }), V1_PARAMS);
+    expect(sentence("streckLog", res[0].inputs.facts, true)).toBe(sentence("streck", res[0].inputs.facts, true));
+  });
+  it("den rekommenderade modellen v1.2 använder streckLog i stället för streck", () => {
+    expect(RECOMMENDED_KEY).toBe("v1.2");
+    expect(RECOMMENDED_WEIGHTS.streck).toBe(0);
+    expect(RECOMMENDED_WEIGHTS.streckLog).toBe(0.56);
+    expect(RECOMMENDED_NO_STRECK.streck).toBe(0);
+    expect(RECOMMENDED_NO_STRECK.streckLog).toBe(0);
   });
 });

@@ -9,9 +9,15 @@
 import { money, pct } from "@/lib/format";
 import { bestAdjusted, timeOutliers } from "@/lib/kmref";
 
-export const INPUT_KEYS = ["plats", "vinst", "form", "spar", "kusk", "tranare", "galopp", "galoppVolt", "pengar", "barfota", "vila", "tid", "streck"] as const;
+export const INPUT_KEYS = ["plats", "vinst", "form", "spar", "kusk", "tranare", "galopp", "galoppVolt", "pengar", "barfota", "vila", "tid", "streck", "streckLog"] as const;
 export type InputKey = (typeof INPUT_KEYS)[number];
 export type Weights = Record<InputKey, number>;
+// Indata ur strecket. streck = log-streck som z-värde inom loppet (till v3),
+// streckLog = log-streck utan skalning per lopp (från v1.2, se
+// docs/backtest/2026-10-28-favoritratt.md). Saknas strecket i loppet används
+// vikterna utan streck, där båda är 0.
+export const STRECK_KEYS: readonly InputKey[] = ["streck", "streckLog"];
+export const usesStreck = (w: Partial<Weights>) => STRECK_KEYS.some((k) => (w[k] ?? 0) !== 0);
 
 // beta och marginal (7.2), k-värden för krympningen (7.1). plattA, plattB och
 // maxP3 kalibrerar P3 efter Harville: P3' = min(maxP3, sigmoid(a + b·logit P3)),
@@ -22,19 +28,25 @@ export type ModelParams = { beta: number; marginal: number; kPlats: number; kVin
 export type NumParamKey = Exclude<keyof ModelParams, "noStreck">;
 
 // Standardvikter och parametrar v1 (7.3). Samma värden som scripts/seed.mjs.
-export const V1_WEIGHTS: Weights = { plats: 1.0, vinst: 0.5, form: 0.6, spar: 0.4, kusk: 0.3, tranare: 0.2, galopp: -0.4, galoppVolt: 0, pengar: 0, barfota: 0, vila: 0, tid: 0, streck: 0 };
+export const V1_WEIGHTS: Weights = { plats: 1.0, vinst: 0.5, form: 0.6, spar: 0.4, kusk: 0.3, tranare: 0.2, galopp: -0.4, galoppVolt: 0, pengar: 0, barfota: 0, vila: 0, tid: 0, streck: 0, streckLog: 0 };
 export const V1_PARAMS: ModelParams = { beta: 1.0, marginal: 0, kPlats: 6, kVinst: 6, kKusk: 20, kTranare: 20, plattA: 0, plattB: 1, maxP3: 1, noStreck: null };
 
-// Rekommenderad modell v3 ur backtestet 2026-10-20 (docs/backtest), β = 1.
-// Testdelen (654 lopp): med streck och kalibrering log loss 0,4893 (v2 0,4949,
-// vinnarodds 0,5010); utan streck (noStreck) 0,5218.
-export const RECOMMENDED_WEIGHTS: Weights = { plats: 0.08, vinst: 0, form: -0.05, spar: 0.03, kusk: 0, tranare: 0.03, galopp: -0.05, galoppVolt: 0, pengar: 0.05, barfota: 0.08, vila: -0.07, tid: 0, streck: 0.86 };
-export const RECOMMENDED_NO_STRECK: Weights = { plats: 0.1, vinst: 0.08, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, galoppVolt: 0, pengar: 0.38, barfota: 0.13, vila: -0.1, tid: 0.08, streck: 0 };
+// Rekommenderad modell v1.2 ur backtestet 2026-10-28 (docs/backtest/
+// 2026-10-28-favoritratt.md), β = 1. Strecket som log-streck utan skalning per
+// lopp (streckLog) i stället för z-värdet (streck). Testdelen (695 lopp): log
+// loss 0,4864 mot v3:s 0,4889 (Δ −0,0026, 95 % −0,0041 – −0,0007); vinnarodds
+// 0,4971. Utan streck (noStreck) samma som v3, 0,5206.
+export const RECOMMENDED_WEIGHTS: Weights = { plats: 0.06, vinst: -0.05, form: -0.05, spar: 0.06, kusk: 0, tranare: 0.03, galopp: -0.05, galoppVolt: 0, pengar: 0.08, barfota: 0.08, vila: -0.07, tid: 0, streck: 0, streckLog: 0.56 };
+export const RECOMMENDED_NO_STRECK: Weights = { plats: 0.1, vinst: 0.08, form: 0.15, spar: 0.17, kusk: 0.1, tranare: 0.1, galopp: 0.03, galoppVolt: 0, pengar: 0.38, barfota: 0.13, vila: -0.1, tid: 0.08, streck: 0, streckLog: 0 };
 // Versionsnamnet när den rekommenderade modellen sparas (Fyll i rekommenderad modell).
-export const RECOMMENDED_KEY = "v3";
+export const RECOMMENDED_KEY = "v1.2";
 
-// Kalibreringen som hör till v3 (anpassad på modellen med streck).
-export const RECOMMENDED_CALIBRATION: Pick<ModelParams, "plattA" | "plattB" | "maxP3"> = { plattA: -0.055, plattB: 0.947, maxP3: 0.8 };
+// Kalibreringen som hör till v1.2 (anpassad på modellen med streck).
+export const RECOMMENDED_CALIBRATION: Pick<ModelParams, "plattA" | "plattB" | "maxP3"> = { plattA: -0.016, plattB: 0.979, maxP3: 0.8 };
+
+// v3 (backtestet 2026-10-20), kvar för jämförelser i backtestet.
+export const V3_WEIGHTS: Weights = { plats: 0.08, vinst: 0, form: -0.05, spar: 0.03, kusk: 0, tranare: 0.03, galopp: -0.05, galoppVolt: 0, pengar: 0.05, barfota: 0.08, vila: -0.07, tid: 0, streck: 0.86, streckLog: 0 };
+export const V3_CALIBRATION: Pick<ModelParams, "plattA" | "plattB" | "maxP3"> = { plattA: -0.055, plattB: 0.947, maxP3: 0.8 };
 
 export const MIN_STARTERS = 4;
 export const ODDS_MIN = 1.01;
@@ -151,6 +163,13 @@ export function zScores(xs: number[]): number[] {
   return xs.map((x) => (x - m) / sd);
 }
 
+// Bara centrerat (ingen skalning): vikten blir en exponent på strecket,
+// samma i alla lopp (streckLog).
+export function centered(xs: number[]): number[] {
+  const m = mean(xs);
+  return xs.map((x) => x - m);
+}
+
 export function softmax(strengths: number[], beta: number): number[] {
   const scaled = strengths.map((s) => beta * s);
   const max = Math.max(...scaled);
@@ -240,7 +259,7 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
   const footMean = mean(footRaw.filter((x): x is number => x !== null));
   const tid = timeOutliers(starts.map((s) => bestAdjusted(s.records)));
   // Inget streck i loppet: vikterna utan streck, om modellen har sådana.
-  const noStreck = !!params.noStreck && (weights.streck ?? 0) !== 0 && starts.every((s) => s.streck === null || !(s.streck > 0));
+  const noStreck = !!params.noStreck && usesStreck(weights) && starts.every((s) => s.streck === null || !(s.streck > 0));
   const w = noStreck ? params.noStreck! : weights;
 
   const values: Record<InputKey, InputValue>[] = starts.map((s, i) => {
@@ -260,11 +279,12 @@ export function computeRace(all: StartFacts[], weights: Weights, params: ModelPa
       tid: { value: tid[i], missing: false },
       pengar: moneyRaw[i] === null ? { value: moneyMean, missing: true } : { value: moneyRaw[i]!, missing: false },
       streck: s.streck !== null && s.streck > 0 ? { value: Math.log(s.streck), missing: false } : { value: 0, missing: true },
+      streckLog: s.streck !== null && s.streck > 0 ? { value: Math.log(s.streck), missing: false } : { value: 0, missing: true },
     };
   });
 
   const z = {} as Record<InputKey, number[]>;
-  for (const key of INPUT_KEYS) z[key] = zScores(values.map((v) => v[key].value));
+  for (const key of INPUT_KEYS) z[key] = key === "streckLog" ? centered(values.map((v) => v[key].value)) : zScores(values.map((v) => v[key].value));
 
   const contributions = starts.map((_, i) => {
     const c = {} as Record<InputKey, number>;
@@ -376,6 +396,7 @@ export function sentence(key: InputKey, f: StoredInputs["facts"], positive: bool
       if (!f.gallopsDq) return `Galopp i ${f.gallops} av ${f.formStarts} senaste`;
       return `Galopp i ${f.gallops} av ${f.formStarts} senaste, ${f.gallops === 1 ? "med" : `varav ${f.gallopsDq} med`} diskning`;
     case "streck":
+    case "streckLog":
       return f.streck === null ? "Streck saknas" : `Streckad ${pct1(f.streck)}`;
     case "galoppVolt":
       return `Galopp i ${f.gallops} av ${f.formStarts} senaste, och det är voltstart`;
@@ -433,7 +454,7 @@ export function parseParams(x: unknown): ModelParams {
   const o = x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {};
   const num = (k: NumParamKey) => (typeof o[k] === "number" && Number.isFinite(o[k]) ? (o[k] as number) : V1_PARAMS[k]);
   const cal = { plattA: num("plattA"), plattB: num("plattB"), maxP3: num("maxP3") };
-  const ns = o.noStreck && typeof o.noStreck === "object" && !Array.isArray(o.noStreck) ? { ...parseWeights(o.noStreck, ZERO_WEIGHTS), streck: 0 } : null;
+  const ns = o.noStreck && typeof o.noStreck === "object" && !Array.isArray(o.noStreck) ? { ...parseWeights(o.noStreck, ZERO_WEIGHTS), streck: 0, streckLog: 0 } : null;
   return { beta: num("beta"), marginal: num("marginal"), kPlats: num("kPlats"), kVinst: num("kVinst"), kKusk: num("kKusk"), kTranare: num("kTranare"), ...cal, noStreck: ns };
 }
 

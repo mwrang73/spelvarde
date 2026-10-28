@@ -12,7 +12,7 @@ import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { GAME_TYPES } from "@/lib/game-type";
 import { GUIDELINE_ERROR, parseGuideline, parseRowPrice, ROW_PRICE_ERROR } from "@/lib/coupon-ui";
 import { odds, relTime } from "@/lib/format";
-import { INPUT_KEYS, isCalibrated, RECOMMENDED_CALIBRATION, RECOMMENDED_KEY, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, type InputKey } from "@/lib/riktodds";
+import { INPUT_KEYS, isCalibrated, RECOMMENDED_CALIBRATION, RECOMMENDED_KEY, RECOMMENDED_NO_STRECK, RECOMMENDED_WEIGHTS, STRECK_KEYS, type InputKey } from "@/lib/riktodds";
 import { applySettings } from "@/lib/round-overlay";
 import { parseTolerance } from "@/lib/odds-ui";
 import { TOLERANCE_ERROR } from "@/lib/spelbar";
@@ -205,6 +205,7 @@ const WEIGHT_LABELS: Record<InputKey, string> = {
   vila: "Dagar sedan senaste start",
   tid: "Tid, bara extrema",
   streck: "Streck (marknaden)",
+  streckLog: "Streck, samma skala i alla lopp",
 };
 
 // Förklaringarna bakom i-knappen (Mikael 2026-10-29). "Rek." läses ur
@@ -222,7 +223,8 @@ const WEIGHT_HELP: Record<InputKey, string> = {
   barfota: "Barfota runt om i dag. Positiv vikt: barfota ger högre chans.",
   vila: "Dagar sedan senaste start. Negativ vikt: lång vila ger lägre chans.",
   tid: "Bara extremt bra eller dåliga km-tider räknas.",
-  streck: "Marknadens bedömning (V-strecket). Väger tyngst. Ett lägre värde betyder att modellen litar mer på övriga indata och mindre på marknaden.",
+  streck: "Marknadens bedömning (V-strecket), omräknad inom varje lopp. Användes till och med v3. Från v1.2 är vikten 0 och strecket räknas i raden under i stället.",
+  streckLog: "Marknadens bedömning (V-strecket) utan omräkning per lopp. Väger tyngst från v1.2. Vikten fungerar som en exponent: 0,56 betyder att styrkan följer strecket upphöjt till 0,56, lika i alla lopp. Den gamla omräkningen berodde på hur utspritt strecket var i hela fältet och gav storfavoriterna för låg chans och favoriterna i jämna lopp för hög. Utan den träffar modellen bättre (backtest 28 okt).",
 };
 const PARAM_HELP: Record<ParamKey, string> = {
   beta: "Hur mycket skillnaderna i styrka slår igenom. Högre: favoriterna får högre chans och outsiders lägre. 1 = som i backtestet.",
@@ -296,14 +298,14 @@ export function ModelAdmin() {
     if (!active) return;
     setWeights(Object.fromEntries(INPUT_KEYS.map((k) => [k, numText(active.weights[k])])) as Record<InputKey, string>);
     const ns = active.params.noStreck;
-    setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, ns && k !== "streck" ? numText(ns[k]) : ""])) as Record<InputKey, string>);
+    setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, ns && !STRECK_KEYS.includes(k) ? numText(ns[k]) : ""])) as Record<InputKey, string>);
     setParams(Object.fromEntries(PARAM_KEYS.map((k) => [k, numText(active.params[k])])) as Record<ParamKey, string>);
   };
 
   // Fyller i den rekommenderade modellen ur backtestet (sparas först med knappen).
   const fillRecommended = () => {
     setWeights(Object.fromEntries(INPUT_KEYS.map((k) => [k, numText(RECOMMENDED_WEIGHTS[k])])) as Record<InputKey, string>);
-    setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, k === "streck" ? "" : numText(RECOMMENDED_NO_STRECK[k])])) as Record<InputKey, string>);
+    setNoStreck(Object.fromEntries(INPUT_KEYS.map((k) => [k, STRECK_KEYS.includes(k) ? "" : numText(RECOMMENDED_NO_STRECK[k])])) as Record<InputKey, string>);
     setParams({ beta: "1", marginal: "0", plattA: numText(RECOMMENDED_CALIBRATION.plattA), plattB: numText(RECOMMENDED_CALIBRATION.plattB), maxP3: numText(RECOMMENDED_CALIBRATION.maxP3) });
     setFieldErr(null);
     setWantedKey(RECOMMENDED_KEY);
@@ -335,11 +337,11 @@ export function ModelAdmin() {
       if (v === null || Math.abs(v) > 10) return setFieldErr(`Vikten för ${WEIGHT_LABELS[k].toLowerCase()} ska vara ett tal mellan −10 och 10.`);
       w[k] = v;
     }
-    const nsFilled = INPUT_KEYS.some((k) => k !== "streck" && (noStreck[k] ?? "").trim() !== "");
+    const nsFilled = INPUT_KEYS.some((k) => !STRECK_KEYS.includes(k) && (noStreck[k] ?? "").trim() !== "");
     const ns: Partial<Record<InputKey, number>> = {};
     if (nsFilled) {
       for (const k of INPUT_KEYS) {
-        if (k === "streck") continue;
+        if (STRECK_KEYS.includes(k)) continue;
         const t = (noStreck[k] ?? "").trim();
         const v = t === "" ? 0 : parseNum(t);
         if (v === null || Math.abs(v) > 10) return setFieldErr(`Vikten utan streck för ${WEIGHT_LABELS[k].toLowerCase()} ska vara ett tal mellan −10 och 10.`);
@@ -445,7 +447,7 @@ export function ModelAdmin() {
                       <InfoTip
                         id={`${id}-h-${k}`}
                         label={WEIGHT_LABELS[k]}
-                        text={`${WEIGHT_HELP[k]} Rek.: ${fmtW(RECOMMENDED_WEIGHTS[k])} med streck${k === "streck" ? "" : `, ${fmtW(RECOMMENDED_NO_STRECK[k])} utan`}.`}
+                        text={`${WEIGHT_HELP[k]} Rek.: ${fmtW(RECOMMENDED_WEIGHTS[k])} med streck${STRECK_KEYS.includes(k) ? "" : `, ${fmtW(RECOMMENDED_NO_STRECK[k])} utan`}.`}
                       />
                     </th>
                     <td className="r">
@@ -464,7 +466,7 @@ export function ModelAdmin() {
                       />
                     </td>
                     <td className="r">
-                      {k === "streck" ? (
+                      {STRECK_KEYS.includes(k) ? (
                         <span className="help">–</span>
                       ) : (
                         <input
