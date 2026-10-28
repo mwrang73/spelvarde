@@ -1,7 +1,7 @@
 // Testfallen i docs/specs/e6-v85-rad.md, 14 (lib/tippa.test.ts, punkt 1–29).
 import { describe, expect, it } from "vitest";
 import { rowCount } from "@/lib/coupon";
-import { applyFavLimit, buildRad, chooseSpikes, defaultSpikCount, legFacts, maximizeHorses, minimumPicks, rankScore, type LegFacts, type TippaLeg, type TippaStart } from "@/lib/tippa";
+import { applyFavLimit, buildRad, chooseSpikes, defaultSpikCount, legFacts, maximizeHorses, minimumPicks, rankScore, type LegFacts, type TippaLeg, type TippaStart, openHiOf } from "@/lib/tippa";
 import { bjerkeLegs, bjerkeRules, withStart } from "@/lib/tippa.fixture";
 import { previewChangeText, rulesDontFitText, scratchNotice } from "@/lib/tippa-text";
 
@@ -393,5 +393,18 @@ describe("standardvärden och ordning", () => {
       .reverse()
       .map((l) => ({ ...l, starts: [...l.starts].reverse() }));
     expect(buildRad(rev, bjerkeRules())).toEqual(a);
+  });
+});
+
+describe("taket för öppna lopp (Mikael 2026-10-28)", () => {
+  it("ett öppet lopp får högst hälften av hästarna, aldrig färre än minsta valet", () => {
+    expect(openHiOf(3, 9, 12)).toBe(6);
+    expect(openHiOf(3, 2, 12)).toBe(5);
+    expect(openHiOf(3, 1, 5)).toBe(3);
+  });
+  it("hög budget: bara allgarderingen har alla hästar", () => {
+    const r = buildRad(bjerkeLegs(), { ...bjerkeRules(), budget: 100_000 });
+    for (const l of r.legs) if (l.kind === "OPEN") expect(l.selection.length).toBeLessThanOrEqual(Math.max(3, Math.floor(l.field.length / 2)));
+    expect(r.legs.filter((l) => l.field.length > 1 && l.selection.length === l.field.length).map((l) => l.kind)).toEqual(["ALLG"]);
   });
 });

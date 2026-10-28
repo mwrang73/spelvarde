@@ -2,7 +2,7 @@
 // egen frögenerator (mulberry32, fröet 20261028), och prestandatestet.
 import { describe, expect, it } from "vitest";
 import { spikMaxFor } from "@/lib/game-type";
-import { buildRad, legFacts, maximizeHorses, minimumPicks, type TippaLeg, type TippaResult, type TippaRules, type TippaStart } from "@/lib/tippa";
+import { buildRad, legFacts, maximizeHorses, minimumPicks, type TippaLeg, type TippaResult, type TippaRules, type TippaStart, openHiOf } from "@/lib/tippa";
 import { bjerkeLegs, bjerkeRules } from "@/lib/tippa.fixture";
 
 function mulberry32(seed: number) {
@@ -155,7 +155,7 @@ describe("egenskaper (1 000 omgångar, fröet 20261028)", () => {
         const m = minimumPicks(legFacts(legs[l.leg - 1]), l.favBanned);
         const gains = [0];
         for (const h of m.rest) gains.push(gains[gains.length - 1] + h.score);
-        return { lo: m.lo, hi: m.lo + m.rest.length, gains };
+        return { lo: m.lo, hi: openHiOf(m.lo, m.rest.length, l.field.length), gains };
       });
       let bestH = -1;
       let bestS = -1;

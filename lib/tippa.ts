@@ -330,6 +330,14 @@ export function applyFavLimit(open: LegFacts[], quota: number): { allowed: numbe
 
 // gains[j] = summan av poängen för de första j hästarna i A(L), j = 0 … hi − lo.
 export type MaxLeg = { lo: number; hi: number; gains: number[] };
+
+// Bara allgarderingen får ha alla hästar (Mikael 2026-10-28): ett öppet lopp
+// får högst hälften av de löpande, men aldrig färre än minsta valet.
+export const OPEN_SHARE_MAX = 0.5;
+export function openHiOf(lo: number, restLen: number, runners: number): number {
+  return Math.max(lo, Math.min(lo + restLen, Math.floor(runners * OPEN_SHARE_MAX)));
+}
+const openHi = (o: { min: { lo: number; rest: unknown[] }; prep: { facts: { runners: unknown[] } } }) => openHiOf(o.min.lo, o.min.rest.length, o.prep.facts.runners.length);
 export type MaxResult = { k: number[]; horses: number; score: number; product: number; states: number };
 
 // Exakt lösning med dynamisk programmering över produkten: välj k(L) i
@@ -672,7 +680,7 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     const mlegs: MaxLeg[] = d.open.map((o) => {
       const gains = [0];
       for (const h of o.min.rest) gains.push(gains[gains.length - 1] + h.score);
-      return { lo: o.min.lo, hi: o.min.lo + o.min.rest.length, gains };
+      return { lo: o.min.lo, hi: openHi(o), gains };
     });
     const m = maximizeHorses(mlegs, R)!;
     ks = m.k;
@@ -719,7 +727,7 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
       const k = ks[oi!];
       selection = [...open!.min.picks, ...open!.min.rest.slice(0, k - open!.min.lo).map((h) => h.number)];
       lo = open!.min.lo;
-      hi = open!.min.lo + open!.min.rest.length;
+      hi = openHi(open!);
     }
     selection = [...selection].sort((a, b) => a - b);
     if (kind !== "OPEN") lo = hi = Math.max(1, selection.length);

@@ -859,3 +859,4 @@ Egen frögenerator (mulberry32, fröet `20261028`, inget nytt beroende). 1 000 o
 1. Öppna ATG: länken `atg.se/spel/V85` räcker.
 2. Inställda V85-lopp händer i praktiken aldrig – behåll specens enkla hantering, ingen extra logik.
 3. En kopierad rad räknas **inte** som spelad i statistiken eller efteranalysen. `copiedAt`/`copiedSelections` används bara för banderollen om att raden ändrats efter kopieringen.
+4. **Bara allgarderingen har alla hästar.** Ett öppet lopp som appen fyller får högst hälften av de löpande (`floor(n/2)`, `OPEN_SHARE_MAX` i `lib/tippa.ts`), men aldrig färre än minsta valet. Dina egna val (låsta avdelningar) begränsas inte. Allgarderingen väljs automatiskt (Auto) eller av dig (Välj avd), som förut.
