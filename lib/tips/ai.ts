@@ -5,7 +5,7 @@
 // - Verktyget väljs med tool_choice auto och en instruktion i systemprompten (tvingat verktyg stöds inte av Claude Sonnet 5.5). Svaret valideras mot schemat i validate.ts.
 // - Avvikelse: specen anger temperature: 0, men @anthropic-ai/sdk 1.3 har inte
 //   längre parametern för de aktuella modellerna. Den skickas därför inte.
-//   Stabiliteten kommer i stället av det tvingade verktyget och valideringen.
+//   Stabiliteten kommer i stället av instruktionen och valideringen.
 // - Klienten har timeout 50 s och maxRetries 1 (specen). Eftersom Vercel
 //   avbryter efter 60 s har anropet dessutom en total gräns på 55 s, så att
 //   ett nytt försök efter en timeout aldrig kan dra över.
