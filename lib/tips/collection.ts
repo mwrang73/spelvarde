@@ -25,9 +25,11 @@ const COLLECTION_HOSTS = ["travstugan.se", "travcash.se"];
 // Tagg-, kategori- och ämnessidor ("/tagg/v85" på Aftonbladet).
 const LISTING_PATH = /\/(tag|tagg|taggar|kategori|category|amne|ämne|topic|topics|sektion)\//i;
 
-// Läsaren: Source.kind om den är satt, annars efter adressen. Samlingssida
-// för de kända sajterna, för tagg- och kategorisidor och för korta adresser
-// med spelformen, som "/v85" eller "/v85-tips" (artiklar har längre namn).
+// Läsaren: Source.kind om den är satt (överstyrning), annars efter adressen.
+// POST /api/sources sparar null, så att nya regler här gäller även gamla
+// källor. Samlingssida för de kända sajterna, för tagg- och kategorisidor och
+// för korta adresser med spelformen, som "/v85" eller "/v85-tips" (artiklar
+// har längre namn).
 export function readerFor(source: { url: string; kind?: SourceKindValue | null }): SourceKindValue {
   if (source.kind) return source.kind;
   try {
