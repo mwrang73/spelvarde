@@ -1598,3 +1598,9 @@ section.lg { margin: 0 10px 10px; background: var(--surface); border: 1px solid 
 .hs-note { padding: 8px 10px; border-radius: 8px; background: var(--surface-2); border-left: 4px solid var(--fill); }
 /* "Närmast din budget" på tavlan (tillåten överskridning, neutral). */
 .brd .near-line, .near-line { color: var(--head-ink-2); margin: 0; }
+/* i-knappen med förklaring i modelltabellen. */
+.itip { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 6px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink-2); font: italic 700 12px/1 Georgia, serif; vertical-align: 1px; cursor: help; position: relative; }
+.itip::after { content: ""; position: absolute; inset: -11px; }
+.itip[aria-expanded="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.itip-t { display: block; margin-top: 4px; font-weight: 400; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); white-space: normal; }
+.wexpl { margin: 0 0 8px; line-height: 1.45; }

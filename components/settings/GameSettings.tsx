@@ -207,6 +207,49 @@ const WEIGHT_LABELS: Record<InputKey, string> = {
   streck: "Streck (marknaden)",
 };
 
+// Förklaringarna bakom i-knappen (Mikael 2026-10-29). "Rek." läses ur
+// RECOMMENDED_WEIGHTS / RECOMMENDED_NO_STRECK så att talen alltid stämmer.
+const WEIGHT_HELP: Record<InputKey, string> = {
+  plats: "Hur ofta hästen kommit topp 3 i år och i fjol, utjämnat mot snittet när den har få starter. Positiv vikt: bättre platsandel ger högre chans.",
+  vinst: "Vinstprocent i år och i fjol, utjämnad på samma sätt. Med strecket i modellen tillför den nästan inget, eftersom marknaden redan räknar in den.",
+  form: "Placeringarna i de 5 senaste starterna. Negativ vikt med streck betyder att spelarna överskattar hästar i bra form.",
+  spar: "Hur ofta startnumret tagit plats på samma distans och startmetod jämfört med snittet (statistikbasen, 2 år). Med streck är vikten låg, eftersom marknaden redan räknar in spåret.",
+  kusk: "Kuskens vinstprocent i år, utjämnad mot snittet.",
+  tranare: "Tränarens vinstprocent i år, utjämnad mot snittet.",
+  galopp: "Galopper i de 5 senaste starterna. Negativ vikt: fler galopper ger lägre chans.",
+  galoppVolt: "Samma som galopp, men bara i voltstart, där galopp är vanligare.",
+  pengar: "Intjänat per start: ett mått på hästens klass. Viktigast när strecket saknas.",
+  barfota: "Barfota runt om i dag. Positiv vikt: barfota ger högre chans.",
+  vila: "Dagar sedan senaste start. Negativ vikt: lång vila ger lägre chans.",
+  tid: "Bara extremt bra eller dåliga km-tider räknas.",
+  streck: "Marknadens bedömning (V-strecket). Väger tyngst. Ett lägre värde betyder att modellen litar mer på övriga indata och mindre på marknaden.",
+};
+const PARAM_HELP: Record<ParamKey, string> = {
+  beta: "Hur mycket skillnaderna i styrka slår igenom. Högre: favoriterna får högre chans och outsiders lägre. 1 = som i backtestet.",
+  marginal: "Läggs på riktoddset, till exempel 0,10 för att kräva lite extra innan en häst blir spelbar.",
+  plattA: "Kalibrering efter backtestet: flyttar alla chanser till topp 3 uppåt (+) eller nedåt (−).",
+  plattB: "Kalibrering efter backtestet: under 1 drar höga och låga chanser mot mitten.",
+  maxP3: "Tak för chansen till topp 3, så att ingen häst får orimligt lågt riktodds.",
+};
+const fmtW = (x: number | undefined) => (x === undefined ? "–" : String(x).replace(".", ",").replace("-", "−"));
+
+// i-knappen: visar förklaringen vid tryck (mobil) och som title vid hovring (dator).
+function InfoTip({ id, text, label }: { id: string; text: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="itip" aria-expanded={open} aria-controls={id} aria-label={`Förklaring: ${label}`} title={text} onClick={() => setOpen((v) => !v)}>
+        i
+      </button>
+      {open && (
+        <small className="itip-t" id={id}>
+          {text}
+        </small>
+      )}
+    </>
+  );
+}
+
 type ParamKey = "beta" | "marginal" | "plattA" | "plattB" | "maxP3";
 const PARAM_KEYS: ParamKey[] = ["beta", "marginal", "plattA", "plattB", "maxP3"];
 const PARAM_LABELS: Record<ParamKey, { label: string; help: string; min: number; max: number }> = {
@@ -378,6 +421,9 @@ export function ModelAdmin() {
               void save();
             }}
           >
+            <p className="help wexpl">
+              <b>Så fungerar vikterna.</b> Varje häst får en styrka: summan av vikt × hur många standardavvikelser hästen är bättre än snittet i loppet. Styrkan blir sedan chans. En vikt på 0,10 ger ungefär 10 % högre vinstodds per standardavvikelse. Mellan bästa och sämsta häst är det ofta 3 standardavvikelser, så spårvikten 0,03 ger ungefär ×1,09 mellan bästa och sämsta spår, 0,10 ger ×1,35 och 0,20 ger ×1,8. Tryck på <b>i</b> för vad varje indata mäter och vad backtestet rekommenderar.
+            </p>
             <table className="wtbl">
               <caption>Vikter och parametrar för {active?.key ?? "modellen"}</caption>
               <thead>
@@ -396,6 +442,11 @@ export function ModelAdmin() {
                   <tr key={k}>
                     <th scope="row">
                       <label htmlFor={`${id}-${k}`}>{WEIGHT_LABELS[k]}</label>
+                      <InfoTip
+                        id={`${id}-h-${k}`}
+                        label={WEIGHT_LABELS[k]}
+                        text={`${WEIGHT_HELP[k]} Rek.: ${fmtW(RECOMMENDED_WEIGHTS[k])} med streck${k === "streck" ? "" : `, ${fmtW(RECOMMENDED_NO_STRECK[k])} utan`}.`}
+                      />
                     </th>
                     <td className="r">
                       <input
@@ -438,6 +489,7 @@ export function ModelAdmin() {
                   <tr key={k} className="ptr">
                     <th scope="row">
                       <label htmlFor={`${id}-${k}`}>{PARAM_LABELS[k].label}</label>
+                      <InfoTip id={`${id}-h-${k}`} label={PARAM_LABELS[k].label} text={PARAM_HELP[k]} />
                       <small>{PARAM_LABELS[k].help}</small>
                     </th>
                     <td className="r">
