@@ -1,6 +1,6 @@
 "use client";
 
-// S3 Hästkortet (specen 5, S3) utan tips (E5). Det som finns i omgångens
+// S3 Hästkortet (specen 5, S3), med Tips (E5) under X-faktor och källstöd. Det som finns i omgångens
 // cache (namn, kusk, form, galopp, Intressant, Spelbar, Bet, riktodds) visas
 // direkt. Tidigare starter, statistik, kommentarer och riktoddsets skäl
 // hämtas med GET /api/starts/[id] när kortet öppnas (förhandsladdas för
@@ -24,6 +24,8 @@ import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
 import { openTagging } from "./tagStore";
 import { XFactorBlock } from "./XFactor";
+import { TipsSection } from "./TipsSection";
+import { FEATURES } from "@/lib/features";
 import { pctSignal, signalClass, signalLines, signalSr } from "@/lib/signals";
 import { MANY_SIGNALS, SIGNAL_KEYS, TOP3_BY_COUNT } from "@/lib/positive-signals";
 
@@ -157,6 +159,8 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
       )}
 
       <XFactorBlock key={start.id} race={race} start={start} factors={factors} sourcesEnabled={data.sourcesEnabled ?? 0} tolerance={tolerance} />
+
+      {FEATURES.tips && <TipsSection roundId={data.round.id} races={data.races} start={start} detail={d} locked={started} />}
 
       <RiktoddsBox race={race} start={start} detail={d?.riktodds ?? null} detailLoading={!d && !detail.error} modelKey={data.model?.key ?? null} calibrated={!!data.model?.calibrated} guideline={data.settings?.spelbarGuideline ?? 2} factors={factors} tolerance={tolerance} />
 

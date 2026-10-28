@@ -88,3 +88,24 @@ export const IconClock = svg(
     <path d="M12 7v5l3 2" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
   </>,
 );
+// E5 Hämta tips (mockupen efteranalys-tips): gnistan, dokumentet, extern länk och varningstriangeln.
+export const IconSpark = svg(<path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z" fill="currentColor" />);
+export const IconDoc = svg(
+  <>
+    <path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <path d="M9 11h7M9 15h7M9 7h4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </>,
+);
+export const IconExt = svg(<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />);
+export const IconTriangle = svg(
+  <>
+    <path d="M12 3l10 18H2z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+    <path d="M12 10v5M12 18h.01" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+  </>,
+);
+export const IconOkCircle = svg(
+  <>
+    <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path d="M7.5 12.3l3 3 6-6.3" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+  </>,
+);

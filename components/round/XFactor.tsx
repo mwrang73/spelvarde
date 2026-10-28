@@ -11,6 +11,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
+import { useToast } from "@/components/ui/Toast";
 import type { RaceDto, StartDto } from "@/lib/types";
 import { factorText, sourceSupportText, SOURCE_SUPPORT_MAX, stepSourceSupport, X_BADGE, X_LABEL, XFACTORS, type XFactor, type XFactorSettings } from "@/lib/xfactor";
 import { xEffectText, xOf } from "@/lib/xfactor-ui";
@@ -28,6 +29,7 @@ export function xLockReason(race: RaceDto, start: StartDto, now: number = Date.n
 export function XFactorBlock({ race, start, factors, sourcesEnabled, tolerance }: { race: RaceDto; start: StartDto; factors: XFactorSettings; sourcesEnabled: number; tolerance: number }) {
   const { setXFactor, setSourceSupport } = useRound();
   const { status } = useOutbox();
+  const toast = useToast();
   const hid = useId();
   const srcId = useId();
   const x = xOf(start.mark);
@@ -72,6 +74,9 @@ export function XFactorBlock({ race, start, factors, sourcesEnabled, tolerance }
   const n = start.mark?.sourceSupport ?? null;
   const m = sourcesEnabled;
   const max = Math.min(m, SOURCE_SUPPORT_MAX);
+  // E5 S3: förslaget från Hämta tips. Mikaels värde skrivs aldrig över automatiskt.
+  const support = start.tip?.support ?? 0;
+  const sugg = !locked && support >= 1 && support !== n ? Math.min(support, SOURCE_SUPPORT_MAX) : null;
   const step = (delta: 1 | -1) => {
     const next = stepSourceSupport(n, m, delta);
     if (locked || next === n) return;
@@ -160,6 +165,26 @@ export function XFactorBlock({ race, start, factors, sourcesEnabled, tolerance }
               </button>
             )}
           </div>
+        )}
+        {sugg !== null && (
+          <p className="sugg">
+            <span>
+              Hämta tips räknade <b>{sugg}</b>
+            </span>
+            <button
+              type="button"
+              className="btn ghost sm"
+              aria-label={`Använd källstödet ${sugg} från Hämta tips`}
+              onClick={() => {
+                const before = n;
+                setTouched(true);
+                setSourceSupport(race, start, sugg);
+                toast({ text: `Källstödet är ${sugg}.`, action: { label: "Ångra", onClick: () => setSourceSupport(race, start, before) } });
+              }}
+            >
+              Använd
+            </button>
+          </p>
         )}
         {locked && <p className="help xlock">{locked}</p>}
       </div>

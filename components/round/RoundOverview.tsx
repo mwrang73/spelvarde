@@ -22,6 +22,8 @@ import { Summary } from "./RaceResult";
 import { allRacesStarted, useRound } from "./RoundProvider";
 import { OddsFetchCard, RefreshBanner, RefreshBoardButton } from "./StreckOdds";
 import { needsOddsFetch } from "@/lib/streck-odds";
+import { FEATURES } from "@/lib/features";
+import { tipsLine } from "@/lib/tips-ui";
 
 export function roundSub(data: RoundResponse | null): string {
   if (!data) return "";
@@ -145,6 +147,7 @@ export function RoundOverview() {
             </>
           )}
         </p>
+        {FEATURES.tips && <TipsLineRow data={data} done={done} now={now} />}
         <RoundLinks roundId={data.round.id} analysis={data.phase === "KLART"} />
         <div className="sl">
           <h2 className="sl-h">Avdelningar</h2>
@@ -174,6 +177,29 @@ export function RoundOverview() {
         </Sheet>
       </main>
     </>
+  );
+}
+
+// E5 S1: tipsraden under hämtstatusen. Länkarna leder till Källor och
+// granskningen. "Hämta igen" startar inte hämtningen (den kostar AI-läsningar).
+function TipsLineRow({ data, done, now }: { data: RoundResponse; done: boolean; now: Date }) {
+  const t = data.tips ?? null;
+  const line = tipsLine(t, data.sourcesEnabled ?? 0, done || !data.isCurrent, t?.lastReadAt ? relTime(t.lastReadAt, now) : null);
+  if (!line) return null;
+  return (
+    <p className="fetchline tipsline">
+      {line.lead}
+      {line.strong && <b className="num">{line.strong}</b>}
+      {line.rest}
+      {line.links.map((l) => (
+        <span key={l.kind}>
+          {" · "}
+          <Link className="linkish" href={l.kind === "review" ? "/kallor/granska" : "/kallor?hamta=1"} aria-label={l.ariaLabel}>
+            {l.label}
+          </Link>
+        </span>
+      ))}
+    </p>
   );
 }
 

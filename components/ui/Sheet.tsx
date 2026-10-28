@@ -7,7 +7,7 @@
 import { useEffect, useId, useRef } from "react";
 import { IconX } from "./icons";
 
-export function Sheet({ open, onClose, title, sub, children }: { open: boolean; onClose: () => void; title: string; sub?: string; children: React.ReactNode }) {
+export function Sheet({ open, onClose, title, sub, children, className }: { open: boolean; onClose: () => void; title: string; sub?: string; children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const opener = useRef<Element | null>(null);
   const titleId = useId();
@@ -38,7 +38,7 @@ export function Sheet({ open, onClose, title, sub, children }: { open: boolean; 
   return (
     <dialog
       ref={ref}
-      className="sheet"
+      className={`sheet${className ? ` ${className}` : ""}`}
       aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();

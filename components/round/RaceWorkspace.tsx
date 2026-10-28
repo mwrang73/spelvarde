@@ -19,9 +19,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DESKTOP_QUERY, useIsDesktop, useNow } from "@/components/hooks";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, FlapNumber, FormStrip, GallopBadge, LampToggle, LowStreckTag, signalsSr, Skeleton } from "@/components/ui/board";
+import { TipTag } from "@/components/tips/RoleTag";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, dayDate, hhmm, kr, methodLabel, money, pct, shortRaceName } from "@/lib/format";
+import { FEATURES } from "@/lib/features";
 import { PHASE_LABELS } from "@/lib/phase";
 import { resultMode, showsResultToggle } from "@/lib/results-ui";
 import { unibetRaceUrl } from "@/lib/odds-ui";
@@ -593,16 +595,20 @@ type RowProps = { s: StartDto; index: number; started: boolean; href: string; on
 // Kusken och hästens totala vinstsumma sist (summan kortas aldrig, namnet först).
 function Driver({ s }: { s: StartDto }) {
   const earn = s.horse.earnings !== null ? <b className="kt-earn">{money(s.horse.earnings)}</b> : null;
+  // E5 S2: rolltaggen efter kusken. Kusknamnet kortas, aldrig taggen.
+  const tip = FEATURES.tips && !s.scratched ? <TipTag tip={s.tip ?? null} /> : null;
   if (s.prevDriver)
     return (
       <span className="kt kt2">
         <span className="chg">↻ Ny: {s.driver?.name ?? "–"}</span>
+        {tip}
         {earn}
       </span>
     );
   return (
     <span className="kt kt2">
       <span>{s.driver?.name ?? "Kusk saknas"}</span>
+      {tip}
       {earn}
     </span>
   );
@@ -688,8 +694,11 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
             {!s.scratched && <GallopBadge flag={s.form.gallop} />}
             {s.scratched && <span className="tag scr-tag">Struken</span>}
           </span>
-          <span className="kt">
-            {s.signals?.lowStreck && <LowStreckTag />}{[ageSex(s.horse.age, s.horse.sex), s.horse.record].filter(Boolean).join(" · ")}</span>
+          <span className="kt kt2">
+            {s.signals?.lowStreck && <LowStreckTag />}
+            <span>{[ageSex(s.horse.age, s.horse.sex), s.horse.record].filter(Boolean).join(" · ")}</span>
+            {FEATURES.tips && !s.scratched && <TipTag tip={s.tip ?? null} />}
+          </span>
         </a>
       </td>
       <td className="kus">

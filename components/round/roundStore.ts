@@ -8,7 +8,7 @@
 // i minnet: en hämtning per start, förhandsladdning för grannhästarna.
 
 import { apiGet } from "@/components/api";
-import type { CommentDto, CurrentRoundResponse, RoundResponse, StartDetailResponse } from "@/lib/types";
+import type { CommentDto, CurrentRoundResponse, RoundResponse, RoundTipsDto, StartDetailResponse, StartTipDto } from "@/lib/types";
 
 type Listener = () => void;
 
@@ -93,6 +93,19 @@ export function patchRound(id: string, fn: (data: RoundResponse) => RoundRespons
   if (!data) return;
   const next = fn(data);
   if (next !== data) setRound(id, next);
+}
+
+// E5 (specen 12): efter en åtgärd i granskningen skrivs startens nya tipstagg
+// (StartDto.tip) och tipsraden (RoundResponse.tips) in i cachen, så att S1, S2
+// och förslaget i S3 ändras direkt.
+export function patchStartTips(id: string, affected: { startId: string; tip: StartTipDto | null }[], summary?: Partial<RoundTipsDto> | null) {
+  if (!affected.length && !summary) return;
+  const byStart = new Map(affected.map((a) => [a.startId, a.tip]));
+  patchRound(id, (data) => ({
+    ...data,
+    races: byStart.size ? data.races.map((r) => (r.starts.some((s) => byStart.has(s.id)) ? { ...r, starts: r.starts.map((s) => (byStart.has(s.id) ? { ...s, tip: byStart.get(s.id) ?? null } : s)) } : r)) : data.races,
+    tips: summary ? { approved: 0, horses: 0, pending: 0, lastReadAt: null, lastSourceName: null, sourcesRead: 0, ...(data.tips ?? {}), ...summary } : data.tips,
+  }));
 }
 
 const inflight = new Map<string, Promise<RoundResponse>>();
@@ -184,6 +197,13 @@ export function clearDetails() {
   if (!details.size) return;
   details.clear();
   emitDetails();
+}
+
+// E5: hästkortets tips läses om nästa gång kortet visas.
+export function clearDetailsFor(startIds: string[]) {
+  let changed = false;
+  for (const id of startIds) changed = details.delete(id) || changed;
+  if (changed) emitDetails();
 }
 
 // Kommentarerna följer hästen: en bekräftad ändring skrivs in i alla
