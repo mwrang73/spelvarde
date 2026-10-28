@@ -30,6 +30,16 @@ describe("extractArticle (10.6)", () => {
     expect(r.article.text).not.toMatch(/Casino|Cookiepolicy|Prenumerera/);
     expect(stageOf(r.article.title)).toBe("EARLY");
   });
+  it("Travcash: små <article>-kort hoppas över, texten tas ur .post-single__body", () => {
+    const r = extractArticle(html("travcash-v85-bjerke-tidiga.html"), "https://travcash.se/v85-tips/v85-tips-lordag-bjerke-31-10-tidiga-tankar/");
+    if (!r.ok) throw new Error(r.error);
+    expect(r.article.title).toContain("Bjerke 31/10");
+    expect(r.article.publishedAt?.toISOString()).toBe("2026-10-26T12:39:02.000Z");
+    expect(r.article.text).toContain("6 Sauron Zon har säkerligen gått framåt");
+    expect(r.article.text).toContain("10 Hankypanky Leonie är troligtvis överlägsen");
+    expect(r.article.text).not.toContain("review-card");
+    expect(stageOf(r.article.title)).toBe("EARLY");
+  });
   it("en sida med för lite text ger felet om inloggning", () => {
     expect(extractArticle(html("fem-tippar-v85-hemmastallet-i-slutet.html"), "https://travstugan.se/fem-tippar-v85-hemmastallet-i-slutet")).toEqual({
       ok: false,

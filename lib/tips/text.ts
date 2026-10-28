@@ -77,7 +77,8 @@ export type ExtractedArticle = {
 const REMOVE_TAGS = "script,style,noscript,nav,header,footer,aside,form,iframe,svg,figcaption,button,template";
 const NOISE = /share|related|comment|newsletter|cookie|(^|[\s_-])ad-/i;
 const BLOCK = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "br", "div", "tr", "ul", "ol", "table", "section", "blockquote", "article", "main"]);
-const CONTAINERS = ["article", '[itemprop="articleBody"]', "main", ".entry-content", ".post-content"];
+// Travcash: ".post-single__body" (där är <article> bara länkkort till andra inlägg).
+const CONTAINERS = ["article", '[itemprop="articleBody"]', ".entry-content", ".post-content", ".post-single__body", "main"];
 
 function cleanTitle(raw: string): string {
   let t = raw.replace(/\s+/g, " ").trim();
@@ -152,10 +153,17 @@ function stripNoise(el: HTMLElement) {
 }
 
 // Brödtextens behållare: specens väljare, sedan Travstugans ".prose", sist body.
+// Per väljare vinner träffen med mest text; har ingen träff tillräckligt med
+// text (t.ex. små <article>-kort) prövas nästa väljare.
 function bodyContainers(root: HTMLElement): HTMLElement[] {
   for (const sel of CONTAINERS) {
-    const el = root.querySelector(sel);
-    if (el) return [el];
+    let best: HTMLElement | null = null;
+    let bestLen = 0;
+    for (const el of root.querySelectorAll(sel)) {
+      const len = el.text.replace(/\s+/g, " ").trim().length;
+      if (len > bestLen) [best, bestLen] = [el, len];
+    }
+    if (best && bestLen >= MIN_TEXT) return [best];
   }
   const prose = root.querySelectorAll(".prose").filter((el) => {
     for (let p = el.parentNode; p; p = p.parentNode) if (p.classList?.contains("prose")) return false;
