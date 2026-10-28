@@ -586,7 +586,33 @@ export type CouponDto = {
   rows: number;
   cost: number;
   updatedAt: string;
+  // ---- E6 (docs/specs/e6-v85-rad.md 8.5 och 12) ----
+  // null = raden sparades före E6 (gammal rad, visas som den är). Äldre
+  // cachade svar saknar fälten: läs med ?? null.
+  spikCount?: number | null;
+  allgMode?: AllgMode | null;
+  // CHOSEN: Mikaels val. AUTO: den avdelning appen valde vid senaste sparningen.
+  allgLeg?: number | null;
+  // Skälen per avdelning och häst vid senaste sparningen.
+  legRoles?: LegRolesDto | null;
+  // Senaste Kopiera texten och raden som kopierades då.
+  copiedAt?: string | null;
+  copiedSelections?: Record<string, number[]> | null;
 };
+
+// E6: allgarderingens läge. Ingen NONE (spec 8.5).
+export type AllgMode = "AUTO" | "CHOSEN";
+
+// E6 skälen (6.5.2), i taggordningen PRE, grupp (T3/MEL/SKR eller LOW/NOMEL),
+// FEL, SIG4–SIG10, FAV.
+export type ReasonCode = "PRE" | "T3" | "MEL" | "SKR" | "LOW" | "NOMEL" | "FEL" | "SIG4" | "SIG5" | "SIG6" | "SIG7" | "SIG8" | "SIG9" | "SIG10" | "FAV";
+export type LegRoleKind = "OPEN" | "SPIK" | "OWN_SPIK" | "OWN" | "ALLG" | "CANCELLED";
+// h = valda hästar (startnummer som nyckel) och deras koder. favOut = spärrad
+// favorits nummer. fav = favoritens nummer (bara ALLG).
+export type LegRoleDto = { k: LegRoleKind; h?: Record<string, ReasonCode[]>; favOut?: number; fav?: number };
+// Version 1 (8.5). Nycklarna i legs är avdelningarna "1"–"8".
+export type LegRolesDto = { v: 1; prelim: boolean; favLimit: number; legs: Record<string, LegRoleDto> };
+
 export type CouponResponse = { coupon: CouponDto | null; defaults: { budget: number; rowPrice: number } };
 
 // GET/PUT /api/admin/model

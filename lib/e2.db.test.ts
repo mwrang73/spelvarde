@@ -265,6 +265,72 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(round.coupon!.budget).toBe(200);
   });
 
+  it("E6: spikar, allgardering, skäl och kopiering sparas, gamla kroppar lämnar dem orörda, och reglerna kontrolleras", async () => {
+    const legRoles = { v: 1, prelim: false, favLimit: 4, legs: { "1": { k: "OPEN", h: { "1": ["T3", "SIG4"], "2": ["MEL", "FEL"] }, favOut: 3 }, "2": { k: "OWN_SPIK", h: { "5": ["T3", "FAV"] } }, "7": { k: "ALLG", fav: 1 } } };
+    const body = {
+      budget: 300,
+      rowPrice: 0.5,
+      selections: { "1": [1, 2], "2": [5], "7": [1, 2, 3] },
+      lockedLegs: [2],
+      spikCount: 4,
+      allgMode: "AUTO",
+      allgLeg: 7,
+      legRoles,
+      copiedAt: "2026-10-22T18:55:00.000Z",
+      copiedSelections: { "1": [1, 2], "2": [5] },
+    };
+    const put = await saveCoupon(db, user.id, roundId, body, thursday);
+    expect(put.status).toBe(200);
+    const c = (put.body as CouponResponse).coupon!;
+    expect(c).toMatchObject({ spikCount: 4, allgMode: "AUTO", allgLeg: 7, legRoles, copiedAt: "2026-10-22T18:55:00.000Z", copiedSelections: { "1": [1, 2], "2": [5] } });
+    const got = ((await getCoupon(db, user.id, roundId)).body as CouponResponse).coupon!;
+    expect(got).toMatchObject({ spikCount: 4, allgMode: "AUTO", allgLeg: 7, legRoles, copiedAt: "2026-10-22T18:55:00.000Z" });
+    const round = (await buildRoundResponse(db, roundId, user.id, thursday))!;
+    expect(round.coupon).toMatchObject({ spikCount: 4, allgLeg: 7 });
+
+    // En äldre kropp (före E6) lämnar fälten orörda.
+    expect((await saveCoupon(db, user.id, roundId, { budget: 250, selections: body.selections, lockedLegs: [2] }, thursday)).status).toBe(200);
+    expect(((await getCoupon(db, user.id, roundId)).body as CouponResponse).coupon).toMatchObject({ budget: 250, spikCount: 4, allgMode: "AUTO", allgLeg: 7, legRoles, copiedAt: "2026-10-22T18:55:00.000Z" });
+
+    // Felsvaren (400).
+    const bad = async (b: Record<string, unknown>) => (await saveCoupon(db, user.id, roundId, { ...body, ...b }, thursday)).body;
+    expect(await bad({ allgMode: "CHOSEN", allgLeg: 2 })).toEqual({ error: "Allgarderingen kan inte ligga i en låst avdelning." });
+    expect(await bad({ allgMode: "CHOSEN", allgLeg: null })).toEqual({ error: "Välj vilken avdelning som ska allgarderas." });
+    expect(await bad({ spikCount: 0 })).toEqual({ error: "Antalet spikar kan inte vara färre än dina egna spikar (1)." });
+    expect(await bad({ spikCount: 8 })).toEqual({ error: "Antalet spikar ska vara 0–7 på V85." });
+    expect(await bad({ allgMode: "NONE" })).toEqual({ error: "Allgarderingen ska vara Auto eller en vald avdelning." });
+    expect(await bad({ allgMode: null })).toEqual({ error: "Allgarderingen ska vara Auto eller en vald avdelning." });
+    expect(await bad({ legRoles: { ...legRoles, legs: { "1": { k: "OPEN", h: { "1": ["X"] } } } } })).toEqual({ error: "Ogiltiga skäl i raden." });
+    expect(await bad({ copiedAt: "2026-10-22T19:10:00.000Z" })).toEqual({ error: "Ogiltig kopieringstid." });
+    expect(await bad({ copiedSelections: { "1": [99] } })).toEqual({ error: "Ogiltiga startnummer i avd 1." });
+    expect(await bad({ copiedSelections: { "1": [29] } })).toEqual({ error: "Startnummer 29 finns inte i avd 1." });
+    // CHOSEN i en fri avdelning går bra.
+    expect((await saveCoupon(db, user.id, roundId, { ...body, allgMode: "CHOSEN", allgLeg: 7 }, thursday)).status).toBe(200);
+    // Ångra för en gammal rad: spikCount och allgMode null.
+    expect((await saveCoupon(db, user.id, roundId, { ...body, spikCount: null, allgMode: null, allgLeg: null, legRoles: null, copiedAt: null, copiedSelections: null }, thursday)).status).toBe(200);
+    expect(((await getCoupon(db, user.id, roundId)).body as CouponResponse).coupon).toMatchObject({ spikCount: null, allgMode: null, allgLeg: null, legRoles: null, copiedAt: null, copiedSelections: null });
+
+    // Spelstopp: legRoles för en startad avdelning skrivs inte över.
+    expect((await saveCoupon(db, user.id, roundId, body, thursday)).status).toBe(200);
+    const race1 = await db.race.findFirstOrThrow({ where: { roundId, leg: 1 } });
+    const after = new Date(race1.startAt.getTime() + 1000);
+    const other = { ...legRoles, legs: { ...legRoles.legs, "1": { k: "OPEN", h: { "1": ["SKR"], "2": ["SKR"] } }, "2": { k: "OWN_SPIK", h: { "5": ["T3"] } } } };
+    const res = await saveCoupon(db, user.id, roundId, { ...body, legRoles: other }, after);
+    expect(res.status).toBe(200);
+    const merged = (res.body as CouponResponse).coupon!.legRoles!;
+    expect(merged.legs["1"]).toEqual(legRoles.legs["1"]);
+    const started = (await db.race.findMany({ where: { roundId, startAt: { lte: after } } })).map((r) => r.leg);
+    if (!started.includes(2)) expect(merged.legs["2"]).toEqual({ k: "OWN_SPIK", h: { "5": ["T3"] } });
+    // null efter spelstopp tömmer inte de sparade skälen.
+    expect(((await saveCoupon(db, user.id, roundId, { ...body, legRoles: null }, after)).body as CouponResponse).coupon!.legRoles!.legs["1"]).toEqual(legRoles.legs["1"]);
+
+    // Databasens villkor (migreringen 20261028120000_e6_v85_rad).
+    const row = await db.coupon.findFirstOrThrow({ where: { userId: user.id, roundId } });
+    await expect(db.coupon.update({ where: { id: row.id }, data: { spikCount: 9 } })).rejects.toThrow();
+    await expect(db.coupon.update({ where: { id: row.id }, data: { allgLeg: 0 } })).rejects.toThrow();
+    await db.coupon.delete({ where: { id: row.id } });
+  });
+
   it("modellen: bara ADMIN, PUT skapar v1.1 som blir aktiv, v1 finns kvar och omgången räknas om", async () => {
     expect(await getModel(db, user)).toEqual({ status: 403, body: { error: ADMIN_ONLY } });
     expect((await saveModel(db, user, { weights: { plats: 2 } }, thursday)).status).toBe(403);

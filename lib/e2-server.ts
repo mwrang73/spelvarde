@@ -4,17 +4,17 @@
 // lib/e2.db.test.ts. Allt användarägt skrivs och läses med userId från
 // sessionen, aldrig från kroppen.
 
-import type { Prisma, PrismaClient, Role } from "@prisma/client";
-import { asSelections, DEFAULT_BUDGET, parseCouponBody, sameNumbers } from "@/lib/coupon";
+import { Prisma as PrismaNS, type Prisma, type PrismaClient, type Role } from "@prisma/client";
+import { ALLG_MODE_ERROR, asLegRoles, asSelections, COPIED_AT_ERROR, DEFAULT_BUDGET, LEG_ROLES_ERROR, parseCouponBody, sameNumbers } from "@/lib/coupon";
 import { couponDto, dec, markDto, modelDto, settingsDto, THEME_FROM_API } from "@/lib/dto";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, sameMark, turnsSomethingOn, type MarkState } from "@/lib/marks";
 import { INPUT_KEYS, nextModelKey, parseParams, parseWeights, type ModelParams, type NumParamKey, type Weights } from "@/lib/riktodds";
 import { riktoddsStep } from "@/lib/riktodds-server";
 import { currentRoundId } from "@/lib/round-server";
-import type { CouponResponse, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
+import type { CouponResponse, LegRolesDto, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
 import { parseSettingsBody, type Result } from "@/lib/validate";
 import { checkFactors } from "@/lib/xfactor";
-import { legsFor } from "@/lib/game-type";
+import { legsFor, spikMaxFor } from "@/lib/game-type";
 
 type Db = PrismaClient;
 export type Reply<T = unknown> = { status: number; body: T | { error: string } };
@@ -125,35 +125,104 @@ export async function getCoupon(db: Db, userId: string, roundId: string): Promis
 }
 
 // Hela kupongen (idempotent). Valet i en avdelning som har startat kan inte ändras (409).
+// E6 (docs/specs/e6-v85-rad.md 12): spikCount, allgMode, allgLeg, legRoles,
+// copiedAt och copiedSelections är frivilliga; saknas de behålls det sparade.
+// legRoles för startade avdelningar skrivs aldrig över (servern slår ihop).
 export async function saveCoupon(db: Db, userId: string, roundId: string, body: Record<string, unknown>, now: Date): Promise<Reply<CouponResponse>> {
   const parsed = parseCouponBody(body);
   if (!parsed.ok) return err(400, parsed.error);
   const input = parsed.value;
   const round = await db.round.findUnique({
     where: { id: roundId },
-    select: { id: true, gameType: true, races: { select: { leg: true, startAt: true, starts: { select: { number: true } } } } },
+    select: { id: true, gameType: true, races: { select: { leg: true, startAt: true, cancelled: true, starts: { select: { number: true } } } } },
   });
   if (!round) return err(404, "Omgången finns inte.");
-  for (const [leg, nums] of Object.entries(input.selections)) {
-    const race = round.races.find((r) => r.leg === Number(leg));
-    if (!race) return err(400, `Avd ${leg} finns inte i omgången.`);
-    const have = new Set(race.starts.map((s) => s.number));
-    const bad = nums.find((n) => !have.has(n));
-    if (bad !== undefined) return err(400, `Startnummer ${bad} finns inte i avd ${leg}.`);
+  const legs = legsFor(round.gameType);
+  const checkNumbers = (sel: Record<number, number[]>): Reply<never> | null => {
+    for (const [leg, nums] of Object.entries(sel)) {
+      const race = round.races.find((r) => r.leg === Number(leg));
+      if (!race || Number(leg) > legs) return err(400, `Avd ${leg} finns inte i omgången.`);
+      const have = new Set(race.starts.map((s) => s.number));
+      const bad = nums.find((n) => !have.has(n));
+      if (bad !== undefined) return err(400, `Startnummer ${bad} finns inte i avd ${leg}.`);
+    }
+    return null;
+  };
+  const selErr = checkNumbers(input.selections);
+  if (selErr) return selErr;
+  if (input.copiedSelections) {
+    const e = checkNumbers(input.copiedSelections);
+    if (e) return e;
   }
   const [existing, settings] = await Promise.all([
     db.coupon.findUnique({ where: { userId_roundId: { userId, roundId } } }),
     db.userSettings.findUnique({ where: { userId } }),
   ]);
-  const old = asSelections(existing?.selections ?? {});
-  for (const race of round.races) {
-    if (race.startAt.getTime() <= now.getTime() && !sameNumbers(old[race.leg], input.selections[race.leg])) return err(409, RACE_STARTED);
+
+  // ---- E6-reglerna (kräver omgången) ----
+  const spikMax = spikMaxFor(round.gameType);
+  // Egna spikar som i lib/tippa.ts: låsta med exakt en häst, inställda lopp borträknade.
+  const cancelled = new Set(round.races.filter((r) => r.cancelled).map((r) => r.leg));
+  const ownSpikes = input.lockedLegs.filter((l) => !cancelled.has(l) && input.selections[l]?.length === 1).length;
+  if (input.spikCount !== undefined && input.spikCount !== null) {
+    // Fler egna spikar än spelformens tak (alla avdelningar låsta med en häst) går
+    // inte att välja i appen men får sparas med spikCount = antalet egna.
+    if (input.spikCount > Math.max(spikMax, ownSpikes)) return err(400, `Antalet spikar ska vara 0–${spikMax} på ${round.gameType}.`);
+    if (input.spikCount < ownSpikes) return err(400, `Antalet spikar kan inte vara färre än dina egna spikar (${ownSpikes}).`);
   }
+  const spikCount = input.spikCount !== undefined ? input.spikCount : (existing?.spikCount ?? null);
+  const allgMode = input.allgMode !== undefined ? input.allgMode : (existing?.allgMode ?? null);
+  const allgLeg = input.allgLeg !== undefined ? input.allgLeg : (existing?.allgLeg ?? null);
+  if (input.allgLeg !== undefined && input.allgLeg !== null && input.allgLeg > legs) return err(400, `Avd ${input.allgLeg} finns inte i omgången.`);
+  if (allgMode === null && spikCount !== null) return err(400, ALLG_MODE_ERROR);
+  if (allgMode === "CHOSEN") {
+    if (allgLeg === null) return err(400, "Välj vilken avdelning som ska allgarderas.");
+    if (input.lockedLegs.includes(allgLeg)) return err(400, "Allgarderingen kan inte ligga i en låst avdelning.");
+  }
+  if (input.legRoles && Object.keys(input.legRoles.legs).some((k) => Number(k) > legs)) return err(400, LEG_ROLES_ERROR);
+  if (input.copiedAt && input.copiedAt.getTime() > now.getTime() + 5 * 60_000) return err(400, COPIED_AT_ERROR);
+
+  const old = asSelections(existing?.selections ?? {});
+  const started = round.races.filter((r) => r.startAt.getTime() <= now.getTime());
+  for (const race of started) {
+    if (!sameNumbers(old[race.leg], input.selections[race.leg])) return err(409, RACE_STARTED);
+  }
+  // legRoles: startade avdelningar behåller de sparade skälen.
+  let legRoles: LegRolesDto | null | undefined = input.legRoles;
+  const savedRoles = existing ? asLegRoles(existing.legRoles) : null;
+  if (legRoles !== undefined && savedRoles && started.length) {
+    if (legRoles === null) legRoles = savedRoles;
+    else {
+      const merged = { ...legRoles, legs: { ...legRoles.legs } };
+      for (const race of started) {
+        const k = String(race.leg);
+        if (savedRoles.legs[k]) merged.legs[k] = savedRoles.legs[k];
+        else delete merged.legs[k];
+      }
+      legRoles = merged;
+    }
+  }
+
   const rowPrice = input.rowPrice ?? (existing ? Number(existing.rowPrice) : settingsDto(settings).rowPrice);
-  const selections = Object.fromEntries(Object.entries(input.selections).map(([k, v]) => [k, v])) as Prisma.InputJsonValue;
-  const data = { budget: input.budget, rowPrice, selections, lockedLegs: input.lockedLegs };
-  const coupon = await db.coupon.upsert({ where: { userId_roundId: { userId, roundId } }, create: { userId, roundId, ...data }, update: data });
-  return ok({ coupon: couponDto(coupon, legsFor(round.gameType)), defaults: { budget: DEFAULT_BUDGET, rowPrice: settingsDto(settings).rowPrice } });
+  const json = (sel: Record<number, number[]>) => Object.fromEntries(Object.entries(sel).map(([k, v]) => [k, v])) as Prisma.InputJsonValue;
+  const data: Prisma.CouponUncheckedUpdateInput & { budget: number; rowPrice: number; selections: Prisma.InputJsonValue; lockedLegs: number[] } = {
+    budget: input.budget,
+    rowPrice,
+    selections: json(input.selections),
+    lockedLegs: input.lockedLegs,
+    ...(input.spikCount !== undefined ? { spikCount: input.spikCount } : {}),
+    ...(input.allgMode !== undefined ? { allgMode: input.allgMode } : {}),
+    ...(input.allgLeg !== undefined ? { allgLeg: input.allgLeg } : {}),
+    ...(legRoles !== undefined ? { legRoles: legRoles === null ? PrismaNS.DbNull : (legRoles as unknown as Prisma.InputJsonValue) } : {}),
+    ...(input.copiedAt !== undefined ? { copiedAt: input.copiedAt } : {}),
+    ...(input.copiedSelections !== undefined ? { copiedSelections: input.copiedSelections === null ? PrismaNS.DbNull : json(input.copiedSelections) } : {}),
+  };
+  const coupon = await db.coupon.upsert({
+    where: { userId_roundId: { userId, roundId } },
+    create: { userId, roundId, ...(data as Omit<Prisma.CouponUncheckedCreateInput, "userId" | "roundId">) },
+    update: data,
+  });
+  return ok({ coupon: couponDto(coupon, legs), defaults: { budget: DEFAULT_BUDGET, rowPrice: settingsDto(settings).rowPrice } });
 }
 
 // ---- Modell (bara ADMIN) ---------------------------------------------------------------------

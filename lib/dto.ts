@@ -1,7 +1,7 @@
 // Omvandling från Prisma-rader till API-typerna i lib/types.ts.
 import type { Coupon, HorseComment, Mark, ModelVersion, Person, Prisma, Riktodds, Round, Source, UserSettings } from "@prisma/client";
 import type { HorseStats, PersonStats, YearStats } from "@/lib/atg";
-import { asSelections, couponCost, rowCount } from "@/lib/coupon";
+import { asLegRoles, asSelections, couponCost, rowCount } from "@/lib/coupon";
 import { DEFAULT_GAME_TYPE, isGameType } from "@/lib/game-type";
 import { explain, parseParams, parseWeights, type InputKey, type StoredInputs } from "@/lib/riktodds";
 import { belowGuideline, DEFAULT_GUIDELINE, DEFAULT_TOLERANCE, forslag, oddsClass, spelbar } from "@/lib/spelbar";
@@ -92,6 +92,12 @@ export function couponDto(c: Coupon, legs = 8): CouponDto {
     rows,
     cost: couponCost(rows, rowPrice),
     updatedAt: c.updatedAt.toISOString(),
+    spikCount: c.spikCount,
+    allgMode: c.allgMode,
+    allgLeg: c.allgLeg,
+    legRoles: asLegRoles(c.legRoles),
+    copiedAt: c.copiedAt ? c.copiedAt.toISOString() : null,
+    copiedSelections: c.copiedSelections === null ? null : Object.fromEntries(Object.entries(asSelections(c.copiedSelections)).map(([k, v]) => [k, v])),
   };
 }
 

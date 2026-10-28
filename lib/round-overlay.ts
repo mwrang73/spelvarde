@@ -22,7 +22,7 @@ import { applyMarkChange, EMPTY_MARK, parseMarkChange, type MarkChange, type Mar
 import type { OutboxItem } from "@/lib/outbox";
 import { nextStep, type NextStepRace } from "@/lib/phase";
 import { belowGuideline, DEFAULT_TOLERANCE, forslag, oddsClass, spelbar } from "@/lib/spelbar";
-import type { CommentDto, CommentKind, CouponDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto } from "@/lib/types";
+import type { AllgMode, CommentDto, CommentKind, CouponDto, LegRolesDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto } from "@/lib/types";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
 import { legsFor } from "@/lib/game-type";
 
@@ -47,7 +47,16 @@ export type CouponMeta = { kind: "coupon"; roundId: string };
 export type ItemMeta = MarkMeta | ReviewMeta | CommentMeta | CommentDeleteMeta | CouponMeta;
 
 export type CommentBody = { horseId: string; startId: string | null; roundId: string | null; kind: CommentKind; tags: string[]; text: string };
-export type CouponBody = { budget: number; rowPrice: number | null; selections: Record<string, number[]>; lockedLegs: number[] };
+export type CouponBody = { budget: number; rowPrice: number | null; selections: Record<string, number[]>; lockedLegs: number[] } & CouponBodyE6;
+// E6-fälten (frivilliga, så att äldre köade kroppar fungerar).
+export type CouponBodyE6 = {
+  spikCount?: number | null;
+  allgMode?: AllgMode | null;
+  allgLeg?: number | null;
+  legRoles?: LegRolesDto | null;
+  copiedAt?: string | null;
+  copiedSelections?: Record<string, number[]> | null;
+};
 
 export function metaOf(item: OutboxItem): ItemMeta | null {
   const m = item.meta as Partial<ItemMeta> | undefined;
@@ -252,12 +261,30 @@ export function applySettings(data: RoundResponse, s: Pick<SettingsDto, "spelbar
 }
 
 // Kupongen i kön som CouponDto (rader och kostnad räknas här, som på servern).
-export function couponDtoOf(roundId: string, body: CouponBody, fallbackRowPrice: number, at: number, legs = 8): CouponDto {
+// E6-fälten tas ur kroppen och faller tillbaka på den cachade kupongen (prev)
+// när de saknas, som på servern.
+export function couponDtoOf(roundId: string, body: CouponBody, fallbackRowPrice: number, at: number, legs = 8, prev: CouponDto | null = null): CouponDto {
   const sel: Selections = {};
   for (const [k, v] of Object.entries(body.selections)) sel[Number(k)] = v;
   const rowPrice = body.rowPrice ?? fallbackRowPrice;
   const rows = rowCount(sel, legs);
-  return { roundId, budget: body.budget, rowPrice, selections: body.selections, lockedLegs: body.lockedLegs, rows, cost: couponCost(rows, rowPrice), updatedAt: new Date(at).toISOString() };
+  const pick = <K extends keyof CouponBodyE6>(k: K): NonNullable<CouponDto[K]> | null => ((body[k] !== undefined ? body[k] : (prev?.[k] ?? null)) ?? null) as NonNullable<CouponDto[K]> | null;
+  return {
+    roundId,
+    budget: body.budget,
+    rowPrice,
+    selections: body.selections,
+    lockedLegs: body.lockedLegs,
+    rows,
+    cost: couponCost(rows, rowPrice),
+    updatedAt: new Date(at).toISOString(),
+    spikCount: pick("spikCount"),
+    allgMode: pick("allgMode"),
+    allgLeg: pick("allgLeg"),
+    legRoles: pick("legRoles"),
+    copiedAt: pick("copiedAt"),
+    copiedSelections: pick("copiedSelections"),
+  };
 }
 
 // Lägger utkorgens poster för omgången ovanpå cachen.
@@ -290,7 +317,7 @@ export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date
     return recountRace({ ...race, starts, review });
   });
   const pendingCoupon = coupon as { body: CouponBody; at: number } | null;
-  const nextCoupon = pendingCoupon ? couponDtoOf(data.round.id, pendingCoupon.body, data.coupon?.rowPrice ?? data.settings?.rowPrice ?? 0.5, pendingCoupon.at, legsFor(data.round.gameType)) : data.coupon;
+  const nextCoupon = pendingCoupon ? couponDtoOf(data.round.id, pendingCoupon.body, data.coupon?.rowPrice ?? data.settings?.rowPrice ?? 0.5, pendingCoupon.at, legsFor(data.round.gameType), data.coupon) : data.coupon;
   return withNextStep({ ...data, races, coupon: nextCoupon }, now);
 }
 

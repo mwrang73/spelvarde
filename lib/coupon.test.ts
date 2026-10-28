@@ -115,3 +115,66 @@ describe("kroppen till PUT /api/rounds/[id]/coupon", () => {
     expect(parseCouponBody({ budget: 10, selections: {}, userId: "x" }).ok).toBe(false);
   });
 });
+
+// ---- E6 (docs/specs/e6-v85-rad.md 6.5.13 och 12) ------------------------------------------------
+
+import { asLegRoles } from "@/lib/coupon";
+import { buildRad } from "@/lib/tippa";
+import { BJERKE_ROUND, bjerkeLegs, bjerkeRules } from "@/lib/tippa.fixture";
+
+describe("E6: Kopiera-texten med allgardering", () => {
+  const legs = bjerkeLegs();
+  const r = buildRad(legs, bjerkeRules());
+  const numbersByLeg = (scr: Record<number, number[]> = {}) => Object.fromEntries(legs.map((l) => [l.leg, { all: l.starts.map((s) => s.number), scratched: scr[l.leg] ?? [] }]));
+
+  it("mockupens hela text för Bjerke", () => {
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg() })).toBe(
+      ["V85 Bjerke lör 31 okt 2026", "Avd 1: 7, 10, 12", "Avd 2: 2", "Avd 3: 1, 5, 9, 13", "Avd 4: 1", "Avd 5: alla (1–12)", "Avd 6: 3", "Avd 7: 3, 4, 11, 14", "Avd 8: 4", "576 rader · 288,00 kr"].join("\n"),
+    );
+  });
+  it("med strukna i allgarderingen", () => {
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg({ 5: [7] }) }).split("\n")[5]).toBe("Avd 5: alla (1–12, utom 7)");
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg({ 5: [7, 3] }) }).split("\n")[5]).toBe("Avd 5: alla (1–12, utom 3 och 7)");
+  });
+  it("utan opts som före E6", () => {
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5).split("\n")[5]).toBe("Avd 5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12");
+  });
+});
+
+describe("E6: parseCouponBody", () => {
+  const body = { budget: 300, selections: { "4": [1] }, lockedLegs: [4] };
+  const roles = { v: 1, prelim: false, favLimit: 4, legs: { "1": { k: "OPEN", h: { "7": ["T3", "SIG4"] }, favOut: 3 }, "5": { k: "ALLG", fav: 6 } } };
+
+  it("godtar de nya fälten", () => {
+    const p = parseCouponBody({ ...body, spikCount: 4, allgMode: "CHOSEN", allgLeg: 5, legRoles: roles, copiedAt: "2026-10-31T13:05:00.000Z", copiedSelections: { "4": [1] } });
+    expect(p.ok).toBe(true);
+    if (!p.ok) return;
+    expect(p.value).toMatchObject({ spikCount: 4, allgMode: "CHOSEN", allgLeg: 5, legRoles: roles, copiedSelections: { 4: [1] } });
+    expect(p.value.copiedAt?.toISOString()).toBe("2026-10-31T13:05:00.000Z");
+  });
+  it("lämnar saknade fält som undefined och tar null", () => {
+    const p = parseCouponBody(body);
+    expect(p.ok && [p.value.spikCount, p.value.allgMode, p.value.allgLeg, p.value.legRoles, p.value.copiedAt, p.value.copiedSelections]).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
+    const n = parseCouponBody({ ...body, spikCount: null, allgMode: null, allgLeg: null, legRoles: null, copiedAt: null, copiedSelections: null });
+    expect(n.ok && n.value).toMatchObject({ spikCount: null, allgMode: null, allgLeg: null, legRoles: null, copiedAt: null, copiedSelections: null });
+  });
+  it("avvisar okänd allgMode, spikCount 9, legRoles med okänd kod och fel kopieringstid", () => {
+    expect(parseCouponBody({ ...body, allgMode: "NONE" })).toEqual({ ok: false, error: "Allgarderingen ska vara Auto eller en vald avdelning." });
+    expect(parseCouponBody({ ...body, spikCount: 9 }).ok).toBe(false);
+    expect(parseCouponBody({ ...body, spikCount: 2.5 }).ok).toBe(false);
+    expect(parseCouponBody({ ...body, allgLeg: 9 })).toEqual({ ok: false, error: "Avd 9 finns inte i omgången." });
+    expect(parseCouponBody({ ...body, legRoles: { ...roles, legs: { "1": { k: "OPEN", h: { "7": ["XYZ"] } } } } })).toEqual({ ok: false, error: "Ogiltiga skäl i raden." });
+    expect(parseCouponBody({ ...body, legRoles: { ...roles, v: 2 } }).ok).toBe(false);
+    expect(parseCouponBody({ ...body, legRoles: { ...roles, legs: { "9": { k: "OPEN" } } } }).ok).toBe(false);
+    expect(parseCouponBody({ ...body, legRoles: { ...roles, legs: { "1": { k: "OPEN", note: "x".repeat(7000) } } } })).toEqual({ ok: false, error: "Ogiltiga skäl i raden." });
+    expect(parseCouponBody({ ...body, copiedAt: "i går", copiedSelections: {} })).toEqual({ ok: false, error: "Ogiltig kopieringstid." });
+    expect(parseCouponBody({ ...body, copiedAt: "2026-10-31T13:05:00Z" }).ok).toBe(false);
+    expect(parseCouponBody({ ...body, okänt: 1 })).toEqual({ ok: false, error: "Okänt fält i kupongen." });
+  });
+  it("asLegRoles ger null vid fel form", () => {
+    expect(asLegRoles(roles)).toEqual(roles);
+    expect(asLegRoles(null)).toBeNull();
+    expect(asLegRoles({ ...roles, legs: { "1": { k: "NOPE" } } })).toBeNull();
+    expect(asLegRoles(buildRad(bjerkeLegs(), bjerkeRules()).legRoles)).not.toBeNull();
+  });
+});

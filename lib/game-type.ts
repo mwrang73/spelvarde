@@ -26,3 +26,12 @@ export function gameTypeOfId(id: string): GameType | null {
 export const GAME_ID_RE = /^(V75|V85|V86|GS75)_\d{4}-\d{2}-\d{2}_\d{1,3}_\d{1,2}$/;
 
 export const GAME_TYPE_ERROR = "Spelformen ska vara V75, V85, V86 eller GS75.";
+
+// E6 (docs/specs/e6-v85-rad.md): högsta antal spikar och favoritspärren per
+// spelform. Konstanter, inte inställningar (beslut 13).
+export const SPIK_MAX: Record<GameType, number> = { V75: 6, V85: 7, V86: 7, GS75: 6 };
+export const FAV_LIMIT: Record<GameType, number> = { V75: 3, V85: 4, V86: 4, GS75: 3 };
+
+// Okänd spelform räknas som V85 (8 avdelningar), som legsFor.
+export const spikMaxFor = (t: string): number => (isGameType(t) ? SPIK_MAX[t] : SPIK_MAX.V85);
+export const favLimitFor = (t: string): number => (isGameType(t) ? FAV_LIMIT[t] : FAV_LIMIT.V85);

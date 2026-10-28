@@ -2,8 +2,12 @@
 // utan React, testade i lib/coupon-ui.test.ts.
 
 import { BUDGET_MAX, BUDGET_MIN, couponCost, LEGS, rowCount, suggestionOrder, type CouponLeg, type Selections } from "@/lib/coupon";
-import type { CouponBody } from "@/lib/round-overlay";
+import { legsFor } from "@/lib/game-type";
+import type { CouponBody, CouponBodyE6 } from "@/lib/round-overlay";
+import type { TippaLeg } from "@/lib/tippa";
 import type { CouponDto, RoundResponse } from "@/lib/types";
+import { riktX, xOf } from "@/lib/xfactor-ui";
+import type { XFactorSettings } from "@/lib/xfactor";
 
 // Avdelningarna i omgången som indata till förslaget (6.5).
 export function couponLegs(data: RoundResponse): CouponLeg[] {
@@ -20,6 +24,41 @@ export function couponLegs(data: RoundResponse): CouponLeg[] {
       streck: s.streck,
     })),
   }));
+}
+
+// E6: avdelningarna 1..legsFor(gameType) som indata till buildRad (6.5.1).
+// riktX = riktoddset med X-faktor (räknat med factors när de finns, annars
+// serverns värde). Saknas en avdelning i omgången blir den tom (utan startande).
+export function tippaLegs(data: RoundResponse, factors?: XFactorSettings): TippaLeg[] {
+  const out: TippaLeg[] = [];
+  for (let leg = 1; leg <= legsFor(data.round.gameType); leg++) {
+    const r = data.races.find((x) => x.leg === leg);
+    if (!r) {
+      out.push({ leg, startAt: "", cancelled: false, starts: [] });
+      continue;
+    }
+    out.push({
+      leg,
+      startAt: r.startAt,
+      cancelled: r.cancelled,
+      starts: r.starts
+        .map((s) => ({
+          number: s.number,
+          name: s.horse.name,
+          scratched: s.scratched,
+          streck: s.streck,
+          riktX: s.scratched ? null : riktX(s, factors),
+          signals: s.signals?.count ?? null,
+          interesting: !!s.mark?.interesting,
+          spelbar: !!s.mark?.spelbar,
+          bet: !!s.mark?.bet,
+          betOdds: s.mark?.betOdds ?? null,
+          xFactor: xOf(s.mark),
+        }))
+        .sort((a, b) => a.number - b.number),
+    });
+  }
+  return out;
 }
 
 export function selectionsOf(c: CouponDto | null): Selections {
@@ -64,15 +103,32 @@ export function couponSummary(selections: Selections, budget: number, rowPrice: 
   return { rows, cost, left, over: left < 0 };
 }
 
-// Kroppen till PUT /api/rounds/[id]/coupon. Tomma avdelningar skickas inte.
-export function couponBody(budget: number, rowPrice: number | null, selections: Selections, locked: number[]): CouponBody {
+const selRecord = (selections: Selections): Record<string, number[]> => {
   const sel: Record<string, number[]> = {};
   for (const leg of LEGS) {
     const nums = selections[leg];
-    if (nums?.length) sel[String(leg)] = [...nums].sort((a, b) => a - b);
+    if (nums?.length) sel[String(leg)] = [...new Set(nums)].sort((a, b) => a - b);
   }
-  return { budget, rowPrice, selections: sel, lockedLegs: [...new Set(locked)].sort((a, b) => a - b) };
+  return sel;
+};
+
+// Kroppen till PUT /api/rounds/[id]/coupon. Tomma avdelningar skickas inte.
+// E6 (9.3): skicka alltid hela kroppen med e6, så att sammanslagningen i
+// utkorgen aldrig tappar copiedAt.
+export function couponBody(budget: number, rowPrice: number | null, selections: Selections, locked: number[], e6?: CouponBodyE6Input): CouponBody {
+  const body: CouponBody = { budget, rowPrice, selections: selRecord(selections), lockedLegs: [...new Set(locked)].sort((a, b) => a - b) };
+  if (!e6) return body;
+  return {
+    ...body,
+    spikCount: e6.spikCount,
+    allgMode: e6.allgMode,
+    allgLeg: e6.allgLeg,
+    legRoles: e6.legRoles,
+    copiedAt: e6.copiedAt,
+    copiedSelections: e6.copiedSelections ? selRecord(e6.copiedSelections) : null,
+  };
 }
+export type CouponBodyE6Input = Omit<Required<CouponBodyE6>, "copiedSelections"> & { copiedSelections: Selections | null };
 
 // Fältet för exakt budget: hela kronor, 0–100 000. "1 000" och "250 kr" går bra.
 export function parseBudget(text: string): number | null {

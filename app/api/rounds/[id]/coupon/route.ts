@@ -13,11 +13,12 @@ export const GET = withUser<{ id: string }>("rounds/[id]/coupon/get", async ({ p
   return NextResponse.json(res.body, { status: res.status });
 });
 
-// Hela kupongen { budget, rowPrice?, selections: { "1": [3, 10], … }, lockedLegs }.
+// Hela kupongen { budget, rowPrice?, selections: { "1": [3, 10], … }, lockedLegs,
+// spikCount?, allgMode?, allgLeg?, legRoles?, copiedAt?, copiedSelections? } (E6).
 // Idempotent. Ändrat val i en avdelning som har startat ger 409.
 export const PUT = withUser<{ id: string }>("rounds/[id]/coupon/put", async ({ req, params, user }) => {
   if (!isId(params.id)) return badRequest("Ogiltig omgång.");
-  const body = await readJson(req, 8_000);
+  const body = await readJson(req, 16_000);
   if (!body) return badRequest("Ogiltig begäran.");
   const res = await saveCoupon(prisma, user.id, params.id, body, new Date());
   return NextResponse.json(res.body, { status: res.status });

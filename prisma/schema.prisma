@@ -703,9 +703,28 @@ model Coupon {
   lockedLegs Int[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  // E6 (docs/specs/e6-v85-rad.md 8.5). null = raden sparades före E6 (gammal
+  // rad, visas som den är). Databasen har villkoren spikCount 0–8 och allgLeg 1–8.
+  spikCount        Int?
+  allgMode         AllgMode?
+  // CHOSEN: Mikaels val. AUTO: den avdelning appen valde vid senaste sparningen.
+  allgLeg          Int?
+  // Skälen per avdelning och häst vid senaste sparningen (legRoles version 1).
+  legRoles         Json?
+  // Senaste Kopiera texten och raden som kopierades då.
+  copiedAt         DateTime?
+  copiedSelections Json?
 
   @@unique([userId, roundId])
   @@index([roundId])
+  @@schema("spelvarde")
+}
+
+// E6: allgarderingens läge. Ingen NONE (spec 8.5); läggs till med ALTER TYPE … ADD VALUE vid behov.
+enum AllgMode {
+  AUTO
+  CHOSEN
+
   @@schema("spelvarde")
 }
 

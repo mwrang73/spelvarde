@@ -75,3 +75,51 @@ describe("V85-raden med X-faktor (6.5, E2.1)", () => {
     expect(stepLeg(leg, [10], 1)).toEqual([5, 10]);
   });
 });
+
+// ---- E6: tippaLegs och couponBody -----------------------------------------------------------------
+
+import { tippaLegs } from "@/lib/coupon-ui";
+
+describe("E6: tippaLegs och couponBody", () => {
+  const mark = (o: Partial<MarkDto>): MarkDto => ({ interesting: false, spelbar: false, bet: false, betOdds: null, xFactor: "NONE", riktoddsX: null, ...o }) as MarkDto;
+  const start = (number: number, o: Record<string, unknown> = {}) => ({ number, scratched: false, streck: 10, riktodds: 3, horse: { name: `H${number}` }, signals: null, mark: null, ...o });
+  const data = {
+    round: { gameType: "V75" },
+    races: [
+      {
+        leg: 1,
+        startAt: "2026-11-28T15:20:00.000Z",
+        cancelled: false,
+        starts: [
+          start(2, { mark: mark({ interesting: true, xFactor: "TROR", riktoddsX: 2.4 }), signals: { count: 5 } }),
+          start(1, { mark: mark({ interesting: true, spelbar: true, bet: true, betOdds: 2.15 }) }),
+          start(3, { scratched: true }),
+        ],
+      },
+    ],
+  } as unknown as RoundResponse;
+
+  it("ger riktX med X-faktor, signalerna och Bet, sorterat på nummer och 1..legsFor", () => {
+    const legs = tippaLegs(data);
+    expect(legs).toHaveLength(7);
+    expect(legs[0].starts.map((s) => s.number)).toEqual([1, 2, 3]);
+    expect(legs[0].starts[1]).toMatchObject({ name: "H2", riktX: 2.4, signals: 5, xFactor: "TROR", interesting: true });
+    expect(legs[0].starts[0]).toMatchObject({ riktX: 3, bet: true, betOdds: 2.15, spelbar: true });
+    expect(legs[0].starts[2]).toMatchObject({ scratched: true, riktX: null });
+    expect(tippaLegs(data, { xFactorTror: 1.5, xFactorStark: 2 })[0].starts[1].riktX).toBe(2);
+    expect(legs[3]).toEqual({ leg: 4, startAt: "", cancelled: false, starts: [] });
+  });
+
+  it("couponBody tar med de nya fälten", () => {
+    const b = couponBody(300, 0.5, { 4: [1], 1: [10, 7] }, [4], {
+      spikCount: 4,
+      allgMode: "AUTO",
+      allgLeg: 5,
+      legRoles: null,
+      copiedAt: "2026-10-31T13:05:00.000Z",
+      copiedSelections: { 4: [1] },
+    });
+    expect(b).toEqual({ budget: 300, rowPrice: 0.5, selections: { "1": [7, 10], "4": [1] }, lockedLegs: [4], spikCount: 4, allgMode: "AUTO", allgLeg: 5, legRoles: null, copiedAt: "2026-10-31T13:05:00.000Z", copiedSelections: { "4": [1] } });
+    expect(Object.keys(couponBody(300, 0.5, {}, []))).toEqual(["budget", "rowPrice", "selections", "lockedLegs"]);
+  });
+});

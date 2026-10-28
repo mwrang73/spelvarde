@@ -272,3 +272,36 @@ describe("E2.1: X-faktor i det optimistiska läget", () => {
     }
   });
 });
+
+// ---- E6 ------------------------------------------------------------------------------------------
+
+import { couponDtoOf } from "@/lib/round-overlay";
+import type { CouponDto } from "@/lib/types";
+
+describe("E6: couponDtoOf", () => {
+  const prev: CouponDto = {
+    roundId: "r1",
+    budget: 300,
+    rowPrice: 0.5,
+    selections: { "1": [1] },
+    lockedLegs: [],
+    rows: 0,
+    cost: 0,
+    updatedAt: "2026-10-31T10:00:00.000Z",
+    spikCount: 4,
+    allgMode: "CHOSEN",
+    allgLeg: 3,
+    legRoles: { v: 1, prelim: false, favLimit: 4, legs: {} },
+    copiedAt: "2026-10-31T11:00:00.000Z",
+    copiedSelections: { "1": [1] },
+  };
+  it("tar med de nya fälten ur kroppen", () => {
+    const c = couponDtoOf("r1", { budget: 300, rowPrice: 0.5, selections: { "1": [2] }, lockedLegs: [], spikCount: 5, allgMode: "AUTO", allgLeg: 5, legRoles: null, copiedAt: null, copiedSelections: null }, 0.5, 0, 8, prev);
+    expect(c).toMatchObject({ spikCount: 5, allgMode: "AUTO", allgLeg: 5, legRoles: null, copiedAt: null, copiedSelections: null });
+  });
+  it("faller tillbaka på cachen för fält som saknas", () => {
+    const c = couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: { "1": [2] }, lockedLegs: [] }, 0.5, 0, 8, prev);
+    expect(c).toMatchObject({ budget: 200, spikCount: 4, allgMode: "CHOSEN", allgLeg: 3, copiedAt: "2026-10-31T11:00:00.000Z", copiedSelections: { "1": [1] } });
+    expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [] }, 0.5, 0).spikCount).toBeNull();
+  });
+});
