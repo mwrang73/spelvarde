@@ -96,16 +96,24 @@ describe("Bjerke (fixturen)", () => {
     expect(scoreOf([3, 5, 3])).toBe(10104);
   });
 
-  it("5. 100 kr: reglerna ryms inte", () => {
-    const x = buildRad(legs, bjerkeRules({ budget: 100 }));
+  it("5. 30 kr: reglerna ryms inte ens med avvikelser", () => {
+    const x = buildRad(legs, bjerkeRules({ budget: 30 }));
     expect(x.status).toBe("RULES_DONT_FIT");
-    expect(x.minRows).toBe(324);
-    expect(x.minCost).toBe(162);
-    expect(x.suggestions).toEqual([{ kind: "BUDGET", budget: 162 }, { kind: "SPIKES", spikCount: 5, minCost: 54 }]);
+    // Minsta: allgarderingen 12 − 2 = 10 och 2 hästar i de 3 öppna loppen.
+    expect(x.minRows).toBe(80);
+    expect(x.minCost).toBe(40);
+    expect(x.suggestions).toEqual([{ kind: "BUDGET", budget: 40 }, { kind: "SPIKES", spikCount: 5, minCost: 20 }]);
     expect(x.canCopy).toBe(false);
     expect(rulesDontFitText(x)).toBe(
-      "**Reglerna ryms inte i 100 kr.** 4 spikar, allgardering av avd 5 (12 hästar) och minst 3 hästar i de 3 andra loppen ger minst 324 rader, alltså 162,00 kr. Ingen ny rad föreslås förrän det ryms.",
+      "**Reglerna ryms inte i 30 kr.** 4 spikar, allgardering av avd 5 (10 hästar) och minst 2 hästar i de 3 andra loppen ger minst 80 rader, alltså 40,00 kr. Ingen ny rad föreslås förrän det ryms.",
     );
+  });
+
+  it("5b. budgeten som mål: 100 kr ger exakt 100 kr med avvikelser från mallen", () => {
+    const x = buildRad(legs, bjerkeRules({ budget: 100 }));
+    expect(x.status).toBe("OK");
+    expect(x.cost).toBe(100);
+    expect(x.allgDropped + x.relaxedLegs.length).toBeGreaterThan(0);
   });
 
   it("6. 5 spikar", () => {
@@ -113,24 +121,26 @@ describe("Bjerke (fixturen)", () => {
     expect(x.spikLegs).toEqual([2, 8, 6, 7]);
     expect(x.legs[6].kind).toBe("SPIK");
     expect(x.legs[6].horses[0].name).toBe("Blizzard Diamant");
-    expect(x.minRows).toBe(108);
+    expect(x.minRows).toBe(40);
   });
 
   it("7. eget val i avd 7 (A4) och förhandsvisningen", () => {
     const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [3, 4, 8, 11, 14] } }));
-    expect(x.rows).toBe(540);
-    expect(x.cost).toBe(270);
-    expect(x.selections[3]).toEqual([5, 9, 13]);
+    // Närmast 288 kr: 600 rader · 300 kr (inom 5 % över), avd 1 får 2 hästar.
+    expect(x.rows).toBe(600);
+    expect(x.cost).toBe(300);
+    expect(x.selections[3]).toEqual([1, 2, 5, 9, 13]);
+    expect(x.relaxedLegs).toEqual([1]);
     expect(x.legs[6].kind).toBe("OWN");
-    expect(previewChangeText(r, x, 7)).toContain("Avd 3 går från 4 till 3 hästar (1 Järvsö Elina tas bort) för att raden ska rymmas i **300 kr**.");
+    expect(previewChangeText(r, x, 7)).toContain("Avd 1 går från 3 till 2 hästar (12 Kaptein Sabeltann tas bort) för att raden ska komma nära **288 kr**.");
   });
 
   it("8. eget val i avd 7 med 9 hästar ryms inte", () => {
-    const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [2, 3, 4, 5, 7, 8, 9, 11, 14] } }));
+    const x = buildRad(legs, bjerkeRules({ budget: 100, locked: { 4: [1], 7: [2, 3, 4, 5, 7, 8, 9, 11, 14] } }));
     expect(x.status).toBe("OWN_OVER_BUDGET");
-    expect(x.rows).toBe(972);
-    expect(x.cost).toBe(486);
-    expect(x.suggestions).toEqual([{ kind: "EDIT_LEG", leg: 7 }, { kind: "BUDGET", budget: 486 }]);
+    expect(x.rows).toBe(360);
+    expect(x.cost).toBe(180);
+    expect(x.suggestions).toEqual([{ kind: "EDIT_LEG", leg: 7 }, { kind: "BUDGET", budget: 180 }]);
     expect(x.canCopy).toBe(true);
   });
 
@@ -248,7 +258,7 @@ describe("minsta val och lägen", () => {
     const other = (n: number): TippaLeg => ({ leg: n, startAt: "", cancelled: false, starts: [st(1, 50, 1.5), st(2, 30, 2), st(3, 20, 3)] });
     const allg: TippaLeg = { leg: 8, startAt: "", cancelled: false, starts: [st(1, 10, 3), st(2, 10, 3)] };
     const x = buildRad([leg, ...[2, 3, 4, 5, 6, 7].map(other), allg], { ...rules, budget: 1000 });
-    expect(x.legs[0].horses.find((h) => h.number === 8)!.reasons).toEqual(["LOW", "FEL"]);
+    expect(x.legs[0].field.find((h) => h.number === 8)!.reasons).toEqual(["LOW", "FEL"]);
   });
 
   it("17. få startande", () => {
@@ -325,7 +335,7 @@ describe("minsta val och lägen", () => {
     const x = buildRad(bjerkeLegs(), bjerkeRules({ budget: 0 }));
     expect(x.status).toBe("RULES_DONT_FIT");
     expect(x.maxRows).toBe(0);
-    expect(x.suggestions[0]).toEqual({ kind: "BUDGET", budget: 162 });
+    expect(x.suggestions[0]).toEqual({ kind: "BUDGET", budget: 40 });
   });
 
   it("24. V75", () => {
@@ -382,8 +392,8 @@ describe("maximizeHorses", () => {
 
 describe("standardvärden och ordning", () => {
   it("28. defaultSpikCount", () => {
-    expect(defaultSpikCount(bjerkeLegs(), bjerkeRules())).toBe(4);
-    expect(defaultSpikCount(bjerkeLegs(), bjerkeRules({ budget: 100 }))).toBe(5);
+    expect(defaultSpikCount(bjerkeLegs(), bjerkeRules())).toBe(2);
+    expect(defaultSpikCount(bjerkeLegs(), bjerkeRules({ budget: 100 }))).toBe(3);
     expect(defaultSpikCount(bjerkeLegs(), bjerkeRules({ budget: 0 }))).toBe(7);
   });
 

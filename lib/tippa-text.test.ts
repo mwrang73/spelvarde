@@ -31,8 +31,7 @@ import {
   scratchNotices,
   spikHelp,
   suggestionLabel,
-  suggestionToast,
-} from "@/lib/tippa-text";
+  suggestionToast, templateDeviationText } from "@/lib/tippa-text";
 
 const legs = bjerkeLegs();
 const r = buildRad(legs, bjerkeRules());
@@ -135,31 +134,31 @@ describe("Avdelningskortet", () => {
 
 describe("Budgeten", () => {
   it("reglerna ryms inte, förslagen och live-regionen", () => {
-    const x = buildRad(legs, bjerkeRules({ budget: 100 }));
+    const x = buildRad(legs, bjerkeRules({ budget: 30 }));
     expect(rulesDontFitText(x)).toBe(
-      "**Reglerna ryms inte i 100 kr.** 4 spikar, allgardering av avd 5 (12 hästar) och minst 3 hästar i de 3 andra loppen ger minst 324 rader, alltså 162,00 kr. Ingen ny rad föreslås förrän det ryms.",
+      "**Reglerna ryms inte i 30 kr.** 4 spikar, allgardering av avd 5 (10 hästar) och minst 2 hästar i de 3 andra loppen ger minst 80 rader, alltså 40,00 kr. Ingen ny rad föreslås förrän det ryms.",
     );
-    expect(x.suggestions.map(suggestionLabel)).toEqual(["Höj till 162 kr", "5 spikar · minst 54,00 kr"]);
-    expect(x.suggestions.map(suggestionToast)).toEqual(["Budgeten är 162 kr · Ångra", "5 spikar · Ångra"]);
-    expect(liveSummary(x)).toBe("Reglerna ryms inte i 100 kronor. Behövs minst 162,00 kronor.");
-    expect(liveSummary(r)).toBe("4 spikar. 576 rader, 288,00 kronor. Kvar 12,00 kronor.");
+    expect(x.suggestions.map(suggestionLabel)).toEqual(["Höj till 40 kr", "5 spikar · minst 20,00 kr"]);
+    expect(x.suggestions.map(suggestionToast)).toEqual(["Budgeten är 40 kr · Ångra", "5 spikar · Ångra"]);
+    expect(liveSummary(x)).toBe("Reglerna ryms inte i 30 kronor. Behövs minst 40,00 kronor.");
+    expect(liveSummary(r)).toBe("4 spikar. 576 rader, 288,00 kronor. Kvar 0,00 kronor.");
     const own = buildRad(legs, bjerkeRules({ budget: 20, locked: { 4: [1], 7: [3, 4] } }));
-    expect(rulesDontFitText(own)).toContain(", ditt eget val i avd 7 (2 hästar) och minst 3 hästar i de 2 andra loppen");
+    expect(rulesDontFitText(own)).toContain(", ditt eget val i avd 7 (2 hästar) och minst 2 hästar i de 2 andra loppen");
   });
 
   it("eget val ryms inte", () => {
-    const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [2, 3, 4, 5, 7, 8, 9, 11, 14] } }));
-    expect(ownOverText(x)).toBe("**Avd 7 med 9 hästar ryms inte.** Även när de andra loppen har minsta antal blir raden 972 rader · 486,00 kr. Ingenting blockeras, men raden är över budget.");
-    expect(x.suggestions.map(suggestionLabel)).toEqual(["Ändra avd 7", "Höj till 486 kr"]);
-    expect(liveSummary(x)).toBe("972 rader, 486,00 kronor. Över budget med 186,00 kronor.");
-    expect(previewChangeText(r, x, 7)).toContain("Raden blir 972 rader · 486,00 kr, över budget med 186,00 kr.");
+    const x = buildRad(legs, bjerkeRules({ budget: 100, locked: { 4: [1], 7: [2, 3, 4, 5, 7, 8, 9, 11, 14] } }));
+    expect(ownOverText(x)).toBe("**Avd 7 med 9 hästar ryms inte.** Även när de andra loppen har minsta antal blir raden 360 rader · 180,00 kr. Ingenting blockeras, men raden är över budget.");
+    expect(x.suggestions.map(suggestionLabel)).toEqual(["Ändra avd 7", "Höj till 180 kr"]);
+    expect(liveSummary(x)).toBe("360 rader, 180,00 kronor. Över budget med 80,00 kronor.");
+    expect(previewChangeText(r, x, 7)).toContain("Raden blir 360 rader · 180,00 kr, över budget med 80,00 kr.");
   });
 });
 
 describe("Förhandsvisningen (A4)", () => {
   it("meningarna", () => {
     const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [3, 4, 8, 11, 14] } }));
-    expect(previewChangeText(r, x, 7)).toBe("Avd 3 går från 4 till 3 hästar (1 Järvsö Elina tas bort) för att raden ska rymmas i **300 kr**. Övriga avdelningar ändras inte.");
+    expect(previewChangeText(r, x, 7)).toContain("Avd 1 går från 3 till 2 hästar (12 Kaptein Sabeltann tas bort) för att raden ska komma nära **288 kr**.");
     const spik = buildRad(legs, bjerkeRules({ locked: { 4: [1], 6: [3, 7] } }));
     expect(previewChangeText(r, spik, 6)).toContain("Spiken flyttar från avd 6 till avd 7.");
     const allg = buildRad(legs, bjerkeRules({ locked: { 4: [1], 5: [6, 2] } }));
@@ -238,7 +237,18 @@ describe("Vyns banderoller", () => {
   });
   it("orsaken till att Kopiera är avstängd", () => {
     expect(copyBlockedReason(r)).toBeNull();
-    expect(copyBlockedReason(buildRad(legs, bjerkeRules({ budget: 100 })))).toBe("Raden ryms inte i budgeten.");
+    expect(copyBlockedReason(buildRad(legs, bjerkeRules({ budget: 30 })))).toBe("Raden ryms inte i budgeten.");
     expect(copyBlockedReason(buildRad(withStart(legs, 4, 1, { scratched: true }), bjerkeRules()))).toBe("Välj en ny spik i avd 4 först.");
+  });
+});
+
+describe("Avvikelser från mallen (budgeten som mål)", () => {
+  it("texten nämner allgarderingen och loppen med 2 hästar", () => {
+    expect(templateDeviationText(r)).toBeNull();
+    const x = buildRad(legs, bjerkeRules({ budget: 100 }));
+    const t = templateDeviationText(x)!;
+    expect(t).toMatch(/^För att komma nära din budget avviker raden från mallen\./);
+    if (x.allgDropped) expect(t).toContain(`Avd ${x.allgLeg} har ${12 - x.allgDropped} av 12 hästar`);
+    for (const l of x.relaxedLegs) expect(t).toContain(`${l}`);
   });
 });

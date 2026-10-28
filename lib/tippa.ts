@@ -435,6 +435,10 @@ export type TippaLegResult = {
 };
 
 export type TippaResult = {
+  // Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28):
+  // hästar som allgarderingen tappade och öppna lopp med bara 2 hästar.
+  allgDropped: number;
+  relaxedLegs: number[];
   gameType: string;
   legCount: number;
   favLimit: number;
@@ -621,7 +625,8 @@ const maxRowsOf = (budget: number, rowPrice: number) => Math.max(0, Math.floor(M
 // minRader för ett visst antal spikar (6.5.10 och 6.5.14).
 function minRowsFor(prep: Prep[], rules: TippaRules, favLimit: number, spikCount: number): { minRows: number; d: Decision } {
   const d = decide(prep, rules, favLimit, spikCount);
-  return { minRows: d.fast * d.loProd, d };
+  const t = targetParts(prep, d);
+  return { minRows: t.fastX * t.minProd, d };
 }
 
 // Standardantalet spikar för en ny rad (6.5.14): det minsta s i [ownSpikes,
@@ -629,7 +634,7 @@ function minRowsFor(prep: Prep[], rules: TippaRules, favLimit: number, spikCount
 export function defaultSpikCount(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = {}): number {
   const favLimit = opts.favLimit ?? favLimitFor(rules.gameType);
   const prep = prepare(legs, rules.gameType, rules.locked);
-  const maxRows = maxRowsOf(rules.budget, rules.rowPrice);
+  const maxRows = upperRowsOf(rules.budget, rules.rowPrice);
   const first = decide(prep, rules, favLimit, 0);
   for (let s = first.spikMin; s <= first.spikMax; s++) {
     if (minRowsFor(prep, rules, favLimit, s).minRows <= maxRows) return s;
@@ -647,7 +652,7 @@ export function suggestions(legs: TippaLeg[], rules: TippaRules, result: Pick<Ti
     const prep = prepare(legs, rules.gameType, rules.locked);
     for (let s = result.spikEffective + 1; s <= result.spikMax; s++) {
       const m = minRowsFor(prep, rules, favLimit, s).minRows;
-      if (m <= result.maxRows) {
+      if (m <= upperRowsOf(rules.budget, rules.rowPrice)) {
         out.push({ kind: "SPIKES", spikCount: s, minCost: couponCost(m, rules.rowPrice) });
         break;
       }
@@ -661,6 +666,109 @@ export function suggestions(legs: TippaLeg[], rules: TippaRules, result: Pick<Ti
   return out;
 }
 
+// ---- Budgeten som mål (Mikael 2026-10-28) ------------------------------------------------------
+// Kostnaden ska komma så nära budgeten som möjligt, högst BUDGET_OVER_MAX
+// över. För att nå dit får raden avvika från mallen: allgarderingen tappar
+// högst ALLG_DROP_MAX hästar (de lägst rankade) och ett öppet lopp får gå ned
+// till 2 hästar (bästa Topp 3 + högst rankade av övriga). Varje avvikelse
+// kostar en poäng, och vid samma avstånd till budgeten vinner minst avvikelse,
+// sedan flest hästar och högst rangpoäng.
+export const BUDGET_OVER_MAX = 0.05;
+export const ALLG_DROP_MAX = 2;
+export const OPEN_RELAXED_MIN = 2;
+
+type Open = Decision["open"][number];
+type Opt = { k: number; pen: number; score: number };
+
+// Valda startnummer i ett öppet lopp för k hästar.
+function openSelection(o: Open, k: number): number[] {
+  if (k >= o.min.lo) return [...o.min.picks, ...o.min.rest.slice(0, k - o.min.lo).map((h) => h.number)];
+  const first = o.min.picks[0];
+  const pool = o.prep.facts.runners.filter((h) => h.number !== first && !(o.banned && h.favorite));
+  return [first, ...pool.slice(0, k - 1).map((h) => h.number)].filter((n) => n !== undefined);
+}
+function openOptions(o: Open): Opt[] {
+  const byNum = new Map(o.prep.facts.runners.map((h) => [h.number, h.score]));
+  const lo = o.min.few ? o.min.lo : Math.min(o.min.lo, OPEN_RELAXED_MIN);
+  const out: Opt[] = [];
+  for (let k = lo; k <= openHi(o); k++) {
+    out.push({ k, pen: k < o.min.lo ? 1 : 0, score: openSelection(o, k).reduce((a, n) => a + (byNum.get(n) ?? 0), 0) });
+  }
+  return out;
+}
+function allgOptions(runners: HorseFact[]): Opt[] {
+  const n = runners.length;
+  const out: Opt[] = [];
+  for (let k = Math.max(1, n - ALLG_DROP_MAX); k <= n; k++) out.push({ k, pen: n - k, score: runners.slice(0, k).reduce((a, h) => a + h.score, 0) });
+  return out;
+}
+const minK = (opts: Opt[]) => Math.min(...opts.map((o) => o.k));
+
+type Target = { k: number[]; product: number; pen: number; states: number };
+// Exakt: välj ett alternativ per lopp så att fast × Π k ligger närmast B
+// (högst upper), vid lika avstånd under hellre än över, sedan minst avvikelse,
+// flest hästar, högst poäng.
+export function targetRows(legOpts: Opt[][], fast: number, B: number, upper: number): Target | null {
+  const capP = Math.floor(upper / fast);
+  type St = { pen: number; h: number; s: number; prev: number; k: number };
+  const stages: Map<number, St>[] = [];
+  let cur = new Map<number, St>([[1, { pen: 0, h: 0, s: 0, prev: 0, k: 0 }]]);
+  let states = 1;
+  const better = (a: St, b: St) => a.pen < b.pen || (a.pen === b.pen && (a.h > b.h || (a.h === b.h && a.s > b.s)));
+  for (const opts of legOpts) {
+    const next = new Map<number, St>();
+    for (const [p, st] of cur) {
+      for (const o of opts) {
+        const p2 = p * o.k;
+        if (p2 > capP) continue;
+        const cand = { pen: st.pen + o.pen, h: st.h + o.k, s: st.s + o.score, prev: p, k: o.k };
+        const ex = next.get(p2);
+        if (!ex || better(cand, ex)) next.set(p2, cand);
+      }
+    }
+    stages.push(next);
+    states = Math.max(states, next.size);
+    cur = next;
+  }
+  let bestP = -1;
+  let best: St | null = null;
+  for (const [p, st] of cur) {
+    if (!best) {
+      best = st;
+      bestP = p;
+      continue;
+    }
+    const d = Math.abs(fast * p - B);
+    const db = Math.abs(fast * bestP - B);
+    if (d < db || (d === db && (p < bestP || (p === bestP && better(st, best))))) {
+      best = st;
+      bestP = p;
+    }
+  }
+  if (!best) return null;
+  const k: number[] = new Array(legOpts.length);
+  let p = bestP;
+  for (let i = legOpts.length - 1; i >= 0; i--) {
+    const st = stages[i].get(p)!;
+    k[i] = st.k;
+    p = st.prev;
+  }
+  return { k, product: bestP, pen: best.pen, states };
+}
+
+// Allgarderingens lopp (fritt, med löpande) och produkten av övriga fasta lopp.
+function targetParts(prep: Prep[], d: Decision) {
+  const allgPrep = d.allg.leg ? prep.find((p) => p.leg === d.allg.leg && p.base === "FREE" && p.facts.runners.length > 0) ?? null : null;
+  const n = allgPrep?.facts.runners.length ?? 1;
+  const fastX = allgPrep ? d.fast / n : d.fast;
+  const fastOwnX = allgPrep ? d.fastOwnAs1 / n : d.fastOwnAs1;
+  const legOpts: Opt[][] = d.open.map(openOptions);
+  if (allgPrep) legOpts.push(allgOptions(allgPrep.facts.runners));
+  const minProd = legOpts.reduce((a, o) => a * minK(o), 1);
+  return { allgPrep, fastX, fastOwnX, legOpts, minProd };
+}
+const upperRowsOf = (budget: number, rowPrice: number) => Math.max(0, Math.floor((Math.round(Math.max(0, budget) * 100) * (1 + BUDGET_OVER_MAX)) / priceOre(rowPrice) + EPS));
+
 // ---- buildRad --------------------------------------------------------------------------------
 
 export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = {}): TippaResult {
@@ -669,24 +777,23 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
   const prep = prepare(legs, rules.gameType, rules.locked);
   const d = decide(prep, rules, favLimit, rules.spikCount);
   const maxRows = maxRowsOf(rules.budget, rules.rowPrice);
-  const minRows = d.fast * d.loProd;
+  const upperRows = upperRowsOf(rules.budget, rules.rowPrice);
+  const tp = targetParts(prep, d);
+  const minRows = tp.fastX * tp.minProd;
 
   let status: TippaStatus = "OK";
-  let ks: number[] = d.open.map((o) => o.min.lo);
+  // Utan rad (ryms inte): minsta tillåtna, som texterna och kostnaden visar.
+  let ks: number[] = tp.legOpts.slice(0, d.open.length).map(minK);
+  let allgK = tp.allgPrep ? minK(tp.legOpts[d.open.length]) : 0;
   let allFit = false;
   let dpStates = 0;
-  if (minRows <= maxRows) {
-    const R = Math.floor(maxRows / d.fast);
-    const mlegs: MaxLeg[] = d.open.map((o) => {
-      const gains = [0];
-      for (const h of o.min.rest) gains.push(gains[gains.length - 1] + h.score);
-      return { lo: o.min.lo, hi: openHi(o), gains };
-    });
-    const m = maximizeHorses(mlegs, R)!;
-    ks = m.k;
-    dpStates = m.states;
-    allFit = d.open.length > 0 && mlegs.reduce((a, l) => a * l.hi, 1) <= R;
-  } else if (d.fastOwnAs1 * d.loProd <= maxRows) {
+  if (minRows <= upperRows) {
+    const t = targetRows(tp.legOpts, tp.fastX, maxRows, upperRows)!;
+    ks = t.k.slice(0, d.open.length);
+    if (tp.allgPrep) allgK = t.k[d.open.length];
+    dpStates = t.states;
+    allFit = d.open.length > 0 && tp.fastX * tp.legOpts.reduce((a, o) => a * Math.max(...o.map((x) => x.k)), 1) <= maxRows;
+  } else if (tp.fastOwnX * tp.minProd <= upperRows) {
     status = "OWN_OVER_BUDGET";
   } else {
     status = "RULES_DONT_FIT";
@@ -718,15 +825,15 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
       selection = p.lockedSel!;
     } else if (p.leg === d.allg.leg) {
       kind = "ALLG";
-      selection = f.runners.map((h) => h.number);
+      selection = f.runners.slice(0, tp.allgPrep && p.leg === tp.allgPrep.leg ? allgK : f.runners.length).map((h) => h.number);
     } else if (spikHorseOf.has(p.leg)) {
       kind = "SPIK";
       selection = [spikHorseOf.get(p.leg)!];
     } else {
       kind = "OPEN";
       const k = ks[oi!];
-      selection = [...open!.min.picks, ...open!.min.rest.slice(0, k - open!.min.lo).map((h) => h.number)];
-      lo = open!.min.lo;
+      selection = openSelection(open!, k);
+      lo = minK(tp.legOpts[oi!]);
       hi = openHi(open!);
     }
     selection = [...selection].sort((a, b) => a - b);
@@ -820,6 +927,8 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     suggestions: [],
     legRoles: { v: 1, prelim: false, favLimit, legs: {} },
     dpStates,
+    allgDropped: tp.allgPrep ? tp.allgPrep.facts.runners.length - allgK : 0,
+    relaxedLegs: d.open.filter((o, i) => !o.min.few && ks[i] < o.min.lo).map((o) => o.prep.leg).sort((a, b) => a - b),
   };
   result.suggestions = suggestions(legs, rules, result, opts);
   result.legRoles = legRolesOf(result);

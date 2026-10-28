@@ -26,7 +26,7 @@ import { BUDGET_ERROR, couponBody, parseBudget, parseRowPrice, ROW_PRICE_ERROR, 
 import { hhmm, odds, thousands } from "@/lib/format";
 import { legsFor } from "@/lib/game-type";
 import { applySettings, xFactorsOf, type CouponBody } from "@/lib/round-overlay";
-import { buildRad, defaultSpikCount, type TippaLegResult, type TippaResult, type TippaRules, type TippaSuggestion } from "@/lib/tippa";
+import { BUDGET_OVER_MAX, buildRad, defaultSpikCount, type TippaLegResult, type TippaResult, type TippaRules, type TippaSuggestion } from "@/lib/tippa";
 import {
   copyBlockedReason,
   copyChangedText,
@@ -41,6 +41,7 @@ import {
   NO_RIKT_TEXT,
   OFFLINE_TEXT,
   ownOverText,
+  templateDeviationText,
   prelimText,
   rulesDontFitText,
   scratchNotices,
@@ -476,6 +477,12 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         <Bold text={ownOverText(result)} />
       </Banner>
     );
+  else if (mode === "live" && result.status === "OK" && templateDeviationText(result))
+    budgetBanner = (
+      <Banner tone="info" className="m">
+        {templateDeviationText(result)}
+      </Banner>
+    );
 
   const scratchBanners = notices.map((n) => {
     const actions =
@@ -741,7 +748,9 @@ function Budget({
   };
   const slider = Math.min(BUDGET_SLIDER.max, Math.max(BUDGET_SLIDER.min, budget));
   const left = Math.round((budget - cost) * 100) / 100;
-  const over = !dontFit && left < 0;
+  // Upp till BUDGET_OVER_MAX över är tillåtet (budgeten är ett mål), och visas neutralt.
+  const overAllowed = !dontFit && left < 0 && cost <= budget * (1 + BUDGET_OVER_MAX) + 1e-9;
+  const over = !dontFit && left < 0 && !overAllowed;
 
   return (
     <div className="budget brd">
@@ -812,13 +821,14 @@ function Budget({
           </div>
         ) : (
           <div className={over ? "over" : undefined}>
-            <small>{over ? "Över budget" : "Kvar"}</small>
+            <small>{over || overAllowed ? "Över budget" : "Kvar"}</small>
             <b className="num">{krText(Math.abs(left))}</b>
           </div>
         )}
       </div>
       {dontFit && <p className="over-line">{minRowsText}</p>}
       {over && <p className="over-line">Över budget med {krText(-left)}</p>}
+      {overAllowed && <p className="help near-line">Närmast din budget: {krText(-left)} över (högst 5 % tillåts).</p>}
       {allFit && !over && <p className="allfit">Budgeten räcker till alla hästar i de öppna loppen.</p>}
       {editPrice ? (
         <div className="rp-edit">

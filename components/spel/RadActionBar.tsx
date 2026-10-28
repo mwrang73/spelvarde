@@ -5,6 +5,7 @@
 import { forwardRef, useId } from "react";
 import { IconCopy } from "@/components/ui/icons";
 import { thousands } from "@/lib/format";
+import { BUDGET_OVER_MAX } from "@/lib/tippa";
 import { krText, wholeKr } from "@/lib/tippa-text";
 
 type Props = { rows: number; cost: number; budget: number; dontFit: boolean; blocked: string | null; onCopy: () => void };
@@ -27,7 +28,7 @@ export const RadActionBar = forwardRef<HTMLButtonElement, Props>(function RadAct
             <span>
               <b className="num">{thousands(rows)}</b> {rows === 1 ? "rad" : "rader"} · <b className="num">{krText(cost)}</b>
             </span>
-            {left < 0 ? <span className="down">Över budget med {krText(-left)}</span> : <span>Kvar {krText(left)} av {wholeKr(budget)}</span>}
+            {left < 0 ? <span className={cost > budget * (1 + BUDGET_OVER_MAX) + 1e-9 ? "down" : undefined}>{krText(-left)} över {wholeKr(budget)}</span> : <span>Kvar {krText(left)} av {wholeKr(budget)}</span>}
           </>
         )}
       </div>

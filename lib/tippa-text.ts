@@ -330,7 +330,7 @@ export function previewChangeText(before: TippaResult, after: TippaResult, leg: 
     const removed = b.selection.filter((n) => !a.selection.includes(n)).map(name);
     const what = [added.length ? `${joinSv(added)} kommer med` : "", removed.length ? `${joinSv(removed)} tas bort` : ""].filter(Boolean).join(", ");
     if (a.selection.length === b.selection.length) legSentences.push(`Avd ${a.leg} byter häst (${what}).`);
-    else if (a.selection.length < b.selection.length) legSentences.push(`Avd ${a.leg} går från ${b.selection.length} till ${a.selection.length} hästar (${what}) för att raden ska rymmas i **${wholeKr(after.budget)}**.`);
+    else if (a.selection.length < b.selection.length) legSentences.push(`Avd ${a.leg} går från ${b.selection.length} till ${a.selection.length} hästar (${what}) för att raden ska komma nära **${wholeKr(after.budget)}**.`);
     else legSentences.push(`Avd ${a.leg} går från ${b.selection.length} till ${a.selection.length} hästar (${what}).`);
   }
   sentences.push(...legSentences.slice(0, MAX_LEG_SENTENCES));
@@ -519,4 +519,18 @@ export function copyBlockedReason(r: TippaResult): string | null {
   if (r.struckOwnSpik.length) return `Välj en ny spik i avd ${r.struckOwnSpik[0]} först.`;
   if (r.noStarters.length) return `Avd ${r.noStarters[0]} har inga startande.`;
   return null;
+}
+
+// Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28).
+export function templateDeviationText(r: { allgDropped: number; relaxedLegs: number[]; allgLeg: number | null; legs: { leg: number; field: unknown[] }[] }): string | null {
+  const parts: string[] = [];
+  if (r.allgDropped > 0 && r.allgLeg) {
+    const n = r.legs.find((l) => l.leg === r.allgLeg)?.field.length ?? 0;
+    parts.push(`Avd ${r.allgLeg} har ${n - r.allgDropped} av ${n} hästar`);
+  }
+  if (r.relaxedLegs.length) {
+    const list = r.relaxedLegs.length === 1 ? `Avd ${r.relaxedLegs[0]} har` : `Avd ${r.relaxedLegs.slice(0, -1).join(", ")} och ${r.relaxedLegs[r.relaxedLegs.length - 1]} har`;
+    parts.push(`${list} 2 hästar (bästa Topp 3 och högst rankade av övriga)`);
+  }
+  return parts.length ? `För att komma nära din budget avviker raden från mallen. ${parts.join(". ")}.` : null;
 }

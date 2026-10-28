@@ -2,7 +2,7 @@
 // egen frögenerator (mulberry32, fröet 20261028), och prestandatestet.
 import { describe, expect, it } from "vitest";
 import { spikMaxFor } from "@/lib/game-type";
-import { buildRad, legFacts, maximizeHorses, minimumPicks, type TippaLeg, type TippaResult, type TippaRules, type TippaStart, openHiOf } from "@/lib/tippa";
+import { buildRad, legFacts, maximizeHorses, minimumPicks, type TippaLeg, type TippaResult, type TippaRules, type TippaStart, openHiOf, BUDGET_OVER_MAX, ALLG_DROP_MAX } from "@/lib/tippa";
 import { bjerkeLegs, bjerkeRules } from "@/lib/tippa.fixture";
 
 function mulberry32(seed: number) {
@@ -71,8 +71,8 @@ function genRound(r: Rnd, i: number): { legs: TippaLeg[]; rules: TippaRules } {
 const reversed = (legs: TippaLeg[]) => [...legs].reverse().map((l) => ({ ...l, starts: [...l.starts].reverse() }));
 
 function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
-  // 1. OK ryms i budgeten.
-  if (x.status === "OK") expect(x.cost).toBeLessThanOrEqual(rules.budget + 1e-9);
+  // 1. OK ligger högst BUDGET_OVER_MAX över budgeten.
+  if (x.status === "OK") expect(x.cost).toBeLessThanOrEqual(rules.budget * (1 + BUDGET_OVER_MAX) + 1e-9);
   for (const l of x.legs) {
     const raw = legs.find((y) => y.leg === l.leg)!;
     const scratched = new Set(raw.starts.filter((s) => s.scratched).map((s) => s.number));
@@ -81,8 +81,13 @@ function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
     if (l.kind === "OPEN" && runners.length >= 4) {
       const codes = l.horses.flatMap((h) => h.reasons);
       expect(codes.includes("T3")).toBe(true);
-      expect(codes.includes("MEL") || codes.includes("NOMEL")).toBe(true);
-      expect(codes.includes("SKR") || codes.includes("LOW")).toBe(true);
+      if (x.relaxedLegs.includes(l.leg)) {
+        // Avvikelse för budgeten: bästa Topp 3 + högst rankade av övriga.
+        expect(l.selection.length).toBe(2);
+      } else {
+        expect(codes.includes("MEL") || codes.includes("NOMEL")).toBe(true);
+        expect(codes.includes("SKR") || codes.includes("LOW")).toBe(true);
+      }
     }
     // 4. Låsta avdelningar oförändrade, utom strukna (6.5.3).
     const lock = rules.locked[l.leg];
@@ -107,12 +112,18 @@ function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
     expect(x.lockedLegs).not.toContain(x.allgLeg);
     expect(x.cancelled).not.toContain(x.allgLeg);
   }
-  // 8. Lokalt maximal: ingen öppen avdelning kan få en häst till.
+  // 8. Lokalt bäst: en häst mer eller mindre i ett öppet lopp kommer inte
+  // närmare budgeten (inom taket).
   if (x.status === "OK") {
+    const upper = Math.floor((rules.budget * (1 + BUDGET_OVER_MAX)) / rules.rowPrice + 1e-9);
+    const dist = (rows: number) => Math.abs(rows - x.maxRows);
     for (const l of x.legs) {
-      if (l.kind !== "OPEN" || l.selection.length >= l.hi) continue;
-      const next = (x.rows / l.selection.length) * (l.selection.length + 1);
-      expect(next).toBeGreaterThan(x.maxRows);
+      if (l.kind !== "OPEN") continue;
+      for (const k of [l.selection.length - 1, l.selection.length + 1]) {
+        if (k < l.lo || k > l.hi) continue;
+        const rows = (x.rows / l.selection.length) * k;
+        if (rows <= upper) expect(dist(rows)).toBeGreaterThanOrEqual(dist(x.rows));
+      }
     }
   }
 }
@@ -138,7 +149,7 @@ describe("egenskaper (1 000 omgångar, fröet 20261028)", () => {
     expect(status.OWN_OVER_BUDGET ?? 0).toBeGreaterThan(0);
   });
 
-  it("9. optimal: samma antal hästar och poäng som en uttömmande sökning", () => {
+  it("9. optimal: kostnaden ligger lika nära budgeten som en uttömmande sökning", () => {
     const r = mulberry32(20261028 + 9);
     let checked = 0;
     for (let i = 0; checked < 300 && i < 20_000; i++) {
@@ -148,33 +159,24 @@ describe("egenskaper (1 000 omgångar, fröet 20261028)", () => {
       const rules: TippaRules = { gameType, budget: int(r, 20, 600), rowPrice: [0.25, 0.5, 1][int(r, 0, 2)], spikCount: spikMaxFor(gameType) - int(r, 0, 3), allgMode: "AUTO", allgLeg: null, locked: {} };
       const x = buildRad(legs, rules);
       const open = x.legs.filter((l) => l.kind === "OPEN");
-      if (x.status !== "OK" || open.length > 3 || open.some((l) => l.field.length > 8)) continue;
+      const allg = x.legs.find((l) => l.kind === "ALLG" && l.field.length > 0);
+      if (x.status !== "OK" || open.length > 3) continue;
       checked++;
-      const fast = x.legs.filter((l) => l.kind !== "OPEN").reduce((a, l) => a * Math.max(1, l.selection.length), 1);
-      const parts = open.map((l) => {
-        const m = minimumPicks(legFacts(legs[l.leg - 1]), l.favBanned);
-        const gains = [0];
-        for (const h of m.rest) gains.push(gains[gains.length - 1] + h.score);
-        return { lo: m.lo, hi: openHiOf(m.lo, m.rest.length, l.field.length), gains };
-      });
-      let bestH = -1;
-      let bestS = -1;
-      const walk = (i: number, prod: number, h: number, s: number) => {
-        if (fast * prod > x.maxRows) return;
-        if (i === parts.length) {
-          if (h > bestH || (h === bestH && s > bestS)) {
-            bestH = h;
-            bestS = s;
-          }
+      const upper = Math.floor((rules.budget * (1 + BUDGET_OVER_MAX)) / rules.rowPrice + 1e-9);
+      const fixed = x.legs.filter((l) => l.kind !== "OPEN" && l !== allg).reduce((a, l) => a * Math.max(1, l.selection.length), 1);
+      const ranges = open.map((l) => [l.lo, l.hi]);
+      if (allg) ranges.push([Math.max(1, allg.field.length - ALLG_DROP_MAX), allg.field.length]);
+      let best = Infinity;
+      const walk = (k: number, prod: number) => {
+        if (fixed * prod > upper) return;
+        if (k === ranges.length) {
+          best = Math.min(best, Math.abs(fixed * prod - x.maxRows));
           return;
         }
-        for (let k = parts[i].lo; k <= parts[i].hi; k++) walk(i + 1, prod * k, h + k, s + parts[i].gains[k - parts[i].lo]);
+        for (let v = ranges[k][0]; v <= ranges[k][1]; v++) walk(k + 1, prod * v);
       };
-      walk(0, 1, 0, 0);
-      const gotH = open.reduce((a, l) => a + l.selection.length, 0);
-      const gotS = open.reduce((a, l, j) => a + parts[j].gains[l.selection.length - parts[j].lo], 0);
-      expect(gotH).toBe(bestH);
-      expect(gotS).toBe(bestS);
+      walk(0, 1);
+      expect(Math.abs(x.rows - x.maxRows)).toBe(best);
     }
     expect(checked).toBe(300);
   });

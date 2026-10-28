@@ -1596,3 +1596,5 @@ section.lg { margin: 0 10px 10px; background: var(--surface); border: 1px solid 
 .hs-key { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); font-weight: 600; white-space: nowrap; }
 .hs-key svg { width: 16px; height: 16px; }
 .hs-note { padding: 8px 10px; border-radius: 8px; background: var(--surface-2); border-left: 4px solid var(--fill); }
+/* "Närmast din budget" på tavlan (tillåten överskridning, neutral). */
+.brd .near-line, .near-line { color: var(--head-ink-2); margin: 0; }
