@@ -741,6 +741,20 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .spel .budget { margin: 4px 20px 10px; }
   .spel .vfoot { padding: 12px 20px; }
   .twrap .ptbl { margin-bottom: 4px; }
+  /* Platsspel sorterat per lopp: ett kort per avdelning i tabellen. */
+  .ptbl:has(.pgrp) { border-collapse: separate; border-spacing: 0; background: none; }
+  .ptbl .pgrp tr.gh th { padding: 0; border: 0; background: none; }
+  .ptbl .pgrp tr.gh .pgh { border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 10px 10px 0 0; }
+  :root[data-theme="dark"] .ptbl .pgrp tr.gh .pgh { border-width: 1.5px; border-radius: 12px 12px 0 0; }
+  .ptbl .pgrp tr.pgap td { height: 14px; padding: 0; border: 0; background: none !important; cursor: default; }
+  :root[data-theme="dark"] .ptbl .pgrp tr.pgap td { height: 20px; }
+  .ptbl .pgrp tr:not(.gh):not(.pgap) td { background: var(--surface); }
+  .ptbl .pgrp tr:not(.gh):not(.pgap) td:first-child { border-left: 1px solid var(--line-strong); }
+  .ptbl .pgrp tr:not(.gh):not(.pgap) td:last-child { border-right: 1px solid var(--line-strong); }
+  .ptbl .pgrp tr:last-child td { border-bottom: 1px solid var(--line-strong); }
+  .ptbl .pgrp tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+  .ptbl .pgrp tr:last-child td:last-child { border-bottom-right-radius: 10px; }
+  .ptbl .pgrp tr:not(.gh):not(.pgap):hover td { background: var(--surface-3); }
 }
 
 /* ============ E2.1: X-faktor och källstöd (6.8) ============ */
@@ -1502,6 +1516,38 @@ section.lg { margin: 0 10px 10px; background: var(--surface); border: 1px solid 
 .allgn b { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 3px; font: 700 13px/1 var(--f-num); background: var(--flap-on); color: var(--flap-on-ink); }
 .allgn b.fv { box-shadow: inset 0 0 0 2px var(--fill-ink); }
 .allgn b.scr { text-decoration: line-through; opacity: .45; }
+/* Avdelningskorten och loppgrupperna i Platsspel: ljust tema får en mörk
+   rubrikremsa (tavlan) med gul linje, mörkt tema lyfta kort med ljusare
+   rubrik. Gemensamt: tydligare ram och mer luft. */
+section.lg, .pcard { border-color: var(--line-strong); }
+section.lg { margin-bottom: 14px; }
+.pcard { margin: 0 10px 14px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+.pgh { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 12px 4px 10px; }
+.pgh h4 { margin: 0; font: 700 15px/1 var(--f-name); text-transform: uppercase; letter-spacing: .03em; }
+.pgh > span:last-child { margin-left: auto; font: 700 11.5px/1 var(--f-label); letter-spacing: .07em; text-transform: uppercase; }
+:root:not([data-theme="dark"]) section.lg, :root:not([data-theme="dark"]) .pcard { box-shadow: 0 1px 2px rgba(0, 0, 0, .10); }
+:root:not([data-theme="dark"]) .lg-h, :root:not([data-theme="dark"]) .pgh { background-color: var(--head); background-image: var(--matrix); background-size: var(--matrix-size) var(--matrix-size); border-bottom: 2px solid var(--fill); }
+:root:not([data-theme="dark"]) .lg-h { min-height: 54px; }
+:root:not([data-theme="dark"]) .lg-t h3, :root:not([data-theme="dark"]) .pgh h4 { color: var(--head-title); }
+:root:not([data-theme="dark"]) .lg-t h3 { font-size: 17px; }
+:root:not([data-theme="dark"]) .lg-t span, :root:not([data-theme="dark"]) .pgh > span:last-child { color: var(--head-ink-2); }
+:root:not([data-theme="dark"]) .lg-h .lr { box-shadow: inset 0 0 0 1px var(--board-btn-line); color: var(--head-ink-2); }
+:root:not([data-theme="dark"]) .lg-h .lr.spik, :root:not([data-theme="dark"]) .lg-h .lr.lock { background: var(--head-text); color: var(--head); box-shadow: none; }
+:root:not([data-theme="dark"]) .lg-h .lr.allg { background: var(--flap-on); color: var(--flap-on-ink); box-shadow: none; }
+:root:not([data-theme="dark"]) .lg-e { color: var(--head-ink); }
+:root:not([data-theme="dark"]) .lg-e:hover:not(:disabled) { background: rgba(255, 255, 255, .08); }
+:root:not([data-theme="dark"]) .lg-e:disabled { color: var(--head-ink-2); }
+:root:not([data-theme="dark"]) .lg-e:focus-visible { outline-color: #7CC4FF; outline-offset: -3px; }
+:root[data-theme="dark"] section.lg, :root[data-theme="dark"] .pcard { border-width: 1.5px; border-radius: 12px; box-shadow: var(--shadow); }
+:root[data-theme="dark"] section.lg { margin-bottom: 20px; }
+:root[data-theme="dark"] .pcard { margin-bottom: 20px; }
+:root[data-theme="dark"] .lg-h, :root[data-theme="dark"] .pgh { background: var(--surface-3); border-bottom: 1.5px solid var(--line-strong); }
+:root[data-theme="dark"] .lg-h { min-height: 56px; }
+:root[data-theme="dark"] .lg-t h3 { font-size: 18px; }
+:root[data-theme="dark"] .pgh > span:last-child { color: var(--ink-2); }
+:root[data-theme="dark"] .lg-h .lr { background: var(--surface); }
+:root[data-theme="dark"] .lg-h .lr.spik, :root[data-theme="dark"] .lg-h .lr.lock { background: var(--ink); }
+:root[data-theme="dark"] .lhl > .lh:nth-child(even), :root[data-theme="dark"] .pcard .plist > .brow:nth-child(even) { background: var(--surface); }
 /* Skälen (taggar) */
 .rs { display: inline-flex; align-items: center; gap: 3px; min-height: 18px; padding: 1px 5px; border-radius: 4px; font: 700 10.5px/1 var(--f-label); letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; flex: none; }
 .rs.t3 { background: var(--surface-3); color: var(--ink); }
@@ -1582,6 +1628,9 @@ section.lg { margin: 0 10px 10px; background: var(--surface); border: 1px solid 
   .drad-r .ban.m { margin: 0 0 10px; }
   .drad section.lg { margin: 0; }
   .lgg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .lgg { gap: 16px; }
+  :root[data-theme="dark"] .lgg { gap: 20px; }
+  :root[data-theme] .drad section.lg { margin: 0; }
   .spel .rad-h { padding: 0; margin: 4px 0 10px; font: 700 20px/1 var(--f-name); text-transform: uppercase; letter-spacing: .02em; color: var(--ink); justify-content: flex-start; align-items: baseline; flex-wrap: wrap; gap: 10px; }
   .rad-h small { font: 600 13px/1.3 var(--f-body); text-transform: none; letter-spacing: 0; color: var(--ink-2); }
   dialog.sheet.rad-sh { max-width: 520px; }

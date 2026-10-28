@@ -1,0 +1,507 @@
+<title>Spelvärde · Tydligare ramar per lopp (Spelförslag)</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens (kopia av styles/tokens.css), här per klass så att båda teman syns samtidigt ===== */
+.t-light{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--fill-deep:#A45F00;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;
+--glow:rgba(242,154,0,.40);--up:#0E7A3B;--up-soft:#DDF3E5;
+--sig:#0E7A3B;--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--sig-soft:#DDF3E5;--sig-text:#0A4721;
+--down:#C42B1F;--down-soft:#FBE1DD;--bet:#0D1014;--bet-ink:#FFFFFF;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--flap-ink:#C9CED4;--phase-ink:#9AA2AC;--btn-fill:linear-gradient(#FFC85C,#F4A51F);--btn-edge:#9A5A00;--btn-glow:rgba(244,165,31,.25);
+--key-off:linear-gradient(#FFFFFF,#E2E6EB);--key-off-shadow:inset 0 0 0 1px #AEB6BF,0 2px 0 #9AA3AD;--key-dot:#B4BCC5;
+--board-chip-line:#3A4048;--board-btn-line:#4A5058;--head-down:#FF8A7A;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+--focus-ring:3px solid var(--focus);--focus-offset:2px;
+background:var(--bg);color:var(--ink)}
+.t-dark{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill-deep:#8F5200;--focus:#7CC4FF;
+--head:#050607;--head-ink-2:#B9C0C8;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--glow:rgba(255,178,46,.55);--up:#46D37E;--up-soft:rgba(70,211,126,.14);
+--sig:#46D37E;--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--sig-soft:rgba(70,211,126,.16);--sig-text:#8BEDB3;
+--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--bet:#F3EFE4;--bet-ink:#0C0E11;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);--key-off:linear-gradient(#2C3138,#1C2026);--key-off-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 2px 0 #000;--key-dot:#4A515A;
+background:var(--bg);color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+body{margin:0;background:#BFC6CD;font-family:"Barlow","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.mk{padding:24px 24px 64px;background:var(--page)}
+.mk h1.mt{margin:0;font:700 28px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk .lead{max-width:1100px;font-size:15px;line-height:1.5;margin:8px 0 0}
+.mk h2.sec{margin:56px 0 4px;padding-top:18px;border-top:3px solid var(--line-strong);font:700 28px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em}
+.mk h2.sec .rk2{display:inline-block;margin-left:10px;padding:3px 8px;border-radius:4px;background:var(--sig-fill);color:var(--sig-fill-ink);font:700 13px/1.2 var(--f-label);letter-spacing:.07em;vertical-align:4px}
+.mk h3.part{margin:26px 0 10px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.mk p.sub{margin:4px 0 10px;max-width:1100px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.mk p.sub b{color:var(--ink)}
+.note{max-width:1320px;margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.note > div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.note > div.rec{border-left-color:var(--sig-fill)}
+.note > div.st{border-left-color:var(--line-strong)}
+.note h3{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.note p{margin:6px 0 0}
+.note ul,.note ol{margin:0;padding-left:18px}
+.note li+li{margin-top:3px}
+.note table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:4px}
+.note th,.note td{text-align:left;padding:3px 5px;border-bottom:1px solid var(--line);vertical-align:top}
+.note th{font:700 11px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.pair{display:flex;gap:28px;align-items:flex-start;overflow-x:auto;padding:4px 2px 14px}
+.cap{font:700 12px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
+.cap b{color:var(--ink)}
+.ph{width:410px;height:864px;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.35);flex:none}
+.ph-in{width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+.bf{width:1282px;border:1px solid #000;border-radius:10px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);background:#2a2d31;flex:none}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:620px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.vp{width:1280px;height:1000px;overflow:hidden;position:relative;background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+.vp.short{height:760px}
+.fade{position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(transparent,var(--bg));pointer-events:none;z-index:2}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+
+/* ===== Från styles/app.css (skal, tavla, märken) ===== */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+button{font:inherit;cursor:pointer;color:inherit}
+.help{font-size:12.5px;color:var(--ink-2);margin:0;line-height:1.4}
+.help b{color:var(--ink)}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 4px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);margin:0}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2)}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:none;color:var(--head-ink-2);flex:none;border-radius:8px;padding:0}
+.ibtn svg{width:22px;height:22px}
+.logo{display:inline-grid;place-items:center;width:40px;color:var(--head-ink);flex:none}
+.logo svg{width:26px;height:26px}
+.ah-brand{font:800 27px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:60px;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--head-line)}
+.dnav{display:flex;gap:2px;margin-left:20px;flex:1}
+.dnav a{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;text-decoration:none;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.dnav a[aria-current="page"]{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.sphead{min-height:64px;padding:10px 20px;display:flex;align-items:center;gap:22px}
+.sphead .bk{font:700 13px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink);display:flex;align-items:center;gap:4px}
+.sphead .bk svg{width:18px;height:18px}
+.sphead h1{margin:0;font:700 24px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title)}
+.sphead small{display:block;margin-top:4px;font:600 12.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);height:64px;padding-bottom:10px;background:var(--surface);border-top:1px solid var(--line);z-index:3}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);position:relative}
+.tab svg{width:22px;height:22px}
+.tab.on{color:var(--accent)}
+.tab.on::before{content:"";position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--fill)}
+.copybar{position:absolute;left:0;right:0;bottom:64px;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 16px rgba(0,0,0,.12)}
+.copybar .k{font:700 15px/1.1 var(--f-num)}
+.copybar small{display:block;font-size:12px;color:var(--ink-2)}
+.btn{min-height:44px;padding:0 16px;border-radius:7px;border:1.5px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;font:700 15px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.btn svg{width:18px;height:18px}
+.btn.primary{background:var(--btn-fill);color:var(--fill-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 3px 0 var(--btn-edge),0 6px 14px var(--btn-glow)}
+.seg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{flex:1;min-height:44px;padding:0 6px;border:0;background:transparent;font:700 13.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.seg button svg{width:15px;height:15px;color:var(--accent)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.segw{padding:8px 10px;display:flex}.segw .seg{width:100%}
+.dtabs{display:flex;gap:4px;padding:12px 20px 0;border-bottom:1px solid var(--line)}
+.dtabs button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:10px 14px;font:700 14px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);border-bottom:3px solid transparent}
+.dtabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--fill)}
+.dtabs svg{width:16px;height:16px;color:var(--accent)}
+.sl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 8px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr.sm{width:26px;height:28px;font-size:14px;letter-spacing:-.04em}
+.nr .sigb{position:absolute;right:-5px;bottom:-4px;min-width:14px;height:14px;padding:0 3px;border-radius:8px;display:grid;place-items:center;font:700 9px/1 var(--f-num);font-style:normal;color:var(--sig);background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--sig);text-shadow:none;z-index:1}
+.nr .sigb.many{background:var(--sig-fill);color:var(--sig-fill-ink);box-shadow:none}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.tkt{display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 7px;border-radius:3px;background:var(--bet);color:var(--bet-ink);font:700 11px/1 var(--f-label);letter-spacing:.04em;flex:none;
+  -webkit-mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat;
+  mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat}
+.tkt b{font:700 11.5px/1 var(--f-num)}
+.tag{display:inline-flex;align-items:center;min-height:20px;padding:1px 6px;border-radius:4px;font:700 11px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none;white-space:nowrap}
+.tag.good{background:var(--up-soft);color:var(--up)}
+.tag.lowst{background:var(--sig-soft);color:var(--sig-text);box-shadow:inset 0 0 0 1px var(--sig);min-height:18px;padding:1px 5px;font-size:10.5px}
+.tag.gl{background:var(--accent-soft);color:var(--accent);min-height:18px;padding:1px 5px;font-size:10.5px}
+.hl{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}
+.hn{font:700 17px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:min(6em,100%)}
+
+/* Budgettavlan (desktop vänsterkolumn, förenklad) */
+.budget{padding:14px;border-radius:10px;display:grid;gap:10px}
+.budget .row1{display:flex;justify-content:space-between;align-items:baseline}
+.budget label{font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.budget .bv{font:700 30px/1 var(--f-num);color:var(--head-ink);text-shadow:0 0 12px var(--glow)}
+.budget .rng{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--fill) 0 29%,#3A4048 29%);position:relative;margin:10px 0}
+.budget .rng::after{content:"";position:absolute;left:29%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--fill)}
+.budget .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.budget .sum div{background:rgba(255,255,255,.05);border:1px solid var(--head-line);border-radius:6px;padding:6px 8px}
+.budget .sum small{display:block;font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2);margin-bottom:4px}
+.budget .sum b{font:700 16px/1 var(--f-num);color:var(--head-title)}
+.rules{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:8px}
+.rules h2{margin:0;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.rules .ph-l{height:12px;border-radius:3px;background:var(--surface-3)}
+.drad{display:grid;grid-template-columns:380px minmax(0,1fr);gap:24px;padding:16px 20px 20px;align-items:start}
+.rad-h{margin:4px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font:700 20px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.rad-h small{font:600 13px/1.3 var(--f-body);text-transform:none;letter-spacing:0;color:var(--ink-2)}
+.lgg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+
+/* ===== Avdelningskortet i dag (styles/app.css rad 1470–1519) ===== */
+section.lg{margin:0 10px 10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.vp section.lg{margin:0}
+.lg-h{display:grid;grid-template-columns:26px minmax(0,1fr) auto 44px;gap:8px;align-items:center;padding:4px 2px 4px 10px;min-height:52px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.lg-t{min-width:0;display:flex;flex-direction:column;gap:3px}
+.lg-t h3{margin:0;font:700 16px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-t span{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-e{width:44px;height:44px;display:grid;place-items:center;border:0;background:none;color:var(--accent);border-radius:8px;padding:0}
+.lg-e svg{width:19px;height:19px}
+.lr{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:4px;font:700 11.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;flex:none;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--ink-2)}
+.lr svg{width:11px;height:11px}
+.lr.spik,.lr.lock{background:var(--ink);color:var(--bg);box-shadow:none}
+.lr.allg{background:var(--head);color:var(--head-ink);box-shadow:inset 0 0 0 1px var(--head-line)}
+.lhl{list-style:none;margin:0;padding:0}
+.lh{display:grid;grid-template-columns:26px minmax(0,1fr) 56px;gap:8px;align-items:center;min-height:52px;padding:5px 10px 5px 12px;border-bottom:1px solid var(--line);position:relative;background:var(--surface)}
+.lhl > .lh:nth-child(even){background:var(--surface-2)}
+.lhl > .lh:last-child{border-bottom:0}
+.lh.is-b::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bet)}
+.lm{min-width:0;display:flex;flex-direction:column;gap:4px}
+.lm .hn{font-size:16.5px}
+.rsn{display:flex;flex-wrap:wrap;gap:4px}
+.lst{text-align:right;font:700 13.5px/1 var(--f-num);white-space:nowrap}
+.lg-w{margin:0;padding:7px 12px;font-size:12.5px;line-height:1.4;color:var(--ink-2);border-top:1px solid var(--line)}
+.lg-w b{color:var(--ink)}
+.lg-x{margin:0;padding:7px 12px;display:flex;gap:6px;align-items:flex-start;font-size:12.5px;line-height:1.4;color:var(--ink-2);background:var(--surface-2);border-top:1px solid var(--line)}
+.lg-x b{color:var(--ink)}
+.lg-x .rs{margin-top:1px}
+.allgn{display:flex;flex-wrap:wrap;gap:4px;padding:10px 12px 8px}
+.allgn b{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:3px;font:700 13px/1 var(--f-num);background:var(--flap-on);color:var(--flap-on-ink)}
+.allgn b.fv{box-shadow:inset 0 0 0 2px var(--fill-ink)}
+.rs{display:inline-flex;align-items:center;gap:3px;min-height:18px;padding:1px 5px;border-radius:4px;font:700 10.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;flex:none}
+.rs.t3{background:var(--surface-3);color:var(--ink)}
+.rs.mel{box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--ink-2)}
+.rs.skr{background:var(--accent-soft);color:var(--accent)}
+.rs.fel{background:var(--up-soft);color:var(--up)}
+.rs.fel::before{content:"▲";font-size:8px}
+.rs.sig{background:var(--sig-soft);color:var(--sig-text);box-shadow:inset 0 0 0 1px var(--sig)}
+.rs.fav{box-shadow:inset 0 0 0 1.5px var(--ink-2);color:var(--ink)}
+.rs.lim{background:var(--down-soft);color:var(--down)}
+
+/* ======================================================================
+   ALTERNATIV A · TAVELBAND
+   Rubrikraden blir en bit av tavlan (mörk i båda teman, matrisraster),
+   gul linje under, kortet får en tydlig ram (--line-strong).
+   ====================================================================== */
+.alt-a section.lg{border:1px solid var(--line-strong);margin-bottom:14px;box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.alt-a .vp section.lg{margin:0}
+.alt-a .lg-h{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);border-bottom:2px solid var(--fill);min-height:54px}
+.alt-a .lg-t h3{color:var(--head-title);font-size:17px}
+.alt-a .lg-t span{color:var(--head-ink-2)}
+.alt-a .lr{box-shadow:inset 0 0 0 1px var(--board-btn-line);color:var(--head-ink-2)}
+.alt-a .lr.spik,.alt-a .lr.lock{background:var(--head-text);color:var(--head);box-shadow:none}
+.alt-a .lr.allg{background:var(--flap-on);color:var(--flap-on-ink);box-shadow:none}
+.alt-a .lg-e{color:var(--head-ink)}
+.alt-a .lg-e:focus-visible{outline-color:#7CC4FF;outline-offset:-3px}
+.alt-a .lgg{gap:16px}
+/* Platsspel med lopprubriker i samma stil */
+.alt-a .pcard{margin:0 10px 14px;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.alt-a .pgh{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 10px;background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);border-bottom:2px solid var(--fill)}
+.alt-a .pgh h4{margin:0;font:700 15px/1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title)}
+.alt-a .pgh>span:last-child{margin-left:auto;font:700 11.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+
+/* ======================================================================
+   ALTERNATIV B · LYFTA KORT
+   Ljus rubrikrad men i ett tydligt starkare grått (--surface-3), kraftig
+   ram (1,5 px --line-strong), skugga, 20 px luft och inga zebrarader.
+   ====================================================================== */
+.alt-b section.lg{border:1.5px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow);margin:0 10px 20px}
+.alt-b .vp section.lg{margin:0}
+.alt-b .lg-h{background:var(--surface-3);border-bottom:1.5px solid var(--line-strong);min-height:56px}
+.alt-b .lg-t h3{font-size:18px}
+.alt-b .lr{background:var(--surface)}
+.alt-b .lr.spik,.alt-b .lr.lock{background:var(--ink)}
+.alt-b .lhl > .lh:nth-child(even){background:var(--surface)}
+.alt-b .lgg{gap:20px}
+
+/* ======================================================================
+   ALTERNATIV C · RUBRIK SOM AVDELARE
+   Rubriken står ovanför kortet, direkt på sidan: stor avdelningsruta,
+   stor rubrik och en kraftig linje i --ink. Hästarna ligger i ett kort under.
+   ====================================================================== */
+.alt-c section.lg{background:transparent;border:0;border-radius:0;overflow:visible;margin:0 10px 24px}
+.alt-c .vp section.lg{margin:0}
+.alt-c .lg-h{background:transparent;border-bottom:3px solid var(--ink);grid-template-columns:30px minmax(0,1fr) auto 44px;padding:0 0 4px 0;min-height:50px}
+.alt-c .lg-h .nr.sm{width:30px;height:36px;font-size:17px}
+.alt-c .lg-t h3{font-size:20px}
+.alt-c .lg-b{background:var(--surface);border:1px solid var(--line-strong);border-top:0;border-radius:0 0 10px 10px;overflow:hidden}
+.alt-c .lgg{gap:24px 20px}
+
+/* I dag, A och B: omslaget .lg-b påverkar inte layouten */
+.alt-0 .lg-b,.alt-a .lg-b,.alt-b .lg-b{display:contents}
+
+/* Platsspel-rader (styles/app.css .brow) */
+.plist{list-style:none;margin:0;padding:0}
+.brow{display:grid;grid-template-columns:26px minmax(0,1fr) 72px 44px;column-gap:6px;align-items:center;padding:7px 6px 7px 10px;min-height:60px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}
+.plist > .brow:nth-child(even){background:var(--surface-2)}
+.plist > .brow:last-child{border-bottom:0}
+.brow.is-b::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bet);z-index:1}
+.pmain{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pm{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.pm b{font-family:var(--f-num);color:var(--ink)}
+.sigs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.ofc{display:flex;flex-direction:column;align-items:center;gap:3px}
+.oin{width:68px;height:40px;border-radius:7px;display:grid;place-items:center;font:700 16px/1 var(--f-num);border:2px solid var(--sig);background:var(--sig-soft);color:var(--ink)}
+.sv{font:700 11.5px/1 var(--f-num);color:var(--sig)}
+.betk{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:transparent;padding:0;border-radius:8px}
+.lamp-i{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:var(--key-off);box-shadow:var(--key-off-shadow)}
+.lamp-i svg{width:18px;height:18px;color:var(--ink-2);opacity:.55}
+.betk.on .lamp-i{background:var(--bet);box-shadow:0 0 0 1px var(--bet)}
+.betk.on .lamp-i svg{color:var(--bet-ink);opacity:1}
+.sortbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px}
+.chk{display:inline-flex;align-items:center;gap:10px;min-height:44px;font:700 14px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.chk i{width:22px;height:22px;border:1.5px solid var(--line-strong);border-radius:4px;background:var(--surface)}
+/* Platsspel desktop: tabell med grupprader */
+.ptw{max-width:900px;padding:0 20px}
+.ptbl{width:100%;border-collapse:separate;border-spacing:0}
+.ptbl thead th{font:700 11.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:6px 8px}
+.ptbl th.r,.ptbl td.r{text-align:right}
+.ptbl td{color:var(--ink);padding:8px;border-bottom:1px solid var(--line);background:var(--surface);vertical-align:middle}
+.ptbl tbody tr:nth-child(odd) td{background:var(--surface-2)}
+.ptbl tr.is-b td:first-child{box-shadow:inset 5px 0 0 var(--bet)}
+.ptbl td .kt{display:block;font-size:12px;color:var(--ink-2)}
+.ptbl tr.gh th{padding:0;text-align:left}
+.ptbl tr.gh .pgh{border-radius:10px 10px 0 0}
+.ptbl tbody td:first-child{border-left:1px solid var(--line-strong)}
+.ptbl tbody td:last-child{border-right:1px solid var(--line-strong)}
+.ptbl tbody tr:last-child td{border-bottom:1px solid var(--line-strong)}
+.ptbl tbody tr:last-child td:first-child{border-bottom-left-radius:10px}
+.ptbl tbody tr:last-child td:last-child{border-bottom-right-radius:10px}
+.ptbl tbody.gap td{height:14px;padding:0;border:0!important;background:transparent!important}
+</style>
+
+<div class="mk t-light">
+  <h1 class="mt">Spelförslag · tydligare ramar per lopp</h1>
+  <p class="lead">Vi jämför tre sätt att avgränsa varje avdelning på <b>V85-raden</b> (kortet "Raden per avdelning", <code>components/spel/RadLegCard.tsx</code>). Varje alternativ visas i mobil (390 px) och webbläsare (1280 px), i ljust och mörkt tema. Allt innehåll i korten är oförändrat: avdelningsrutan, "4 hästar"/Spik/Egen spik/Alla 15, pennan, hästraderna, förklaringstexten och Spärr-raden. Bara rubrikraden och ramen ändras. Längst ner finns ett tillägg för <b>Platsspel</b>.</p>
+
+  <div class="note">
+    <div class="st">
+      <h3>Varför det ser rörigt ut i dag</h3>
+      <ul>
+        <li>Rubrikraden har samma grå (<code>--surface-2</code>) som varannan hästrad (zebraränderna). Rubriken ser därför ut som en hästrad till.</li>
+        <li>Kortramen är <code>--line</code>, nästan samma ton som sidan. I mörkt tema syns den knappt (#262B33 mot #0C0E11).</li>
+        <li>Bara 10–12 px mellan korten, så avd 2 och avd 3 smälter ihop när man skrollar.</li>
+      </ul>
+    </div>
+    <div class="rec">
+      <h3>Rekommendation: A · Tavelband</h3>
+      <p>Rubriken blir en remsa av tavlan (mörk med matrisraster, gul linje under) i båda teman. Den skiljer sig från allt annat i kortet, går att se när man skrollar snabbt och hör ihop med budgettavlan och avdelningsrutorna. Ramen blir <code>--line-strong</code>. Samma remsa kan användas som lopprubrik i Platsspel.</p>
+    </div>
+    <div>
+      <h3>Öppna frågor</h3>
+      <ol>
+        <li>Ska zebraränderna i hästlistan vara kvar? (A behåller dem, B tar bort dem. Med A spelar det mindre roll.)</li>
+        <li>Platsspel: vill du ha lopprubriker när listan är "Sorterad per lopp"? (Förslag längst ner.)</li>
+        <li>Mobil: ska lopprubriken fastna överst när man skrollar genom ett långt kort (sticky)? Inte ritat, men går med A.</li>
+        <li>Trollspöt lämnas orörd: den sorteras på chans och har redan "Avd 2" på varje rad.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2 class="sec">I dag (referens)</h2>
+  <p class="sub">Så ser korten ut nu, för jämförelse.</p>
+  <div class="slot" data-alt="0" data-short="1"></div>
+
+  <h2 class="sec">A · Tavelband <span class="rk2">Rekommenderas</span></h2>
+  <p class="sub"><b>Ger:</b> rubriken blir omisskännlig i båda teman, och kortet får en tydlig topp och ram. Fungerar lika bra med 1 häst (spik) som med 15 (Alla). Samma mönster passar Platsspel. <b>Kostar:</b> mer mörk yta på ljust tema; sidan blir "tyngre". Märkena i rubriken (4 hästar, Spik, Egen spik, Alla 15) och pennan måste få varianter för den mörka botten.</p>
+  <div class="slot" data-alt="a"></div>
+
+  <h2 class="sec">B · Lyfta kort</h2>
+  <p class="sub"><b>Ger:</b> lugnast ändring. Rubriken får starkare grått än hästraderna, ram 1,5 px, skugga och 20 px luft mellan korten. Zebraränderna tas bort så att rubriken är den enda grå raden. <b>Kostar:</b> skillnaden blir mindre i mörkt tema (skuggor syns dåligt på svart), och i en snabb skroll är det fortfarande "grått på grått".</p>
+  <div class="slot" data-alt="b"></div>
+
+  <h2 class="sec">C · Rubrik som avdelare</h2>
+  <p class="sub"><b>Ger:</b> rubriken står direkt på sidan, större (20 px) med stor avdelningsruta och en kraftig linje under, som en tidningsrubrik. Kortet under innehåller bara hästarna. Mest luft och tydlig läsordning. <b>Kostar:</b> tar mest höjd (ca 30 px mer per avdelning i mobil, alltså ca 240 px på hela raden). Rubriken hör mindre tydligt ihop med "sitt" kort än i A och B. Kräver ett omslag runt kroppen i komponenten.</p>
+  <div class="slot" data-alt="c"></div>
+
+  <h2 class="sec">Tillägg · Platsspel med lopprubriker (stil A)</h2>
+  <p class="sub">Platsspel sorteras redan per lopp ("Sorterat per lopp"), men raderna ligger i en enda lång lista där bara texten "Avd 2" visar loppet. Förslag: när listan är sorterad per lopp grupperas de spelbara hästarna i ett kort per avdelning med samma tavelband som i A ("Avd 2 · 15:22", "3 spelbara"). "Avd 2 ·" kan då strykas ur raden under hästnamnet. Med <b>Bästa spel först</b> ikryssat försvinner grupperna och listan ser ut som i dag. Gruppen "Inte markerade" lämnas som i dag.</p>
+  <div class="slot" data-alt="plats"></div>
+
+  <div class="note">
+    <div>
+      <h3>Kontrast (rubrikraden)</h3>
+      <table>
+        <tr><th>Alt.</th><th>Text</th><th>Ljust</th><th>Mörkt</th></tr>
+        <tr><td>A</td><td>Rubrik vit på tavla</td><td>18:1</td><td>20:1</td></tr>
+        <tr><td>A</td><td>Undertext #C2C8CF / #B9C0C8</td><td>11:1</td><td>11:1</td></tr>
+        <tr><td>A</td><td>Penna gul #FFB22E</td><td>10:1</td><td>11:1</td></tr>
+        <tr><td>B</td><td>Undertext --ink-2 på --surface-3</td><td>6,3:1</td><td>6,7:1</td></tr>
+        <tr><td>C</td><td>Undertext --ink-2 på --bg</td><td>6,6:1</td><td>8,6:1</td></tr>
+      </table>
+      <p>Allt klarar 4,5:1. I A blir fokusringen på pennan ljusblå (#7CC4FF, mörka temats fokusfärg) i båda teman, eftersom ljusa temats blå bara når ca 3,2:1 mot tavlan.</p>
+    </div>
+    <div>
+      <h3>Det som inte ändras</h3>
+      <ul>
+        <li>Rubriken är fortfarande <code>&lt;h3&gt;</code> "Avd 1 · 15:00" inne i <code>&lt;section aria-labelledby&gt;</code>. Inget nytt för skärmläsare.</li>
+        <li>Pennan är 44×44 px och har kvar texten "Ändra avd 1".</li>
+        <li>Ramen är dekor: det som visar var ett lopp börjar är rubriken, inte bara färgen.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const ic = {
+    pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    wand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 20L15 9"/><path d="M17 3v4M15 5h4M20 10v2M19 11h2"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 20v-6M12 20V6M18 20v-10"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
+    tkt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z"/><path d="M9 10h6M9 14h6"/></svg>',
+    logo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3v7M12 14v7M3 12h7M14 12h7M5.6 5.6l5 5M13.4 13.4l5 5M18.4 5.6l-5 5M10.6 13.4l-5 5"/></svg>'
+  };
+  const R = { skr:['skr','Skräll'], fel:['fel','Felstreckad'], t3:['t3','Topp 3'], mel:['mel','Mellan'], fav:['fav','Favorit'] };
+  const rs = (c) => { if (c.startsWith('sig')) return `<span class="rs sig">${c.slice(3)} signaler</span>`; const [k,t]=R[c]; return `<span class="rs ${k}">${t}</span>`; };
+  const bold = (s) => s.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+
+  const legs = [
+    {n:1,t:'15:00',sub:'12 startande · fav 45,7 %',lr:['','4 hästar'],h:[
+      {n:6,name:'Jackson Trot',r:['skr','fel'],st:'1,1 %'},
+      {n:3,name:'Great Old Dance',r:['t3','sig4','fav'],st:'45,7 %'},
+      {n:5,name:'Leverage',r:['t3','sig6'],st:'9,7 %'},
+      {n:10,name:'Fly Express',r:['mel','sig5'],st:'8,0 %'}]},
+    {n:2,t:'15:22',sub:'11 startande · fav 40,5 %',lr:['','3 hästar'],h:[
+      {n:5,name:'Bare Mattis',s:1,b:'1,90',r:['skr','fel','sig6'],st:'3,0 %'},
+      {n:4,name:'Voje Lotta',s:1,r:['t3','fel','sig6'],st:'10,5 %'},
+      {n:3,name:'Tordenskjold',s:1,r:['mel','fel','sig6'],st:'7,9 %'}],
+      x:'Ej med: **6 Grisle Tore G.L.**, favorit 40,5 %. Favoritspärren: modellen tror minst på den jämfört med strecket (rikt **28,57**).'},
+    {n:3,t:'15:44',sub:'12 startande · fav 37,5 %',lr:['spik','Spik'],h:[
+      {n:2,name:'Pauhunri Boko',r:['t3','fav'],st:'37,5 %'}],
+      w:'Säkrast enligt modellen: rikt **1,01**, lägst av loppen som kunde bli spik.'},
+    {n:4,t:'16:06',sub:'9 startande · fav 36,3 %',lr:['lock','Egen spik'],h:[
+      {n:1,name:'Baron Tilly',r:['t3','sig5'],st:'16,4 %'}],
+      w:'Din spik. Avdelningen är låst och räknas inte om.'},
+    {n:5,t:'16:28',sub:'15 startande · fav 28,3 %',lr:['allg','Alla 15'],allg:15,fav:3,
+      w:'Mest öppna loppet: favoriten **3 Paleo Boko** har **28,3 %**, lägst av omgångens favoriter. 5 hästar har minst 5 %.'},
+    {n:6,t:'16:50',sub:'12 startande · fav 55,0 %',lr:['spik','Spik'],h:[
+      {n:5,name:'Lipa Wee',s:1,b:'1,90',r:['t3','fel','sig5'],st:'6,7 %'}],
+      w:'Säkrast enligt modellen: rikt **1,02**. Favoriten 3 Peggy Boko har rikt **1,13** (55,0 %).'}
+  ];
+
+  const card = (l) => {
+    const lr = l.lr[0]==='lock' ? `<span class="lr lock">${ic.lock}${l.lr[1]}</span>` : `<span class="lr ${l.lr[0]}">${l.lr[1]}</span>`;
+    let body;
+    if (l.allg) {
+      let b=''; for (let i=1;i<=l.allg;i++) b+=`<b${i===l.fav?' class="fv"':''}>${i}</b>`;
+      body = `<div class="allgn" role="img" aria-label="Alla ${l.allg} hästar, 1 till ${l.allg}. Favoriten är nummer ${l.fav}.">${b}</div>`;
+    } else {
+      body = `<ul class="lhl" aria-label="Valda hästar i avd ${l.n}">` + l.h.map(h => `
+        <li class="lh${h.b?' is-b':''}"><span class="nr sm">${h.n}</span>
+          <div class="lm"><span class="hl"><span class="hn">${h.name}</span>${h.s?'<span class="bdg s">S</span>':''}${h.b?`<span class="tkt">B <b>${h.b}</b></span>`:''}</span>
+          <span class="rsn">${h.r.map(rs).join('')}</span></div>
+          <span class="lst num">${h.st}</span></li>`).join('') + `</ul>`;
+    }
+    if (l.w) body += `<p class="lg-w">${bold(l.w)}</p>`;
+    if (l.x) body += `<p class="lg-x"><span class="rs lim">Spärr</span><span>${bold(l.x)}</span></p>`;
+    return `<section class="lg" aria-label="Avd ${l.n}">
+      <div class="lg-h"><span class="nr sm">${l.n}</span>
+        <div class="lg-t"><h3>Avd ${l.n} · ${l.t}</h3><span>${l.sub}</span></div>
+        ${lr}<button type="button" class="lg-e" aria-label="Ändra avd ${l.n}">${ic.pen}</button></div>
+      <div class="lg-b">${body}</div></section>`;
+  };
+
+  const phoneShell = (inner, extra='') => `
+    <div class="ph"><div class="ph-in">
+      <div class="brd ah"><button class="ibtn" aria-label="Tillbaka">${ic.back}</button><div class="ah-t"><p class="ah-title">Spelförslag</p><span class="ah-sub">V85 · Bjerke · lör 31 okt</span></div></div>
+      <div class="segw"><div class="seg" role="tablist"><button role="tab">${ic.wand}Trollspöt</button><button role="tab"${extra==='plats'?' aria-selected="true"':''}>Platsspel</button><button role="tab"${extra!=='plats'?' aria-selected="true"':''}>V85-rad</button></div></div>
+      ${inner}
+      ${extra==='plats'?'':`<div class="copybar"><div><span class="k">540 rader · 270,00 kr</span><small>Kvar 30,00 kr av 300 kr</small></div><button class="btn primary">${ic.copy}Kopiera till ATG</button></div>`}
+      <nav class="tabbar"><span class="tab on">${ic.list}Omgång</span><span class="tab">${ic.link}Källor</span><span class="tab">${ic.chart}Statistik</span></nav>
+    </div></div>`;
+
+  const browserShell = (inner, tab, short) => `
+    <div class="bf"><div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/omgang/v85-bjerke-2026-10-31/spel</span></div>
+    <div class="vp${short?' short':''}">
+      <div class="brd"><div class="dhead"><span class="logo">${ic.logo}</span><p class="ah-brand">Spelvärde</p><nav class="dnav"><a aria-current="page">Omgång</a><a>Källor</a><a>Statistik</a></nav></div>
+      <div class="sphead"><span class="bk">${ic.back}Omgången</span><div><h1>Spelförslag</h1><small>V85 · Bjerke · lör 31 okt</small></div></div></div>
+      <div class="dtabs" role="tablist"><button role="tab">${ic.wand}Trollspöt</button><button role="tab"${tab==='plats'?' aria-selected="true"':''}>Platsspel</button><button role="tab"${tab!=='plats'?' aria-selected="true"':''}>V85-rad</button></div>
+      ${inner}<div class="fade"></div>
+    </div></div>`;
+
+  const radPhone = () => phoneShell(`<h2 class="sl"><span>Raden per avdelning</span><span>29 hästar · 540 rader</span></h2>${legs.slice(0,5).map(card).join('')}`);
+  const radDesk = (short) => browserShell(`
+    <div class="drad">
+      <div><div class="brd budget"><div class="row1"><label>Budget</label><span class="bv">300 kr</span></div><div class="rng"></div>
+        <div class="sum"><div><small>Rader</small><b>540</b></div><div><small>Kostnad</small><b>270,00 kr</b></div><div><small>Kvar</small><b>30,00 kr</b></div></div></div>
+        <div class="rules"><h2>Regler för raden</h2><div class="ph-l" style="width:80%"></div><div class="ph-l" style="width:60%"></div><div class="ph-l" style="width:70%"></div><div class="ph-l" style="width:50%"></div></div></div>
+      <div><h2 class="rad-h">Raden per avdelning <small>29 hästar · spikar i avd 3, 4, 6 och 7 · allgardering i avd 5 · favoriten bortvald i avd 2 och 8</small></h2>
+        <div class="lgg">${legs.map(card).join('')}</div></div>
+    </div>`, 'rad', short);
+
+  // Platsspel
+  const pl = [
+    {avd:2,t:'15:22',rows:[
+      {n:3,sg:6,name:'Tordenskjold',low:1,rk:'1,49',o:'2,29',d:'+0,80',tags:['Spår','Kusk','Tränare','Plats 79 %']},
+      {n:4,sg:6,name:'Voje Lotta',gl:1,rk:'1,41',o:'1,80',d:'+0,39',tags:['Spår','Barfota','Plats 88 %']},
+      {n:5,sg:6,name:'Bare Mattis',low:1,b:1,rk:'1,15',o:'1,90',d:'+0,75',tags:['Spår','Kusk','Plats 91 %']}]},
+    {avd:4,t:'16:06',rows:[
+      {n:3,sg:3,name:'Before Takeoff',low:1,rk:'1,13',o:'1,80',d:'+0,67',tags:['Spår','Form 3/5']},
+      {n:8,sg:3,name:'Sahara Steel',rk:'1,30',o:'2,10',d:'+0,80',tags:['Barfota','Form 3/5','Pengar']},
+      {n:9,sg:5,name:'Lando Mearas',low:1,b:1,rk:'1,08',o:'1,90',d:'+0,82',tags:['Kusk','Tränare','Barfota']}]},
+    {avd:6,t:'16:50',rows:[
+      {n:2,sg:4,name:'Stella Ammik',low:1,rk:'1,33',o:'2,13',d:'+0,80',tags:['Barfota','Plats 80 %']},
+      {n:3,sg:6,name:'Peggy Boko',gl:1,rk:'1,13',o:'1,80',d:'+0,67',tags:['Spår','Tränare','Barfota']},
+      {n:5,sg:5,name:'Lipa Wee',b:1,rk:'1,02',o:'1,90',d:'+0,88',tags:['Spår','Plats 80 %']}]}
+  ];
+  const sigb = (n) => `<i class="sigb${n>=5?' many':''}" aria-hidden="true">${n}</i>`;
+  const marks = (r) => `${r.low?'<span class="tag lowst">Lågt streck</span>':''}<span class="bdg s">S</span>${r.b?'<span class="tkt">B <b>1,90</b></span>':''}${r.gl?'<span class="tag gl">Under 2,00</span>':''}`;
+  const bet = (r) => `<button class="betk${r.b?' on':''}" aria-pressed="${r.b?'true':'false'}" aria-label="Bet ${r.name}"><span class="lamp-i">${ic.tkt}</span></button>`;
+  const platsPhone = () => phoneShell(`
+    <p class="help" style="margin:0 12px 2px">Markera Bet på det du spelar hos Unibet. Rätta oddset om det har ändrats.</p>
+    <div class="sortbar"><span class="chk"><i></i>Bästa spel först</span><span class="help">Sorterat per lopp</span></div>
+    <h2 class="sl"><span>Spelbara (9)</span><span>Bet 3</span></h2>
+    ${pl.map(g => `<section class="pcard" aria-labelledby="pg${g.avd}"><div class="pgh"><span class="nr sm">${g.avd}</span><h4>Avd ${g.avd} · ${g.t}</h4><span>${g.rows.length} spelbara</span></div>
+      <ul class="plist">${g.rows.map(r => `<li class="brow${r.b?' is-b':''}"><span class="nr sm">${r.n}${sigb(r.sg)}</span>
+        <div class="pmain"><span class="hl"><span class="hn">${r.name} ›</span>${marks(r)}</span><span class="pm">rikt <b>${r.rk}</b></span>
+        <span class="sigs">${r.tags.map(t=>`<span class="tag good">${t}</span>`).join('')}</span></div>
+        <span class="ofc"><span class="oin">${r.o}</span><span class="sv">${r.d}</span></span>${bet(r)}</li>`).join('')}</ul></section>`).join('')}`, 'plats');
+  const platsDesk = () => browserShell(`
+    <div class="ptw">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 6px"><h2 style="margin:0;font:700 22px/1 var(--f-name);text-transform:uppercase">Platsspel hos Unibet</h2><span class="help">Bet 3 av 9 spelbara</span></div>
+      <div class="sortbar" style="padding:0"><span class="chk"><i></i>Bästa spel först</span><span class="help">Sorterat per lopp</span></div>
+      <table class="ptbl"><caption class="sr">Spelbara (9), grupperade per avdelning</caption>
+        <thead><tr><th style="width:56px">Nr</th><th>Häst</th><th class="r" style="width:70px">Rikt</th><th class="r" style="width:96px">Unibet</th><th class="r" style="width:96px">Skillnad</th><th style="width:60px;text-align:center">Bet</th></tr></thead>
+        ${pl.map((g,gi) => `${gi?'<tbody class="gap"><tr><td colspan="6"></td></tr></tbody>':''}<tbody>
+          <tr class="gh"><th colspan="6" scope="colgroup"><div class="pgh"><span class="nr sm">${g.avd}</span><h4>Avd ${g.avd} · ${g.t}</h4><span>${g.rows.length} spelbara</span></div></th></tr>
+          ${g.rows.map(r => `<tr class="${r.b?'is-b':''}"><td><span class="nr">${r.n}${sigb(r.sg)}</span></td>
+            <td><span class="hl"><span class="hn">${r.name}</span>${marks(r)}</span><span class="kt">${r.tags.join(' · ')}</span></td>
+            <td class="r num">${r.rk}</td><td class="r"><span class="oin" style="display:inline-grid;width:76px">${r.o}</span></td><td class="r"><span class="sv">${r.d}</span></td><td style="text-align:center">${bet(r)}</td></tr>`).join('')}
+        </tbody>`).join('')}
+      </table>
+    </div>`, 'plats');
+
+  const pair = (theme, ph, dk, label) => `
+    <h3 class="part">${label} · ${theme==='light'?'Ljust tema':'Mörkt tema'}</h3>
+    <div class="pair">
+      <div><p class="cap"><b>Mobil</b> · 390 px</p><div class="t-${theme}" style="background:none">${ph}</div></div>
+      <div><p class="cap"><b>Webbläsare</b> · 1280 px</p><div class="t-${theme}" style="background:none">${dk}</div></div>
+    </div>`;
+
+  document.querySelectorAll('.slot').forEach(slot => {
+    const a = slot.dataset.alt;
+    const short = slot.dataset.short === '1';
+    if (a === 'plats') {
+      slot.className = 'slot alt-a';
+      slot.innerHTML = pair('light', platsPhone(), platsDesk(), 'Platsspel') + pair('dark', platsPhone(), platsDesk(), 'Platsspel');
+      return;
+    }
+    slot.className = 'slot alt-' + a;
+    const label = a === '0' ? 'I dag' : 'Alternativ ' + a.toUpperCase();
+    slot.innerHTML = pair('light', radPhone(), radDesk(short), label) + pair('dark', radPhone(), radDesk(short), label);
+  });
+})();
+</script>

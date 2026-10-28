@@ -121,7 +121,7 @@ export function PlatsPanel({ data, now }: { data: RoundResponse; now: number }) 
             </label>
             <span className="help">{best ? "Värde = Unibet ÷ riktodds − 1" : "Sorterat per lopp"}</span>
           </div>
-          <PlatsGroup title={`Spelbara (${spelbara.length})`} items={spelbara} right={`Bet ${betCount}`} showValue={best} {...common} />
+          <PlatsGroup title={`Spelbara (${spelbara.length})`} items={spelbara} right={`Bet ${betCount}`} showValue={best} byRace={!best} {...common} />
         </>
       )}
       <PlatsGroup title={`Med Bet men inte spelbara (${betOnly.length})`} items={betOnly} {...common} />
@@ -169,7 +169,24 @@ type GroupProps = {
   id?: string;
   // Bästa spel först: värdet i underraden.
   showValue?: boolean;
+  // Sorterat per lopp: ett kort per avdelning med rubrikrad (items i loppordning).
+  byRace?: boolean;
 };
+
+type RaceGroup = { race: RaceDto; items: Item[] };
+
+function raceGroups(items: Item[]): RaceGroup[] {
+  const out: RaceGroup[] = [];
+  for (const i of items) {
+    const last = out[out.length - 1];
+    if (last && last.race.id === i.race.id) last.items.push(i);
+    else out.push({ race: i.race, items: [i] });
+  }
+  return out;
+}
+
+const groupTitle = (race: RaceDto) => `Avd ${race.leg} · ${hhmm(race.startAt)}`;
+const groupCount = (n: number) => `${n} spelbar${n === 1 ? "" : "a"}`;
 
 const ODDS_COLS = [56, 0, 66, 92, 96, 118, 70, 56];
 const SPEL_COLS = [56, 0, 66, 92, 96, 56];
@@ -177,8 +194,9 @@ const SPEL_COLS = [56, 0, 66, 92, 96, 56];
 // En grupp rader: tabell på desktop, lista i mobilen. Används också av listan
 // i Unibets odds (components/odds/OddsList.tsx).
 export function PlatsGroup(props: GroupProps) {
-  const { title, items, right, help, desk, variant, unmarked, id } = props;
+  const { title, items, right, help, desk, variant, unmarked, id, byRace } = props;
   if (!items.length) return null;
+  const groups = byRace ? raceGroups(items) : null;
   if (desk) {
     const cols = variant === "odds" ? ODDS_COLS : SPEL_COLS;
     return (
@@ -225,11 +243,35 @@ export function PlatsGroup(props: GroupProps) {
               </th>
             </tr>
           </thead>
-          <tbody>
-            {items.map((i) => (
-              <PlatsRow key={i.start.id} item={i} {...props} />
-            ))}
-          </tbody>
+          {groups ? (
+            groups.map((g, gi) => (
+              <tbody key={g.race.id} className="pgrp">
+                {gi > 0 && (
+                  <tr className="pgap" aria-hidden="true">
+                    <td colSpan={cols.length} />
+                  </tr>
+                )}
+                <tr className="gh">
+                  <th colSpan={cols.length} scope="colgroup">
+                    <div className="pgh">
+                      <FlapNumber n={g.race.leg} size="sm" />
+                      <h4>{groupTitle(g.race)}</h4>
+                      <span>{groupCount(g.items.length)}</span>
+                    </div>
+                  </th>
+                </tr>
+                {g.items.map((i) => (
+                  <PlatsRow key={i.start.id} item={i} grouped {...props} />
+                ))}
+              </tbody>
+            ))
+          ) : (
+            <tbody>
+              {items.map((i) => (
+                <PlatsRow key={i.start.id} item={i} {...props} />
+              ))}
+            </tbody>
+          )}
         </table>
       </div>
     );
@@ -241,16 +283,33 @@ export function PlatsGroup(props: GroupProps) {
         {right && <span>{right}</span>}
       </h3>
       {help && <p className="help spel-help">{help}</p>}
-      <ul className="plist">
-        {items.map((i) => (
-          <PlatsRow key={i.start.id} item={i} {...props} />
-        ))}
-      </ul>
+      {groups ? (
+        groups.map((g) => (
+          <section key={g.race.id} className="pcard" aria-label={groupTitle(g.race)}>
+            <div className="pgh">
+              <FlapNumber n={g.race.leg} size="sm" />
+              <h4>{groupTitle(g.race)}</h4>
+              <span>{groupCount(g.items.length)}</span>
+            </div>
+            <ul className="plist">
+              {g.items.map((i) => (
+                <PlatsRow key={i.start.id} item={i} grouped {...props} />
+              ))}
+            </ul>
+          </section>
+        ))
+      ) : (
+        <ul className="plist">
+          {items.map((i) => (
+            <PlatsRow key={i.start.id} item={i} {...props} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
 
-function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId, showValue }: GroupProps & { item: Item }) {
+function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, newIds, latestFetchId, showValue, grouped }: GroupProps & { item: Item; grouped?: boolean }) {
   const { setBet, setInteresting, roundId } = useRound();
   const underIds = useUnderMaxIds(roundId);
   const { race, start } = item;
@@ -328,7 +387,7 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
         <td>
           {name}
           <span className="kt">
-            {odds4 ? (unmarked ? `Avd ${race.leg} · ${start.driver?.name ?? "Kusk saknas"}` : start.driver?.name ?? "Kusk saknas") : `Avd ${race.leg} · ${hhmm(race.startAt)} · ${start.driver?.name ?? "Kusk saknas"}`}
+            {odds4 ? (unmarked ? `Avd ${race.leg} · ${start.driver?.name ?? "Kusk saknas"}` : start.driver?.name ?? "Kusk saknas") : grouped ? start.driver?.name ?? "Kusk saknas" : `Avd ${race.leg} · ${hhmm(race.startAt)} · ${start.driver?.name ?? "Kusk saknas"}`}
             {value}
           </span>
           {!odds4 && <Signals item={item} />}
@@ -360,7 +419,8 @@ function PlatsRow({ item, now, guideline, tolerance, desk, variant, unmarked, ne
       <div className="pmain">
         {name}
         <span className="pm">
-          Avd {race.leg} · <RiktShort riktodds={start.riktodds} x={x} rx={rx} />
+          {!grouped && `Avd ${race.leg} · `}
+          <RiktShort riktodds={start.riktodds} x={x} rx={rx} />
           {unmarked && " · inte markerad"}
           {value}
         </span>
