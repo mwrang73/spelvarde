@@ -22,11 +22,21 @@ export const MAX_AGE_DAYS = 7;
 export type SourceKindValue = "COLLECTION" | "PAGE";
 const COLLECTION_HOSTS = ["travstugan.se", "travcash.se"];
 
-// Läsaren: Source.kind om den är satt, annars efter adressen.
+// Tagg-, kategori- och ämnessidor ("/tagg/v85" på Aftonbladet).
+const LISTING_PATH = /\/(tag|tagg|taggar|kategori|category|amne|ämne|topic|topics|sektion)\//i;
+
+// Läsaren: Source.kind om den är satt, annars efter adressen. Samlingssida
+// för de kända sajterna, för tagg- och kategorisidor och för korta adresser
+// med spelformen, som "/v85" eller "/v85-tips" (artiklar har längre namn).
 export function readerFor(source: { url: string; kind?: SourceKindValue | null }): SourceKindValue {
   if (source.kind) return source.kind;
   try {
-    return COLLECTION_HOSTS.includes(bareHost(new URL(source.url).hostname)) ? "COLLECTION" : "PAGE";
+    const u = new URL(source.url);
+    if (COLLECTION_HOSTS.includes(bareHost(u.hostname))) return "COLLECTION";
+    const path = decodeURIComponent(u.pathname);
+    if (LISTING_PATH.test(path)) return "COLLECTION";
+    const last = path.split("/").filter(Boolean).pop() ?? "";
+    return /^(v|gs)\d{2}$/i.test(last.split("-")[0]) && last.split("-").filter(Boolean).length <= 2 ? "COLLECTION" : "PAGE";
   } catch {
     return "PAGE";
   }

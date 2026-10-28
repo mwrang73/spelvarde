@@ -42,6 +42,12 @@ describe("findArticleLinks (10.6)", () => {
     expect(readerFor({ url: "https://travstugan.se/v85" })).toBe("COLLECTION");
     expect(readerFor({ url: "https://www.travcash.se/x" })).toBe("COLLECTION");
     expect(readerFor({ url: "https://example.se/tips" })).toBe("PAGE");
+    expect(readerFor({ url: "https://www.aftonbladet.se/tagg/v85" })).toBe("COLLECTION");
+    expect(readerFor({ url: "https://www.aftonbladet.se/tagg/v85-tips" })).toBe("COLLECTION");
+    expect(readerFor({ url: "https://example.se/kategori/trav/" })).toBe("COLLECTION");
+    expect(readerFor({ url: "https://example.se/V75-tips" })).toBe("COLLECTION");
+    expect(readerFor({ url: "https://www.atg.se/V85/tips/fem-tippar-v85" })).toBe("PAGE");
+    expect(readerFor({ url: "https://www.aftonbladet.se/sportbladet/trav365/a/BMaA0Q/v85-tips-lordag-31-oktober-pa-bjerke" })).toBe("PAGE");
     expect(readerFor({ url: "https://travstugan.se/v85", kind: "PAGE" })).toBe("PAGE");
   });
 });
