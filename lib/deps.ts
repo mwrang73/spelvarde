@@ -172,7 +172,9 @@ export function getTipsDeps(): TipsDeps {
     db: prisma,
     fetchPage: fixtures ? fixtureFetchPage : fetchPage,
     fetchRobots: fixtures ? fixtureRobots : fetchRobots,
-    ai: fixtures ? fixtureAi : key ? createClaudeAi(key) : null,
+    // ANTHROPIC_WORKSPACE_ID behövs bara för en personlig nyckel som inte hör
+    // till en workspace (Anthropic svarar då 400 "not scoped to a workspace").
+    ai: fixtures ? fixtureAi : key ? createClaudeAi(key, TIPS_MODEL, process.env.ANTHROPIC_WORKSPACE_ID?.trim() || undefined) : null,
     warn: (m) => console.warn("[tips]", m),
   };
 }

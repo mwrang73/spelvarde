@@ -69,8 +69,8 @@ export function toolInputOf(content: { type: string; name?: string; input?: unkn
   return input;
 }
 
-export function createClaudeAi(apiKey: string, model = TIPS_MODEL): TipsAi {
-  const client = new Anthropic({ apiKey, timeout: AI_TIMEOUT_MS, maxRetries: 1 });
+export function createClaudeAi(apiKey: string, model = TIPS_MODEL, workspaceId?: string): TipsAi {
+  const client = new Anthropic({ apiKey, timeout: AI_TIMEOUT_MS, maxRetries: 1, defaultHeaders: workspaceId ? { "anthropic-workspace-id": workspaceId } : undefined });
   return async ({ system, user }) => {
     try {
       const msg = await client.messages.create(
