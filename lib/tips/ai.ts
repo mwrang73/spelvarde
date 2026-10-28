@@ -42,11 +42,21 @@ export class AiError extends Error {
   }
 }
 
+// Anthropics felmeddelande, kort. Innehåller aldrig nyckeln.
+function anthropicReason(e: InstanceType<typeof APIError>): string {
+  const body = e.error as { error?: { message?: unknown } } | undefined;
+  const msg = typeof body?.error?.message === "string" ? body.error.message : e.message;
+  return msg.replace(/sk-ant-[\w-]+/g, "[nyckel]").slice(0, 160);
+}
+
 export function aiErrorOf(e: unknown): AiError {
   if (e instanceof AiError) return e;
   if (e instanceof APIConnectionTimeoutError || e instanceof APIUserAbortError) return new AiError(504, AI_ERR.timeout);
-  if (e instanceof AuthenticationError || e instanceof PermissionDeniedError) return new AiError(503, AI_ERR.badKey);
+  if (e instanceof AuthenticationError) return new AiError(503, `${AI_ERR.badKey} (401: nyckeln godkändes inte)`);
+  if (e instanceof PermissionDeniedError) return new AiError(503, `${AI_ERR.badKey} (403: ${anthropicReason(e)})`);
   if (e instanceof APIError && (e.status === 429 || e.status === 529)) return new AiError(502, AI_ERR.overloaded);
+  // Övriga fel med Anthropics egen förklaring, t.ex. för lite krediter eller okänd modell.
+  if (e instanceof APIError && e.status) return new AiError(502, `${AI_ERR.other} (${e.status}: ${anthropicReason(e)})`);
   if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) return new AiError(504, AI_ERR.timeout);
   return new AiError(502, AI_ERR.other);
 }
