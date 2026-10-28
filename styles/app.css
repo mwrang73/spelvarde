@@ -1586,3 +1586,13 @@ section.lg { margin: 0 10px 10px; background: var(--surface); border: 1px solid 
   .rad-h small { font: 600 13px/1.3 var(--f-body); text-transform: none; letter-spacing: 0; color: var(--ink-2); }
   dialog.sheet.rad-sh { max-width: 520px; }
 }
+/* Lägg på hemskärmen (Inställningar), som i Tabellgissningen. */
+.set-sec .btn svg { width: 18px; height: 18px; }
+.hs-body { display: grid; gap: 12px; padding: 4px 0 8px; font-size: 15px; line-height: 1.45; }
+.hs-body p { margin: 0; }
+.hs-steps { margin: 0; padding-left: 22px; display: grid; gap: 12px; }
+.hs-steps li { padding-left: 4px; }
+.hs-steps small { display: block; margin-top: 3px; font-size: 13px; color: var(--ink-2); }
+.hs-key { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+.hs-key svg { width: 16px; height: 16px; }
+.hs-note { padding: 8px 10px; border-radius: 8px; background: var(--surface-2); border-left: 4px solid var(--fill); }

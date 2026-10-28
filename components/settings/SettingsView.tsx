@@ -11,6 +11,7 @@ import { AppHeader } from "@/components/shell/AppHeader";
 import { applyTheme, readThemeChoice } from "@/components/shell/theme-client";
 import { IconCheckThin, IconWarn } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
+import { HomeScreenSection } from "./HomeScreen";
 import { GameSettings, ModelAdmin } from "./GameSettings";
 import { HistAdmin } from "./HistAdmin";
 import type { ThemeChoice } from "@/lib/theme";
@@ -76,6 +77,8 @@ export function SettingsView() {
           </div>
           <p className="help">System följer telefonens eller datorns inställning.</p>
         </section>
+
+        <HomeScreenSection />
 
         <GameSettings settings={settings} onChange={setSettings} />
 
