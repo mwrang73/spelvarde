@@ -2,7 +2,7 @@
 //
 // - Nyckeln läses från ANTHROPIC_API_KEY. Saknas den finns ingen klient
 //   (getTipsDeps ger ai = null) och rutten svarar 503 AI_NOT_CONFIGURED.
-// - Verktyget tvingas (tool_choice), så svaret är alltid JSON enligt schemat.
+// - Verktyget väljs med tool_choice auto och en instruktion i systemprompten (tvingat verktyg stöds inte av Claude Sonnet 5.5). Svaret valideras mot schemat i validate.ts.
 // - Avvikelse: specen anger temperature: 0, men @anthropic-ai/sdk 1.3 har inte
 //   längre parametern för de aktuella modellerna. Den skickas därför inte.
 //   Stabiliteten kommer i stället av det tvingade verktyget och valideringen.
@@ -79,7 +79,10 @@ export function createClaudeAi(apiKey: string, model = TIPS_MODEL, workspaceId?:
           max_tokens: AI_MAX_TOKENS,
           system,
           tools: [TIP_TOOL],
-          tool_choice: { type: "tool", name: TIP_TOOL_NAME, disable_parallel_tool_use: true },
+          // Claude Sonnet 5.5 tillåter inte tvingat verktyg (type "tool"/"any"
+          // ger 400). Instruktionen i systemprompten styr till rapportera_tips,
+          // och svaret valideras ändå (lib/tips/validate.ts).
+          tool_choice: { type: "auto", disable_parallel_tool_use: true },
           messages: [{ role: "user", content: user }],
         },
         { signal: AbortSignal.timeout(AI_TOTAL_MS) },
