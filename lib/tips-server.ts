@@ -64,6 +64,8 @@ const ok = <T>(body: T): Reply<T> => ({ status: 200, body });
 const fail = (status: number, error: string, extra: Omit<ErrorBody, "error"> = {}): Reply<never> => ({ status, body: { error, ...extra } });
 
 export const SCAN_LOCK_MS = 60_000;
+// Prismas standard (5 s) räcker inte för många tips mot driftdatabasen.
+const TX_OPTS = { maxWait: 10_000, timeout: 30_000 };
 export const MSG = {
   roundNotFound: "Omgången finns inte.",
   sourceNotFound: "Källan finns inte.",
@@ -314,7 +316,7 @@ export async function interpretArticle(deps: TipsDeps, input: { userId: string; 
     if (used >= limit) return { kind: "full" as const };
     const row = await tx.aiUsage.create({ data: { userId, roundId: round.id, articleId: article.id, purpose: "TIPS", model, startedAt: now } });
     return { kind: "ok" as const, usageId: row.id };
-  });
+  }, TX_OPTS);
   if (reserved.kind === "busy") return fail(409, MSG.busy, { code: "BUSY" });
   const quota = () => quotaOf(db, userId, now, limit);
   if (reserved.kind === "full") return fail(429, MSG.quota, { code: "AI_QUOTA", quota: await quota() });
@@ -357,31 +359,30 @@ export async function interpretArticle(deps: TipsDeps, input: { userId: string; 
   const createdIds = await db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"tips:" + userId + ":" + round.id}))`;
     await tx.tip.deleteMany({ where: { articleId: article.id, userId, review: "PENDING" } });
-    const ids: string[] = [];
-    for (const t of v.tips) {
-      const row = await tx.tip.create({
-        data: {
-          userId,
-          sourceId: article.sourceId,
-          roundId: round.id,
-          articleId: article.id,
-          leg: t.leg,
-          number: t.number,
-          rawHorseName: t.rawHorseName,
-          role: t.role,
-          roleWord: t.roleWord,
-          quote: t.quote,
-          startId: t.startId,
-          horseId: t.startId ? horseOf.get(t.startId) ?? null : null,
-          match: t.match,
-          flags: t.flags,
-          suggestedStartId: t.suggestedStartId,
-          aiStartId: t.startId,
-          aiRole: t.role,
-        },
-      });
-      ids.push(row.id);
-    }
+    // Ett anrop för alla tips: ett och ett tog för lång tid mot driftdatabasen.
+    const rows = await tx.tip.createManyAndReturn({
+      select: { id: true },
+      data: v.tips.map((t) => ({
+        userId,
+        sourceId: article.sourceId,
+        roundId: round.id,
+        articleId: article.id,
+        leg: t.leg,
+        number: t.number,
+        rawHorseName: t.rawHorseName,
+        role: t.role,
+        roleWord: t.roleWord,
+        quote: t.quote,
+        startId: t.startId,
+        horseId: t.startId ? horseOf.get(t.startId) ?? null : null,
+        match: t.match,
+        flags: t.flags,
+        suggestedStartId: t.suggestedStartId,
+        aiStartId: t.startId,
+        aiRole: t.role,
+      })),
+    });
+    const ids = rows.map((r) => r.id);
     // 4. Väntande tips från samma källa på samma start i andra artiklar: det äldre ersätts.
     const mine = await tx.tip.findMany({ where: { id: { in: ids }, startId: { not: null } }, include: { article: true } });
     const startIds = mine.map((t) => t.startId!);
@@ -402,7 +403,7 @@ export async function interpretArticle(deps: TipsDeps, input: { userId: string; 
     await refreshFactCount(tx, article.sourceId, round.id, userId);
     await log(tx, { roundId: round.id, userId, step: STEP_AI, startedAt: now, ok: true, message: `${ids.length} tips, ${discarded} kastade`, sourceId: article.sourceId, articleId: article.id });
     return ids;
-  });
+  }, TX_OPTS);
 
   const ctx = await loadContext(db, userId, round.id, after);
   const created = createdIds.map((id) => ctx.byId.get(id)!).filter(Boolean);
@@ -637,7 +638,7 @@ async function actionTx<T>(deps: TipsDeps, userId: string, roundId: string, fn: 
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"tips:" + userId + ":" + roundId}))`;
     const ctx = await loadContext(tx, userId, roundId, now);
     return fn(tx, ctx);
-  });
+  }, TX_OPTS);
   return { result, ctx: await loadContext(deps.db, userId, roundId, now) };
 }
 
