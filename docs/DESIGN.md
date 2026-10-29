@@ -79,17 +79,17 @@ Färg är aldrig ensam informationsbärare. Varje färg har alltid en bokstav, e
 - **Namn kortas med ellipsis och märken krymper inte.** Galopp-, Intressant- och Spelbar-märket ligger direkt efter namnet med `flex: none`.
 - **Kort och luftigare rader** (Omgång 56 px, Spelförslag 60 px, odds 52 px) används bara där raden har två rader text eller ett fält.
 - Små inbördes avstånd är 3–6 px. Grupprubriker har 12 px luft ovanför och 6 px under.
-- **Desktop (≥ 1024 px):** tre kolumner med avdelningar (240 px), huvudinnehåll (`1fr`) och sidopanel (380 px, hästkort eller larm). Spelförslaget har tre flikar (Trollspöt, Platsspel, V85-rad) som var och en visar sin panel i full bredd (E6, beslut av Mikael). Platsspel är högst 900 px brett. V85-raden har två kolumner, `380px minmax(0, 1fr)`: budget och regler till vänster (fast vid skrollning), avdelningskorten i två kolumner till höger.
+- **Desktop (≥ 1024 px):** analysvyn (avdelning och hästkort) byggs på ett rutnät med 8 lika kolumner, 16 px marginal och 16 px mellanrum: en zonrad överst (Avdelning, Fas, Verktyg), loppet till vänster och hästkortet till höger. Sidan skrollar inte. Måtten är CSS-variabler (`--av-*` i `styles/app.css`), se `docs/specs/analysvy-layout.md` 1. Hästraden i den breda tabellen får krympa från 44 till 40 px när fönstret är lågt. Mobilen behåller exakt 44 px. Toppmenyn är 56 px hög. Spelförslaget har tre flikar (Trollspöt, Platsspel, V85-rad) som var och en visar sin panel i full bredd (E6, beslut av Mikael). Platsspel är högst 900 px brett. V85-raden har två kolumner, `380px minmax(0, 1fr)`: budget och regler till vänster (fast vid skrollning), avdelningskorten i två kolumner till höger.
 
 ## Komponenter
 Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för varje komponent står i komponentarket och i flödesmockupen.
 
 ### Tavlan
-- `AppHeader`: vyrubrik på tavlan med tillbaka eller logga, titel och underrad (versaler, `--head-ink-2`), plus högst två ikonknappar. På desktop är den toppmeny med Omgång, Källor och Statistik.
+- `AppHeader`: vyrubrik på tavlan med tillbaka eller logga, titel och underrad (versaler, `--head-ink-2`), plus högst två ikonknappar. På desktop är den toppmeny med Omgång, Källor och Statistik (56 px). I analysvyn är tillbaka en pil med synlig text ("← Avd 5", "← Omgång"), och hästkortet har ‹ › i en grupp till höger. Pil + text betyder tillbaka, två chevroner betyder byt häst. Omgång i menyn leder till omgången du är i.
 - `FlapNumber`: startnummer i en fällbladsruta med delad mitt (linje på 1 px vid 50 %) och bärnstensgula siffror med sken. Storlekar `sm` 24 × 28, `md` 30 × 36 och `lg` 46 × 56. Varianten `placed` är bärnstensgul ruta med mörk text och används för placering.
 - `RaceTabs`: avdelning 1–8 som fällbladsrutor, `role="tablist"`. Vald flik är bärnstensgul med sken. En röd prick (8 px, `aria-label` "rusningslarm") visar ett olarmat larm i avdelningen.
 - `PhaseRail`: fyra rutor (Analys, Odds, Live och Klart) med dag under. Klara faser får "✓", och den aktiva har `aria-current="step"` och bärnstensgul bakgrund. Varje ruta är en länk till fasens vy.
-- `RaceStrip`: chips för distans, startmetod och klass, knappen "Loppstatistik ›" och en statistikrad ("Spår 5 vinner 12,2 %").
+- `RaceStrip`: chips för distans, startmetod och klass, knappen "Loppstatistik ›" och en statistikrad ("Spår 5 vinner 12,2 %"). Klassbrickan är neutral (vanlig `.chip`), inte fylld bärnsten.
 - `BoardPanel`: generisk tavelyta med LED-raster för riktoddsrutan, budgeten, summeringar och jämförelsestaplar.
 
 ### Rader och märken
@@ -105,8 +105,8 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 - `LampToggle` (Intressant): träffyta 44 × 44 och en tangent på 28 × 28. Släckt tangent har en grå lysdiod, och tänd tangent är bärnstensgul med bock och sken. Använder `aria-pressed` och `aria-label` "Intressant: <häst>". Varianten `labeled` har texten "Intressant".
 - `BetToggle`: samma tangent med biljettikon. Tänd tangent är inverterad (`--bet`).
 - `SpelbarToggle`: chip med "S Spelbar". Ursprunget visas som underrad: "Förslag", "Satt av dig" eller "Borttagen av dig".
-- `Button` har varianterna `primary` (bärnstensgul gradient, underkant på 3 px, trycks ned 2 px vid `:active`), `secondary` (tangent med kant och underkant), `ghost` (bärnstensgul text) och `icon` (44 × 44). Avstängd knapp är platt `--surface-3` utan skugga. Knapptext skrivs i versaler med Barlow Condensed 700.
-- `Segmented`: segmentkontroll med `aria-pressed`, där valt segment har `--ink` som bakgrund.
+- `Button` har varianterna `primary` (bärnstensgul gradient, underkant på 3 px, trycks ned 2 px vid `:active`), `secondary` (tangent med kant och underkant), `ghost` (bärnstensgul text) och `icon` (44 × 44). `secondary xs` (24 px hög, 12 px text, träffyta 44 px) används bara i panelrubriker. Avstängd knapp är platt `--surface-3` utan skugga. Knapptext skrivs i versaler med Barlow Condensed 700.
+- `Segmented`: segmentkontroll med `aria-pressed`, där valt segment har `--ink` som bakgrund. Varianten `.seg.nav` används för navigering (fas, avdelningar, flikar) och har valt läge i bärnsten (`--fill`/`--fill-ink`). Regel: **navigering väljs i bärnsten, värden i `--ink`.**
 - `Stepper`: − och + på 40 × 44 med ett värde emellan. Knapparna stängs av vid gränsen.
 - `OddsKeypad`: tolv tangenter på 58 px, siffrorna 0–9, Radera och "Nästa ›" (primär). LED-displayen visar oddset med två decimaler.
 - `QuickChips`: snabbval på minst 44 px höjd. Valt chip är bärnstensgult med "✓", och kortkommandot visas som en liten bokstav på desktop.

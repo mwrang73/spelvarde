@@ -91,6 +91,8 @@ Bara **ett** kort visas. Välj det första som stämmer i listan:
 ---
 
 ## 4. Sidor och navigation [E1]
+
+> **Ändrat 2026-10-29:** layouten (desktop och mobil), tillbaka-knappen och bottenmenyns Omgång följer `docs/specs/analysvy-layout.md`. Där de säger olika gäller den filen.
 Bottenmeny i mobilen och toppmeny på desktop har tre delar: **Omgång**, **Källor** och **Statistik**. Inställningar nås från ikonknappen ⚙ i Omgångs vyrubrik.
 
 | Rutt | Skärm | Etapp |
@@ -145,6 +147,8 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 | Ny V85 finns medan nuvarande är klar | Nästa steg visar "Hämta omgång – V85 <bana> <datum>". |
 
 ### S2 Avdelningen [E1, kolumnen riktodds från E2, X-faktor från E2.1]
+
+> **Ändrat 2026-10-29:** layouten (desktop och mobil), tillbaka-knappen och bottenmenyns Omgång följer `docs/specs/analysvy-layout.md`. Där de säger olika gäller den filen.
 **Innehåll**
 1. **Vyrubrik:** "Avd 7 · 17:13" och underraden med loppnamnet.
 2. **Avdelningsflikar** 1–8. Fliken för en genomgången avdelning har en liten bock under siffran, och fliken med olarmat larm har en röd prick (E3).
@@ -183,6 +187,8 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 - Tangentbord: ↑/↓ flyttar vald rad, Enter öppnar hästkortet, **I** växlar Intressant och **X** stegar X-faktorn (Ingen → Tror på → Stark känsla → Ingen) på vald rad.
 
 ### S2b Loppstatistik [E1]
+
+> **Ändrat 2026-10-29:** layouten (desktop och mobil), tillbaka-knappen och bottenmenyns Omgång följer `docs/specs/analysvy-layout.md`. Där de säger olika gäller den filen.
 Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Innehåll:
 - **Vinst % per startnummer** för loppets distansgrupp och startmetod, som staplar 1–15. Segmentet "Alla banor | <bana>" byter urval. Hästarnas egna spår är markerade.
 - **Favoriter:** "Mest streckade vinner X % av V85-loppen" och topp 3-andel om källan har den.
@@ -191,6 +197,8 @@ Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Inneh�
 - **Lägen:** "Ingen statistik för den här distansen" och, om hämtningen misslyckades, "Kunde inte hämta statistiken" med Försök igen.
 
 ### S3 Hästkortet [E1, riktodds E2, X-faktor E2.1, tips E5]
+
+> **Ändrat 2026-10-29:** layouten (desktop och mobil), tillbaka-knappen och bottenmenyns Omgång följer `docs/specs/analysvy-layout.md`. Där de säger olika gäller den filen.
 **Innehåll, uppifrån och ned**
 1. **Tavelhuvud** med startnummer (stort), namn, "ålder kön · rekord" och "kusk · tr tränare".
 2. **Galoppvarning**, om den gäller: "Galopp i 1 av 5 senaste starterna, 13 sep på Åby". För GD står i stället "Galopp med diskning 13 sep på Åby", med starkare ram.
