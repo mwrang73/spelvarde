@@ -106,7 +106,7 @@ describe("Bjerke (fixturen)", () => {
     expect(x.suggestions).toEqual([{ kind: "BUDGET", budget: 40 }, { kind: "SPIKES", spikCount: 5, minCost: 20 }]);
     expect(x.canCopy).toBe(false);
     expect(rulesDontFitText(x)).toBe(
-      "**Reglerna ryms inte i 30 kr.** 4 spikar, allgardering av avd 5 (10 hästar) och minst 2 hästar i de 3 andra loppen ger minst 80 rader, alltså 40,00 kr. Ingen ny rad föreslås förrän det ryms.",
+      "**Reglerna ryms inte i 30 kr.** 4 spikar, prioriterat lopp avd 5 (minst 10 hästar) och minst 2 hästar i de 3 andra loppen ger minst 80 rader, alltså 40,00 kr. Ingen ny rad föreslås förrän det ryms.",
     );
   });
 

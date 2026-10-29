@@ -163,3 +163,59 @@ export function bjerkeRules(over: Partial<TippaRules> = {}): TippaRules {
 export function withStart(legs: TippaLeg[], leg: number, number: number, change: Partial<TippaStart>): TippaLeg[] {
   return legs.map((l) => (l.leg !== leg ? l : { ...l, starts: l.starts.map((s) => (s.number === number ? { ...s, ...change } : s)) }));
 }
+
+// ---- E6b: syntetiska omgångar ur docs/specs/e6b-max-per-lopp.md 4.2 -----------------------------
+// Samma omgångar som i lib/tippa.test.ts (exempel 1 och 2), för texttesterna.
+
+const synth = (number: number, streck: number, riktX: number): TippaStart => ({
+  number,
+  name: `H${number}`,
+  scratched: false,
+  streck,
+  riktX,
+  signals: 0,
+  interesting: false,
+  spelbar: false,
+  bet: false,
+  betOdds: null,
+  xFactor: "NONE",
+});
+// Ett lopp ur strecken (fallande). riktX = max(golv, 90 / streck); spik = riktX för häst 1 (favoriten).
+const synthLeg = (leg: number, streck: number[], o: { spik?: number; floor?: number } = {}): TippaLeg => ({
+  leg,
+  startAt: `2026-11-07T${String(12 + leg).padStart(2, "0")}:00:00.000Z`,
+  cancelled: false,
+  starts: streck.map((s, i) => synth(i + 1, s, i === 0 && o.spik !== undefined ? o.spik : Math.max(o.floor ?? 2, Math.round((90 / s) * 100) / 100))),
+});
+const S8 = [30, 20, 15, 10, 8, 7, 6, 4];
+const S10 = [55, 10, 8, 6, 5, 5, 4, 3, 2, 2];
+const S12 = [30, 15, 12, 8, 7, 6, 5, 4, 4, 3, 3, 3];
+const S13 = [16.4, 14, 12, 10, 9, 8, 7, 6, 5.5, 4, 3.5, 2.5, 1.6];
+const S14 = [26, 14, 11, 8, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2];
+const S15 = [25, 14, 11, 8, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1];
+
+// Exempel 1 (mockupens omgång): spikar i avd 2 och 6, P = avd 5 med 13 löpande, budget 400, tak 7.
+export const ex1Legs = (): TippaLeg[] => [
+  synthLeg(1, S12),
+  synthLeg(2, S10, { spik: 1.2 }),
+  synthLeg(3, S15),
+  synthLeg(4, S12),
+  synthLeg(5, S13, { floor: 2.5 }),
+  synthLeg(6, S10, { spik: 1.3 }),
+  synthLeg(7, S14),
+  synthLeg(8, S12, { spik: 1.8 }),
+];
+export const ex1Rules = (over: Partial<TippaRules> = {}): TippaRules => ({ gameType: "V85", budget: 400, rowPrice: 0.5, spikCount: 2, allgMode: "AUTO", allgLeg: null, maxPerLeg: 7, locked: {}, ...over });
+
+// Exempel 2 (budgeten räcker inte till taket): 5 spikar, P med 13, två öppna med 8. favLimit 8.
+export const ex2Legs = (): TippaLeg[] => [
+  synthLeg(1, S8, { spik: 1.2 }),
+  synthLeg(2, S8, { spik: 1.25 }),
+  synthLeg(3, S8, { spik: 1.3 }),
+  synthLeg(4, S8, { spik: 1.35 }),
+  synthLeg(5, S13, { floor: 2.5 }),
+  synthLeg(6, S8, { spik: 1.4 }),
+  synthLeg(7, S8),
+  synthLeg(8, S8),
+];
+export const ex2Rules = (over: Partial<TippaRules> = {}): TippaRules => ({ gameType: "V85", budget: 50, rowPrice: 0.5, spikCount: 5, allgMode: "AUTO", allgLeg: null, maxPerLeg: 7, locked: {}, ...over });

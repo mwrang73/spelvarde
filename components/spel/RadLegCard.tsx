@@ -1,6 +1,7 @@
-// Ett kort per avdelning i V85-raden (E6 S6b, "Avdelningskortet"): rubriken
-// med typtaggen och pennan, de valda hästarna med skälen som taggar,
-// allgarderingens nummerrutor, varför-raden och spärrraden.
+// Ett kort per avdelning i V85-raden (E6 S6b, "Avdelningskortet"; E6b 5.4):
+// rubriken med typtaggen och pennan, de valda hästarna med skälen som taggar,
+// nummerrutorna när det prioriterade loppet har alla hästar (ALLG),
+// varför-raden och spärrraden.
 
 import { forwardRef } from "react";
 import { Badge, BetBadge, FlapNumber, XBadge } from "@/components/ui/board";
@@ -10,11 +11,11 @@ import type { TippaHorse, TippaLegResult, TippaResult } from "@/lib/tippa";
 import { boldParts, favOutText, legSubline, legTypeLabel, legWhy, legWhyStarted, pctText, reasonClass, reasonLabel, riktText } from "@/lib/tippa-text";
 import type { LegRoleDto, ReasonCode } from "@/lib/types";
 
-// Text med **fetstil** som <b>.
+// Text med **fetstil** som <b>. Procent får hårt mellanslag ("16,4 %" bryts inte).
 export function Bold({ text }: { text: string }) {
   return (
     <>
-      {boldParts(text).map((p, i) => (p.bold ? <b key={i}>{p.text}</b> : <span key={i}>{p.text}</span>))}
+      {boldParts(text.replace(/ %/g, "\u00a0%")).map((p, i) => (p.bold ? <b key={i}>{p.text}</b> : <span key={i}>{p.text}</span>))}
     </>
   );
 }
@@ -66,6 +67,8 @@ type Props = {
   mode: CardMode;
   // Alla startnummer i loppet (allgarderingens rutor).
   all: number[];
+  // Efter spelstopp: sparat tak (null = Alla), för varför-raden i ett prioriterat lopp.
+  cap?: number | null;
   // Strukna hästar som visas medan strykningsbanderollen står kvar.
   struck?: { number: number; name: string }[];
   // Hästar som kom med efter en strykning (.lh.new).
@@ -75,11 +78,16 @@ type Props = {
   onEdit?: () => void;
 };
 
-export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCard({ l, r, mode, all, struck = [], fresh = [], role, onEdit }, penRef) {
+export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCard({ l, r, mode, all, cap = null, struck = [], fresh = [], role, onEdit }, penRef) {
   const id = `rad-lg-${l.leg}`;
   const started = mode === "started";
   const kind = started ? (role?.k ?? null) : mode === "legacy" ? null : l.kind;
-  const isAllg = kind === "ALLG";
+  // Nummerrutorna bara när alla löpande är med. En rad från före E6b kan ha
+  // sparats som ALLG fast allgarderingen tappade hästar: då hästraderna.
+  const runners = l.field.map((h) => h.number);
+  const coversAll = runners.length > 0 && runners.every((n) => l.selection.includes(n));
+  const isAllg = kind === "ALLG" && (!started || coversAll);
+  const startedKind = started && kind === "ALLG" && !isAllg ? "PRIO" : (role?.k ?? undefined);
   const lr = (() => {
     if (started) return <span className="lr">Startat</span>;
     if (mode === "legacy") return <span className="lr">{l.selection.length === 1 ? "1 häst" : `${l.selection.length} hästar`}</span>;
@@ -92,11 +100,17 @@ export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCa
           {t}
         </span>
       );
-    if (l.kind === "ALLG") return <span className="lr allg">{t}</span>;
+    if (l.kind === "ALLG" || l.kind === "PRIO")
+      return (
+        <span className="lr allg">
+          <span className="sr">Prioriterat lopp, </span>
+          {t}
+        </span>
+      );
     return <span className="lr">{t}</span>;
   })();
   const why = (() => {
-    if (started) return legWhyStarted(role?.k);
+    if (started) return legWhyStarted(startedKind, { count: l.selection.length, field: l.field.length, cap });
     if (mode === "legacy") return null;
     if (l.struckOwnSpik) return "Avdelningen saknar spik. Raden kan inte kopieras förrän den är vald.";
     return legWhy(r, l.leg);

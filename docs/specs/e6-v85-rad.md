@@ -1,5 +1,7 @@
 # E6 – Tippa V85 (V85-raden)
 
+> **E6b (2026-10-29):** Allgarderingen är ersatt av Max hästar per lopp och Prioriterat lopp. Se `docs/specs/e6b-max-per-lopp.md`, som gäller där de två säger olika.
+
 Status: godkänd 2026-10-28 efter mockupen `docs/mockups/v85-rad-mockup.html` (https://claude.ai/artifact/EFfCheA9vhPcBr31U8oL6E), **alternativ A · Inställningar överst och lista per avdelning**, med kupongbilden från B i arket **Spela hos ATG**. Typ: **Omfattande**.
 
 Den här filen kompletterar `spelvarde.md`. Varje avsnitt säger vilket avsnitt i huvudspecen det ändrar eller lägger till. Där de två säger olika gäller den här filen. **S6b och 6.5 i huvudspecen ersätts helt.** "Föreslå inom budget", `suggestCoupon`, `suggestionOrder`, `stepLeg` och stegaren per avdelning tas bort.

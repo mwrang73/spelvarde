@@ -1,4 +1,5 @@
-// Texterna för V85-raden (docs/specs/e6-v85-rad.md, S6b, Lägen och Texter).
+// Texterna för V85-raden (docs/specs/e6-v85-rad.md, S6b, Lägen och Texter;
+// E6b Max hästar per lopp och prioriterat lopp: docs/specs/e6b-max-per-lopp.md 6).
 // Rena funktioner över TippaResult från lib/tippa.ts, testade i
 // lib/tippa-text.test.ts.
 //
@@ -7,7 +8,7 @@
 
 import { sameNumbers } from "@/lib/coupon";
 import { relTime } from "@/lib/format";
-import type { ReasonCode } from "@/lib/types";
+import type { AllgMode, ReasonCode } from "@/lib/types";
 import type { LegKind, TippaHorse, TippaLegResult, TippaResult, TippaSuggestion } from "@/lib/tippa";
 
 // ---- Format ------------------------------------------------------------------------------------
@@ -82,7 +83,7 @@ export function reasonClass(code: ReasonCode): string {
 export function spikHelp(r: TippaResult): string {
   if (r.noRikt) return "Riktodds saknas, så appen väljer inga spikar. Du kan välja egna.";
   let t: string;
-  if (r.spikEffective === 0) t = "Inga spikar. Alla lopp utom allgarderingen får minst 3 hästar.";
+  if (r.spikEffective === 0) t = "Inga spikar. Alla lopp får minst 3 hästar.";
   else if (r.appSpikes === 0) t = r.ownSpikes === 1 ? "Spiken är din egen." : `Alla ${r.ownSpikes} är dina egna.`;
   else if (r.appSpikes === 1) t = `Appen väljer 1, i loppet där modellen är säkrast: avd ${r.spikLegs[0]}.`;
   else t = `Appen väljer ${r.appSpikes}, i de lopp där modellen är säkrast: avd ${joinSv(r.spikLegs)}.`;
@@ -90,31 +91,101 @@ export function spikHelp(r: TippaResult): string {
     const many = r.skippedSpik.length > 1;
     t += ` Avd ${joinSv(r.skippedSpik)} hoppades över: ${many ? "spikarna där vore favoriten" : "spiken där vore favoriten"}, och favoritspärren är full.`;
   }
-  if (r.spikMax < r.spikCap) t += ` Högst ${r.spikMax} ${r.spikMax === 1 ? "spik" : "spikar"} nu: övriga lopp är dina egna val, allgarderingen, inställda eller saknar riktodds.`;
+  if (r.spikMax < r.spikCap) t += ` Högst ${r.spikMax} ${r.spikMax === 1 ? "spik" : "spikar"} nu: övriga lopp är dina egna val, det prioriterade loppet, inställda eller saknar riktodds.`;
   return t;
 }
 
 // "1 av 4"
 export const ownSpikValue = (r: TippaResult) => `${r.ownSpikes} av ${r.spikEffective}`;
 
-// ---- Allgardering ------------------------------------------------------------------------------
+// ---- Max hästar per lopp och Prioriterat lopp (E6b 6.1–6.3) ----------------------------------
 
 const legOf = (r: TippaResult, leg: number | null) => (leg === null ? undefined : r.legs.find((l) => l.leg === leg));
 
-export function allgHelp(r: TippaResult): string {
+type CapView = Pick<TippaResult, "maxPerLeg" | "fieldMax">;
+
+// Taket som det visas: null = "Alla" (inget tak, eller taket täcker största fältet).
+export const shownCap = (r: CapView): number | null => (r.maxPerLeg === null || r.maxPerLeg >= r.fieldMax ? null : r.maxPerLeg);
+
+// Stegarens värde: "7" eller "Alla".
+export const capValue = (r: CapView) => {
+  const n = shownCap(r);
+  return n === null ? "Alla" : String(n);
+};
+
+// Hjälptexten under stegaren. over = tillägget efter taggen "Över taket" (null = ingen tagg).
+export function capHelp(r: TippaResult): { text: string; over: string | null } {
+  const n = shownCap(r);
+  let text: string;
+  if (n === null) {
+    const p = legOf(r, r.allgLeg);
+    text = p ? `Inget tak. Avd ${p.leg} får **alla ${p.selection.length}**, som en allgardering.` : "Inget tak. Det prioriterade loppet får alla sina hästar om budgeten räcker.";
+  } else if (n <= 3) {
+    text = `Inget lopp får fler än **${n} hästar**. Lägre går inte: varje öppet lopp behöver topp 3, mellan och skräll.`;
+  } else {
+    text = `Inget lopp får fler än **${n} hästar**. Appen tar färre där budgeten gör mer nytta i andra lopp.`;
+  }
+  const legs = r.overCapLegs;
+  let over: string | null = null;
+  if (legs.length === 1) {
+    const own = legOf(r, legs[0]);
+    over = `Ditt eget val i avd ${legs[0]} har ${own?.selection.length ?? 0}. Ditt val går först, och inget blockeras.`;
+  } else if (legs.length > 1) {
+    over = `Dina egna val i avd ${joinSv(legs)} har fler än ${r.maxPerLeg}. Ditt val går först, och inget blockeras.`;
+  }
+  return { text, over };
+}
+
+// Favoritens andel för texterna: strecket, eller modellens andel när loppet är preliminärt.
+const favPct = (l: TippaLegResult) => (l.favorite ? (l.prelim ? l.favorite.share : l.favorite.streck) : null);
+
+// "7 av 13" / "alla 13"
+const prioAmount = (l: TippaLegResult) => (l.kind === "ALLG" ? `alla ${l.selection.length}` : `${l.selection.length} av ${l.field.length}`);
+
+export function prioHelp(r: TippaResult): string {
   const l = legOf(r, r.prioLeg);
-  if (!l) return "Ingen avdelning kan allgarderas: alla är dina egna val eller inställda.";
+  if (!l) return "Inget lopp kan prioriteras: alla är dina egna val eller inställda.";
+  const amount = `Avd ${l.leg} får **${prioAmount(l)}**`;
   if (r.prioFallback && r.prioRequested !== null) {
-    const why = r.prioFallback === "LOCKED" ? "är låst" : r.prioFallback === "CANCELLED" ? "är inställd" : "kan inte allgarderas";
-    return `Din valda avd ${r.prioRequested} ${why}, så appen valde avd ${l.leg}.`;
+    const why = r.prioFallback === "LOCKED" ? "är ditt eget val och låst" : r.prioFallback === "CANCELLED" ? "är inställd" : "kan inte prioriteras";
+    return `Din valda avd ${r.prioRequested} ${why}, så appen prioriterar avd ${l.leg}. ${amount}.`;
   }
-  const fav = l.favorite;
-  if (r.prioAuto) {
-    if (l.prelim || !fav) return `Avd ${l.leg}, mest öppna loppet enligt modellen.`;
-    return `Avd ${l.leg}, mest öppna loppet. Favoriten har **${pctText(fav.streck)}**.`;
+  const who = r.prioAuto ? `mest öppna loppet${l.prelim ? " enligt modellen" : ""}` : "ditt val";
+  const v = favPct(l);
+  const fav = v === null ? "" : ` Favoriten har **${pctText(v)}**${l.prelim ? " enligt modellen" : ""}.`;
+  if (r.status === "RULES_DONT_FIT") return `Avd ${l.leg}, ${who}.${fav}`;
+  const n = l.field.length;
+  const k = l.selection.length;
+  const cap = shownCap(r);
+  if (l.kind === "ALLG") {
+    if (cap !== null && cap > n) return `${amount}, ${who}. Taket ${cap} är fler än de startande.`;
+    return `${amount}, ${who}.${fav}`;
   }
-  if (!fav) return `Avd ${l.leg}, ditt val.`;
-  return `Avd ${l.leg}, ditt val. Favoriten har **${pctText(l.prelim ? fav.share : fav.streck)}**${l.prelim ? " enligt modellen" : ""}.`;
+  if (k < r.prioTarget) {
+    if (r.prioTarget < n) return `${amount}, ${who}. Budgeten räcker inte till ${r.prioTarget} där.`;
+    return `${amount}, ${who}. Budgeten räcker inte till alla ${n} där.`;
+  }
+  return `${amount}, ${who}.${fav}`;
+}
+
+// Efter spelstopp, ur den sparade raden (legRoles och kupongens allgMode).
+export function prioHelpStarted(p: { leg: number; kind: "ALLG" | "PRIO"; count: number; field: number } | null, mode: AllgMode | null): string {
+  if (!p) return "Inget lopp prioriterades.";
+  if (p.kind === "ALLG") return `Avd ${p.leg} allgarderades.`;
+  return `Avd ${p.leg} fick **${p.count} av ${p.field}** hästar (${mode === "CHOSEN" ? "ditt val" : "Auto"}).`;
+}
+
+// Underraden i arket Välj lopp att prioritera.
+export function prioSheetSub(r: CapView): string {
+  const n = shownCap(r);
+  return n === null ? "Loppet får alla sina hästar, om budgeten räcker. Appen räknar om resten." : `Loppet får upp till ${n} hästar, om budgeten räcker. Inget lopp får fler än ${n}.`;
+}
+
+// Värdet till höger i arket: vad avdelningen leg skulle få som prioriterat lopp i raden res.
+export function prioSheetValue(res: TippaResult, leg: number): string | null {
+  const l = legOf(res, leg);
+  if (!l || res.prioLeg !== leg) return null;
+  return l.kind === "ALLG" ? `Alla ${l.selection.length}` : `${l.selection.length} av ${l.field.length}`;
 }
 
 // ---- Favoritspärren ----------------------------------------------------------------------------
@@ -170,6 +241,8 @@ export function legTypeLabel(l: TippaLegResult, started = false): string {
       return "Eget val";
     case "ALLG":
       return `Alla ${l.selection.length}`;
+    case "PRIO":
+      return `${l.selection.length} av ${l.field.length}`;
     case "CANCELLED":
       return "Inställt";
     case "NO_STARTERS":
@@ -202,13 +275,9 @@ export function legWhy(r: TippaResult, leg: number): string | null {
       return "Din spik. Avdelningen är låst och räknas inte om.";
     case "OWN":
       return "Ditt val. Avdelningen är låst och räknas inte om.";
-    case "ALLG": {
-      if (!fav) return null;
-      const v = pctText(l.prelim ? fav.share : fav.streck);
-      if (!r.prioAuto) return `Ditt val av allgardering. Favoriten **${horseName(fav)}** har **${v}**${l.prelim ? " enligt modellen" : ""}.`;
-      const wide = l.field.filter((h) => h.v >= 5 - 1e-9).length;
-      return `Mest öppna loppet${l.prelim ? " enligt modellen" : ""}: favoriten **${horseName(fav)}** har **${v}**, lägst av omgångens favoriter. ${wide} ${wide === 1 ? "häst har" : "hästar har"} minst 5 %.`;
-    }
+    case "PRIO":
+    case "ALLG":
+      return prioWhy(r, l);
     case "CANCELLED":
       return "Loppet är inställt. Hos ATG räknas alla hästar som vinnare, så en häst räcker.";
     case "OPEN":
@@ -221,11 +290,39 @@ export function legWhy(r: TippaResult, leg: number): string | null {
   }
 }
 
-// Varför-raden efter spelstopp, ur den sparade typen (legRoles).
-export function legWhyStarted(kind: LegKind | undefined): string | null {
+// Varför-raden för det prioriterade loppet (E6b 6.5).
+function prioWhy(r: TippaResult, l: TippaLegResult): string {
+  const auto = r.prioAuto;
+  const who = auto ? `mest öppna loppet${l.prelim ? " enligt modellen" : ""}` : "ditt val";
+  const v = favPct(l);
+  const fav = l.favorite && v !== null ? `favoriten **${horseName(l.favorite)}** har **${pctText(v)}**${l.prelim ? " enligt modellen" : ""}` : null;
+  const head = fav ? `Prioriterat, ${who}: ${fav}${auto ? ", lägst av omgångens favoriter" : ""}.` : `Prioriterat, ${who}.`;
+  const n = l.field.length;
+  const k = l.selection.length;
+  const cap = shownCap(r);
+  if (l.kind === "ALLG") {
+    const atg = "Hos ATG trycker du på **Alla**.";
+    if (cap === null) return `${head} Inget tak, så alla ${n} är med. ${atg}`;
+    const plain = fav ? `Prioriterat, ${who}: ${fav}.` : `Prioriterat, ${who}.`;
+    if (cap > n) return `${plain} Taket ${cap} är fler än de startande, så alla ${n} är med. ${atg}`;
+    return `${plain} Taket ${cap} är nått, så alla ${n} är med. ${atg}`;
+  }
+  if (k < r.prioTarget) {
+    if (r.prioTarget < n) return `Prioriterat, ${who}. **Taket är ${r.prioTarget}, men budgeten räcker till ${k} här.** Höj budgeten för att få med fler.`;
+    return `Prioriterat, ${who}. **Budgeten räcker till ${k} av ${n} här.** Höj budgeten för att få med alla.`;
+  }
+  const out = l.field.map((h) => h.number).filter((x) => !l.selection.includes(x)).sort((a, b) => a - b);
+  const main = auto ? head : fav ? `Prioriterat, ditt val: ${fav}.` : "Prioriterat, ditt val.";
+  return `${main} Taket ${r.prioTarget} är nått.${out.length ? ` Ej med: ${joinSv(out)}.` : ""}`;
+}
+
+// Varför-raden efter spelstopp, ur den sparade typen (legRoles). opts för
+// PRIO: antal valda, löpande i avdelningen och sparat tak (null = Alla).
+export function legWhyStarted(kind: LegKind | undefined, opts?: { count: number; field: number; cap: number | null }): string | null {
   if (kind === "SPIK") return "Spik vid spelstopp.";
   if (kind === "OWN_SPIK") return "Egen spik vid spelstopp.";
   if (kind === "ALLG") return "Allgardering vid spelstopp.";
+  if (kind === "PRIO" && opts) return `Prioriterat lopp vid spelstopp: **${opts.count} av ${opts.field}**, ${opts.cap === null ? "inget tak" : `tak ${opts.cap}`}.`;
   return null;
 }
 
@@ -241,12 +338,13 @@ export function favOutText(r: TippaResult, leg: number): string | null {
 // "27 hästar · 576 rader"
 export const listSummary = (r: TippaResult) => `${r.horses} ${r.horses === 1 ? "häst" : "hästar"} · ${rowsText(r.rows)}${r.underbet ? ` · ${r.underbet} understreckade` : ""}`;
 
-// Desktop: "27 hästar · spikar i avd 2, 4, 6 och 8 · allgardering i avd 5 · favoriten bortvald i avd 1 och 7".
+// Desktop: "22 hästar · spikar i avd 2 och 6 · avd 5 prioriterad, 7 av 13 · favoriten bortvald i avd 1 och 7".
 export function desktopSummary(r: TippaResult): string {
   const parts = [`${r.horses} ${r.horses === 1 ? "häst" : "hästar"}`];
   const spikes = [...r.spikLegs, ...r.ownSpikLegs].sort((a, b) => a - b);
   if (spikes.length) parts.push(`${spikes.length === 1 ? "spik" : "spikar"} i avd ${joinSv(spikes)}`);
-  if (r.prioLeg !== null) parts.push(`allgardering i avd ${r.prioLeg}`);
+  const p = legOf(r, r.prioLeg);
+  if (p && (p.kind === "PRIO" || p.kind === "ALLG")) parts.push(`avd ${p.leg} prioriterad, ${prioAmount(p)}`);
   if (r.favBanned.length) parts.push(`favoriten bortvald i avd ${joinSv(r.favBanned)}`);
   return parts.join(" · ");
 }
@@ -256,8 +354,8 @@ export function desktopSummary(r: TippaResult): string {
 export function rulesDontFitText(r: TippaResult): string {
   const spik = r.spikEffective === 0 ? "Inga spikar" : r.spikEffective === 1 ? "1 spik" : `${r.spikEffective} spikar`;
   const parts = [spik];
-  const allg = legOf(r, r.prioLeg);
-  if (allg) parts.push(`allgardering av avd ${allg.leg} (${allg.selection.length} hästar)`);
+  const prio = legOf(r, r.prioLeg);
+  if (prio) parts.push(`prioriterat lopp avd ${prio.leg} (minst ${prio.lo} ${prio.lo === 1 ? "häst" : "hästar"})`);
   for (const l of r.legs.filter((x) => x.kind === "OWN")) parts.push(`ditt eget val i avd ${l.leg} (${l.selection.length} hästar)`);
   const open = r.legs.filter((l) => l.kind === "OPEN");
   let head: string;
@@ -283,6 +381,10 @@ export function ownOverText(r: TippaResult): string {
 
 // Budgetrutans "Behövs minst" och raden under: "Reglerna kräver minst 324 rader".
 export const minRowsLine = (r: TippaResult) => `Reglerna kräver minst ${rowsText(r.minRows)}`;
+
+// Budgetrutans .allfit (E6b 6.7). Bara när allFit.
+export const allFitText = (r: Pick<TippaResult, "capLimited" | "maxPerLeg">) =>
+  r.capLimited && r.maxPerLeg !== null ? `Budgeten räcker till fler hästar än taket på ${r.maxPerLeg} tillåter.` : "Budgeten räcker till alla hästar i de öppna loppen.";
 // Kvar (positivt) eller över budget (negativt), i kronor med två decimaler.
 export const leftOf = (r: Pick<TippaResult, "budget" | "cost">) => Math.round((r.budget - r.cost) * 100) / 100;
 
@@ -321,7 +423,8 @@ export function previewChangeText(before: TippaResult, after: TippaResult, leg: 
   for (const a of after.legs) {
     if (a.leg === leg) continue;
     const b = legOf(before, a.leg);
-    if (!b || b.kind !== "OPEN" || a.kind !== "OPEN" || sameNumbers(a.selection, b.selection)) continue;
+    // Det prioriterade loppet jämförs som ett öppet lopp (E6b 6.6).
+    if (!b || (b.kind !== "OPEN" && b.kind !== "PRIO") || a.kind !== b.kind || sameNumbers(a.selection, b.selection)) continue;
     const name = (n: number) => {
       const h = b.field.find((x) => x.number === n) ?? a.field.find((x) => x.number === n);
       return h ? horseName(h) : String(n);
@@ -344,7 +447,7 @@ export function previewChangeText(before: TippaResult, after: TippaResult, leg: 
   for (let i = 0; i < pairs; i++) sentences.push(`Spiken flyttar från avd ${removedSpik[i]} till avd ${addedSpik[i]}.`);
   for (const x of addedSpik.slice(pairs)) sentences.push(`Avd ${x} blir spik.`);
   for (const x of removedSpik.slice(pairs)) if (x !== leg) sentences.push(`Avd ${x} är inte längre spik.`);
-  if (after.prioLeg !== before.prioLeg && after.prioLeg !== null) sentences.push(`Allgarderingen flyttar till avd ${after.prioLeg}.`);
+  if (after.prioLeg !== before.prioLeg && after.prioLeg !== null) sentences.push(`Det prioriterade loppet flyttar till avd ${after.prioLeg}.`);
   if (after.spikEffective !== before.spikEffective) sentences.push(`Antal spikar blir ${after.spikEffective}.`);
   sentences.push("Övriga avdelningar ändras inte.");
   const left = leftOf(after);
@@ -416,7 +519,7 @@ export function scratchNotices(saved: SavedRow | null, after: TippaResult): Scra
       out.push({ kind: "OWN_ALL", leg: l.leg, numbers: l.scratched.map((s) => s.number), tone: "warn", role: "status", text: `**Alla dina hästar i avd ${l.leg} är strukna.** Appen väljer avdelningen igen.` });
       continue;
     }
-    if (!saved || (l.kind !== "OPEN" && l.kind !== "SPIK" && l.kind !== "ALLG")) continue;
+    if (!saved || (l.kind !== "OPEN" && l.kind !== "SPIK" && l.kind !== "PRIO" && l.kind !== "ALLG")) continue;
     const prev = saved.selections[String(l.leg)] ?? [];
     for (const s of l.scratched) {
       if (!prev.includes(s.number) || l.kind === "ALLG") continue;
@@ -481,9 +584,9 @@ export function spikPreviewTexts(before: TippaResult, after: TippaResult, leg: n
     }
   }
   if (before.prioLeg === leg) {
-    if (!before.prioAuto) out.push(`Avd ${leg} är din allgardering. Väljer du spik här blir allgarderingen Auto.`);
-    else if (after.prioLeg !== null) out.push(`Avd ${leg} allgarderas nu. Allgarderingen flyttar till avd ${after.prioLeg}, näst mest öppna loppet.`);
-    else out.push(`Avd ${leg} allgarderas nu. Ingen annan avdelning kan allgarderas.`);
+    if (!before.prioAuto) out.push(`Avd ${leg} är ditt prioriterade lopp. Väljer du spik här blir prioriterat lopp Auto.`);
+    else if (after.prioLeg !== null) out.push(`Avd ${leg} är prioriterat lopp nu. Prioriteringen flyttar till avd ${after.prioLeg}, näst mest öppna loppet.`);
+    else out.push(`Avd ${leg} är prioriterat lopp nu. Inget annat lopp kan prioriteras.`);
   }
   if (after.spikEffective > before.spikEffective) {
     const own = before.ownSpikes === 1 ? "1 egen spik" : `${before.ownSpikes} egna spikar`;
@@ -521,12 +624,20 @@ export function copyBlockedReason(r: TippaResult): string | null {
   return null;
 }
 
-// Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28).
-export function templateDeviationText(r: { prioShort: number; relaxedLegs: number[]; prioLeg: number | null; legs: { leg: number; field: unknown[] }[] }): string | null {
+// Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28, E6b 6.6).
+export function templateDeviationText(r: {
+  prioShort: number;
+  prioTarget: number;
+  maxPerLeg: number | null;
+  relaxedLegs: number[];
+  prioLeg: number | null;
+  legs: { leg: number; field: unknown[] }[];
+}): string | null {
   const parts: string[] = [];
   if (r.prioShort > 0 && r.prioLeg) {
     const n = r.legs.find((l) => l.leg === r.prioLeg)?.field.length ?? 0;
-    parts.push(`Avd ${r.prioLeg} har ${n - r.prioShort} av ${n} hästar`);
+    const capped = r.maxPerLeg !== null && r.prioTarget < n;
+    parts.push(`Avd ${r.prioLeg} har ${r.prioTarget - r.prioShort} av ${n} hästar${capped ? ` (taket är ${r.prioTarget})` : ""}`);
   }
   if (r.relaxedLegs.length) {
     const list = r.relaxedLegs.length === 1 ? `Avd ${r.relaxedLegs[0]} har` : `Avd ${r.relaxedLegs.slice(0, -1).join(", ")} och ${r.relaxedLegs[r.relaxedLegs.length - 1]} har`;

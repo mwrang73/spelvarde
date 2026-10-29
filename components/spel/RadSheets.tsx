@@ -1,7 +1,8 @@
 "use client";
 
 // Arken i V85-raden (E6 S6b): Ändra avdelning (A4), Välj egen spik (A5), Välj
-// avdelning att allgardera och Spela hos ATG (A6). Arken räknar sin
+// lopp att prioritera (E6b 5.3, ersätter Välj avdelning att allgardera) och
+// Spela hos ATG (A6). Arken räknar sin
 // förhandsvisning med buildRad på den tänkta ändringen; inget sparas förrän
 // handlingen är gjord.
 
@@ -10,12 +11,12 @@ import { Banner, FlapNumber } from "@/components/ui/board";
 import { IconCopy, IconExt } from "@/components/ui/icons";
 import { hhmm, thousands } from "@/lib/format";
 import { buildRad, type TippaHorse, type TippaLeg, type TippaLegResult, type TippaResult, type TippaRules } from "@/lib/tippa";
-import { krText, legSubline, pctText, previewChangeText, previewPickedLabel, spikPreviewTexts } from "@/lib/tippa-text";
+import { krText, legSubline, pctText, previewChangeText, previewPickedLabel, prioSheetValue, spikPreviewTexts } from "@/lib/tippa-text";
 import { Kupong, type KupongLeg } from "./Kupong";
 import { Bold, HorseMarks, ReasonTags } from "./RadLegCard";
 
-// Låsning av en avdelning som regeländring (A4 och A5): låses den valda
-// allgarderingen blir allgarderingen Auto.
+// Låsning av en avdelning som regeländring (A4 och A5): låses det valda
+// prioriterade loppet blir det prioriterade loppet Auto.
 export function withLock(rules: TippaRules, leg: number, picked: number[]): TippaRules {
   const locked = { ...rules.locked };
   if (picked.length) locked[leg] = [...picked].sort((a, b) => a - b);
@@ -303,9 +304,9 @@ export function RadSpikSheet({ r, legs, rules, initialLeg, onConfirm, onCancel }
   );
 }
 
-// ---- Välj avdelning att allgardera ------------------------------------------------------------
+// ---- Välj lopp att prioritera (E6b 5.3) -------------------------------------------------------
 
-export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: TippaResult; legs: TippaLeg[]; rules: TippaRules; onConfirm: (leg: number) => void; onCancel: () => void }) {
+export function RadPrioSheet({ r, legs, rules, onConfirm, onCancel }: { r: TippaResult; legs: TippaLeg[]; rules: TippaRules; onConfirm: (leg: number) => void; onCancel: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const autoLeg = useMemo(() => buildRad(legs, { ...rules, allgMode: "AUTO", allgLeg: null }).prioLeg, [legs, rules]);
   const options = useMemo(
@@ -315,8 +316,16 @@ export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
         const off = locked || l.kind === "CANCELLED" || l.kind === "NO_STARTERS";
         const res = off ? null : buildRad(legs, { ...rules, allgMode: "CHOSEN", allgLeg: l.leg });
         const wide = l.field.filter((h) => h.v >= 5 - 1e-9).length;
-        const sub = locked ? "Ditt val, låst" : l.kind === "CANCELLED" ? "Inställt lopp" : l.kind === "NO_STARTERS" ? "Inga startande" : `${legSubline(l)} · ${wide} med minst 5 %`.replace(/ %/g, "\u00a0%");
-        return { l, off, res, sub };
+        const spikNow = l.kind === "SPIK" ? `Spik nu · ${l.prelim || !l.favorite ? "streck saknas" : `fav ${pctText(l.favorite.streck)}`}` : null;
+        const sub = locked
+          ? "Ditt val, låst"
+          : l.kind === "CANCELLED"
+            ? "Inställt lopp"
+            : l.kind === "NO_STARTERS"
+              ? "Inga startande"
+              : (spikNow ?? `${legSubline(l)} · ${wide} med minst 5 %`).replace(/ %/g, "\u00a0%");
+        const value = res ? prioSheetValue(res, l.leg) : null;
+        return { l, off, res, sub, value };
       }),
     [r, legs, rules],
   );
@@ -336,7 +345,7 @@ export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
   return (
     <div ref={ref} className="radsh">
       <ul className="hchips" role="radiogroup" aria-label="Avdelningar" onKeyDown={onKey}>
-        {options.map(({ l, off, res, sub }) => {
+        {options.map(({ l, off, res, sub, value }) => {
           const on = pick === l.leg;
           const fits = res && res.status !== "RULES_DONT_FIT";
           return (
@@ -354,7 +363,17 @@ export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
                   <span className="help">{sub}</span>
                 </span>
                 <span className="hc-b">
-                  {res && (fits ? <span className="num hc-st">{thousands(res.rows)} rader</span> : <span className="rs lim">Ryms inte</span>)}
+                  {res &&
+                    (fits ? (
+                      <span className="num hc-st">
+                        {value}
+                        <small>
+                          {thousands(res.rows)} {res.rows === 1 ? "rad" : "rader"}
+                        </small>
+                      </span>
+                    ) : (
+                      <span className="rs lim">Ryms inte</span>
+                    ))}
                   <span className="hc-ok" aria-hidden="true">
                     {on ? "✓" : ""}
                   </span>
@@ -366,7 +385,7 @@ export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
       </ul>
       <div className="shbtns">
         <button type="button" className="btn primary" disabled={pick === null || !ok.includes(pick)} onClick={() => pick !== null && onConfirm(pick)}>
-          {pick !== null ? `Allgardera avd ${pick}` : "Allgardera"}
+          {pick !== null && ok.includes(pick) ? `Prioritera avd ${pick}` : "Prioritera"}
         </button>
         <button type="button" className="btn ghost" onClick={onCancel}>
           Avbryt

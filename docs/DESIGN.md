@@ -107,7 +107,7 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 - `SpelbarToggle`: chip med "S Spelbar". Ursprunget visas som underrad: "Förslag", "Satt av dig" eller "Borttagen av dig".
 - `Button` har varianterna `primary` (bärnstensgul gradient, underkant på 3 px, trycks ned 2 px vid `:active`), `secondary` (tangent med kant och underkant), `ghost` (bärnstensgul text) och `icon` (44 × 44). `secondary xs` (24 px hög, 12 px text, träffyta 44 px) används bara i panelrubriker. Avstängd knapp är platt `--surface-3` utan skugga. Knapptext skrivs i versaler med Barlow Condensed 700.
 - `Segmented`: segmentkontroll med `aria-pressed`, där valt segment har `--ink` som bakgrund. Varianten `.seg.nav` används för navigering (fas, avdelningar, flikar) och har valt läge i bärnsten (`--fill`/`--fill-ink`). Regel: **navigering väljs i bärnsten, värden i `--ink`.**
-- `Stepper`: − och + på 40 × 44 med ett värde emellan. Knapparna stängs av vid gränsen.
+- `Stepper`: − och + på 40 × 44 med ett värde emellan. Knapparna stängs av vid gränsen. Ett värde som är ett ord ("Alla" i Max hästar per lopp) får klassen `.word` (Barlow Condensed 14 px, versaler).
 - `OddsKeypad`: tolv tangenter på 58 px, siffrorna 0–9, Radera och "Nästa ›" (primär). LED-displayen visar oddset med två decimaler.
 - `QuickChips`: snabbval på minst 44 px höjd. Valt chip är bärnstensgult med "✓", och kortkommandot visas som en liten bokstav på desktop.
 
@@ -124,6 +124,7 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 - `CompareBars`: tre staplar på tavlan för Intressant, Spelbar och Bet.
 - `StatsTable`: tabell med kolumnrubriker i versaler och procent under bråktalet.
 - `RadLegCard` (V85-raden, E6): kort per avdelning med rubrik (fällbladsnummer, "Avd 1 · 16:20", typtagg och penna), hästrader på minst 52 px med skälen som taggar, varför-raden och spärrraden.
+- Regler för raden (V85-raden, E6b): Spikar, Egna spikar, **Max hästar per lopp** (`Stepper` 3 … Alla, standard 7) och **Prioriterat lopp** (`Segmented` Auto | Välj avd, arket "Välj lopp att prioritera") i stället för Allgardering, och Favoritspärren. Det prioriterade loppet har typtaggen `.lr.allg` med "7 av 13" eller "Alla 13", och nummerrutorna bara när alla löpande är med. En ordtagg i löptext (t.ex. "Över taket") får `.rs-inline`. Se `docs/specs/e6b-max-per-lopp.md`.
 - Skälstaggen `.rs`: 10,5 px versaler med ett ord per skäl ("Topp 3", "Mellan", "Skräll", "▲ Felstreckad", "4 signaler", "Favorit", "Spärr", "Prel."). Färgen bär aldrig ensam.
 - `Kupong`: kupongbilden i arket Spela hos ATG, en kolumn per avdelning som på ATG:s kupong. Valda nummer bärnstensgula, favoriten med ring, strukna med snedstreck.
 

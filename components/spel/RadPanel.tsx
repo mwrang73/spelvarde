@@ -2,7 +2,7 @@
 
 // S6b V85-raden, E6 "Tippa V85" (docs/specs/e6-v85-rad.md): budgetrutan på
 // tavlan, Regler för raden, ett kort per avdelning med skälen, arken Ändra
-// avd, Välj egen spik, Välj avdelning att allgardera och Spela hos ATG, samt
+// avd, Välj egen spik, Välj lopp att prioritera (E6b) och Spela hos ATG, samt
 // handlingsraden med Kopiera till ATG.
 //
 // Raden räknas i klienten med buildRad (lib/tippa.ts) ur omgångens cache och
@@ -21,13 +21,14 @@ import { Banner } from "@/components/ui/board";
 import { IconCopy, IconPen, IconWarn } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
-import { BUDGET_SLIDER, couponDateLabel, couponText, DEFAULT_BUDGET, DEFAULT_ROW_PRICE, sameNumbers, type Selections } from "@/lib/coupon";
+import { BUDGET_SLIDER, couponDateLabel, couponText, DEFAULT_BUDGET, DEFAULT_MAX_PER_LEG, DEFAULT_ROW_PRICE, sameNumbers, type Selections } from "@/lib/coupon";
 import { BUDGET_ERROR, couponBody, parseBudget, parseRowPrice, ROW_PRICE_ERROR, selectionsOf, tippaLegs, toggleNumber } from "@/lib/coupon-ui";
 import { hhmm, odds, thousands } from "@/lib/format";
 import { legsFor } from "@/lib/game-type";
 import { applySettings, xFactorsOf, type CouponBody } from "@/lib/round-overlay";
 import { BUDGET_OVER_MAX, buildRad, defaultSpikCount, type TippaLegResult, type TippaResult, type TippaRules, type TippaSuggestion } from "@/lib/tippa";
 import {
+  allFitText,
   copyBlockedReason,
   copyChangedText,
   desktopSummary,
@@ -43,6 +44,7 @@ import {
   ownOverText,
   templateDeviationText,
   prelimText,
+  prioSheetSub,
   rulesDontFitText,
   scratchNotices,
   startedText,
@@ -54,8 +56,8 @@ import type { AllgMode, CouponDto, RoundResponse, SettingsDto } from "@/lib/type
 import { Kupong, type KupongLeg } from "./Kupong";
 import { RadActionBar } from "./RadActionBar";
 import { Bold, RadLegCard, type CardMode } from "./RadLegCard";
-import { RadRules } from "./RadRules";
-import { ownAfterSpik, RadAllgSheet, RadAtgSheet, RadLegSheet, RadSpikSheet } from "./RadSheets";
+import { RadRules, type FrozenRules } from "./RadRules";
+import { ownAfterSpik, RadAtgSheet, RadLegSheet, RadPrioSheet, RadSpikSheet } from "./RadSheets";
 
 const SAVE_DELAY_MS = 600;
 const LIVE_DELAY_MS = 500;
@@ -66,8 +68,11 @@ type RadDraft = {
   budget: number;
   rowPrice: number | null;
   spikCount: number | null;
+  // Prioriterat lopp (E6b, hette allgardering).
   allgMode: AllgMode;
   allgLeg: number | null;
+  // E6b: Max hästar per lopp, 3–30. null = Alla.
+  maxPerLeg: number | null;
   locked: Record<number, number[]>;
   copiedAt: string | null;
   copiedSelections: Selections | null;
@@ -78,7 +83,7 @@ type SheetState =
   | null
   | { kind: "leg"; leg: number; picked: number[]; touched: boolean }
   | { kind: "spik"; leg?: number }
-  | { kind: "allg" }
+  | { kind: "prio" }
   | { kind: "atg" }
   | { kind: "copy-fallback"; text: string };
 
@@ -89,7 +94,7 @@ const noticeKey = (n: ScratchNoticeItem) => `${n.kind}-${n.leg}-${n.numbers.join
 const isLegacy = (c: CouponDto | null) => !!c && (c.spikCount === null || c.spikCount === undefined);
 
 function draftOf(c: CouponDto | null): RadDraft {
-  if (!c) return { budget: DEFAULT_BUDGET, rowPrice: null, spikCount: null, allgMode: "AUTO", allgLeg: null, locked: {}, copiedAt: null, copiedSelections: null, legacy: false };
+  if (!c) return { budget: DEFAULT_BUDGET, rowPrice: null, spikCount: null, allgMode: "AUTO", allgLeg: null, maxPerLeg: DEFAULT_MAX_PER_LEG, locked: {}, copiedAt: null, copiedSelections: null, legacy: false };
   const sel = selectionsOf(c);
   const locked: Record<number, number[]> = {};
   for (const leg of c.lockedLegs) if (sel[leg]?.length) locked[leg] = sel[leg];
@@ -100,6 +105,8 @@ function draftOf(c: CouponDto | null): RadDraft {
     spikCount: legacy ? null : (c.spikCount ?? null),
     allgMode: legacy ? "AUTO" : (c.allgMode ?? "AUTO"),
     allgLeg: legacy ? null : (c.allgLeg ?? null),
+    // Ny rad och rad från före E6: 7. Sparad E6-kupong utan tak (före E6b): Alla.
+    maxPerLeg: legacy ? DEFAULT_MAX_PER_LEG : (c.maxPerLeg ?? null),
     locked,
     copiedAt: c.copiedAt ?? null,
     copiedSelections: c.copiedSelections ? asSel(c.copiedSelections) : null,
@@ -107,7 +114,7 @@ function draftOf(c: CouponDto | null): RadDraft {
   };
 }
 
-// Låsning i reglerna (A4, A5): låses den valda allgarderingen blir den Auto.
+// Låsning i reglerna (A4, A5): låses det valda prioriterade loppet blir det Auto.
 function lockLeg(d: RadDraft, leg: number, picked: number[]): RadDraft {
   const locked = { ...d.locked };
   if (picked.length) locked[leg] = [...picked].sort((a, b) => a - b);
@@ -123,6 +130,7 @@ function legacyBody(c: CouponDto, copiedAt?: string): CouponBody {
     spikCount: null,
     allgMode: null,
     allgLeg: null,
+    maxPerLeg: null,
     legRoles: c.legRoles ?? null,
     copiedAt: copiedAt ?? c.copiedAt ?? null,
     copiedSelections: copiedAt ? sel : c.copiedSelections ? asSel(c.copiedSelections) : null,
@@ -143,6 +151,7 @@ function bodyOf(d: RadDraft, r: TippaResult, saved: CouponDto | null): CouponBod
     spikCount: r.spikEffective,
     allgMode,
     allgLeg,
+    maxPerLeg: d.maxPerLeg,
     legRoles: dontFit ? (saved?.legRoles ?? null) : r.legRoles,
     copiedAt: d.copiedAt,
     copiedSelections: d.copiedSelections,
@@ -151,7 +160,7 @@ function bodyOf(d: RadDraft, r: TippaResult, saved: CouponDto | null): CouponBod
 
 function differs(c: CouponDto, b: CouponBody, legs: number): boolean {
   for (let leg = 1; leg <= legs; leg++) if (!sameNumbers(c.selections[String(leg)], b.selections[String(leg)])) return true;
-  return (c.allgLeg ?? null) !== (b.allgLeg ?? null) || !sameNumbers(c.lockedLegs, b.lockedLegs) || (c.spikCount ?? null) !== (b.spikCount ?? null);
+  return (c.allgLeg ?? null) !== (b.allgLeg ?? null) || !sameNumbers(c.lockedLegs, b.lockedLegs) || (c.spikCount ?? null) !== (b.spikCount ?? null) || (c.maxPerLeg ?? null) !== (b.maxPerLeg ?? null);
 }
 
 export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
@@ -176,8 +185,8 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   const rowPrice = current.rowPrice ?? settingsRowPrice;
   const budget = useDeferredValue(current.budget);
   const baseRules = useMemo<TippaRules>(
-    () => ({ gameType: gt, budget, rowPrice, spikCount: 0, allgMode: current.allgMode, allgLeg: current.allgLeg, maxPerLeg: null, locked: current.locked }),
-    [gt, budget, rowPrice, current.allgMode, current.allgLeg, current.locked],
+    () => ({ gameType: gt, budget, rowPrice, spikCount: 0, allgMode: current.allgMode, allgLeg: current.allgLeg, maxPerLeg: current.maxPerLeg, locked: current.locked }),
+    [gt, budget, rowPrice, current.allgMode, current.allgLeg, current.maxPerLeg, current.locked],
   );
   const spikCount = useMemo(() => current.spikCount ?? defaultSpikCount(legs, baseRules), [current.spikCount, legs, baseRules]);
   const rules = useMemo<TippaRules>(() => ({ ...baseRules, spikCount }), [baseRules, spikCount]);
@@ -240,7 +249,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
     (fn: (d: RadDraft) => RadDraft, opts: { keepAuto?: boolean } = {}): { prev: RadDraft; prevSaved: CouponDto | null } => {
       const prev = curRef.current;
       let base = prev;
-      if (base.legacy) base = { ...base, legacy: false, spikCount: null, allgMode: "AUTO", allgLeg: null };
+      if (base.legacy) base = { ...base, legacy: false, spikCount: null, allgMode: "AUTO", allgLeg: null, maxPerLeg: DEFAULT_MAX_PER_LEG };
       if (!opts.keepAuto && base.spikCount === null) base = { ...base, spikCount: resultRef.current.spikEffective };
       const next = fn(base);
       curRef.current = next;
@@ -274,7 +283,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   useEffect(() => {
     if (mode !== "live" || draft || !saved || isLegacy(saved) || !body || result.status === "RULES_DONT_FIT") return;
     if (!differs(saved, body, legCount)) return;
-    const sig = JSON.stringify([body.selections, body.allgLeg, body.lockedLegs, body.spikCount]);
+    const sig = JSON.stringify([body.selections, body.allgLeg, body.lockedLegs, body.spikCount, body.maxPerLeg]);
     if (autoSig.current === sig) return;
     autoSig.current = sig;
     schedule();
@@ -372,8 +381,16 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
 
   // ---- Kopiera ----
   const numbersByLeg = useMemo(() => Object.fromEntries(legs.map((l) => [l.leg, { all: l.starts.map((s) => s.number), scratched: l.starts.filter((s) => s.scratched).map((s) => s.number) }])), [legs]);
-  const allgOfView = mode === "live" ? result.allgLeg : mode === "started" ? (Object.entries(roles?.legs ?? {}).find(([, v]) => v.k === "ALLG")?.[0] ?? null) : null;
-  const allgLegView = allgOfView === null ? null : Number(allgOfView);
+  // Efter spelstopp: avdelningen sparad som ALLG, och bara om alla löpande är med (E6b 5.6).
+  const startedPrio = useMemo(() => {
+    if (mode !== "started") return null;
+    const e = Object.entries(roles?.legs ?? {}).find(([, v]) => v.k === "ALLG" || v.k === "PRIO");
+    const l = e ? view.legs.find((x) => x.leg === Number(e[0])) : undefined;
+    if (!e || !l) return null;
+    const all = l.field.length > 0 && l.field.every((h) => l.selection.includes(h.number));
+    return { leg: l.leg, kind: e[1].k === "ALLG" && all ? ("ALLG" as const) : ("PRIO" as const), count: l.selection.length, field: l.field.length };
+  }, [mode, roles, view]);
+  const allgLegView = mode === "live" ? result.allgLeg : startedPrio?.kind === "ALLG" ? startedPrio.leg : null;
   const roundInfo = { trackName: data.round.trackName, date: data.round.date, gameType: gt };
   const copyString = () => {
     if (mode === "legacy" && saved) return couponText(roundInfo, selectionsOf(saved), saved.rowPrice);
@@ -394,7 +411,8 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
     const info = numbersByLeg[l.leg] ?? { all: [], scratched: [] };
     const kind = mode === "started" ? roles?.legs[String(l.leg)]?.k : mode === "live" ? l.kind : undefined;
     const n = l.selection.length;
-    const allg = kind === "ALLG" || (mode === "started" && allgLegView === l.leg);
+    // "Alla" bara när alla löpande är med (E6b 5.6); PRIO visas som "7 st".
+    const allg = mode === "started" ? allgLegView === l.leg : kind === "ALLG";
     const label = (() => {
       if (kind === "SPIK") return "Spik";
       if (kind === "OWN_SPIK") return "Egen";
@@ -505,6 +523,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   });
 
   const dontFit = mode === "live" && result.status === "RULES_DONT_FIT";
+  const frozenRules: FrozenRules | null = started ? { spikCount: saved?.spikCount ?? null, allgMode: saved?.allgMode ?? null, maxPerLeg: saved?.maxPerLeg ?? null, prio: startedPrio } : null;
   const left = leftOf(view);
   const atgSub = `${gt} ${data.round.trackName} ${dateShort} · ${thousands(view.rows)} ${view.rows === 1 ? "rad" : "rader"} · ${krText(view.cost)}`;
   const legSheet = sheet?.kind === "leg" ? sheet : null;
@@ -528,6 +547,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
             minCost={result.minCost}
             minRowsText={minRowsLine(result)}
             allFit={mode === "live" && result.allFit}
+            allFitText={allFitText(result)}
             disabled={started}
             sumRef={sumRef}
             onBudget={(b) => change((d) => ({ ...d, budget: b }), { keepAuto: true })}
@@ -545,12 +565,13 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
           <RadRules
             ref={rulesRef}
             r={result}
-            frozen={started ? { spikCount: saved?.spikCount ?? null, allgMode: saved?.allgMode ?? null, allgLeg: allgLegView } : null}
+            frozen={frozenRules}
             onSpik={(n) => change((d) => ({ ...d, spikCount: n }))}
             onRemoveOwn={removeOwn}
             onAddOwn={() => setSheet({ kind: "spik" })}
-            onAllgAuto={() => change((d) => ({ ...d, allgMode: "AUTO", allgLeg: null }))}
-            onAllgChoose={() => setSheet({ kind: "allg" })}
+            onCap={(n) => change((d) => ({ ...d, maxPerLeg: n }))}
+            onPrioAuto={() => change((d) => ({ ...d, allgMode: "AUTO", allgLeg: null }))}
+            onPrioChoose={() => setSheet({ kind: "prio" })}
           />
           <div className="dact d-only">
             <CopyButton blocked={blocked} onClick={() => setSheet({ kind: "atg" })} />
@@ -581,6 +602,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
                     r={view}
                     mode={mode}
                     all={numbersByLeg[l.leg]?.all.slice().sort((a, b) => a - b) ?? []}
+                    cap={saved?.maxPerLeg ?? null}
                     struck={struck}
                     fresh={fresh}
                     role={roles?.legs[String(l.leg)]}
@@ -620,9 +642,9 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         {sheet?.kind === "spik" && <RadSpikSheet r={result} legs={legs} rules={rules} initialLeg={sheet.leg} onConfirm={confirmSpik} onCancel={() => setSheet(null)} />}
       </Sheet>
 
-      <Sheet className="rad-sh" open={sheet?.kind === "allg"} onClose={() => setSheet(null)} title="Välj avdelning att allgardera" sub="Alla hästar i loppet kommer med. Appen räknar om resten.">
-        {sheet?.kind === "allg" && (
-          <RadAllgSheet
+      <Sheet className="rad-sh" open={sheet?.kind === "prio"} onClose={() => setSheet(null)} title="Välj lopp att prioritera" sub={prioSheetSub(result)}>
+        {sheet?.kind === "prio" && (
+          <RadPrioSheet
             r={result}
             legs={legs}
             rules={rules}
@@ -691,7 +713,7 @@ function CopyButton({ blocked, onClick }: { blocked: string | null; onClick: () 
   );
 }
 
-// Budgetrutan på tavlan (oförändrad från S6b utom lägena i E6).
+// Budgetrutan på tavlan (oförändrad från S6b utom lägena i E6 och .allfit i E6b 5.8).
 function Budget({
   budget,
   rowPrice,
@@ -701,6 +723,7 @@ function Budget({
   minCost,
   minRowsText,
   allFit,
+  allFitText,
   disabled,
   sumRef,
   onBudget,
@@ -714,6 +737,7 @@ function Budget({
   minCost: number;
   minRowsText: string;
   allFit: boolean;
+  allFitText: string;
   disabled: boolean;
   sumRef: React.RefObject<HTMLDivElement>;
   onBudget: (b: number) => void;
@@ -829,7 +853,7 @@ function Budget({
       {dontFit && <p className="over-line">{minRowsText}</p>}
       {over && <p className="over-line">Över budget med {krText(-left)}</p>}
       {overAllowed && <p className="help near-line">Närmast din budget: {krText(-left)} över (högst 5 % tillåts).</p>}
-      {allFit && !over && <p className="allfit">Budgeten räcker till alla hästar i de öppna loppen.</p>}
+      {allFit && !over && <p className="allfit">{allFitText}</p>}
       {editPrice ? (
         <div className="rp-edit">
           <label htmlFor={`${id}-p`}>Radpris</label>
