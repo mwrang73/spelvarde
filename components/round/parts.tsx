@@ -4,10 +4,10 @@
 // räknarna I/S/B, märkena och riktoddset i raderna och länkarna till S4/S6.
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Badge, BetBadge, TrollBadge, XBadge } from "@/components/ui/board";
-import { IconChev } from "@/components/ui/icons";
-import { odds, shortRaceName } from "@/lib/format";
+import { IconChev, IconList, IconOdds } from "@/components/ui/icons";
+import { hhmm, odds, shortRaceName } from "@/lib/format";
 import type { PhaseStep } from "@/lib/phase";
 import type { RaceDto, StartDto, StartOutcomeDto } from "@/lib/types";
 import type { XFactor } from "@/lib/xfactor";
@@ -18,7 +18,44 @@ import { WandSpark } from "@/components/ui/WandSpark";
 
 // Rutorna är länkar till fasens vy. Live och Klart byggs i E3–E4 och är
 // därför vanlig text tills vyerna finns.
-export function PhaseRail({ steps, analysHref, oddsHref, className }: { steps: PhaseStep[]; analysHref: string; oddsHref?: string; className?: string }) {
+// variant "seg" (analysvyn 3.2): segmentkontroll i zonraden, aktiv fas i bärnsten.
+export function PhaseRail({ steps, analysHref, oddsHref, className, variant = "rail" }: { steps: PhaseStep[]; analysHref: string; oddsHref?: string; className?: string; variant?: "rail" | "seg" }) {
+  if (variant === "seg")
+    return (
+      <nav className={`seg nav phseg${className ? ` ${className}` : ""}`} aria-label="Veckans faser">
+        {steps.map((s) => {
+          const inner = (
+            <>
+              <b>
+                {s.state === "done" && <span aria-hidden="true">✓ </span>}
+                {s.label}
+              </b>
+              <small>{s.dayLabel}</small>
+              {s.state === "done" && <span className="sr">, klar</span>}
+            </>
+          );
+          const current = s.state === "current" ? ("step" as const) : undefined;
+          const cls = s.state === "done" ? "done" : undefined;
+          if (s.phase === "ANALYS")
+            return (
+              <Link key={s.phase} href={analysHref} aria-current={current} className={cls}>
+                {inner}
+              </Link>
+            );
+          if (s.phase === "ODDS" && oddsHref)
+            return (
+              <Link key={s.phase} href={oddsHref} aria-current={current} className={cls}>
+                {inner}
+              </Link>
+            );
+          return (
+            <span key={s.phase} aria-current={current} className={cls}>
+              {inner}
+            </span>
+          );
+        })}
+      </nav>
+    );
   return (
     <ol className={`phase brd${className ? ` ${className}` : ""}`} aria-label="Veckans faser">
       {steps.map((s) => {
@@ -48,16 +85,38 @@ export function firstTodoLeg(races: RaceDto[]): number {
 
 // ---- RaceTabs ---------------------------------------------------------------------------
 
-export function RaceTabs({ races, selected, onSelect, panelId }: { races: RaceDto[]; selected: number; onSelect: (leg: number) => void; panelId: string }) {
+// Mobilens avdelningsknapp: kort namn utan "STL ", högst 14 tecken.
+function tabName(name: string): string {
+  const n = shortRaceName(name).replace(/^STL\s+/i, "");
+  return n.length > 14 ? `${n.slice(0, 13).trimEnd()}…` : n;
+}
+
+function tabLabel(r: RaceDto): string {
+  const parts = [`Avdelning ${r.leg}`, shortRaceName(r.name), hhmm(r.startAt)];
+  if (r.cancelled) parts.push("inställd");
+  else parts.push(`${r.counts.interesting} ${r.counts.interesting === 1 ? "intressant" : "intressanta"}`);
+  if (r.reviewed) parts.push("genomgången");
+  return parts.join(", ");
+}
+
+// variant: "flaps" = dagens fällbladsrutor, "band" = zonraden på desktop
+// (analysvyn 3.2), "scroll" = mobilens svepbara rad med namn (5.1).
+export function RaceTabs({ races, selected, onSelect, panelId, variant = "flaps" }: { races: RaceDto[]; selected: number; onSelect: (leg: number) => void; panelId: string; variant?: "flaps" | "band" | "scroll" }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const move = (to: number) => {
     const leg = Math.max(1, Math.min(races.length, to));
     onSelect(leg);
     refs.current[leg - 1]?.focus();
   };
+  // Mobilen: vald knapp scrollas in i raden när avdelningen byts.
+  useEffect(() => {
+    if (variant !== "scroll") return;
+    refs.current[selected - 1]?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [variant, selected]);
+  const cls = variant === "band" ? "seg nav avt" : variant === "scroll" ? "mavs brd" : "avd brd";
   return (
     <div
-      className="avd brd"
+      className={cls}
       role="tablist"
       aria-label="Avdelningar"
       onKeyDown={(e) => {
@@ -72,22 +131,53 @@ export function RaceTabs({ races, selected, onSelect, panelId }: { races: RaceDt
     >
       {races.map((r, i) => {
         const on = r.leg === selected;
+        const common = {
+          ref: (el: HTMLButtonElement | null) => {
+            refs.current[i] = el;
+          },
+          type: "button" as const,
+          role: "tab",
+          id: `tab-${r.leg}`,
+          "aria-selected": on,
+          "aria-controls": panelId,
+          tabIndex: on ? 0 : -1,
+          onClick: () => onSelect(r.leg),
+        };
+        if (variant === "band")
+          return (
+            <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r)} title={r.cancelled ? `${shortRaceName(r.name)} inställd` : undefined}>
+              <span className="nr sm" aria-hidden="true">
+                <b>{r.leg}</b>
+              </span>
+              {r.counts.interesting > 0 || !r.reviewed ? (
+                <span className="cnt" aria-hidden="true">
+                  <span className="bdg i">I</span>
+                  <span className="num">{r.counts.interesting}</span>
+                </span>
+              ) : (
+                <span className="tck" aria-hidden="true">
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        if (variant === "scroll")
+          return (
+            <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r)}>
+              <span className="nr sm" aria-hidden="true">
+                <b>{r.leg}</b>
+              </span>
+              <span className="mavs-t" aria-hidden="true">
+                <span className="mavs-n">{tabName(r.name)}</span>
+                <small className="num">
+                  {hhmm(r.startAt)}
+                  <span className="mavs-i"> · I {r.counts.interesting}</span>
+                </small>
+              </span>
+            </button>
+          );
         return (
-          <button
-            key={r.id}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            type="button"
-            role="tab"
-            id={`tab-${r.leg}`}
-            className="avd-t"
-            aria-selected={on}
-            aria-controls={panelId}
-            tabIndex={on ? 0 : -1}
-            aria-label={`Avdelning ${r.leg}, ${shortRaceName(r.name)}${r.reviewed ? ", genomgången" : ""}`}
-            onClick={() => onSelect(r.leg)}
-          >
+          <button key={r.id} {...common} className="avd-t" aria-label={`Avdelning ${r.leg}, ${shortRaceName(r.name)}${r.reviewed ? ", genomgången" : ""}`}>
             {r.leg}
             {r.reviewed && (
               <span className="tick" aria-hidden="true">
@@ -213,7 +303,30 @@ export function RiktShort({ riktodds, x, rx }: { riktodds: number | null; x: XFa
 
 // Länkar till S4 och S6 (navigeringen inom omgången).
 // analysis = omgången är klar: Efteranalys först.
-export function RoundLinks({ roundId, className, analysis }: { roundId: string; className?: string; analysis?: boolean }) {
+// variant "row" (analysvyn 3.2): knappar i zonraden, Trollspöt som primär.
+export function RoundLinks({ roundId, className, analysis, variant = "grid" }: { roundId: string; className?: string; analysis?: boolean; variant?: "grid" | "row" }) {
+  if (variant === "row")
+    return (
+      <nav className={`tools${className ? ` ${className}` : ""}`} aria-label="Odds och spel">
+        {analysis && (
+          <Link className="btn secondary" href={`/omgang/${roundId}/analys`}>
+            Efteranalys
+          </Link>
+        )}
+        <Link className="btn primary" href={`/omgang/${roundId}/spel?flik=trollspot`} title="10 hästar att bevaka">
+          <WandSpark />
+          <span>Trollspöt</span>
+        </Link>
+        <Link className="btn secondary" href={`/omgang/${roundId}/odds`}>
+          <IconOdds />
+          <span>Unibets odds</span>
+        </Link>
+        <Link className="btn secondary" href={`/omgang/${roundId}/spel?flik=plats`}>
+          <IconList />
+          <span>Spelförslag</span>
+        </Link>
+      </nav>
+    );
   return (
     <nav className={`qlinks${className ? ` ${className}` : ""}`} aria-label="Odds och spel">
       {analysis && (

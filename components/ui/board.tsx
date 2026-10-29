@@ -211,16 +211,19 @@ export function SpelbarToggle({
   id,
   disabledReason,
   onToggle,
+  bare,
 }: {
   on: boolean;
   override: Override;
   id: string;
   disabledReason?: string | null;
   onToggle: () => void;
+  // Utan ursprungsraden under (analysvyns valrad och knapplist). Ursprunget
+  // ska då finnas med id `${id}-o` på annan plats (aria-describedby).
+  bare?: boolean;
 }) {
   const disabled = !!disabledReason;
-  return (
-    <span className="sp-wrap">
+  const button = (
       <button
         type="button"
         className="sptg"
@@ -237,6 +240,11 @@ export function SpelbarToggle({
         </span>
         Spelbar
       </button>
+  );
+  if (bare) return button;
+  return (
+    <span className="sp-wrap">
+      {button}
       <span className="sp-orig" id={`${id}-o`}>
         {spelbarOrigin(on, override)}
       </span>
