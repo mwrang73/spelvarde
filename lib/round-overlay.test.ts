@@ -304,4 +304,12 @@ describe("E6: couponDtoOf", () => {
     expect(c).toMatchObject({ budget: 200, spikCount: 4, allgMode: "CHOSEN", allgLeg: 3, copiedAt: "2026-10-31T11:00:00.000Z", copiedSelections: { "1": [1] } });
     expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [] }, 0.5, 0).spikCount).toBeNull();
   });
+  it("E6b: maxPerLeg ur kroppen, annars ur cachen, annars null (Alla)", () => {
+    const withCap = { ...prev, maxPerLeg: 7 };
+    expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [], maxPerLeg: 5 }, 0.5, 0, 8, withCap).maxPerLeg).toBe(5);
+    expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [], maxPerLeg: null }, 0.5, 0, 8, withCap).maxPerLeg).toBeNull();
+    expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [] }, 0.5, 0, 8, withCap).maxPerLeg).toBe(7);
+    // Äldre cachat svar utan fältet.
+    expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [] }, 0.5, 0, 8, prev).maxPerLeg).toBeNull();
+  });
 });

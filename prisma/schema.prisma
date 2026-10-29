@@ -706,9 +706,13 @@ model Coupon {
   // E6 (docs/specs/e6-v85-rad.md 8.5). null = raden sparades före E6 (gammal
   // rad, visas som den är). Databasen har villkoren spikCount 0–8 och allgLeg 1–8.
   spikCount        Int?
+  // CHOSEN: Mikaels prioriterade lopp. AUTO: det lopp appen valde vid senaste sparningen.
+  // (Hette allgardering före E6b; samma fält.)
   allgMode         AllgMode?
-  // CHOSEN: Mikaels val. AUTO: den avdelning appen valde vid senaste sparningen.
   allgLeg          Int?
+  // E6b (docs/specs/e6b-max-per-lopp.md 4.3): Max hästar per lopp, 3–30
+  // (CHECK i databasen). null = Alla (inget tak), också för kuponger sparade före E6b.
+  maxPerLeg        Int?
   // Skälen per avdelning och häst vid senaste sparningen (legRoles version 1).
   legRoles         Json?
   // Senaste Kopiera texten och raden som kopierades då.
@@ -720,7 +724,7 @@ model Coupon {
   @@schema("spelvarde")
 }
 
-// E6: allgarderingens läge. Ingen NONE (spec 8.5); läggs till med ALTER TYPE … ADD VALUE vid behov.
+// E6: Prioriterat lopp: Auto eller valt (hette allgardering före E6b). Ingen NONE (spec 8.5); läggs till med ALTER TYPE … ADD VALUE vid behov.
 enum AllgMode {
   AUTO
   CHOSEN

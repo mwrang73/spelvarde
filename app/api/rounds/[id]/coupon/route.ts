@@ -14,7 +14,8 @@ export const GET = withUser<{ id: string }>("rounds/[id]/coupon/get", async ({ p
 });
 
 // Hela kupongen { budget, rowPrice?, selections: { "1": [3, 10], … }, lockedLegs,
-// spikCount?, allgMode?, allgLeg?, legRoles?, copiedAt?, copiedSelections? } (E6).
+// spikCount?, allgMode?, allgLeg?, maxPerLeg?, legRoles?, copiedAt?, copiedSelections? }
+// (E6, E6b: maxPerLeg 3–30 eller null = Alla; allgMode/allgLeg = prioriterat lopp).
 // Idempotent. Ändrat val i en avdelning som har startat ger 409.
 export const PUT = withUser<{ id: string }>("rounds/[id]/coupon/put", async ({ req, params, user }) => {
   if (!isId(params.id)) return badRequest("Ogiltig omgång.");

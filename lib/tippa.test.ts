@@ -37,7 +37,8 @@ describe("Bjerke (fixturen)", () => {
     expect(r.cost).toBe(288);
     expect(r.status).toBe("OK");
     expect(r.allgLeg).toBe(5);
-    expect(r.allgAuto).toBe(true);
+    expect(r.prioAuto).toBe(true);
+    expect(r.prioLeg).toBe(5);
     expect(r.spikLegs).toEqual([2, 8, 6]);
     expect(r.ownSpikLegs).toEqual([4]);
     expect(r.favBanned).toEqual([1, 7]);
@@ -114,7 +115,7 @@ describe("Bjerke (fixturen)", () => {
     expect(x.status).toBe("OK");
     expect(x.cost).toBe(96);
     expect(x.relaxedLegs).toEqual([1, 3]);
-    expect(x.allgDropped).toBe(0);
+    expect(x.prioShort).toBe(0);
   });
 
   it("6. 5 spikar", () => {
@@ -254,7 +255,7 @@ describe("minsta val och lägen", () => {
     const m = minimumPicks(f, false);
     expect([...m.picks].sort((a, b) => a - b)).toEqual([2, 6, 8]);
     expect(m.sub).toEqual({ 8: "LOW" });
-    const rules = { gameType: "V85", budget: 1, rowPrice: 0.5, spikCount: 0, allgMode: "AUTO" as const, allgLeg: null, locked: {} };
+    const rules = { gameType: "V85", budget: 1, rowPrice: 0.5, spikCount: 0, allgMode: "AUTO" as const, allgLeg: null, maxPerLeg: null, locked: {} };
     // I en hel rad: avd 1 är öppen (allgarderingen hamnar i ett annat lopp).
     const other = (n: number): TippaLeg => ({ leg: n, startAt: "", cancelled: false, starts: [st(1, 50, 1.5), st(2, 30, 2), st(3, 20, 3)] });
     const allg: TippaLeg = { leg: 8, startAt: "", cancelled: false, starts: [st(1, 10, 3), st(2, 10, 3)] };
@@ -278,8 +279,8 @@ describe("minsta val och lägen", () => {
     const x = buildRad(legs, bjerkeRules({ allgMode: "CHOSEN", allgLeg: 1 }));
     expect(x.legs[0]).toMatchObject({ kind: "CANCELLED", selection: [7] });
     expect(x.spikLegs).not.toContain(1);
-    expect(x.allgLeg).not.toBe(1);
-    expect(x.allgFallback).toBe("CANCELLED");
+    expect(x.prioLeg).not.toBe(1);
+    expect(x.prioFallback).toBe("CANCELLED");
     expect(x.favCount).toBe(x.legs.filter((l) => l.kind !== "CANCELLED" && l.favorite && l.selection.includes(l.favorite.number)).length);
     expect(x.legRoles.legs["1"].k).toBe("CANCELLED");
   });
@@ -311,7 +312,7 @@ describe("minsta val och lägen", () => {
     // Allgarderingen = lägst favoritandel bland de fria.
     const free = [1, 2, 3, 5, 6, 7, 8].map((n) => legFacts(legs[n - 1]));
     const expected = free.sort((a, b) => a.favorite!.share! - b.favorite!.share! || a.leg - b.leg)[0].leg;
-    expect(x.allgLeg).toBe(expected);
+    expect(x.prioLeg).toBe(expected);
   });
 
   it("21. riktodds saknas", () => {
@@ -357,10 +358,10 @@ describe("minsta val och lägen", () => {
 
   it("25. allgardering vald i låst avdelning", () => {
     const x = buildRad(bjerkeLegs(), bjerkeRules({ allgMode: "CHOSEN", allgLeg: 4 }));
-    expect(x.allgFallback).toBe("LOCKED");
-    expect(x.allgLeg).toBe(5);
+    expect(x.prioFallback).toBe("LOCKED");
+    expect(x.prioLeg).toBe(5);
     const y = buildRad(bjerkeLegs(), bjerkeRules({ allgMode: "CHOSEN", allgLeg: 3 }));
-    expect(y).toMatchObject({ allgLeg: 3, allgFallback: null, allgAuto: false });
+    expect(y).toMatchObject({ prioLeg: 3, prioFallback: null, prioAuto: false });
   });
 });
 
@@ -417,5 +418,189 @@ describe("taket för öppna lopp (Mikael 2026-10-28)", () => {
     const r = buildRad(bjerkeLegs(), { ...bjerkeRules(), budget: 100_000 });
     for (const l of r.legs) if (l.kind === "OPEN") expect(l.selection.length).toBeLessThanOrEqual(Math.max(3, Math.floor(l.field.length / 2)));
     expect(r.legs.filter((l) => l.field.length > 1 && l.selection.length === l.field.length).map((l) => l.kind)).toEqual(["ALLG"]);
+  });
+});
+
+// ---- E6b: Max hästar per lopp och prioriterat lopp (docs/specs/e6b-max-per-lopp.md 4.2 och 8) ----
+
+import { DEFAULT_MAX_PER_LEG } from "@/lib/coupon";
+import { capOf, PRIO_DROP_MAX, prioPlan, type TippaRules } from "@/lib/tippa";
+
+// Ett lopp ur strecken (fallande). riktX = max(golv, 90 / streck); spik = riktX
+// för häst 1 (favoriten).
+const mkLeg = (leg: number, streck: number[], o: { spik?: number; floor?: number; cancelled?: boolean } = {}): TippaLeg => ({
+  leg,
+  startAt: `2026-11-07T${String(12 + leg).padStart(2, "0")}:00:00.000Z`,
+  cancelled: !!o.cancelled,
+  starts: streck.map((s, i) => st(i + 1, s, i === 0 && o.spik !== undefined ? o.spik : Math.max(o.floor ?? 2, Math.round((90 / s) * 100) / 100))),
+});
+const S10 = [55, 10, 8, 6, 5, 5, 4, 3, 2, 2];
+const S12 = [30, 15, 12, 8, 7, 6, 5, 4, 4, 3, 3, 3];
+const S13 = [16.4, 14, 12, 10, 9, 8, 7, 6, 5.5, 4, 3.5, 2.5, 1.6];
+const S14 = [26, 14, 11, 8, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2];
+const S15 = [25, 14, 11, 8, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1];
+const S8 = [30, 20, 15, 10, 8, 7, 6, 4];
+
+// Exempel 1 – mockupens omgång: spikar i avd 2 (rikt 1,20) och 6 (1,30), P =
+// avd 5 med 13 löpande (lägst favoritstreck 16,4), öppna lopp 12, 15, 12, 14, 12.
+// Avd 8 har näst lägsta spikhästen (1,80) för exempel 4.
+const ex1Legs = (): TippaLeg[] => [mkLeg(1, S12), mkLeg(2, S10, { spik: 1.2 }), mkLeg(3, S15), mkLeg(4, S12), mkLeg(5, S13, { floor: 2.5 }), mkLeg(6, S10, { spik: 1.3 }), mkLeg(7, S14), mkLeg(8, S12, { spik: 1.8 })];
+const ex1Rules = (over: Partial<TippaRules> = {}): TippaRules => ({ gameType: "V85", budget: 400, rowPrice: 0.5, spikCount: 2, allgMode: "AUTO", allgLeg: null, maxPerLeg: 7, locked: {}, ...over });
+const openCounts = (r: ReturnType<typeof buildRad>) => r.legs.filter((l) => l.kind === "OPEN").map((l) => l.selection.length).sort((a, b) => a - b);
+
+// Exempel 2 – budgeten räcker inte till taket: 5 spikar, P med 13, två öppna med 8.
+const ex2Legs = (): TippaLeg[] => [mkLeg(1, S8, { spik: 1.2 }), mkLeg(2, S8, { spik: 1.25 }), mkLeg(3, S8, { spik: 1.3 }), mkLeg(4, S8, { spik: 1.35 }), mkLeg(5, S13, { floor: 2.5 }), mkLeg(6, S8, { spik: 1.4 }), mkLeg(7, S8), mkLeg(8, S8)];
+const ex2Rules = (over: Partial<TippaRules> = {}): TippaRules => ({ gameType: "V85", budget: 50, rowPrice: 0.5, spikCount: 5, allgMode: "AUTO", allgLeg: null, maxPerLeg: 7, locked: {}, ...over });
+
+describe("E6b: taket och det prioriterade loppet", () => {
+  it("1. exempel 1, tak 7: 756 rader, P = 7 av 13", () => {
+    const r = buildRad(ex1Legs(), ex1Rules());
+    expect(r.status).toBe("OK");
+    expect(r.spikLegs).toEqual([2, 6]);
+    expect(r).toMatchObject({ prioLeg: 5, prioAuto: true, prioTarget: 7, prioCount: 7, prioShort: 0, allgLeg: null, maxPerLeg: 7, fieldMax: 15, capLimited: true, overCapLegs: [] });
+    const p = r.legs[4];
+    expect(p.kind).toBe("PRIO");
+    expect(p.selection).toHaveLength(7);
+    expect([p.lo, p.hi]).toEqual([5, 7]);
+    expect(p.selection).toContain(p.favorite!.number);
+    expect(p.favBanned).toBe(false);
+    expect(openCounts(r)).toEqual([2, 2, 3, 3, 3]);
+    expect([r.rows, r.cost, r.horses]).toEqual([756, 378, 22]);
+    // legRoles: PRIO med hästarna som OPEN.
+    expect(r.legRoles.legs["5"].k).toBe("PRIO");
+    expect(Object.keys(r.legRoles.legs["5"].h!).map(Number).sort((a, b) => a - b)).toEqual(p.selection);
+  });
+
+  it("2. exempel 1, Alla: 832 rader, P = alla 13 (dagens rad)", () => {
+    const r = buildRad(ex1Legs(), ex1Rules({ maxPerLeg: null }));
+    expect(r.legs[4].kind).toBe("ALLG");
+    expect(r.legs[4].selection).toHaveLength(13);
+    expect(r).toMatchObject({ prioLeg: 5, allgLeg: 5, prioTarget: 13, prioCount: 13, prioShort: 0, maxPerLeg: null, capLimited: false });
+    expect(openCounts(r)).toEqual([2, 2, 2, 2, 4]);
+    expect([r.rows, r.cost]).toEqual([832, 416]);
+    expect(r.legRoles.legs["5"]).toEqual({ k: "ALLG", fav: 1 });
+  });
+
+  it("3. exempel 1, tak 3: alla lopp 3, 729 rader; tak 13 och 14 som Alla", () => {
+    const r = buildRad(ex1Legs(), ex1Rules({ maxPerLeg: 3 }));
+    expect(r.legs.filter((l) => l.kind === "OPEN" || l.kind === "PRIO").map((l) => l.selection.length)).toEqual([3, 3, 3, 3, 3, 3]);
+    expect(r.rows).toBe(729);
+    expect(r.cost).toBe(364.5);
+    expect(r.allFit).toBe(true);
+    expect(r.capLimited).toBe(true);
+    const alla = buildRad(ex1Legs(), ex1Rules({ maxPerLeg: null }));
+    for (const n of [13, 14]) {
+      const x = buildRad(ex1Legs(), ex1Rules({ maxPerLeg: n }));
+      expect(x.selections).toEqual(alla.selections);
+      expect(x.legs[4].kind).toBe("ALLG");
+      expect(x.capLimited).toBe(false);
+    }
+  });
+
+  it("4. exempel 2: tak 7 ger P 6 av 13 och 96 rader, Alla ger 13 och 104 rader", () => {
+    const r = buildRad(ex2Legs(), ex2Rules(), { favLimit: 8 });
+    expect(r.spikLegs).toEqual([1, 2, 3, 4, 6]);
+    expect(r).toMatchObject({ prioLeg: 5, prioTarget: 7, prioCount: 6, prioShort: 1, status: "OK" });
+    expect(r.legs[4].kind).toBe("PRIO");
+    expect(openCounts(r)).toEqual([4, 4]);
+    expect([r.rows, r.cost]).toEqual([96, 48]);
+    const a = buildRad(ex2Legs(), ex2Rules({ maxPerLeg: null }), { favLimit: 8 });
+    expect(a).toMatchObject({ prioCount: 13, prioShort: 0, allgLeg: 5 });
+    expect(openCounts(a)).toEqual([2, 4]);
+    expect([a.rows, a.cost]).toEqual([104, 52]);
+  });
+
+  it("5. exempel 4: P i appens spikavdelning flyttar spiken till nästa kandidat", () => {
+    const r = buildRad(ex1Legs(), ex1Rules({ allgMode: "CHOSEN", allgLeg: 2 }));
+    expect(r).toMatchObject({ prioLeg: 2, prioAuto: false, prioFallback: null, prioRequested: 2 });
+    expect(["PRIO", "ALLG"]).toContain(r.legs[1].kind);
+    expect(r.spikLegs).not.toContain(2);
+    expect(r.spikLegs).toEqual([6, 8]);
+  });
+
+  it("6. exempel 5: eget val över taket behålls och listas", () => {
+    const own = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const r = buildRad(ex1Legs(), ex1Rules({ locked: { 3: own } }));
+    expect(r.legs[2]).toMatchObject({ kind: "OWN", selection: own });
+    expect(r.overCapLegs).toEqual([3]);
+    expect(buildRad(ex1Legs(), ex1Rules({ maxPerLeg: 9, locked: { 3: own } })).overCapLegs).toEqual([]);
+    expect(buildRad(ex1Legs(), ex1Rules({ maxPerLeg: null, locked: { 3: own } })).overCapLegs).toEqual([]);
+  });
+
+  it("7. hästordningen i P: favoriten först, sedan Mellan, Skräll och värdeordningen", () => {
+    // Favoriten (streck 40) har sämst riktodds av topp 3, så den är inte bäst
+    // rangad. Skräll = bäst rangade under 5 %: 8 (5 signaler) före 6.
+    const leg: TippaLeg = { leg: 5, startAt: "", cancelled: false, starts: [st(1, 40, 6), st(2, 20, 2), st(3, 15, 2.5), st(4, 8, 5), st(5, 6, 9), st(6, 4, 4), st(7, 3, 30), st(8, 2, 8, { signals: 5 }), st(9, 2, 40)] };
+    const f = legFacts(leg);
+    expect(f.runners[0].number).not.toBe(1);
+    const plan = prioPlan(f, 7);
+    expect(plan.target).toBe(7);
+    expect(plan.order.slice(0, 3).map((h) => [h.number, h.group])).toEqual([[1, "T3"], [4, "MEL"], [8, "SKR"]]);
+    expect(plan.opts.map((o) => [o.k, o.pen])).toEqual([[5, 2], [6, 1], [7, 0]]);
+    const r = buildRad([mkLeg(1, S10, { spik: 1.1 }), mkLeg(2, S10, { spik: 1.1 }), mkLeg(3, S10, { spik: 1.1 }), mkLeg(4, S10, { spik: 1.1 }), leg, mkLeg(6, S10, { spik: 1.1 }), mkLeg(7, S10, { spik: 1.1 }), mkLeg(8, S10, { spik: 1.1 })], ex1Rules({ spikCount: 7, budget: 1000, maxPerLeg: 7 }));
+    const p = r.legs[4];
+    expect(p.kind).toBe("PRIO");
+    expect(p.selection).toEqual(plan.order.slice(0, 7).map((h) => h.number).sort((a, b) => a - b));
+    expect(p.horses.find((h) => h.number === 1)!.reasons).toContain("FAV");
+    // Ingen Mellan (alla utanför topp 3 under 5 %): ersättaren NOMEL.
+    const noMel: TippaLeg = { leg: 5, startAt: "", cancelled: false, starts: [st(1, 40, 3), st(2, 30, 2), st(3, 20, 2.5), st(4, 4, 5), st(5, 3, 9), st(6, 2, 4), st(7, 1, 30)] };
+    const r2 = buildRad([mkLeg(1, S10, { spik: 1.1 }), mkLeg(2, S10, { spik: 1.1 }), mkLeg(3, S10, { spik: 1.1 }), mkLeg(4, S10, { spik: 1.1 }), noMel, mkLeg(6, S10, { spik: 1.1 }), mkLeg(7, S10, { spik: 1.1 }), mkLeg(8, S10, { spik: 1.1 })], ex1Rules({ spikCount: 7, budget: 1000, maxPerLeg: 4 }));
+    const codes = r2.legs[4].horses.flatMap((h) => h.reasons);
+    expect(r2.legs[4].kind).toBe("PRIO");
+    expect(codes).toContain("NOMEL");
+    expect(codes).toContain("FAV");
+    expect(r2.legRoles.legs["5"].h).toBeDefined();
+  });
+
+  it("8. reserv: vald avdelning låst eller inställd ger Auto", () => {
+    const locked = buildRad(ex1Legs(), ex1Rules({ allgMode: "CHOSEN", allgLeg: 3, locked: { 3: [1, 2] } }));
+    expect(locked).toMatchObject({ prioLeg: 5, prioAuto: true, prioFallback: "LOCKED", prioRequested: 3 });
+    const legs = ex1Legs().map((l) => (l.leg === 3 ? { ...l, cancelled: true } : l));
+    expect(buildRad(legs, ex1Rules({ allgMode: "CHOSEN", allgLeg: 3 }))).toMatchObject({ prioLeg: 5, prioFallback: "CANCELLED" });
+    expect(buildRad(ex1Legs(), ex1Rules({ allgMode: "CHOSEN", allgLeg: null }))).toMatchObject({ prioLeg: 5, prioFallback: "MISSING" });
+  });
+
+  it("9. minRows och förslagen räknas med P = mål − 2; defaultSpikCount med taket", () => {
+    const r = buildRad(ex1Legs(), ex1Rules({ budget: 20 }));
+    expect(r.status).toBe("RULES_DONT_FIT");
+    // P = 5 (7 − 2), fem öppna lopp à 2, två spikar.
+    expect(r.minRows).toBe(5 * 2 ** 5);
+    expect(r.legs[4].selection).toHaveLength(5);
+    expect(r.suggestions[0]).toEqual({ kind: "BUDGET", budget: Math.ceil((160 * 50) / 100) });
+    const a = buildRad(ex1Legs(), ex1Rules({ budget: 20, maxPerLeg: null }));
+    expect(a.minRows).toBe(11 * 2 ** 5);
+    // Utan spikar: tak 7 ger 5 · 2⁷ = 640 ≤ 840, Alla 11 · 2⁷ = 1 408 > 840.
+    expect(defaultSpikCount(ex1Legs(), ex1Rules())).toBe(0);
+    expect(defaultSpikCount(ex1Legs(), ex1Rules({ maxPerLeg: null }))).toBe(1);
+  });
+
+  it("10. fieldMax: högsta antalet löpande utom inställda, strukna räknas inte", () => {
+    const legs = ex1Legs().map((l) => (l.leg === 3 ? { ...l, cancelled: true } : l.leg === 7 ? { ...l, starts: l.starts.map((s) => (s.number <= 2 ? s : { ...s, scratched: s.number > 12 })) } : l));
+    // Avd 3 (15) är inställd, avd 7 har 14 − 2 strukna = 12, avd 5 har 13.
+    expect(buildRad(legs, ex1Rules()).fieldMax).toBe(13);
+    expect(buildRad(ex1Legs(), ex1Rules()).fieldMax).toBe(15);
+    const empty = ex1Legs().map((l) => ({ ...l, starts: l.starts.map((s) => ({ ...s, scratched: true })) }));
+    expect(buildRad(empty, ex1Rules()).fieldMax).toBe(0);
+    expect(buildRad(empty, ex1Rules()).prioLeg).toBeNull();
+  });
+
+  it("11. inget lopp utom låsta har fler än N, även när raden går ifrån mallen", () => {
+    for (const N of [3, 4, 5, 6, 7, 8, 10]) {
+      for (const budget of [20, 60, 150, 400, 1000, 5000, 100_000]) {
+        for (const spikCount of [0, 2, 4]) {
+          const r = buildRad(ex1Legs(), ex1Rules({ maxPerLeg: N, budget, spikCount, locked: { 3: [1, 2, 3, 4, 5, 6, 7, 8, 9] } }));
+          for (const l of r.legs) if (l.kind !== "OWN" && l.kind !== "OWN_SPIK") expect(l.selection.length).toBeLessThanOrEqual(N);
+          if (r.status === "OK") expect(r.prioShort).toBeLessThanOrEqual(PRIO_DROP_MAX);
+        }
+      }
+    }
+  });
+
+  it("capOf: null = Alla, under 3 räknas som 3, decimaler avrundas nedåt", () => {
+    expect([capOf(null), capOf(undefined), capOf(7), capOf(2), capOf(7.9), capOf(Number.NaN)]).toEqual([null, null, 7, 3, 7, null]);
+    expect(DEFAULT_MAX_PER_LEG).toBe(7);
+    expect(openHiOf(3, 9, 16, 7)).toBe(7);
+    expect(openHiOf(3, 9, 16, null)).toBe(8);
+    expect(openHiOf(3, 9, 16, 3)).toBe(3);
   });
 });

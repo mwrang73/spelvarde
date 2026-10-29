@@ -5,7 +5,7 @@
 // sessionen, aldrig från kroppen.
 
 import { Prisma as PrismaNS, type Prisma, type PrismaClient, type Role } from "@prisma/client";
-import { ALLG_MODE_ERROR, asLegRoles, asSelections, COPIED_AT_ERROR, DEFAULT_BUDGET, LEG_ROLES_ERROR, parseCouponBody, sameNumbers } from "@/lib/coupon";
+import { ALLG_MODE_ERROR, asLegRoles, PRIO_LEG_LOCKED_ERROR, PRIO_LEG_MISSING_ERROR, asSelections, COPIED_AT_ERROR, DEFAULT_BUDGET, LEG_ROLES_ERROR, parseCouponBody, sameNumbers } from "@/lib/coupon";
 import { couponDto, dec, markDto, modelDto, settingsDto, THEME_FROM_API } from "@/lib/dto";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, sameMark, turnsSomethingOn, type MarkState } from "@/lib/marks";
 import { INPUT_KEYS, nextModelKey, parseParams, parseWeights, type ModelParams, type NumParamKey, type Weights } from "@/lib/riktodds";
@@ -176,8 +176,8 @@ export async function saveCoupon(db: Db, userId: string, roundId: string, body: 
   if (input.allgLeg !== undefined && input.allgLeg !== null && input.allgLeg > legs) return err(400, `Avd ${input.allgLeg} finns inte i omgången.`);
   if (allgMode === null && spikCount !== null) return err(400, ALLG_MODE_ERROR);
   if (allgMode === "CHOSEN") {
-    if (allgLeg === null) return err(400, "Välj vilken avdelning som ska allgarderas.");
-    if (input.lockedLegs.includes(allgLeg)) return err(400, "Allgarderingen kan inte ligga i en låst avdelning.");
+    if (allgLeg === null) return err(400, PRIO_LEG_MISSING_ERROR);
+    if (input.lockedLegs.includes(allgLeg)) return err(400, PRIO_LEG_LOCKED_ERROR);
   }
   if (input.legRoles && Object.keys(input.legRoles.legs).some((k) => Number(k) > legs)) return err(400, LEG_ROLES_ERROR);
   if (input.copiedAt && input.copiedAt.getTime() > now.getTime() + 5 * 60_000) return err(400, COPIED_AT_ERROR);
@@ -213,6 +213,8 @@ export async function saveCoupon(db: Db, userId: string, roundId: string, body: 
     ...(input.spikCount !== undefined ? { spikCount: input.spikCount } : {}),
     ...(input.allgMode !== undefined ? { allgMode: input.allgMode } : {}),
     ...(input.allgLeg !== undefined ? { allgLeg: input.allgLeg } : {}),
+    // E6b: bara när fältet finns i kroppen (saknas = behåll sparat, null = Alla).
+    ...(input.maxPerLeg !== undefined ? { maxPerLeg: input.maxPerLeg } : {}),
     ...(legRoles !== undefined ? { legRoles: legRoles === null ? PrismaNS.DbNull : (legRoles as unknown as Prisma.InputJsonValue) } : {}),
     ...(input.copiedAt !== undefined ? { copiedAt: input.copiedAt } : {}),
     ...(input.copiedSelections !== undefined ? { copiedSelections: input.copiedSelections === null ? PrismaNS.DbNull : json(input.copiedSelections) } : {}),

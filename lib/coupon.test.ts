@@ -95,7 +95,7 @@ describe("E6: parseCouponBody", () => {
     expect(n.ok && n.value).toMatchObject({ spikCount: null, allgMode: null, allgLeg: null, legRoles: null, copiedAt: null, copiedSelections: null });
   });
   it("avvisar okänd allgMode, spikCount 9, legRoles med okänd kod och fel kopieringstid", () => {
-    expect(parseCouponBody({ ...body, allgMode: "NONE" })).toEqual({ ok: false, error: "Allgarderingen ska vara Auto eller en vald avdelning." });
+    expect(parseCouponBody({ ...body, allgMode: "NONE" })).toEqual({ ok: false, error: "Prioriterat lopp ska vara Auto eller en vald avdelning." });
     expect(parseCouponBody({ ...body, spikCount: 9 }).ok).toBe(false);
     expect(parseCouponBody({ ...body, spikCount: 2.5 }).ok).toBe(false);
     expect(parseCouponBody({ ...body, allgLeg: 9 })).toEqual({ ok: false, error: "Avd 9 finns inte i omgången." });
@@ -112,5 +112,63 @@ describe("E6: parseCouponBody", () => {
     expect(asLegRoles(null)).toBeNull();
     expect(asLegRoles({ ...roles, legs: { "1": { k: "NOPE" } } })).toBeNull();
     expect(asLegRoles(buildRad(bjerkeLegs(), bjerkeRules()).legRoles)).not.toBeNull();
+  });
+});
+
+// ---- E6b (docs/specs/e6b-max-per-lopp.md 4.4 och 8) ---------------------------------------------
+
+import { DEFAULT_MAX_PER_LEG, MAX_PER_LEG_DB_MAX, MAX_PER_LEG_ERROR, MAX_PER_LEG_MIN, PRIO_LEG_LOCKED_ERROR, PRIO_LEG_MISSING_ERROR } from "@/lib/coupon";
+
+describe("E6b: maxPerLeg i kroppen", () => {
+  const body = { budget: 300, selections: { "4": [1] }, lockedLegs: [4] };
+  it("konstanterna", () => {
+    expect([MAX_PER_LEG_MIN, DEFAULT_MAX_PER_LEG, MAX_PER_LEG_DB_MAX]).toEqual([3, 7, 30]);
+  });
+  it("godtar 3, 7, 30 och null; saknat fält ger undefined", () => {
+    for (const v of [3, 7, 30, null]) {
+      const p = parseCouponBody({ ...body, maxPerLeg: v });
+      expect(p.ok && p.value.maxPerLeg).toBe(v);
+    }
+    const p = parseCouponBody(body);
+    expect(p.ok && "maxPerLeg" in p.value).toBe(false);
+  });
+  it("avvisar 2, 31, 7,5, \"7\", true och objekt", () => {
+    for (const v of [2, 31, 7.5, "7", true, {}, -7, Number.NaN]) {
+      expect(parseCouponBody({ ...body, maxPerLeg: v })).toEqual({ ok: false, error: "Max hästar per lopp ska vara 3–30 eller Alla." });
+    }
+    expect(MAX_PER_LEG_ERROR).toBe("Max hästar per lopp ska vara 3–30 eller Alla.");
+  });
+  it("felsvaren för prioriterat lopp", () => {
+    expect(PRIO_LEG_MISSING_ERROR).toBe("Välj vilket lopp som ska prioriteras.");
+    expect(PRIO_LEG_LOCKED_ERROR).toBe("Det prioriterade loppet kan inte vara en låst avdelning.");
+  });
+});
+
+describe("E6b: legRoles med PRIO", () => {
+  it("asLegRoles godtar k: PRIO med h", () => {
+    const roles = { v: 1, prelim: false, favLimit: 4, legs: { "5": { k: "PRIO", h: { "6": ["T3", "FAV"], "9": ["MEL"], "11": ["SKR", "SIG4"] } } } };
+    expect(asLegRoles(roles)).toEqual(roles);
+    expect(parseCouponBody({ budget: 10, selections: {}, legRoles: roles }).ok).toBe(true);
+  });
+});
+
+describe("E6b: Kopiera skriver alla bara när alla löpande är med", () => {
+  const round = { trackName: "Solvalla", date: "2026-11-07", gameType: "V85" };
+  const all13 = Array.from({ length: 13 }, (_, i) => i + 1);
+  const base = { 1: [1], 2: [1], 3: [1], 4: [1], 6: [1], 7: [1], 8: [1] };
+  const nb = (scratched: number[] = []) => ({ 5: { all: all13, scratched } });
+  const line5 = (sel: number[], opts?: Parameters<typeof couponText>[3]) => couponText(round, { ...base, 5: sel }, 0.5, opts).split("\n")[5];
+
+  it("allgLeg 5 med alla löpande ger alla (1–13)", () => {
+    expect(line5(all13, { allgLeg: 5, numbersByLeg: nb() })).toBe("Avd 5: alla (1–13)");
+    // Struken 7 behöver inte vara med.
+    expect(line5(all13.filter((n) => n !== 7), { allgLeg: 5, numbersByLeg: nb([7]) })).toBe("Avd 5: alla (1–13, utom 7)");
+  });
+  it("allgLeg 5 där valet saknar två löpande ger numren", () => {
+    const sel = all13.filter((n) => n !== 2 && n !== 13);
+    expect(line5(sel, { allgLeg: 5, numbersByLeg: nb() })).toBe(`Avd 5: ${sel.join(", ")}`);
+  });
+  it("prioriterat lopp (PRIO) utan allgLeg ger numren", () => {
+    expect(line5([1, 3, 4, 6, 9, 11, 12], { allgLeg: null, numbersByLeg: nb() })).toBe("Avd 5: 1, 3, 4, 6, 9, 11, 12");
   });
 });

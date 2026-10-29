@@ -1,6 +1,7 @@
 // Fixturen Bjerke (docs/specs/e6-v85-rad.md, 14): V85 Bjerke lör 31 okt 2026,
 // samma omgång som mockupen docs/mockups/v85-rad-mockup.html. Regler: budget
 // 288 (576 rader = 288 kr exakt, mockupens rad), radpris 0,50, 4 spikar, allgardering Auto, egen spik 1 Baron Tilly i avd 4.
+// Taket (E6b) är Alla (maxPerLeg null), så att raden är den från före E6b.
 //
 // Märken: S = Spelbar (och Intressant), I = Intressant, X/X+ = X-faktor (och
 // Intressant), B = Bet. Ej nämnda: inga märken, 0 signaler.
@@ -155,7 +156,7 @@ export function bjerkeLegs(): TippaLeg[] {
 export const BJERKE_ROUND = { trackName: "Bjerke", date: "2026-10-31", gameType: "V85" } as const;
 
 export function bjerkeRules(over: Partial<TippaRules> = {}): TippaRules {
-  return { gameType: "V85", budget: 288, rowPrice: 0.5, spikCount: 4, allgMode: "AUTO", allgLeg: null, locked: { 4: [1] }, ...over };
+  return { gameType: "V85", budget: 288, rowPrice: 0.5, spikCount: 4, allgMode: "AUTO", allgLeg: null, maxPerLeg: null, locked: { 4: [1] }, ...over };
 }
 
 // Hjälp för testerna: ändra en häst i fixturen.

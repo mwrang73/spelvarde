@@ -4,9 +4,18 @@
 // den (PUT /api/rounds/[id]/coupon). Texterna ligger i lib/tippa-text.ts.
 //
 // Ordningen i buildRad:
-//   6.5.2 legFacts  → 6.5.3 typ per avdelning → 6.5.4 chooseAllg →
+//   6.5.2 legFacts  → 6.5.3 typ per avdelning → 6.5.4 choosePrio →
 //   6.5.5 chooseSpikes → 6.5.6 applyFavLimit → 6.5.7 minimumPicks →
-//   6.5.8 maximizeHorses (budgeten, exakt) → 6.5.9 avslut och legRoles.
+//   budgeten (targetRows, exakt) → 6.5.9 avslut och legRoles.
+//
+// E6b (docs/specs/e6b-max-per-lopp.md 4.2): Max hästar per lopp N
+// (rules.maxPerLeg, null = Alla) är ett tak för alla lopp som appen fyller.
+// Allgarderingen är ersatt av det prioriterade loppet P, som får gå upp till
+// målet min(N, n) (högst PRIO_DROP_MAX färre när budgeten inte räcker). När
+// målet täcker hela fältet gäller den gamla allgarderingsregeln oförändrad, så
+// N = Alla ger exakt samma rad som före E6b (regressionen i
+// lib/tippa.property.test.ts). P har typen ALLG när alla löpande är med,
+// annars PRIO. Egna val (låsta) går före taket.
 //
 // Alla jämförelser som avgör raden görs med heltal (rangpoäng i hundradelar,
 // rader och öre), så att resultatet inte beror på flyttalsavrundning.
@@ -17,8 +26,12 @@
 // löpande, budget 100 000 kr och radpris 0,01 (R = 625 000 efter
 // allgarderingen, 5 ms) och 6 242 vid det hårda taket R = 10 000 000 med sju
 // lopp à 3–16 hästar (7 ms).
+// E6b (mätt i samma test 2026-10-29, tillstånd i targetRows, största Map under
+// ett steg): Bjerke 49 med Alla och 64 med tak 7 (0,4–0,6 ms per buildRad); 7
+// öppna lopp med 16 löpande, budget 100 000 kr, radpris 0,01: 1 243 med Alla
+// och 808 med tak 7 (1–5 ms). Taket minskar alternativen per lopp.
 
-import { BUDGET_MAX, couponCost, type Selections } from "@/lib/coupon";
+import { BUDGET_MAX, couponCost, MAX_PER_LEG_MIN, type Selections } from "@/lib/coupon";
 import { favLimitFor, legsFor, spikMaxFor } from "@/lib/game-type";
 import { LOW_STRECK_MIN } from "@/lib/positive-signals";
 import type { AllgMode, LegRoleDto, LegRoleKind, LegRolesDto, ReasonCode } from "@/lib/types";
@@ -52,8 +65,11 @@ export type TippaRules = {
   rowPrice: number;
   // Önskat antal spikar totalt (egna och appens).
   spikCount: number;
+  // Prioriterat lopp (hette allgardering före E6b): AUTO eller CHOSEN med allgLeg.
   allgMode: AllgMode;
   allgLeg: number | null;
+  // E6b: Max hästar per lopp (tak för alla lopp som appen fyller). null = Alla.
+  maxPerLeg: number | null;
   // Låsta avdelningar och deras val (egen spik = en häst, eget val = flera).
   locked: Record<number, number[]>;
 };
@@ -242,7 +258,9 @@ export type MinPicks = {
   few: boolean;
 };
 
-export function minimumPicks(facts: LegFacts, favBanned: boolean): MinPicks {
+// forceFav (E6b, prioriterat lopp med mål < n): favoriten tas först i
+// stället för bästa Topp 3.
+export function minimumPicks(facts: LegFacts, favBanned: boolean, forceFav = false): MinPicks {
   const run = facts.runners;
   if (run.length <= 3) return { picks: run.map((h) => h.number), lo: run.length, rest: [], sub: {}, few: true };
   const pool = run.filter((h) => !(favBanned && h.favorite));
@@ -256,7 +274,7 @@ export function minimumPicks(facts: LegFacts, favBanned: boolean): MinPicks {
     return true;
   };
   const free = () => pool.filter((h) => !chosen.has(h.number));
-  take(free().find((h) => h.group === "T3") ?? free()[0]);
+  take((forceFav && !favBanned ? (facts.favorite ?? undefined) : undefined) ?? free().find((h) => h.group === "T3") ?? free()[0]);
   const mel = take(free().find((h) => h.group === "MEL"));
   const skr = take(free().find((h) => h.group === "SKR"));
   if (!skr) {
@@ -270,16 +288,17 @@ export function minimumPicks(facts: LegFacts, favBanned: boolean): MinPicks {
   return { picks, lo: picks.length, rest: [...free()].sort(byValue), sub, few: false };
 }
 
-// ---- Allgardering (6.5.4) ---------------------------------------------------------------------
+// ---- Prioriterat lopp (6.5.4, E6b 4.2 steg 1) --------------------------------------------------
 
-export type AllgFallback = "LOCKED" | "CANCELLED" | "MISSING";
+export type PrioFallback = "LOCKED" | "CANCELLED" | "MISSING";
 
-export function chooseAllg(
+// Väljer P före spikarna. Samma logik som allgarderingen före E6b.
+export function choosePrio(
   legs: { leg: number; base: BaseKind; facts: LegFacts }[],
   mode: AllgMode,
   chosen: number | null,
-): { leg: number | null; fallback: AllgFallback | null; auto: boolean } {
-  let fallback: AllgFallback | null = null;
+): { leg: number | null; fallback: PrioFallback | null; auto: boolean } {
+  let fallback: PrioFallback | null = null;
   if (mode === "CHOSEN") {
     const l = chosen === null ? undefined : legs.find((x) => x.leg === chosen);
     if (l && l.base === "FREE") return { leg: l.leg, fallback: null, auto: false };
@@ -345,13 +364,23 @@ export function applyFavLimit(open: LegFacts[], quota: number): { allowed: numbe
 // gains[j] = summan av poängen för de första j hästarna i A(L), j = 0 … hi − lo.
 export type MaxLeg = { lo: number; hi: number; gains: number[] };
 
-// Bara allgarderingen får ha alla hästar (Mikael 2026-10-28): ett öppet lopp
-// får högst hälften av de löpande, men aldrig färre än minsta valet.
+// Bara det prioriterade loppet får ha alla hästar (Mikael 2026-10-28): ett
+// öppet lopp får högst hälften av de löpande, men aldrig färre än minsta valet.
+// E6b: och aldrig fler än taket N (cap, null = Alla). N ≥ 3 ≥ lo, så taket
+// krockar aldrig med minsta valet.
 export const OPEN_SHARE_MAX = 0.5;
-export function openHiOf(lo: number, restLen: number, runners: number): number {
-  return Math.max(lo, Math.min(lo + restLen, Math.floor(runners * OPEN_SHARE_MAX)));
+export function openHiOf(lo: number, restLen: number, runners: number, cap: number | null = null): number {
+  const hi = Math.max(lo, Math.min(lo + restLen, Math.floor(runners * OPEN_SHARE_MAX)));
+  return cap === null ? hi : Math.max(lo, Math.min(cap, hi));
 }
-const openHi = (o: { min: { lo: number; rest: unknown[] }; prep: { facts: { runners: unknown[] } } }) => openHiOf(o.min.lo, o.min.rest.length, o.prep.facts.runners.length);
+const openHi = (o: { min: { lo: number; rest: unknown[] }; prep: { facts: { runners: unknown[] } } }, cap: number | null) => openHiOf(o.min.lo, o.min.rest.length, o.prep.facts.runners.length, cap);
+
+// Taket ur reglerna: null = Alla. Ett tal under MAX_PER_LEG_MIN räknas som
+// MAX_PER_LEG_MIN (servern godtar bara 3–30).
+export function capOf(maxPerLeg: number | null | undefined): number | null {
+  if (maxPerLeg === null || maxPerLeg === undefined || !Number.isFinite(maxPerLeg)) return null;
+  return Math.max(MAX_PER_LEG_MIN, Math.floor(maxPerLeg));
+}
 export type MaxResult = { k: number[]; horses: number; score: number; product: number; states: number };
 
 // Exakt lösning med dynamisk programmering över produkten: välj k(L) i
@@ -438,7 +467,8 @@ export type TippaLegResult = {
   favBanned: boolean;
   // Öppen avdelning med 1–3 löpande: alla är med.
   few: boolean;
-  // Öppna avdelningar: minsta och största antal hästar (6.5.7). Övriga: antalet.
+  // Öppna avdelningar: minsta och största antal hästar (6.5.7). Prioriterat
+  // lopp (PRIO/ALLG): minsta alternativet och målet min(N, n). Övriga: antalet.
   lo: number;
   hi: number;
   // Appens spik: platsen i spikordningen (0 = säkrast). Annars null.
@@ -450,8 +480,8 @@ export type TippaLegResult = {
 
 export type TippaResult = {
   // Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28):
-  // hästar som allgarderingen tappade och öppna lopp med bara 2 hästar.
-  allgDropped: number;
+  // hästar som det prioriterade loppet har under målet (prioShort) och öppna
+  // lopp med bara 2 hästar.
   relaxedLegs: number[];
   underbet: number;
   gameType: string;
@@ -487,12 +517,31 @@ export type TippaResult = {
   ownSpikLegs: number[];
   skippedSpik: number[];
   allgMode: AllgMode;
+  // ---- E6b (docs/specs/e6b-max-per-lopp.md 4.2) ----
+  // Taket som gällde (null = Alla).
+  maxPerLeg: number | null;
+  // F: högsta antalet löpande i en avdelning som inte är inställd. 0 utan löpande.
+  fieldMax: number;
+  // P, det prioriterade loppet, eller null.
+  prioLeg: number | null;
+  // true = appen valde P (AUTO eller reserv för CHOSEN).
+  prioAuto: boolean;
+  prioFallback: PrioFallback | null;
+  // Avdelningen Mikael valde (rules.allgLeg när CHOSEN), för texten vid reserv.
+  prioRequested: number | null;
+  // Målet min(N, n) för P. 0 utan P.
+  prioTarget: number;
+  // Antal hästar P fick.
+  prioCount: number;
+  // prioTarget − prioCount (0–PRIO_DROP_MAX).
+  prioShort: number;
+  // P när typen är ALLG (alla löpande med), annars null. Styr kopieringens
+  // "alla (1–13)", kupongens "Alla" och ATG-texten.
   allgLeg: number | null;
-  // true = appen valde allgarderingen (AUTO eller reserv för CHOSEN).
-  allgAuto: boolean;
-  allgFallback: AllgFallback | null;
-  // Avdelningen Mikael valde (rules.allgLeg), för texten vid reserv.
-  allgRequested: number | null;
+  // Låsta avdelningar (OWN) med fler hästar än N, stigande. Tom vid Alla.
+  overCapLegs: number[];
+  // Taket kapar något: P har mål < n, eller ett öppet lopp har hi kapat av N.
+  capLimited: boolean;
   favCount: number;
   favOver: FavOver;
   favBanned: number[];
@@ -567,7 +616,9 @@ function prepare(input: TippaLeg[], gameType: string, locked: Record<number, num
 }
 
 type Decision = {
-  allg: ReturnType<typeof chooseAllg>;
+  prio: ReturnType<typeof choosePrio>;
+  // Taket N (null = Alla).
+  cap: number | null;
   ownSpikes: number;
   spikMin: number;
   spikMax: number;
@@ -588,12 +639,13 @@ type Decision = {
 };
 
 function decide(prep: Prep[], rules: TippaRules, favLimit: number, spikCount: number): Decision {
-  const allg = chooseAllg(prep, rules.allgMode, rules.allgLeg);
+  const prio = choosePrio(prep, rules.allgMode, rules.allgLeg);
+  const cap = capOf(rules.maxPerLeg);
   const lockedPreps = prep.filter((p) => p.base === "LOCKED");
   const ownSpikes = lockedPreps.filter((p) => p.lockedSel!.length === 1).length;
   const candidates: SpikCandidate[] = [];
   for (const p of prep) {
-    if (p.base !== "FREE" || p.leg === allg.leg) continue;
+    if (p.base !== "FREE" || p.leg === prio.leg) continue;
     const h = spikHorse(p.facts);
     if (h) candidates.push({ leg: p.leg, horse: h, isFav: h.favorite });
   }
@@ -602,12 +654,12 @@ function decide(prep: Prep[], rules: TippaRules, favLimit: number, spikCount: nu
   const spikEffective = Math.min(spikMax, Math.max(spikMin, Math.floor(Number.isFinite(spikCount) ? spikCount : 0)));
   const appSpikes = spikEffective - ownSpikes;
   const lockedWithFav = lockedPreps.filter((p) => !p.struckOwnSpik && p.facts.favorite && p.lockedSel!.includes(p.facts.favorite.number)).length;
-  const quota = favLimit - lockedWithFav - (allg.leg !== null ? 1 : 0);
+  const quota = favLimit - lockedWithFav - (prio.leg !== null ? 1 : 0);
   const sp = chooseSpikes(candidates, appSpikes, quota);
   const spikSet = new Set(sp.spikes.map((c) => c.leg));
-  const openPreps = prep.filter((p) => p.base === "FREE" && p.leg !== allg.leg && !spikSet.has(p.leg));
+  const openPreps = prep.filter((p) => p.base === "FREE" && p.leg !== prio.leg && !spikSet.has(p.leg));
   const fewOpen = openPreps.filter((p) => p.facts.runners.length <= 3).length;
-  const forcedFav = lockedWithFav + (allg.leg !== null ? 1 : 0) + sp.spikes.filter((c) => c.isFav).length + fewOpen;
+  const forcedFav = lockedWithFav + (prio.leg !== null ? 1 : 0) + sp.spikes.filter((c) => c.isFav).length + fewOpen;
   let favOver: FavOver = sp.overSpikes ? "SPIKES" : null;
   if (!favOver && forcedFav > favLimit) favOver = "OWN";
   const fl = applyFavLimit(
@@ -626,12 +678,12 @@ function decide(prep: Prep[], rules: TippaRules, favLimit: number, spikCount: nu
     let f = 1;
     if (p.base === "LOCKED") f = p.lockedSel!.length;
     else if (p.base === "CANCELLED") f = Math.max(1, p.cancelledSel.length);
-    else if (p.base === "FREE" && p.leg === allg.leg) f = p.facts.runners.length;
+    else if (p.base === "FREE" && p.leg === prio.leg) f = p.facts.runners.length;
     fast *= f;
     fastOwnAs1 *= p.base === "LOCKED" ? 1 : f;
   }
   const loProd = open.reduce((a, o) => a * o.min.lo, 1);
-  return { allg, ownSpikes, spikMin, spikMax, spikEffective, spikes: sp.spikes, candidates, skipped: sp.skipped, favOver, forcedFav, favAllowed: fl.allowed, favBanned: fl.banned, open, fast, fastOwnAs1, loProd };
+  return { prio, cap, ownSpikes, spikMin, spikMax, spikEffective, spikes: sp.spikes, candidates, skipped: sp.skipped, favOver, forcedFav, favAllowed: fl.allowed, favBanned: fl.banned, open, fast, fastOwnAs1, loProd };
 }
 
 const priceOre = (rowPrice: number) => Math.max(1, Math.round(rowPrice * 100));
@@ -683,16 +735,17 @@ export function suggestions(legs: TippaLeg[], rules: TippaRules, result: Pick<Ti
 
 // ---- Budgeten som mål (Mikael 2026-10-28) ------------------------------------------------------
 // Kostnaden ska komma så nära budgeten som möjligt, högst BUDGET_OVER_MAX
-// över. För att nå dit får raden avvika från mallen: allgarderingen tappar
-// högst ALLG_DROP_MAX hästar (de lägst rankade) och ett öppet lopp får gå ned
-// till 2 hästar (bästa Topp 3 + högst rankade av övriga). Varje avvikelse
-// kostar en poäng, och vid samma avstånd till budgeten vinner minst avvikelse,
-// sedan flest hästar och högst rangpoäng.
+// över. För att nå dit får raden avvika från mallen: det prioriterade loppet
+// får högst PRIO_DROP_MAX hästar under målet min(N, n) (varje häst en
+// avvikelse) och ett öppet lopp får gå ned till 2 hästar (bästa Topp 3 +
+// högst rankade av övriga, en avvikelse). Vid samma avstånd till budgeten
+// vinner minst avvikelse, sedan flest hästar och högst rangpoäng. Alla
+// alternativ är ≤ N, så ingen avvikelse ger fler än N hästar (E6b beslut 8).
 export const BUDGET_OVER_MAX = 0.05;
 // Bandet under budgeten: inom [BUDGET_UNDER_MAX, BUDGET_OVER_MAX] runt summan
 // väljs flest hästar, inte närmast summan.
 export const BUDGET_UNDER_MAX = 0.1;
-export const ALLG_DROP_MAX = 2;
+export const PRIO_DROP_MAX = 2;
 export const OPEN_RELAXED_MIN = 2;
 
 type Open = Decision["open"][number];
@@ -705,20 +758,38 @@ function openSelection(o: Open, k: number): number[] {
   const pool = o.prep.facts.runners.filter((h) => h.number !== first && !(o.banned && h.favorite));
   return [first, ...pool.slice(0, k - 1).map((h) => h.number)].filter((n) => n !== undefined);
 }
-function openOptions(o: Open): Opt[] {
+function openOptions(o: Open, cap: number | null): Opt[] {
   const byNum = new Map(o.prep.facts.runners.map((h) => [h.number, valueScore(h)]));
   const lo = o.min.few ? o.min.lo : Math.min(o.min.lo, OPEN_RELAXED_MIN);
   const out: Opt[] = [];
-  for (let k = lo; k <= openHi(o); k++) {
+  for (let k = lo; k <= openHi(o, cap); k++) {
     out.push({ k, pen: k < o.min.lo ? 1 : 0, score: openSelection(o, k).reduce((a, n) => a + (byNum.get(n) ?? 0), 0) });
   }
   return out;
 }
-function allgOptions(runners: HorseFact[]): Opt[] {
+// Det prioriterade loppet P (E6b 4.2 steg 3). order = hästordningen, target =
+// målet min(N, n), opts = alternativen k med avvikelsen target − k.
+// - Målet täcker hela fältet: allgarderingens regel före E6b, oförändrad.
+//   Alla löpande i rangordning, högst PRIO_DROP_MAX färre (minst 1), de lägst
+//   rankade tappas först. Det gör att N = Alla ger exakt dagens rad.
+// - Målet är mindre än fältet: mallen med favoriten först (minimumPicks med
+//   forceFav), sedan övriga i värdeordningen. k från max(lo, mål − 2).
+type PrioPlan = { order: HorseFact[]; target: number; min: MinPicks | null; opts: Opt[] };
+export function prioPlan(facts: LegFacts, cap: number | null): PrioPlan {
+  const runners = facts.runners;
   const n = runners.length;
+  const target = cap === null ? n : Math.min(cap, n);
+  const score = (hs: HorseFact[]) => hs.reduce((a, h) => a + valueScore(h), 0);
   const out: Opt[] = [];
-  for (let k = Math.max(1, n - ALLG_DROP_MAX); k <= n; k++) out.push({ k, pen: n - k, score: runners.slice(0, k).reduce((a, h) => a + valueScore(h), 0) });
-  return out;
+  if (target >= n) {
+    for (let k = Math.max(1, n - PRIO_DROP_MAX); k <= n; k++) out.push({ k, pen: n - k, score: score(runners.slice(0, k)) });
+    return { order: runners, target, min: null, opts: out };
+  }
+  const min = minimumPicks(facts, false, true);
+  const byNum = new Map(runners.map((h) => [h.number, h]));
+  const order = [...min.picks.map((x) => byNum.get(x)!), ...min.rest];
+  for (let k = Math.max(min.lo, target - PRIO_DROP_MAX); k <= target; k++) out.push({ k, pen: target - k, score: score(order.slice(0, k)) });
+  return { order, target, min, opts: out };
 }
 const minK = (opts: Opt[]) => Math.min(...opts.map((o) => o.k));
 
@@ -779,16 +850,17 @@ export function targetRows(legOpts: Opt[][], fast: number, B: number, upper: num
   return { k, product: bestP, pen: best.pen, states };
 }
 
-// Allgarderingens lopp (fritt, med löpande) och produkten av övriga fasta lopp.
+// Det prioriterade loppet (fritt, med löpande) och produkten av övriga fasta lopp.
 function targetParts(prep: Prep[], d: Decision) {
-  const allgPrep = d.allg.leg ? prep.find((p) => p.leg === d.allg.leg && p.base === "FREE" && p.facts.runners.length > 0) ?? null : null;
-  const n = allgPrep?.facts.runners.length ?? 1;
-  const fastX = allgPrep ? d.fast / n : d.fast;
-  const fastOwnX = allgPrep ? d.fastOwnAs1 / n : d.fastOwnAs1;
-  const legOpts: Opt[][] = d.open.map(openOptions);
-  if (allgPrep) legOpts.push(allgOptions(allgPrep.facts.runners));
+  const prioPrep = d.prio.leg ? prep.find((p) => p.leg === d.prio.leg && p.base === "FREE" && p.facts.runners.length > 0) ?? null : null;
+  const n = prioPrep?.facts.runners.length ?? 1;
+  const fastX = prioPrep ? d.fast / n : d.fast;
+  const fastOwnX = prioPrep ? d.fastOwnAs1 / n : d.fastOwnAs1;
+  const legOpts: Opt[][] = d.open.map((o) => openOptions(o, d.cap));
+  const plan = prioPrep ? prioPlan(prioPrep.facts, d.cap) : null;
+  if (plan) legOpts.push(plan.opts);
   const minProd = legOpts.reduce((a, o) => a * minK(o), 1);
-  return { allgPrep, fastX, fastOwnX, legOpts, minProd };
+  return { prioPrep, plan, fastX, fastOwnX, legOpts, minProd };
 }
 const lowerRowsOf = (budget: number, rowPrice: number) => Math.max(0, Math.ceil((Math.round(Math.max(0, budget) * 100) * (1 - BUDGET_UNDER_MAX)) / priceOre(rowPrice) - EPS));
 const upperRowsOf = (budget: number, rowPrice: number) => Math.max(0, Math.floor((Math.round(Math.max(0, budget) * 100) * (1 + BUDGET_OVER_MAX)) / priceOre(rowPrice) + EPS));
@@ -808,13 +880,13 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
   let status: TippaStatus = "OK";
   // Utan rad (ryms inte): minsta tillåtna, som texterna och kostnaden visar.
   let ks: number[] = tp.legOpts.slice(0, d.open.length).map(minK);
-  let allgK = tp.allgPrep ? minK(tp.legOpts[d.open.length]) : 0;
+  let prioK = tp.prioPrep ? minK(tp.legOpts[d.open.length]) : 0;
   let allFit = false;
   let dpStates = 0;
   if (minRows <= upperRows) {
     const t = targetRows(tp.legOpts, tp.fastX, maxRows, upperRows, lowerRowsOf(rules.budget, rules.rowPrice))!;
     ks = t.k.slice(0, d.open.length);
-    if (tp.allgPrep) allgK = t.k[d.open.length];
+    if (tp.prioPrep) prioK = t.k[d.open.length];
     dpStates = t.states;
     allFit = d.open.length > 0 && tp.fastX * tp.legOpts.reduce((a, o) => a * Math.max(...o.map((x) => x.k)), 1) <= maxRows;
   } else if (tp.fastOwnX * tp.minProd <= upperRows) {
@@ -830,7 +902,8 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     const f = p.facts;
     const oi = openIdx.get(p.leg);
     const open = oi === undefined ? null : d.open[oi];
-    const sub = open?.min.sub ?? {};
+    const isPrio = !!tp.plan && p.leg === tp.prioPrep!.leg;
+    const sub = open?.min.sub ?? (isPrio ? tp.plan!.min?.sub : undefined) ?? {};
     const tagged = (h: HorseFact): TippaHorse => ({ ...h, reasons: reasonsOf(h, f.prelim, sub[h.number]) });
     const field = f.runners.map(tagged);
     const byNum = new Map(field.map((h) => [h.number, h]));
@@ -847,9 +920,11 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     } else if (p.base === "LOCKED") {
       kind = p.lockedSel!.length === 1 ? "OWN_SPIK" : "OWN";
       selection = p.lockedSel!;
-    } else if (p.leg === d.allg.leg) {
-      kind = "ALLG";
-      selection = f.runners.slice(0, tp.allgPrep && p.leg === tp.allgPrep.leg ? allgK : f.runners.length).map((h) => h.number);
+    } else if (isPrio) {
+      selection = tp.plan!.order.slice(0, prioK).map((h) => h.number);
+      kind = selection.length === f.runners.length ? "ALLG" : "PRIO";
+      lo = minK(tp.plan!.opts);
+      hi = tp.plan!.target;
     } else if (spikHorseOf.has(p.leg)) {
       kind = "SPIK";
       selection = [spikHorseOf.get(p.leg)!];
@@ -858,10 +933,10 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
       const k = ks[oi!];
       selection = openSelection(open!, k);
       lo = minK(tp.legOpts[oi!]);
-      hi = openHi(open!);
+      hi = openHi(open!, d.cap);
     }
     selection = [...selection].sort((a, b) => a - b);
-    if (kind !== "OPEN") lo = hi = Math.max(1, selection.length);
+    if (kind !== "OPEN" && !isPrio) lo = hi = Math.max(1, selection.length);
     const horses = selection.map((n) => byNum.get(n)).filter((h): h is TippaHorse => !!h).sort(compareRank);
     return {
       leg: p.leg,
@@ -931,10 +1006,20 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     ownSpikLegs: results.filter((l) => l.kind === "OWN_SPIK").map((l) => l.leg),
     skippedSpik: d.skipped,
     allgMode: rules.allgMode,
-    allgLeg: d.allg.leg,
-    allgAuto: d.allg.auto,
-    allgFallback: d.allg.fallback,
-    allgRequested: rules.allgMode === "CHOSEN" ? rules.allgLeg : null,
+    maxPerLeg: d.cap,
+    fieldMax: prep.filter((p) => p.base !== "CANCELLED").reduce((a, p) => Math.max(a, p.facts.runners.length), 0),
+    prioLeg: d.prio.leg,
+    prioAuto: d.prio.auto,
+    prioFallback: d.prio.fallback,
+    prioRequested: rules.allgMode === "CHOSEN" ? rules.allgLeg : null,
+    prioTarget: tp.plan?.target ?? 0,
+    prioCount: tp.plan ? prioK : 0,
+    prioShort: tp.plan ? tp.plan.target - prioK : 0,
+    allgLeg: results.find((l) => l.kind === "ALLG")?.leg ?? null,
+    overCapLegs: d.cap === null ? [] : results.filter((l) => l.kind === "OWN" && l.selection.length > d.cap!).map((l) => l.leg),
+    capLimited:
+      d.cap !== null &&
+      ((!!tp.plan && tp.plan.target < tp.prioPrep!.facts.runners.length) || d.open.some((o) => openHi(o, d.cap) < openHi(o, null))),
     favCount,
     favOver: d.favOver,
     favBanned: d.favBanned,
@@ -952,8 +1037,8 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
     legRoles: { v: 1, prelim: false, favLimit, legs: {} },
     dpStates,
     // Understreckade bland valda hästar utanför allgarderingen (radens "värde").
+    // Ett prioriterat lopp med färre än alla (PRIO) räknas med.
     underbet: results.filter((l) => l.kind !== "ALLG").reduce((a, l) => a + l.horses.filter(isUnderbet).length, 0),
-    allgDropped: tp.allgPrep ? tp.allgPrep.facts.runners.length - allgK : 0,
     relaxedLegs: d.open.filter((o, i) => !o.min.few && ks[i] < o.min.lo).map((o) => o.prep.leg).sort((a, b) => a - b),
   };
   result.suggestions = suggestions(legs, rules, result, opts);
@@ -961,7 +1046,8 @@ export function buildRad(legs: TippaLeg[], rules: TippaRules, opts: TippaOpts = 
   return result;
 }
 
-// legRoles version 1 (8.5): skälen per avdelning och vald häst.
+// legRoles version 1 (8.5): skälen per avdelning och vald häst. ALLG (alla
+// löpande) sparar bara favoriten; PRIO sparar hästarna som OPEN (E6b 4.3).
 export function legRolesOf(r: Pick<TippaResult, "legs" | "prelim" | "favLimit">): LegRolesDto {
   const legs: Record<string, LegRoleDto> = {};
   for (const l of r.legs) {

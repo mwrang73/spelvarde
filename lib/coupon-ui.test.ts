@@ -74,4 +74,12 @@ describe("E6: tippaLegs och couponBody", () => {
     expect(b).toEqual({ budget: 300, rowPrice: 0.5, selections: { "1": [7, 10], "4": [1] }, lockedLegs: [4], spikCount: 4, allgMode: "AUTO", allgLeg: 5, legRoles: null, copiedAt: "2026-10-31T13:05:00.000Z", copiedSelections: { "4": [1] } });
     expect(Object.keys(couponBody(300, 0.5, {}, []))).toEqual(["budget", "rowPrice", "selections", "lockedLegs"]);
   });
+
+  it("E6b: couponBody tar med maxPerLeg (tal eller null), och utelämnar det när det saknas", () => {
+    const e6 = { spikCount: 4, allgMode: "AUTO" as const, allgLeg: 5, legRoles: null, copiedAt: null, copiedSelections: null };
+    expect(couponBody(300, 0.5, {}, [], { ...e6, maxPerLeg: 7 }).maxPerLeg).toBe(7);
+    const n = couponBody(300, 0.5, {}, [], { ...e6, maxPerLeg: null });
+    expect("maxPerLeg" in n && n.maxPerLeg).toBeNull();
+    expect("maxPerLeg" in couponBody(300, 0.5, {}, [], e6)).toBe(false);
+  });
 });

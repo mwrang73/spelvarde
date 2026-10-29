@@ -294,12 +294,12 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
 
     // Felsvaren (400).
     const bad = async (b: Record<string, unknown>) => (await saveCoupon(db, user.id, roundId, { ...body, ...b }, thursday)).body;
-    expect(await bad({ allgMode: "CHOSEN", allgLeg: 2 })).toEqual({ error: "Allgarderingen kan inte ligga i en låst avdelning." });
-    expect(await bad({ allgMode: "CHOSEN", allgLeg: null })).toEqual({ error: "Välj vilken avdelning som ska allgarderas." });
+    expect(await bad({ allgMode: "CHOSEN", allgLeg: 2 })).toEqual({ error: "Det prioriterade loppet kan inte vara en låst avdelning." });
+    expect(await bad({ allgMode: "CHOSEN", allgLeg: null })).toEqual({ error: "Välj vilket lopp som ska prioriteras." });
     expect(await bad({ spikCount: 0 })).toEqual({ error: "Antalet spikar kan inte vara färre än dina egna spikar (1)." });
     expect(await bad({ spikCount: 8 })).toEqual({ error: "Antalet spikar ska vara 0–7 på V85." });
-    expect(await bad({ allgMode: "NONE" })).toEqual({ error: "Allgarderingen ska vara Auto eller en vald avdelning." });
-    expect(await bad({ allgMode: null })).toEqual({ error: "Allgarderingen ska vara Auto eller en vald avdelning." });
+    expect(await bad({ allgMode: "NONE" })).toEqual({ error: "Prioriterat lopp ska vara Auto eller en vald avdelning." });
+    expect(await bad({ allgMode: null })).toEqual({ error: "Prioriterat lopp ska vara Auto eller en vald avdelning." });
     expect(await bad({ legRoles: { ...legRoles, legs: { "1": { k: "OPEN", h: { "1": ["X"] } } } } })).toEqual({ error: "Ogiltiga skäl i raden." });
     expect(await bad({ copiedAt: "2026-10-22T19:10:00.000Z" })).toEqual({ error: "Ogiltig kopieringstid." });
     expect(await bad({ copiedSelections: { "1": [99] } })).toEqual({ error: "Ogiltiga startnummer i avd 1." });
@@ -328,6 +328,54 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     const row = await db.coupon.findFirstOrThrow({ where: { userId: user.id, roundId } });
     await expect(db.coupon.update({ where: { id: row.id }, data: { spikCount: 9 } })).rejects.toThrow();
     await expect(db.coupon.update({ where: { id: row.id }, data: { allgLeg: 0 } })).rejects.toThrow();
+    await db.coupon.delete({ where: { id: row.id } });
+  });
+
+  it("E6b: maxPerLeg sparas och läses, saknat fält lämnar det orört, CHECK 3–30, PRIO i legRoles", async () => {
+    const legRoles = { v: 1, prelim: false, favLimit: 4, legs: { "1": { k: "OPEN", h: { "1": ["T3"], "2": ["MEL"] } }, "7": { k: "PRIO", h: { "1": ["T3", "FAV"], "2": ["MEL"], "3": ["SKR"] } } } };
+    const body = { budget: 300, rowPrice: 0.5, selections: { "1": [1, 2], "2": [5], "7": [1, 2, 3] }, lockedLegs: [2], spikCount: 4, allgMode: "AUTO", allgLeg: 7, maxPerLeg: 7, legRoles };
+    const get = async () => ((await getCoupon(db, user.id, roundId)).body as CouponResponse).coupon!;
+
+    // En kupong skriven av äldre kod (utan kolumnen i INSERT) läses med maxPerLeg null = Alla.
+    await db.$executeRawUnsafe(`INSERT INTO "spelvarde"."Coupon" ("id", "userId", "roundId", "budget", "rowPrice", "selections", "lockedLegs", "updatedAt", "spikCount", "allgMode", "allgLeg") VALUES ('e6b-old', $1, $2, 300, 0.5, '{"2": [5]}'::jsonb, '{2}', now(), 4, 'AUTO', 7)`, user.id, roundId);
+    expect(await get()).toMatchObject({ spikCount: 4, allgLeg: 7, maxPerLeg: null });
+    const col = await db.$queryRawUnsafe<{ is_nullable: string; column_default: string | null }[]>(`SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'spelvarde' AND table_name = 'Coupon' AND column_name = 'maxPerLeg'`);
+    expect(col).toEqual([{ is_nullable: "YES", column_default: null }]);
+
+    const put = await saveCoupon(db, user.id, roundId, body, thursday);
+    expect(put.status).toBe(200);
+    expect((put.body as CouponResponse).coupon).toMatchObject({ maxPerLeg: 7, allgLeg: 7, legRoles });
+    expect(await get()).toMatchObject({ maxPerLeg: 7, legRoles });
+    expect((await buildRoundResponse(db, roundId, user.id, thursday))!.coupon).toMatchObject({ maxPerLeg: 7 });
+    // Saknat fält: behåll sparat.
+    const { maxPerLeg: _omit, ...without } = body;
+    expect((await saveCoupon(db, user.id, roundId, without, thursday)).status).toBe(200);
+    expect((await get()).maxPerLeg).toBe(7);
+    // null = Alla.
+    expect((await saveCoupon(db, user.id, roundId, { ...body, maxPerLeg: null }, thursday)).status).toBe(200);
+    expect((await get()).maxPerLeg).toBeNull();
+    // Felsvaren (400).
+    for (const v of [2, 31, 7.5, "7"]) expect((await saveCoupon(db, user.id, roundId, { ...body, maxPerLeg: v }, thursday)).body).toEqual({ error: "Max hästar per lopp ska vara 3–30 eller Alla." });
+    expect((await saveCoupon(db, user.id, roundId, { ...body, allgMode: "CHOSEN", allgLeg: 2 }, thursday)).body).toEqual({ error: "Det prioriterade loppet kan inte vara en låst avdelning." });
+    expect((await get()).maxPerLeg).toBeNull();
+
+    // Spelstopp: legRoles med PRIO för en startad avdelning skrivs inte över.
+    expect((await saveCoupon(db, user.id, roundId, body, thursday)).status).toBe(200);
+    const race7 = await db.race.findFirstOrThrow({ where: { roundId, leg: 7 } });
+    const after = new Date(race7.startAt.getTime() + 1000);
+    const startedLegs = (await db.race.findMany({ where: { roundId, startAt: { lte: after } } })).map((r) => r.leg);
+    const other = { ...legRoles, legs: { "1": { k: "OPEN", h: { "1": ["SKR"], "2": ["SKR"] } }, "7": { k: "ALLG", fav: 1 } } };
+    const res = await saveCoupon(db, user.id, roundId, { ...body, legRoles: other }, after);
+    expect(res.status).toBe(200);
+    expect(startedLegs).toContain(7);
+    expect((res.body as CouponResponse).coupon!.legRoles!.legs["7"]).toEqual(legRoles.legs["7"]);
+
+    // Databasens villkor (migreringen 20261029120000_e6b_max_per_leg).
+    const row = await db.coupon.findFirstOrThrow({ where: { userId: user.id, roundId } });
+    for (const v of [2, 31]) {
+      await expect(db.$executeRawUnsafe(`UPDATE "spelvarde"."Coupon" SET "maxPerLeg" = ${v} WHERE "id" = $1`, row.id)).rejects.toThrow(/Coupon_maxPerLeg_check/);
+    }
+    for (const v of [3, 30]) await db.$executeRawUnsafe(`UPDATE "spelvarde"."Coupon" SET "maxPerLeg" = ${v} WHERE "id" = $1`, row.id);
     await db.coupon.delete({ where: { id: row.id } });
   });
 

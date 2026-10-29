@@ -307,7 +307,7 @@ export function RadSpikSheet({ r, legs, rules, initialLeg, onConfirm, onCancel }
 
 export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: TippaResult; legs: TippaLeg[]; rules: TippaRules; onConfirm: (leg: number) => void; onCancel: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const autoLeg = useMemo(() => buildRad(legs, { ...rules, allgMode: "AUTO", allgLeg: null }).allgLeg, [legs, rules]);
+  const autoLeg = useMemo(() => buildRad(legs, { ...rules, allgMode: "AUTO", allgLeg: null }).prioLeg, [legs, rules]);
   const options = useMemo(
     () =>
       r.legs.map((l) => {
@@ -320,7 +320,7 @@ export function RadAllgSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
       }),
     [r, legs, rules],
   );
-  const [pick, setPick] = useState<number | null>(r.allgLeg);
+  const [pick, setPick] = useState<number | null>(r.prioLeg);
   useFocusOnOpen(ref, '[role="radio"][aria-checked="true"]');
   const ok = options.filter((o) => !o.off).map((o) => o.l.leg);
   const onKey = (e: React.KeyboardEvent) => {

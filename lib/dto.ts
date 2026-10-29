@@ -95,6 +95,7 @@ export function couponDto(c: Coupon, legs = 8): CouponDto {
     spikCount: c.spikCount,
     allgMode: c.allgMode,
     allgLeg: c.allgLeg,
+    maxPerLeg: c.maxPerLeg,
     legRoles: asLegRoles(c.legRoles),
     copiedAt: c.copiedAt ? c.copiedAt.toISOString() : null,
     copiedSelections: c.copiedSelections === null ? null : Object.fromEntries(Object.entries(asSelections(c.copiedSelections)).map(([k, v]) => [k, v])),

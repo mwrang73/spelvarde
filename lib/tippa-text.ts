@@ -102,14 +102,14 @@ export const ownSpikValue = (r: TippaResult) => `${r.ownSpikes} av ${r.spikEffec
 const legOf = (r: TippaResult, leg: number | null) => (leg === null ? undefined : r.legs.find((l) => l.leg === leg));
 
 export function allgHelp(r: TippaResult): string {
-  const l = legOf(r, r.allgLeg);
+  const l = legOf(r, r.prioLeg);
   if (!l) return "Ingen avdelning kan allgarderas: alla är dina egna val eller inställda.";
-  if (r.allgFallback && r.allgRequested !== null) {
-    const why = r.allgFallback === "LOCKED" ? "är låst" : r.allgFallback === "CANCELLED" ? "är inställd" : "kan inte allgarderas";
-    return `Din valda avd ${r.allgRequested} ${why}, så appen valde avd ${l.leg}.`;
+  if (r.prioFallback && r.prioRequested !== null) {
+    const why = r.prioFallback === "LOCKED" ? "är låst" : r.prioFallback === "CANCELLED" ? "är inställd" : "kan inte allgarderas";
+    return `Din valda avd ${r.prioRequested} ${why}, så appen valde avd ${l.leg}.`;
   }
   const fav = l.favorite;
-  if (r.allgAuto) {
+  if (r.prioAuto) {
     if (l.prelim || !fav) return `Avd ${l.leg}, mest öppna loppet enligt modellen.`;
     return `Avd ${l.leg}, mest öppna loppet. Favoriten har **${pctText(fav.streck)}**.`;
   }
@@ -205,7 +205,7 @@ export function legWhy(r: TippaResult, leg: number): string | null {
     case "ALLG": {
       if (!fav) return null;
       const v = pctText(l.prelim ? fav.share : fav.streck);
-      if (!r.allgAuto) return `Ditt val av allgardering. Favoriten **${horseName(fav)}** har **${v}**${l.prelim ? " enligt modellen" : ""}.`;
+      if (!r.prioAuto) return `Ditt val av allgardering. Favoriten **${horseName(fav)}** har **${v}**${l.prelim ? " enligt modellen" : ""}.`;
       const wide = l.field.filter((h) => h.v >= 5 - 1e-9).length;
       return `Mest öppna loppet${l.prelim ? " enligt modellen" : ""}: favoriten **${horseName(fav)}** har **${v}**, lägst av omgångens favoriter. ${wide} ${wide === 1 ? "häst har" : "hästar har"} minst 5 %.`;
     }
@@ -246,7 +246,7 @@ export function desktopSummary(r: TippaResult): string {
   const parts = [`${r.horses} ${r.horses === 1 ? "häst" : "hästar"}`];
   const spikes = [...r.spikLegs, ...r.ownSpikLegs].sort((a, b) => a - b);
   if (spikes.length) parts.push(`${spikes.length === 1 ? "spik" : "spikar"} i avd ${joinSv(spikes)}`);
-  if (r.allgLeg !== null) parts.push(`allgardering i avd ${r.allgLeg}`);
+  if (r.prioLeg !== null) parts.push(`allgardering i avd ${r.prioLeg}`);
   if (r.favBanned.length) parts.push(`favoriten bortvald i avd ${joinSv(r.favBanned)}`);
   return parts.join(" · ");
 }
@@ -256,7 +256,7 @@ export function desktopSummary(r: TippaResult): string {
 export function rulesDontFitText(r: TippaResult): string {
   const spik = r.spikEffective === 0 ? "Inga spikar" : r.spikEffective === 1 ? "1 spik" : `${r.spikEffective} spikar`;
   const parts = [spik];
-  const allg = legOf(r, r.allgLeg);
+  const allg = legOf(r, r.prioLeg);
   if (allg) parts.push(`allgardering av avd ${allg.leg} (${allg.selection.length} hästar)`);
   for (const l of r.legs.filter((x) => x.kind === "OWN")) parts.push(`ditt eget val i avd ${l.leg} (${l.selection.length} hästar)`);
   const open = r.legs.filter((l) => l.kind === "OPEN");
@@ -344,7 +344,7 @@ export function previewChangeText(before: TippaResult, after: TippaResult, leg: 
   for (let i = 0; i < pairs; i++) sentences.push(`Spiken flyttar från avd ${removedSpik[i]} till avd ${addedSpik[i]}.`);
   for (const x of addedSpik.slice(pairs)) sentences.push(`Avd ${x} blir spik.`);
   for (const x of removedSpik.slice(pairs)) if (x !== leg) sentences.push(`Avd ${x} är inte längre spik.`);
-  if (after.allgLeg !== before.allgLeg && after.allgLeg !== null) sentences.push(`Allgarderingen flyttar till avd ${after.allgLeg}.`);
+  if (after.prioLeg !== before.prioLeg && after.prioLeg !== null) sentences.push(`Allgarderingen flyttar till avd ${after.prioLeg}.`);
   if (after.spikEffective !== before.spikEffective) sentences.push(`Antal spikar blir ${after.spikEffective}.`);
   sentences.push("Övriga avdelningar ändras inte.");
   const left = leftOf(after);
@@ -480,9 +480,9 @@ export function spikPreviewTexts(before: TippaResult, after: TippaResult, leg: n
       }
     }
   }
-  if (before.allgLeg === leg) {
-    if (!before.allgAuto) out.push(`Avd ${leg} är din allgardering. Väljer du spik här blir allgarderingen Auto.`);
-    else if (after.allgLeg !== null) out.push(`Avd ${leg} allgarderas nu. Allgarderingen flyttar till avd ${after.allgLeg}, näst mest öppna loppet.`);
+  if (before.prioLeg === leg) {
+    if (!before.prioAuto) out.push(`Avd ${leg} är din allgardering. Väljer du spik här blir allgarderingen Auto.`);
+    else if (after.prioLeg !== null) out.push(`Avd ${leg} allgarderas nu. Allgarderingen flyttar till avd ${after.prioLeg}, näst mest öppna loppet.`);
     else out.push(`Avd ${leg} allgarderas nu. Ingen annan avdelning kan allgarderas.`);
   }
   if (after.spikEffective > before.spikEffective) {
@@ -522,11 +522,11 @@ export function copyBlockedReason(r: TippaResult): string | null {
 }
 
 // Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28).
-export function templateDeviationText(r: { allgDropped: number; relaxedLegs: number[]; allgLeg: number | null; legs: { leg: number; field: unknown[] }[] }): string | null {
+export function templateDeviationText(r: { prioShort: number; relaxedLegs: number[]; prioLeg: number | null; legs: { leg: number; field: unknown[] }[] }): string | null {
   const parts: string[] = [];
-  if (r.allgDropped > 0 && r.allgLeg) {
-    const n = r.legs.find((l) => l.leg === r.allgLeg)?.field.length ?? 0;
-    parts.push(`Avd ${r.allgLeg} har ${n - r.allgDropped} av ${n} hästar`);
+  if (r.prioShort > 0 && r.prioLeg) {
+    const n = r.legs.find((l) => l.leg === r.prioLeg)?.field.length ?? 0;
+    parts.push(`Avd ${r.prioLeg} har ${n - r.prioShort} av ${n} hästar`);
   }
   if (r.relaxedLegs.length) {
     const list = r.relaxedLegs.length === 1 ? `Avd ${r.relaxedLegs[0]} har` : `Avd ${r.relaxedLegs.slice(0, -1).join(", ")} och ${r.relaxedLegs[r.relaxedLegs.length - 1]} har`;

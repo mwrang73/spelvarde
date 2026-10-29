@@ -41,8 +41,10 @@ const krText = (x: number) => `${x.toFixed(2).replace(".", ",")} kr`;
 
 // Texten för Kopiera rad (6.5 och E6 6.5.13). Med opts.allgLeg skrivs
 // allgarderingen som "Avd 5: alla (1–12)" (med strukna: "alla (1–12, utom 7)")
-// över loppets startnummer i opts.numbersByLeg. Utan opts som före E6, så att
-// gamla rader kopieras oförändrade.
+// över loppets startnummer i opts.numbersByLeg – men bara när valet innehåller
+// alla ej strukna startnummer (E6b 5.6). Annars skrivs numren, så att ett
+// prioriterat lopp, eller en gammal allgardering som tappade hästar, kopieras
+// rätt. Utan opts som före E6, så att gamla rader kopieras oförändrade.
 export type CouponTextOpts = { allgLeg?: number | null; numbersByLeg?: Record<number, { all: number[]; scratched: number[] }> };
 
 const joinOch = (xs: number[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} och ${xs[xs.length - 1]}`);
@@ -54,9 +56,11 @@ export function couponText(round: { trackName: string; date: string; gameType: s
   for (let leg = 1; leg <= legs; leg++) {
     const nums = [...(selections[leg] ?? [])].sort((a, b) => a - b);
     const info = opts?.numbersByLeg?.[leg];
-    if (opts?.allgLeg === leg && info && info.all.length) {
+    const scrSet = new Set(info?.scratched ?? []);
+    const hasAll = !!info && info.all.filter((n) => !scrSet.has(n)).every((n) => nums.includes(n));
+    if (opts?.allgLeg === leg && info && info.all.length && hasAll) {
       const all = [...info.all].sort((a, b) => a - b);
-      const scr = [...new Set(info.scratched)].filter((n) => all.includes(n)).sort((a, b) => a - b);
+      const scr = [...scrSet].filter((n) => all.includes(n)).sort((a, b) => a - b);
       lines.push(`Avd ${leg}: alla (${all[0]}–${all[all.length - 1]}${scr.length ? `, utom ${joinOch(scr)}` : ""})`);
       continue;
     }
@@ -77,18 +81,32 @@ export type CouponInput = {
   selections: Selections;
   lockedLegs: number[];
   spikCount?: number | null;
+  // Prioriterat lopp (hette allgardering före E6b).
   allgMode?: AllgMode | null;
   allgLeg?: number | null;
+  // E6b: Max hästar per lopp, 3–30. null = Alla (inget tak).
+  maxPerLeg?: number | null;
   legRoles?: LegRolesDto | null;
   copiedAt?: Date | null;
   copiedSelections?: Selections | null;
 };
 
-const COUPON_KEYS = ["budget", "rowPrice", "selections", "lockedLegs", "spikCount", "allgMode", "allgLeg", "legRoles", "copiedAt", "copiedSelections"];
+const COUPON_KEYS = ["budget", "rowPrice", "selections", "lockedLegs", "spikCount", "allgMode", "allgLeg", "maxPerLeg", "legRoles", "copiedAt", "copiedSelections"];
 // Spikar i databasen: 0–8 (Coupon_spikCount_check). Spelformens tak i saveCoupon.
 export const SPIK_COUNT_DB_MAX = 8;
 export const LEG_ROLES_MAX_CHARS = 6000;
-export const ALLG_MODE_ERROR = "Allgarderingen ska vara Auto eller en vald avdelning.";
+export const ALLG_MODE_ERROR = "Prioriterat lopp ska vara Auto eller en vald avdelning.";
+// Felsvaren för det prioriterade loppet som kräver omgången (saveCoupon).
+export const PRIO_LEG_MISSING_ERROR = "Välj vilket lopp som ska prioriteras.";
+export const PRIO_LEG_LOCKED_ERROR = "Det prioriterade loppet kan inte vara en låst avdelning.";
+// E6b (docs/specs/e6b-max-per-lopp.md 4.2–4.4): Max hästar per lopp. Databasen
+// har villkoret 3–30 (Coupon_maxPerLeg_check); 30 = högsta startnumret i
+// parseSelections. Ingen kontroll mot omgången: ett tak över största fältet
+// fungerar som Alla.
+export const MAX_PER_LEG_MIN = 3;
+export const MAX_PER_LEG_DB_MAX = 30;
+export const DEFAULT_MAX_PER_LEG = 7;
+export const MAX_PER_LEG_ERROR = "Max hästar per lopp ska vara 3–30 eller Alla.";
 export const LEG_ROLES_ERROR = "Ogiltiga skäl i raden.";
 export const COPIED_AT_ERROR = "Ogiltig kopieringstid.";
 
@@ -140,6 +158,11 @@ export function parseCouponBody(body: Record<string, unknown>): Result<CouponInp
     if (typeof v === "number" && (v < 1 || v > 8)) return fail(`Avd ${v} finns inte i omgången.`);
     out.allgLeg = v as number | null;
   }
+  if (body.maxPerLeg !== undefined) {
+    const v = body.maxPerLeg;
+    if (v !== null && (typeof v !== "number" || !Number.isInteger(v) || v < MAX_PER_LEG_MIN || v > MAX_PER_LEG_DB_MAX)) return fail(MAX_PER_LEG_ERROR);
+    out.maxPerLeg = v as number | null;
+  }
   if (body.legRoles !== undefined) {
     if (body.legRoles === null) out.legRoles = null;
     else {
@@ -173,7 +196,8 @@ export function parseCouponBody(body: Record<string, unknown>): Result<CouponInp
 
 // ---- legRoles (E6 8.5) ----------------------------------------------------------------------
 
-const ROLE_KINDS: readonly LegRoleKind[] = ["OPEN", "SPIK", "OWN_SPIK", "OWN", "ALLG", "CANCELLED"];
+// PRIO (E6b): prioriterat lopp utan alla hästar, med h som OPEN. ALLG = alla.
+const ROLE_KINDS: readonly LegRoleKind[] = ["OPEN", "SPIK", "OWN_SPIK", "OWN", "ALLG", "PRIO", "CANCELLED"];
 const REASON_CODES: readonly ReasonCode[] = ["PRE", "T3", "MEL", "SKR", "LOW", "NOMEL", "FEL", "SIG4", "SIG5", "SIG6", "SIG7", "SIG8", "SIG9", "SIG10", "FAV"];
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 const isNr = (x: unknown) => typeof x === "number" && Number.isInteger(x) && x >= 1 && x <= 30;

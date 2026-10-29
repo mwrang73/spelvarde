@@ -162,7 +162,7 @@ describe("Förhandsvisningen (A4)", () => {
     const spik = buildRad(legs, bjerkeRules({ locked: { 4: [1], 6: [3, 7] } }));
     expect(previewChangeText(r, spik, 6)).toContain("Spiken flyttar från avd 6 till avd 7.");
     const allg = buildRad(legs, bjerkeRules({ locked: { 4: [1], 5: [6, 2] } }));
-    expect(previewChangeText(r, allg, 5)).toContain(`Allgarderingen flyttar till avd ${allg.allgLeg}.`);
+    expect(previewChangeText(r, allg, 5)).toContain(`Allgarderingen flyttar till avd ${allg.prioLeg}.`);
     const one = buildRad(legs, bjerkeRules({ spikCount: 1 }));
     const more = buildRad(legs, bjerkeRules({ spikCount: 1, locked: { 4: [1], 2: [2] } }));
     expect(previewChangeText(one, more, 2)).toContain("Antal spikar blir 2.");
@@ -220,7 +220,7 @@ describe("Arket Välj egen spik (A5)", () => {
     const before = buildRad(legs, bjerkeRules({ spikCount: 1 }));
     const after = buildRad(legs, bjerkeRules({ spikCount: 2, locked: { 4: [1], 5: [2] } }));
     const t = spikPreviewTexts(before, after, 5, 2);
-    expect(t).toContain(`Avd 5 allgarderas nu. Allgarderingen flyttar till avd ${after.allgLeg}, näst mest öppna loppet.`);
+    expect(t).toContain(`Avd 5 allgarderas nu. Allgarderingen flyttar till avd ${after.prioLeg}, näst mest öppna loppet.`);
     expect(t).toContain("Du har redan 1 egen spik. Antal spikar blir 2.");
   });
   it("vald allgardering blir Auto", () => {
@@ -248,7 +248,7 @@ describe("Avvikelser från mallen (budgeten som mål)", () => {
     const x = buildRad(legs, bjerkeRules({ budget: 100 }));
     const t = templateDeviationText(x)!;
     expect(t).toMatch(/^För att komma nära din budget avviker raden från mallen\./);
-    if (x.allgDropped) expect(t).toContain(`Avd ${x.allgLeg} har ${12 - x.allgDropped} av 12 hästar`);
+    if (x.prioShort) expect(t).toContain(`Avd ${x.prioLeg} har ${12 - x.prioShort} av 12 hästar`);
     for (const l of x.relaxedLegs) expect(t).toContain(`${l}`);
   });
 });

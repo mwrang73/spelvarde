@@ -53,6 +53,8 @@ export type CouponBodyE6 = {
   spikCount?: number | null;
   allgMode?: AllgMode | null;
   allgLeg?: number | null;
+  // E6b: Max hästar per lopp, null = Alla.
+  maxPerLeg?: number | null;
   legRoles?: LegRolesDto | null;
   copiedAt?: string | null;
   copiedSelections?: Record<string, number[]> | null;
@@ -281,6 +283,7 @@ export function couponDtoOf(roundId: string, body: CouponBody, fallbackRowPrice:
     spikCount: pick("spikCount"),
     allgMode: pick("allgMode"),
     allgLeg: pick("allgLeg"),
+    maxPerLeg: pick("maxPerLeg"),
     legRoles: pick("legRoles"),
     copiedAt: pick("copiedAt"),
     copiedSelections: pick("copiedSelections"),

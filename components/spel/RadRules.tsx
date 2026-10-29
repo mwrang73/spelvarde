@@ -26,7 +26,7 @@ export const RadRules = forwardRef<HTMLDivElement, Props>(function RadRules({ r,
   const id = useId();
   const off = !!frozen;
   const own = r.legs.filter((l) => l.kind === "OWN_SPIK");
-  const chosen = frozen ? frozen.allgMode === "CHOSEN" : r.allgMode === "CHOSEN" && !r.allgFallback;
+  const chosen = frozen ? frozen.allgMode === "CHOSEN" : r.allgMode === "CHOSEN" && !r.prioFallback;
   const spikValue = frozen ? (frozen.spikCount ?? "–") : r.spikEffective;
   const fullOwn = r.ownSpikes >= r.spikCap;
   return (

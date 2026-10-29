@@ -134,10 +134,10 @@ function bodyOf(d: RadDraft, r: TippaResult, saved: CouponDto | null): CouponBod
   const dontFit = r.status === "RULES_DONT_FIT";
   const sel: Selections = dontFit ? { ...selectionsOf(saved), ...r.locked } : r.selections;
   let allgMode: AllgMode = d.allgMode;
-  let allgLeg = r.allgLeg;
+  let allgLeg = r.prioLeg;
   if (d.allgMode === "CHOSEN") {
-    if (r.allgFallback === "CANCELLED" && d.allgLeg !== null) allgLeg = d.allgLeg;
-    else if (r.allgFallback) allgMode = "AUTO";
+    if (r.prioFallback === "CANCELLED" && d.allgLeg !== null) allgLeg = d.allgLeg;
+    else if (r.prioFallback) allgMode = "AUTO";
   }
   return couponBody(d.budget, d.rowPrice, sel, r.lockedLegs, {
     spikCount: r.spikEffective,
@@ -176,7 +176,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   const rowPrice = current.rowPrice ?? settingsRowPrice;
   const budget = useDeferredValue(current.budget);
   const baseRules = useMemo<TippaRules>(
-    () => ({ gameType: gt, budget, rowPrice, spikCount: 0, allgMode: current.allgMode, allgLeg: current.allgLeg, locked: current.locked }),
+    () => ({ gameType: gt, budget, rowPrice, spikCount: 0, allgMode: current.allgMode, allgLeg: current.allgLeg, maxPerLeg: null, locked: current.locked }),
     [gt, budget, rowPrice, current.allgMode, current.allgLeg, current.locked],
   );
   const spikCount = useMemo(() => current.spikCount ?? defaultSpikCount(legs, baseRules), [current.spikCount, legs, baseRules]);

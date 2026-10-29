@@ -85,12 +85,15 @@ export function couponBody(budget: number, rowPrice: number | null, selections: 
     spikCount: e6.spikCount,
     allgMode: e6.allgMode,
     allgLeg: e6.allgLeg,
+    // E6b: utan maxPerLeg i e6 (äldre anropare) skickas fältet inte, och
+    // servern behåller det sparade.
+    ...(e6.maxPerLeg !== undefined ? { maxPerLeg: e6.maxPerLeg } : {}),
     legRoles: e6.legRoles,
     copiedAt: e6.copiedAt,
     copiedSelections: e6.copiedSelections ? selRecord(e6.copiedSelections) : null,
   };
 }
-export type CouponBodyE6Input = Omit<Required<CouponBodyE6>, "copiedSelections"> & { copiedSelections: Selections | null };
+export type CouponBodyE6Input = Omit<Required<CouponBodyE6>, "copiedSelections" | "maxPerLeg"> & { copiedSelections: Selections | null; maxPerLeg?: number | null };
 
 // Fältet för exakt budget: hela kronor, 0–100 000. "1 000" och "250 kr" går bra.
 export function parseBudget(text: string): number | null {

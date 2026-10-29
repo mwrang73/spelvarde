@@ -590,9 +590,14 @@ export type CouponDto = {
   // null = raden sparades före E6 (gammal rad, visas som den är). Äldre
   // cachade svar saknar fälten: läs med ?? null.
   spikCount?: number | null;
+  // Prioriterat lopp (hette allgardering före E6b). CHOSEN: Mikaels val.
+  // AUTO: det lopp appen valde vid senaste sparningen.
   allgMode?: AllgMode | null;
-  // CHOSEN: Mikaels val. AUTO: den avdelning appen valde vid senaste sparningen.
   allgLeg?: number | null;
+  // E6b (docs/specs/e6b-max-per-lopp.md 4.3): Max hästar per lopp, 3–30.
+  // null = Alla (inget tak), också för kuponger sparade före E6b. Äldre
+  // cachade svar saknar fältet: läs med ?? null.
+  maxPerLeg?: number | null;
   // Skälen per avdelning och häst vid senaste sparningen.
   legRoles?: LegRolesDto | null;
   // Senaste Kopiera texten och raden som kopierades då.
@@ -600,13 +605,15 @@ export type CouponDto = {
   copiedSelections?: Record<string, number[]> | null;
 };
 
-// E6: allgarderingens läge. Ingen NONE (spec 8.5).
+// E6: prioriterat lopp, Auto eller valt (hette allgardering före E6b). Ingen NONE (spec 8.5).
 export type AllgMode = "AUTO" | "CHOSEN";
 
 // E6 skälen (6.5.2), i taggordningen PRE, grupp (T3/MEL/SKR eller LOW/NOMEL),
 // FEL, SIG4–SIG10, FAV.
 export type ReasonCode = "PRE" | "T3" | "MEL" | "SKR" | "LOW" | "NOMEL" | "FEL" | "SIG4" | "SIG5" | "SIG6" | "SIG7" | "SIG8" | "SIG9" | "SIG10" | "FAV";
-export type LegRoleKind = "OPEN" | "SPIK" | "OWN_SPIK" | "OWN" | "ALLG" | "CANCELLED";
+// PRIO (E6b): prioriterat lopp där inte alla löpande är med (h som OPEN).
+// ALLG: prioriterat lopp med alla löpande (allgardering, fav i stället för h).
+export type LegRoleKind = "OPEN" | "SPIK" | "OWN_SPIK" | "OWN" | "ALLG" | "PRIO" | "CANCELLED";
 // h = valda hästar (startnummer som nyckel) och deras koder. favOut = spärrad
 // favorits nummer. fav = favoritens nummer (bara ALLG).
 export type LegRoleDto = { k: LegRoleKind; h?: Record<string, ReasonCode[]>; favOut?: number; fav?: number };
