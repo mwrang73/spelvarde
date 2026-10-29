@@ -1,7 +1,7 @@
 "use client";
 
 // Bottenmenyn i mobilen (DESIGN.md Layoutmönster): Omgång, Källor och
-// Statistik, 64 px. Pricken på Omgång visar att utkorgen inte har tömts på 30 s.
+// Statistik, 64 px. Omgång leder till omgången du är i (analysvy-layout 7.4). Pricken på Omgång visar att utkorgen inte har tömts på 30 s.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,7 +19,7 @@ export function BottomNav() {
       {NAV.map((n) => {
         const Icon = ICONS[n.href];
         return (
-          <Link key={n.href} className="tab" href={n.href} aria-current={n.match(pathname) ? "page" : undefined}>
+          <Link key={n.href} className="tab" href={n.hrefFor(pathname)} aria-current={n.match(pathname) ? "page" : undefined}>
             <Icon />
             <span>{n.label}</span>
             {n.href === "/" && stale && <span className="ndot" role="img" aria-label="ändringar väntar på att sparas" />}

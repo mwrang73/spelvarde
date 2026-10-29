@@ -61,9 +61,15 @@ h1, h2, h3 { margin: 0; }
 .stick { position: sticky; top: 0; z-index: 20; }
 
 /* ============ Toppmeny (desktop) ============ */
-.dhead { height: 60px; display: flex; align-items: center; gap: 16px; padding: 0 20px; }
-.dhead .ah-brand { font-size: 27px; }
-.dnav { display: flex; gap: 2px; margin-left: 20px; flex: 1; }
+/* Toppmenyn: 56 px i alla vyer, loggan i kolumn 1 och menyn från kolumn 2 (analysvy-layout 3.1). */
+:root { --av-m: 16px; --av-g: 16px; --av-hd: 56px; --av-col: calc((100vw - 2 * var(--av-m) - 7 * var(--av-g)) / 8); }
+.dhead { height: var(--av-hd); display: grid; grid-template-columns: minmax(var(--av-col), max-content) minmax(0, 1fr) auto auto; column-gap: var(--av-g); align-items: center; padding: 0 var(--av-m); }
+.dbrand { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.dhead .logo { width: 30px; }
+.dhead .ah-brand { font-size: 26px; white-space: nowrap; }
+.dnav { display: flex; gap: 2px; min-width: 0; }
+.dnav a:first-child { padding-left: 0; }
+@media (max-width: 1799.98px) { .dhead .ah-brand { font-size: 20px; } }
 .dnav a { position: relative; min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; text-decoration: none; font: 700 15px/1 var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--head-ink-2); border-radius: 6px; }
 .dnav a:hover { color: var(--head-ink); background: rgba(255, 255, 255, .06); }
 .dnav a[aria-current="page"] { color: var(--head-ink); box-shadow: inset 0 -3px 0 var(--fill); }
@@ -529,6 +535,32 @@ dialog.sheet[open] { animation: sheetUp .32s cubic-bezier(.2, .9, .25, 1); }
   .daside .hk { padding-bottom: 32px; }
 }
 
+
+/* ============ Tillbaka och byt häst (analysvy-layout 7) ============ */
+/* Tillbaka: pil med text. Byt häst: chevroner i fyrkantiga knappar till höger (7). */
+.backl { flex: none; min-height: 44px; padding: 0 12px 0 8px; gap: 6px; color: var(--head-ink); font-size: 14px; }
+.backl svg { width: 20px; height: 20px; }
+.backl:hover { background: rgba(255, 178, 46, .12); }
+.ah:has(.backl) { padding-left: max(4px, env(safe-area-inset-left)); }
+.ah.mhd { height: calc(56px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); gap: 8px; padding-right: max(8px, env(safe-area-inset-right)); }
+.ah.mhd .backl { padding-right: 8px; }
+.ah.mhd .ah-title { font-size: 20px; }
+.ah.mhd .ah-title:focus { outline: none; }
+.ah.mhd .ah-title:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.ah.mhd .ah-sub { font-size: 11.5px; }
+.ah .ah-title:focus { outline: none; }
+.ah .ah-title:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+.hnav { display: flex; gap: 6px; flex: none; }
+.hnb { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid var(--board-btn-line); border-radius: 7px; background: transparent; color: var(--head-text); }
+.hnb svg { width: 20px; height: 20px; }
+.hnb:hover:not(:disabled) { background: rgba(255, 255, 255, .08); color: var(--head-ink); }
+.hnb:disabled { opacity: .35; cursor: not-allowed; }
+.hnav.xsg { gap: 4px; }
+.hnav.xsg .hnb::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
+.hnav.xsg .hnb { position: relative; width: 24px; height: 24px; border-radius: 5px; border-color: var(--line-strong); background: linear-gradient(var(--surface), var(--surface-2)); color: var(--ink); }
+.hnav.xsg .hnb svg { width: 14px; height: 14px; }
+.hnav.xsg .hnb:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
 
 /* ============ E2: räknare, länkar och märken ============ */
 .qlinks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 4px 10px 0; }

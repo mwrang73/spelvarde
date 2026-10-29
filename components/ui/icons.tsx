@@ -109,3 +109,7 @@ export const IconOkCircle = svg(
     <path d="M7.5 12.3l3 3 6-6.3" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
   </>,
 );
+// Analysvyn (docs/specs/analysvy-layout.md 7.1 och 3.2): tillbaka med skaft, och verktygens ikoner.
+export const IconArrowLeft = svg(<path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />);
+export const IconOdds = svg(<path d="M4 19h16M5 15l4-4 3 3 7-7M15 7h4v4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />);
+export const IconList = svg(<path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />);
