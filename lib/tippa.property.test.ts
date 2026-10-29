@@ -195,6 +195,44 @@ describe("egenskaper (1 000 omgångar, fröet 20261028)", () => {
   });
 });
 
+// Regression (docs/specs/e6b-max-per-lopp.md, 8): raden med dagens kod
+// (före E6b), sparad som snapshot. Samma omgångar med maxPerLeg: null ska ge
+// exakt samma { status, rows, selections }. Egen slumpström, så att ändringar i
+// egenskapstesten ovan inte flyttar omgångarna.
+const selText = (s: Record<number, number[]>) =>
+  Object.keys(s)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((l) => `${l}:${s[l].join(",")}`)
+    .join(" ");
+
+describe("regression mot raden före E6b", () => {
+  it("1 000 omgångar (fröet 20261028) ger samma rad", () => {
+    const r = mulberry32(20261028);
+    const out: string[] = [];
+    for (let i = 0; i < 1000; i++) {
+      const { legs, rules } = genRound(r, i);
+      const x = buildRad(legs, rules);
+      out.push(`${i} ${x.status} ${x.rows} | ${selText(x.selections)}`);
+    }
+    expect(out).toMatchSnapshot();
+  });
+
+  it("500 omgångar med små fält (4–8 löpande) ger samma rad", () => {
+    const r = mulberry32(20261029);
+    const out: string[] = [];
+    for (let i = 0; i < 500; i++) {
+      const gameType = i % 2 === 0 ? "V85" : "V75";
+      const n = gameType === "V85" ? 8 : 7;
+      const legs = Array.from({ length: n }, (_, k) => genLeg(r, k + 1, 4, 8, 0.02));
+      const rules: TippaRules = { gameType, budget: int(r, 20, 600), rowPrice: [0.25, 0.5, 1][int(r, 0, 2)], spikCount: int(r, 0, spikMaxFor(gameType)), allgMode: r() < 0.8 ? "AUTO" : "CHOSEN", allgLeg: int(r, 1, n), locked: {} };
+      const x = buildRad(legs, rules);
+      out.push(`${i} ${x.status} ${x.rows} | ${selText(x.selections)}`);
+    }
+    expect(out).toMatchSnapshot();
+  });
+});
+
 describe("prestanda", () => {
   it("7 öppna lopp med 16 löpande, budget 100 000 kr, radpris 0,01: under 1 s", () => {
     const r = mulberry32(7);
