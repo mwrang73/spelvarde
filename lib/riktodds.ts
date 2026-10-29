@@ -407,7 +407,7 @@ export function sentence(key: InputKey, f: StoredInputs["facts"], positive: bool
     case "tid":
       return positive ? "Sticker ut på tid: klart snabbast i fältet (justerat för distans)" : "En annan häst sticker ut klart på tid";
     case "pengar":
-      return f.earningsPerStart == null ? "Vinstsumma saknas" : `Tjänar ${positive ? "" : "bara "}${money(f.earningsPerStart)} per start`;
+      return f.earningsPerStart == null ? "Vinstsumma saknas" : `Tjänar ${positive ? "" : "bara "}${money(f.earningsPerStart)} kr per start`;
   }
 }
 

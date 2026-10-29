@@ -496,13 +496,13 @@ function Workspace({
           <colgroup>
             <col style={{ width: 56 }} />
             <col />
-            <col style={{ width: 118 }} />
+            <col style={{ width: 86 }} />
             <col style={{ width: 62 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 62 }} />
-            <col style={{ width: 44 }} />
-            <col style={{ width: 58 }} />
+            <col style={{ width: 54 }} />
+            <col style={{ width: 54 }} />
+            <col style={{ width: 76 }} />
+            <col style={{ width: 40 }} />
+            <col style={{ width: 54 }} />
             <col style={{ width: 52 }} />
           </colgroup>
           <thead>

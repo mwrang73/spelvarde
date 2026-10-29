@@ -4,6 +4,7 @@
 // Ettor och tvåor i formen är gröna via FormBox.tone (lib/gallop.ts).
 
 import type { SignalKey, SignalResult } from "@/lib/positive-signals";
+import { money } from "@/lib/format";
 
 export const SIGNAL_PLACE_PCT = 75;
 export const SIGNAL_WIN_PCT = 50;
@@ -57,7 +58,7 @@ export function horseSignals(h: {
 
 const pct0 = (x: number) => `${Math.round(x)}${" "}%`;
 const sec1 = (x: number) => `${x.toFixed(1).replace(".", ",")}${" "}s`;
-const tkr = (x: number) => (x >= 1000 ? `${Math.round(x / 1000)}${" "}tkr` : `${Math.round(x)}${" "}kr`);
+const tkr = (x: number) => `${money(x)} kr`;
 
 // Korta taggar för de uppfyllda signalerna (Spelförslag).
 export function signalTags(sig: SignalResult): SignalChip[] {

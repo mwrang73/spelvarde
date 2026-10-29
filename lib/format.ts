@@ -32,12 +32,11 @@ export function kr(value: number): string {
   return `${thousands(value)}${NBSP}kr`;
 }
 
-// Vinstsumma kort: "850 kr", "448 tkr", "5,4 mkr". null → "–".
+// Vinstsumma utan enhet, avrundad till hela tusental: "850", "448 000",
+// "5 386 000". null → "–". I löptext skrivs "kr" efter.
 export function money(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "–";
-  if (value < 1000) return `${Math.round(value)}${NBSP}kr`;
-  if (value < 1_000_000) return `${thousands(Math.round(value / 1000))}${NBSP}tkr`;
-  return `${(value / 1_000_000).toFixed(value < 10_000_000 ? 1 : 0).replace(".", ",")}${NBSP}mkr`;
+  return thousands(value < 1000 ? value : Math.round(value / 1000) * 1000);
 }
 
 // "15:00"

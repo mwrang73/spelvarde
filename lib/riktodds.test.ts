@@ -227,7 +227,7 @@ describe("pengar och vikterna utan streck", () => {
     // Mest pengar per start ger högst chans.
     expect(res[3].probTop3).toBeGreaterThan(res[0].probTop3);
     expect(res[3].inputs.facts.earningsPerStart).toBe(20_000);
-    expect(sentence("pengar", res[3].inputs.facts, true)).toBe(`Tjänar 20${NBSP}tkr per start`);
+    expect(sentence("pengar", res[3].inputs.facts, true)).toBe(`Tjänar 20${NBSP}000${NBSP}kr per start`);
   });
   it("utan streck i loppet används vikterna utan streck, och det syns i förklaringen", () => {
     const params = { ...V1_PARAMS, noStreck };

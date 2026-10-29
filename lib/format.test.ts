@@ -66,11 +66,11 @@ describe("häst och lopp", () => {
 });
 
 describe("vinstsumma kort", () => {
-  it("kr, tkr och mkr", () => {
-    expect(money(850)).toBe("850 kr");
-    expect(money(448_200)).toBe("448 tkr");
-    expect(money(5_385_500)).toBe("5,4 mkr");
-    expect(money(25_406_500)).toBe("25 mkr");
+  it("hela tusental utan enhet", () => {
+    expect(money(850)).toBe("850");
+    expect(money(448_200)).toBe("448 000");
+    expect(money(5_385_500)).toBe("5 386 000");
+    expect(money(25_406_500)).toBe("25 407 000");
     expect(money(null)).toBe("–");
   });
 });
