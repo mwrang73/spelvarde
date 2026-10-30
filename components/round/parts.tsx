@@ -13,6 +13,7 @@ import type { RaceDto, StartDto, StartOutcomeDto } from "@/lib/types";
 import type { XFactor } from "@/lib/xfactor";
 import { riktLabel, riktX, xOf } from "@/lib/xfactor-ui";
 import { WandSpark } from "@/components/ui/WandSpark";
+import { legName } from "@/lib/game-type";
 
 // ---- PhaseRail --------------------------------------------------------------------------
 
@@ -91,8 +92,8 @@ function tabName(name: string): string {
   return n.length > 14 ? `${n.slice(0, 13).trimEnd()}…` : n;
 }
 
-function tabLabel(r: RaceDto): string {
-  const parts = [`Avdelning ${r.leg}`, shortRaceName(r.name), hhmm(r.startAt)];
+function tabLabel(r: RaceDto, gameType: string): string {
+  const parts = [`${legName(gameType, r.leg)}`, shortRaceName(r.name), hhmm(r.startAt)];
   if (r.cancelled) parts.push("inställd");
   else parts.push(`${r.counts.interesting} ${r.counts.interesting === 1 ? "intressant" : "intressanta"}`);
   if (r.reviewed) parts.push("genomgången");
@@ -101,7 +102,7 @@ function tabLabel(r: RaceDto): string {
 
 // variant: "flaps" = dagens fällbladsrutor, "band" = zonraden på desktop
 // (analysvyn 3.2), "scroll" = mobilens svepbara rad med namn (5.1).
-export function RaceTabs({ races, selected, onSelect, panelId, variant = "flaps" }: { races: RaceDto[]; selected: number; onSelect: (leg: number) => void; panelId: string; variant?: "flaps" | "band" | "scroll" }) {
+export function RaceTabs({ gameType, races, selected, onSelect, panelId, variant = "flaps" }: { gameType: string; races: RaceDto[]; selected: number; onSelect: (leg: number) => void; panelId: string; variant?: "flaps" | "band" | "scroll" }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const move = (to: number) => {
     const leg = Math.max(1, Math.min(races.length, to));
@@ -118,7 +119,7 @@ export function RaceTabs({ races, selected, onSelect, panelId, variant = "flaps"
     <div
       className={cls}
       role="tablist"
-      aria-label="Avdelningar"
+      aria-label="Lopp"
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") move(selected + 1);
         else if (e.key === "ArrowLeft") move(selected - 1);
@@ -145,7 +146,7 @@ export function RaceTabs({ races, selected, onSelect, panelId, variant = "flaps"
         };
         if (variant === "band")
           return (
-            <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r)} title={r.cancelled ? `${shortRaceName(r.name)} inställd` : undefined}>
+            <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r, gameType)} title={r.cancelled ? `${shortRaceName(r.name)} inställd` : undefined}>
               <span className="nr sm" aria-hidden="true">
                 <b>{r.leg}</b>
               </span>
@@ -163,7 +164,7 @@ export function RaceTabs({ races, selected, onSelect, panelId, variant = "flaps"
           );
         if (variant === "scroll")
           return (
-            <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r)}>
+            <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r, gameType)}>
               <span className="nr sm" aria-hidden="true">
                 <b>{r.leg}</b>
               </span>
@@ -177,7 +178,7 @@ export function RaceTabs({ races, selected, onSelect, panelId, variant = "flaps"
             </button>
           );
         return (
-          <button key={r.id} {...common} className="avd-t" aria-label={`Avdelning ${r.leg}, ${shortRaceName(r.name)}${r.reviewed ? ", genomgången" : ""}`}>
+          <button key={r.id} {...common} className="avd-t" aria-label={`${legName(gameType, r.leg)}, ${shortRaceName(r.name)}${r.reviewed ? ", genomgången" : ""}`}>
             {r.leg}
             {r.reviewed && (
               <span className="tick" aria-hidden="true">

@@ -155,7 +155,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
     expect(await saveMark(db, admin, startOf(1, 2).id, { interesting: true }, after)).toEqual({ status: 409, body: { error: "Loppet har startat" } });
   });
 
-  it("första läsningen efter avd 1:s start fryser avd 1: I, S, B, X, odds, källstöd och Trollspöt", async () => {
+  it("första läsningen efter V85-1:s start fryser V85-1: I, S, B, X, odds, källstöd och Trollspöt", async () => {
     const t = new Date(startAt(1).getTime() + 60_000);
     const res = (await buildRoundResponse(db, roundId, admin, t))!;
     const rows = await db.outcome.findMany({ include: { start: { select: { number: true, race: { select: { leg: true } } } } } });
@@ -210,7 +210,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
     await db.userSettings.update({ where: { userId: admin }, data: { xFactorTror: 1.25, xFactorStark: 1.5, spelbarTolerance: 0.1 } });
   });
 
-  it("avd 2: listan fylls på efter att avd 1 har startat, och räknas vid avd 2:s egen start", async () => {
+  it("V85-2: listan fylls på efter att V85-1 har startat, och räknas vid V85-2:s egen start", async () => {
     const t = new Date(startAt(2).getTime() + 30_000);
     await buildRoundResponse(db, roundId, admin, t);
     const rows = await db.outcome.findMany({ where: { userId: admin, start: { race: { leg: 2 } } } });
@@ -219,7 +219,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
     const leg2 = new Set(before.races[1].starts.map((s) => s.id));
     const expected = new Map(atLeg2.map((it, i) => [it.start.id, i + 1] as [string, number]).filter(([id]) => leg2.has(id)));
     expect(new Map(rows.filter((o) => o.trollspotRank !== null).map((o) => [o.startId, o.trollspotRank]))).toEqual(expected);
-    // Påfyllningen: listan vid avd 2:s start är en annan än vid avd 1:s.
+    // Påfyllningen: listan vid V85-2:s start är en annan än vid V85-1:s.
     const ids1 = new Set(atLeg1.map((x) => x.start.id));
     expect(atLeg2.some((x) => !ids1.has(x.start.id))).toBe(true);
     // Spelbar för hand (override ON) fryses som Spelbar.
@@ -255,7 +255,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
 
     const round = await db.round.findUniqueOrThrow({ where: { id: roundId } });
     expect(round.finishedAt).not.toBeNull();
-    // Alla lopp har startat och fryses av hämtningen: avd 3–8 också.
+    // Alla lopp har startat och fryses av hämtningen: V85-3–8 också.
     expect(await db.race.count({ where: { roundId, outcomesFrozenAt: null } })).toBe(0);
   });
 
@@ -267,7 +267,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
       expect(o.disqualified).toBe(o.start.disqualified);
       expect(o.hit).toBe(hitOf(o.start.place, o.start.disqualified, false));
     }
-    // Avd 1: vinnaren i fixturen är nr 6 (Bet).
+    // V85-1: vinnaren i fixturen är nr 6 (Bet).
     const h6 = rows.find((o) => o.userId === admin && o.startId === startOf(1, 6).id)!;
     expect(h6).toMatchObject({ place: 1, hit: true });
   });
@@ -308,7 +308,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
     const fifth = r1.starts.find((s) => (s.result as { place?: number })?.place === 5)!;
     (winner.result as { place: number }).place = 5;
     (fifth.result as { place: number }).place = 1;
-    // Avd 2 nr 5 (Spelbar för hand) visas som struken i resultatet.
+    // V85-2 nr 5 (Spelbar för hand) visas som struken i resultatet.
     const r2s5 = g.races[1].starts.find((s) => s.number === 5)!;
     r2s5.scratched = true;
     delete r2s5.result;

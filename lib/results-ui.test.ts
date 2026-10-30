@@ -144,8 +144,8 @@ describe("texter i resultatvyn", () => {
     expect(placedRowSr(v.placed[2])).toBe("3:e, nummer 3, Häst x.");
   });
   it("uppläsningen när resultatet kommer", () => {
-    expect(resultAnnouncement(7, v.placed, race.summary)).toBe("Resultat i avd 7: Kentucky River vann. Bet 1 av 2 träff.");
-    expect(resultAnnouncement(7, v.placed, sum([0, 0], [0, 0], [0, 0]))).toBe("Resultat i avd 7: Kentucky River vann.");
+    expect(resultAnnouncement("V85", 7, v.placed, race.summary)).toBe("Resultat i V85-7: Kentucky River vann. Bet 1 av 2 träff.");
+    expect(resultAnnouncement("V85", 7, v.placed, sum([0, 0], [0, 0], [0, 0]))).toBe("Resultat i V85-7: Kentucky River vann.");
   });
 });
 

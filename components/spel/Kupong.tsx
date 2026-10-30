@@ -4,6 +4,7 @@
 
 import { krText } from "@/lib/tippa-text";
 import { thousands } from "@/lib/format";
+import { legName } from "@/lib/game-type";
 
 export type KupongLeg = {
   leg: number;
@@ -17,12 +18,12 @@ export type KupongLeg = {
   allg: boolean;
 };
 
-export function Kupong({ legs, rows, cost, left, favText, className }: { legs: KupongLeg[]; rows: number; cost: number; left: number; favText: string | null; className?: string }) {
+export function Kupong({ gameType, legs, rows, cost, left, favText, className }: { gameType: string; legs: KupongLeg[]; rows: number; cost: number; left: number; favText: string | null; className?: string }) {
   const max = Math.max(1, ...legs.flatMap((l) => l.all));
   const srText = legs
     .map((l) => {
-      if (l.allg && l.all.length) return `Avd ${l.leg}: alla, ${l.all[0]} till ${l.all[l.all.length - 1]}`;
-      return `Avd ${l.leg}: ${l.selection.length ? l.selection.join(", ") : "ingen häst"}`;
+      if (l.allg && l.all.length) return `${legName(gameType, l.leg)}: alla, ${l.all[0]} till ${l.all[l.all.length - 1]}`;
+      return `${legName(gameType, l.leg)}: ${l.selection.length ? l.selection.join(", ") : "ingen häst"}`;
     })
     .join(". ");
   const cols = { gridTemplateColumns: `repeat(${legs.length}, minmax(0, 1fr))` };

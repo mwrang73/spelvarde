@@ -503,7 +503,7 @@ export type CommentDto = {
   createdAt: string;
   updatedAt: string;
   // Sammanhang för listan i S3.
-  round: { id: string; date: string; trackName: string } | null;
+  round: { id: string; date: string; trackName: string; gameType: string } | null;
   leg: number | null;
   result: { place: number | null; disqualified: boolean } | null;
 };

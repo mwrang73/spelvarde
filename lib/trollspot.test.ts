@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { minOddsOf, trollspot } from "@/lib/trollspot";
+import { minOddsOf, trollspot, minOddsFor, oddsFacts } from "@/lib/trollspot";
 import type { RaceDto, StartDto } from "@/lib/types";
 
 const start = (n: number, streck: number | null, p: number | null, o: Partial<StartDto> = {}) =>
@@ -48,5 +48,23 @@ describe("Trollspöt", () => {
   it("utan streck: tom lista och hasStreck false", () => {
     const res = trollspot([race(1, [1, 2, 3, 4].map((n) => start(n, null, 0.4)))], NOW);
     expect(res).toMatchObject({ hasStreck: false, items: [] });
+  });
+});
+
+describe("Minst X med X-faktor", () => {
+  const race = { id: "r", leg: 1, startAt: "2030-01-01T12:00:00.000Z", cancelled: false, starts: [] };
+  const start = { id: "s", number: 1, scratched: false, streck: null, probTop3: 0.4, riktodds: 3.0 };
+
+  it("räknas på riktoddset med X-faktor när hästen har en", () => {
+    expect(minOddsFor(race, { ...start, mark: { unibetOdds: 2.5, xFactor: "TROR", riktoddsX: 2.4 } }, 0.1)).toBe(2.3);
+  });
+
+  it("utan X-faktor gäller riktoddset", () => {
+    expect(minOddsFor(race, { ...start, mark: { unibetOdds: 2.5, xFactor: "NONE", riktoddsX: 3.0 } }, 0.1)).toBe(2.9);
+    expect(minOddsFor(race, { ...start, mark: { unibetOdds: 2.5 } }, 0.1)).toBe(2.9);
+  });
+
+  it("oddsFacts ger chans, uppskattat odds och Minst", () => {
+    expect(oddsFacts(race, { ...start, mark: null }, 0.1)).toEqual({ chance: 0.4, estOdds: null, minOdds: 2.9 });
   });
 });

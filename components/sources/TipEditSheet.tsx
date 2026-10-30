@@ -16,6 +16,7 @@ import { tipHorse } from "@/lib/tips-ui";
 import { ROLE_LABEL, TIP_ROLES } from "@/lib/tips/roles";
 import type { RaceDto, TipActionResponse, TipDto, TipRole } from "@/lib/types";
 import { tipActions } from "./tipsStore";
+import { legName } from "@/lib/game-type";
 
 const startedRace = (r: RaceDto) => r.started || Date.parse(r.startAt) <= Date.now();
 
@@ -25,6 +26,7 @@ export function errText(e: unknown, fallback: string): string {
 }
 
 export function TipEditSheet({
+  gameType,
   roundId,
   tip,
   races,
@@ -32,6 +34,7 @@ export function TipEditSheet({
   onSaved,
   onRemoved,
 }: {
+  gameType: string;
   roundId: string;
   tip: TipDto | null;
   races: RaceDto[] | null;
@@ -41,12 +44,13 @@ export function TipEditSheet({
 }) {
   return (
     <Sheet open={!!tip} onClose={onClose} title="Rätta tips" className="narrow">
-      {tip && <EditForm key={tip.id} roundId={roundId} tip={tip} races={races} onClose={onClose} onSaved={onSaved} onRemoved={onRemoved} />}
+      {tip && <EditForm key={tip.id} gameType={gameType} roundId={roundId} tip={tip} races={races} onClose={onClose} onSaved={onSaved} onRemoved={onRemoved} />}
     </Sheet>
   );
 }
 
 function EditForm({
+  gameType,
   roundId,
   tip,
   races,
@@ -54,6 +58,7 @@ function EditForm({
   onSaved,
   onRemoved,
 }: {
+  gameType: string;
   roundId: string;
   tip: TipDto;
   races: RaceDto[] | null;
@@ -155,7 +160,7 @@ function EditForm({
             {(races ?? []).map((r) => {
               const started = startedRace(r);
               return (
-                <optgroup key={r.id} label={`Avd ${r.leg} · ${hhmm(r.startAt)} · ${r.classLabel ?? shortRaceName(r.name)}`}>
+                <optgroup key={r.id} label={`${legName(gameType, r.leg)} · ${hhmm(r.startAt)} · ${r.classLabel ?? shortRaceName(r.name)}`}>
                   {r.starts.map((s) => (
                     <option key={s.id} value={s.id} disabled={started}>
                       {s.number} {s.horse.name}

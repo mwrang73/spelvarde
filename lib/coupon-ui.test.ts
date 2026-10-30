@@ -13,7 +13,7 @@ describe("V85-raden i S6b", () => {
     expect(couponSummary(sel, 112, 0.5)).toEqual({ rows: 288, cost: 144, left: -32, over: true });
     expect(couponSummary({ 1: [3] }, 100, 0.5).rows).toBe(0);
   });
-  it("kroppen till PUT: tomma avdelningar skickas inte, låsta sorteras", () => {
+  it("kroppen till PUT: tomma lopp skickas inte, låsta sorteras", () => {
     expect(couponBody(200, null, { 1: [10, 3], 2: [] }, [7, 2, 7])).toEqual({ budget: 200, rowPrice: null, selections: { "1": [3, 10] }, lockedLegs: [2, 7] });
   });
   it("fälten för budget, radpris och riktlinje", () => {

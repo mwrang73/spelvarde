@@ -3,7 +3,7 @@
 // 2026-10-24, markeringar med odds, Spelbar och Bet, V85-raden och
 // modellversioner. Hoppa över med SKIP_DB_TESTS=1.
 //
-// Skriv ut riktoddsen för avd 1 och 7: PRINT_RIKTODDS=1 npx vitest run lib/e2.db.test.ts
+// Skriv ut riktoddsen för V85-1 och V85-7: PRINT_RIKTODDS=1 npx vitest run lib/e2.db.test.ts
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
@@ -130,7 +130,7 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(await db.riktodds.count()).toBe(starters);
   });
 
-  it("riktoddsen för avd 1 och 7 (fixturen)", async () => {
+  it("riktoddsen för V85-1 och V85-7 (fixturen)", async () => {
     const res = (await buildRoundResponse(db, roundId, admin.id, sunday))!;
     for (const leg of [1, 7]) {
       const race = res.races[leg - 1];
@@ -232,7 +232,7 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     await db.start.update({ where: { id: s.id }, data: { scratched: false } });
   });
 
-  it("Hämta igen med en strykning räknar om avdelningen utan den strukna", async () => {
+  it("Hämta igen med en strykning räknar om loppet utan den strukna", async () => {
     const g = structuredClone(game) as { races: { starts: { number: number; scratched?: boolean }[] }[] };
     g.races[0].starts.find((s) => s.number === 3)!.scratched = true;
     const res = (await fetchGameStep(deps(g, new Date("2026-10-20T19:00:00Z")), { gameId: "V85_2026-10-24_7_5", userId: admin.id }))!;
@@ -244,7 +244,7 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect(Math.abs(sums.get(1)! - 3)).toBeLessThan(0.01);
   });
 
-  it("V85-raden: spara, läsa, idempotens, bara egen och 409 för en avdelning som har startat", async () => {
+  it("V85-raden: spara, läsa, idempotens, bara egen och 409 för ett lopp som har startat", async () => {
     const body = { budget: 150, selections: { "1": [1, 2], "2": [5], "7": [1, 2, 3] }, lockedLegs: [7] };
     const put = await saveCoupon(db, admin.id, roundId, body, thursday);
     expect(put.status).toBe(200);
@@ -259,7 +259,7 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     const race1 = await db.race.findFirstOrThrow({ where: { roundId, leg: 1 } });
     const after = new Date(race1.startAt.getTime() + 1000);
     expect((await saveCoupon(db, admin.id, roundId, { ...body, selections: { ...body.selections, "1": [1] } }, after)).status).toBe(409);
-    // Budgeten och avdelningar som inte har startat går att ändra.
+    // Budgeten och lopp som inte har startat går att ändra.
     expect((await saveCoupon(db, admin.id, roundId, { ...body, budget: 200 }, after)).status).toBe(200);
     const round = (await buildRoundResponse(db, roundId, admin.id, thursday))!;
     expect(round.coupon!.budget).toBe(200);
@@ -294,16 +294,16 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
 
     // Felsvaren (400).
     const bad = async (b: Record<string, unknown>) => (await saveCoupon(db, user.id, roundId, { ...body, ...b }, thursday)).body;
-    expect(await bad({ allgMode: "CHOSEN", allgLeg: 2 })).toEqual({ error: "Det prioriterade loppet kan inte vara en låst avdelning." });
+    expect(await bad({ allgMode: "CHOSEN", allgLeg: 2 })).toEqual({ error: "Det prioriterade loppet kan inte vara ett låst lopp." });
     expect(await bad({ allgMode: "CHOSEN", allgLeg: null })).toEqual({ error: "Välj vilket lopp som ska prioriteras." });
     expect(await bad({ spikCount: 0 })).toEqual({ error: "Antalet spikar kan inte vara färre än dina egna spikar (1)." });
     expect(await bad({ spikCount: 8 })).toEqual({ error: "Antalet spikar ska vara 0–7 på V85." });
-    expect(await bad({ allgMode: "NONE" })).toEqual({ error: "Prioriterat lopp ska vara Auto eller en vald avdelning." });
-    expect(await bad({ allgMode: null })).toEqual({ error: "Prioriterat lopp ska vara Auto eller en vald avdelning." });
+    expect(await bad({ allgMode: "NONE" })).toEqual({ error: "Prioriterat lopp ska vara Auto eller ett valt lopp." });
+    expect(await bad({ allgMode: null })).toEqual({ error: "Prioriterat lopp ska vara Auto eller ett valt lopp." });
     expect(await bad({ legRoles: { ...legRoles, legs: { "1": { k: "OPEN", h: { "1": ["X"] } } } } })).toEqual({ error: "Ogiltiga skäl i raden." });
     expect(await bad({ copiedAt: "2026-10-22T19:10:00.000Z" })).toEqual({ error: "Ogiltig kopieringstid." });
-    expect(await bad({ copiedSelections: { "1": [99] } })).toEqual({ error: "Ogiltiga startnummer i avd 1." });
-    expect(await bad({ copiedSelections: { "1": [29] } })).toEqual({ error: "Startnummer 29 finns inte i avd 1." });
+    expect(await bad({ copiedSelections: { "1": [99] } })).toEqual({ error: "Ogiltiga startnummer i lopp 1." });
+    expect(await bad({ copiedSelections: { "1": [29] } })).toEqual({ error: "Startnummer 29 finns inte i V85-1." });
     // CHOSEN i en fri avdelning går bra.
     expect((await saveCoupon(db, user.id, roundId, { ...body, allgMode: "CHOSEN", allgLeg: 7 }, thursday)).status).toBe(200);
     // Ångra för en gammal rad: spikCount och allgMode null.
@@ -356,7 +356,7 @@ describe.skipIf(skip)("E2 mot Postgres", () => {
     expect((await get()).maxPerLeg).toBeNull();
     // Felsvaren (400).
     for (const v of [2, 31, 7.5, "7"]) expect((await saveCoupon(db, user.id, roundId, { ...body, maxPerLeg: v }, thursday)).body).toEqual({ error: "Max hästar per lopp ska vara 3–30 eller Alla." });
-    expect((await saveCoupon(db, user.id, roundId, { ...body, allgMode: "CHOSEN", allgLeg: 2 }, thursday)).body).toEqual({ error: "Det prioriterade loppet kan inte vara en låst avdelning." });
+    expect((await saveCoupon(db, user.id, roundId, { ...body, allgMode: "CHOSEN", allgLeg: 2 }, thursday)).body).toEqual({ error: "Det prioriterade loppet kan inte vara ett låst lopp." });
     expect((await get()).maxPerLeg).toBeNull();
 
     // Spelstopp: legRoles med PRIO för en startad avdelning skrivs inte över.

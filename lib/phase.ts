@@ -2,7 +2,7 @@
 
 import { FEATURES, type Features } from "@/lib/features";
 import { addDaysToDateString, stockholmDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
-import { DEFAULT_GAME_TYPE, gameTypeOfId } from "@/lib/game-type";
+import { DEFAULT_GAME_TYPE, gameTypeOfId, legName } from "@/lib/game-type";
 import { summaryText } from "@/lib/outcomes";
 import type { OutcomeSummary } from "@/lib/types";
 
@@ -188,7 +188,7 @@ export function nextStep(input: NextStepInput): NextStep {
     if (alarm) {
       return {
         kind: "ALARM",
-        title: `${alarm.kind === "RUSH" ? "Rusning" : "Tappar"} i avd ${alarm.leg} – ${alarm.horseName}`,
+        title: `${alarm.kind === "RUSH" ? "Rusning" : "Tappar"} i ${legName(roundGame, alarm.leg)} – ${alarm.horseName}`,
         text: "Kontrollera hästen innan loppet startar.",
         action: { type: "link", label: "Visa larmet", href: `${base}/live?avd=${alarm.leg}` },
       };
@@ -197,11 +197,11 @@ export function nextStep(input: NextStepInput): NextStep {
     const next = races.find((r) => !r.cancelled && r.startAt.getTime() > now.getTime());
     // E4a: knappen leder till avdelningen (S2), som visar Resultat när loppet har startat.
     const legLink = (leg: number): NextStepAction =>
-      f.raceView ? { type: "link", label: "Till loppet", href: `${base}/lopp/${leg}` } : { type: "link", label: `Till avd ${leg}`, href: `${base}/avd/${leg}` };
+      f.raceView ? { type: "link", label: "Till loppet", href: `${base}/lopp/${leg}` } : { type: "link", label: `Till ${legName(roundGame, leg)}`, href: `${base}/avd/${leg}` };
     if (next) {
       return {
         kind: "LIVE_NEXT_RACE",
-        title: `Avd ${next.leg} startar ${hhmm(next.startAt)}`,
+        title: `${legName(roundGame, next.leg)} startar ${hhmm(next.startAt)}`,
         text: f.results ? mineSentence(next) : next.name,
         action: f.results || f.raceView ? legLink(next.leg) : null,
       };
@@ -210,7 +210,7 @@ export function nextStep(input: NextStepInput): NextStep {
     const waiting = races.find((r) => !r.cancelled && !r.hasResult);
     return {
       kind: "LIVE_WAITING",
-      title: waiting ? `Väntar på resultat i avd ${waiting.leg}` : "Väntar på resultat",
+      title: waiting ? `Väntar på resultat i ${legName(roundGame, waiting.leg)}` : "Väntar på resultat",
       text: f.results ? "Placeringen hämtas automatiskt från ATG." : "Placeringen hämtas när ATG har den.",
       action: f.results && waiting ? legLink(waiting.leg) : null,
     };
@@ -252,12 +252,12 @@ export function nextStep(input: NextStepInput): NextStep {
     if (todo) {
       return {
         kind: "ANALYZE_LEG",
-        title: `Analysera avd ${todo.leg} – ${todo.name}`,
+        title: `Analysera ${legName(roundGame, todo.leg)} – ${todo.name}`,
         text: "Markera Intressant på hästar du tror på, eller tryck Inga intressanta här.",
-        action: { type: "link", label: `Till avd ${todo.leg}`, href: `${base}/avd/${todo.leg}` },
+        action: { type: "link", label: `Till ${legName(roundGame, todo.leg)}`, href: `${base}/avd/${todo.leg}` },
       };
     }
-    return { kind: "ALL_REVIEWED", title: "Allt genomgånget – odds fylls i torsdag kväll", text: `Alla ${LEG_WORDS[races.length] ?? races.length} avdelningar är genomgångna.`, action: null };
+    return { kind: "ALL_REVIEWED", title: "Allt genomgånget – odds fylls i torsdag kväll", text: `Alla ${LEG_WORDS[races.length] ?? races.length} lopp är genomgångna.`, action: null };
   }
 
   // 9. Klart.

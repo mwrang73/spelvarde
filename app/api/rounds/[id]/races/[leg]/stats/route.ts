@@ -11,6 +11,6 @@ export const GET = withUser<{ id: string; leg: string }>("rounds/races/stats", a
   const leg = Number(params.leg);
   if (!isId(params.id) || !Number.isInteger(leg) || leg < 1 || leg > 8) return badRequest("Ogiltig avdelning.");
   const res = await buildRaceStats(prisma, params.id, leg, new Date());
-  if (!res) return notFound("Avdelningen finns inte.");
+  if (!res) return notFound("Loppet finns inte.");
   return NextResponse.json(res);
 });

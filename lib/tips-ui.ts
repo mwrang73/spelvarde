@@ -5,6 +5,7 @@ import { plural } from "@/lib/format";
 import { stockholmParts } from "@/lib/stockholm-time";
 import { ROLE_LABEL } from "@/lib/tips/roles";
 import type { QuotaDto, RoundTipsDto, TipDto, TipRole, TipStage } from "@/lib/types";
+import { legName } from "@/lib/game-type";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -73,12 +74,12 @@ export function tipOrder(a: TipDto, b: TipDto): number {
 }
 
 // "1 osäkert tips väntar: Fly Express i avd 1" / "2 osäkra tips väntar."
-export function unsureLine(unsure: TipDto[]): string | null {
+export function unsureLine(unsure: TipDto[], gameType: string): string | null {
   if (!unsure.length) return null;
   if (unsure.length === 1) {
     const t = unsure[0];
     const leg = t.startLeg ?? t.leg;
-    return `1 osäkert tips väntar: ${tipHorse(t)}${leg ? ` i avd ${leg}` : ""}`;
+    return `1 osäkert tips väntar: ${tipHorse(t)}${leg ? ` i ${legName(gameType, leg)}` : ""}`;
   }
   return `${unsure.length} osäkra tips väntar.`;
 }

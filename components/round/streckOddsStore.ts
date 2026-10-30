@@ -248,7 +248,7 @@ export function useStreckOddsRefresh(data: RoundResponse): StreckOddsApi {
   const toast = useToast();
   // Varje sekund: nedräkningen i spärren och bocken i 10 s.
   const now = useNow(1000);
-  const view = boardView({ online, now, latestStreckAt: data.latestStreck?.takenAt ?? null, latestOdds: data.latestOdds ?? null, lastOddsAttempt: data.lastOddsAttempt ?? null, run, progress: progressOf(run) });
+  const view = boardView({ gameType: data.round.gameType, online, now, latestStreckAt: data.latestStreck?.takenAt ?? null, latestOdds: data.latestOdds ?? null, lastOddsAttempt: data.lastOddsAttempt ?? null, run, progress: progressOf(run) });
   const start = useCallback(
     (mode?: RunMode) => {
       void runStreckOdds(roundId, mode ?? view.mode, pathname);

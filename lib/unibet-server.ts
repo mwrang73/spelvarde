@@ -17,6 +17,7 @@ import { Prisma, type Mark, type PrismaClient } from "@prisma/client";
 import { dateStr, dec, markDto, oddsSourceOf, settingsDto } from "@/lib/dto";
 import { stockholmLocalToUtc } from "@/lib/stockholm-time";
 import type { LatestOddsDto, MarkDto, RoundResponse, StartUnibetDto, UnibetFinishResponse, UnibetHistoryPoint, UnibetLegResponse, UnibetLockedError, UnibetStartResponse, UnibetUndoResponse } from "@/lib/types";
+import { legName } from "@/lib/game-type";
 import {
   dayWindow,
   eventQuery,
@@ -88,7 +89,7 @@ async function lookupEvents(deps: UnibetDeps, round: { date: Date; trackName: st
 // Lägger till avdelningen i en av listorna och tar bort den ur de andra.
 async function setLegState(db: Db | Prisma.TransactionClient, fetchId: string, leg: number, state: "ok" | "failed" | "skipped") {
   // leg skrivs in i SQL:en som tal; bara 1–8 (rutten och databasen kontrollerar också).
-  if (!Number.isInteger(leg) || leg < 1 || leg > 8) throw new Error("Ogiltig avdelning.");
+  if (!Number.isInteger(leg) || leg < 1 || leg > 8) throw new Error("Ogiltig lopp.");
   const add = (col: string) => Prisma.raw(`"${col}" = array_append(array_remove("${col}", ${leg}), ${leg})`);
   const remove = (col: string) => Prisma.raw(`"${col}" = array_remove("${col}", ${leg})`);
   const cols = { ok: "legsOk", failed: "legsFailed", skipped: "legsSkipped" } as const;
@@ -155,7 +156,7 @@ export async function startOddsFetch(deps: UnibetDeps, input: { roundId: string;
   // Lopp som saknas hos Unibet räknas som misslyckade avdelningar (de fick inga odds).
   for (const leg of noEvent) await setLegState(db, fetch.id, leg, "failed");
   const found = legs.filter((l) => l.eventKey).length;
-  await log(db, { roundId: round.id, userId: input.userId, step: STEP_MEETINGS, startedAt: t0, ok: true, message: `ok: ${found} av ${legs.length} avdelningar hittade hos Unibet` });
+  await log(db, { roundId: round.id, userId: input.userId, step: STEP_MEETINGS, startedAt: t0, ok: true, message: `ok: ${found} av ${legs.length} lopp hittade hos Unibet` });
   return ok({ fetchId: fetch.id, takenAt: fetch.takenAt.toISOString(), legs });
 }
 
@@ -173,9 +174,9 @@ export async function fetchOddsLeg(deps: UnibetDeps, input: { roundId: string; f
   if (await db.oddsFetch.findFirst({ where: { roundId, takenAt: { gt: fetch.takenAt } }, select: { id: true } })) return err(409, "En nyare hämtning finns.");
   const race = await db.race.findUnique({
     where: { roundId_leg: { roundId, leg } },
-    select: { id: true, raceNumber: true, startAt: true, cancelled: true, unibetEventKey: true, round: { select: { date: true, trackName: true } }, starts: { select: { id: true, number: true, scratched: true, horse: { select: { name: true } } } } },
+    select: { id: true, raceNumber: true, startAt: true, cancelled: true, unibetEventKey: true, round: { select: { gameType: true, date: true, trackName: true } }, starts: { select: { id: true, number: true, scratched: true, horse: { select: { name: true } } } } },
   });
-  if (!race) return err(404, "Avdelningen finns inte.");
+  if (!race) return err(404, "Loppet finns inte.");
   if (started(race.startAt, now)) {
     await setLegState(db, fetchId, leg, "skipped");
     return err(409, RACE_STARTED);
@@ -197,13 +198,13 @@ export async function fetchOddsLeg(deps: UnibetDeps, input: { roundId: string; f
       key = (await lookupEvents(deps, race.round))?.get(race.raceNumber)?.eventKey ?? null;
       if (key) await db.race.update({ where: { id: race.id }, data: { unibetEventKey: key } });
     }
-    if (!key) return await fail(`Avd ${leg} finns inte hos Unibet.`);
+    if (!key) return await fail(`${legName(race.round.gameType, leg)} finns inte hos Unibet.`);
     parsed = parseEvent(await deps.unibet(eventQuery(key)), deps.warn);
   } catch (e) {
-    if (e instanceof UnibetError) return await fail(`Unibet svarade inte för avd ${leg}.`);
+    if (e instanceof UnibetError) return await fail(`Unibet svarade inte för ${legName(race.round.gameType, leg)}.`);
     throw e;
   }
-  if (!parsed) return await fail(`Unibet svarade med ogiltig data för avd ${leg}.`);
+  if (!parsed) return await fail(`Unibet svarade med ogiltig data för ${legName(race.round.gameType, leg)}.`);
 
   if (parsed.noPrices) {
     await setLegState(db, fetchId, leg, "ok");
@@ -222,14 +223,14 @@ export async function fetchOddsLeg(deps: UnibetDeps, input: { roundId: string; f
   // Unibet skrivs ingenting för avdelningen.
   const named = runners.filter((s) => byNumber.get(s.number)?.name);
   const wrong = named.filter((s) => normalizeHorse(byNumber.get(s.number)!.name!) !== normalizeHorse(s.horse.name));
-  if (named.length && wrong.length * 2 > named.length) return await fail(`Hästarna hos Unibet stämmer inte med avd ${leg}.`);
+  if (named.length && wrong.length * 2 > named.length) return await fail(`Hästarna hos Unibet stämmer inte med ${legName(race.round.gameType, leg)}.`);
   for (const s of runners) {
     const c = byNumber.get(s.number);
     if (!c) {
       missing.push(s.number);
       continue;
     }
-    if (c.name && normalizeHorse(c.name) !== normalizeHorse(s.horse.name)) deps.warn?.(`Unibet: avd ${leg} nr ${s.number} heter ${c.name} hos Unibet och ${s.horse.name} hos ATG`);
+    if (c.name && normalizeHorse(c.name) !== normalizeHorse(s.horse.name)) deps.warn?.(`Unibet: lopp ${leg} nr ${s.number} heter ${c.name} hos Unibet och ${s.horse.name} hos ATG`);
     if (!c.starter) {
       scratchedAtUnibet.push(s.number);
       rows.push({ startId: s.id, number: s.number, place: null, win: null, status: c.status, markOdds: null, writeMark: true });
@@ -303,7 +304,7 @@ export async function finishOddsFetch(deps: UnibetDeps, input: { roundId: string
     // Ingen ögonblicksbild utan odds (6.9): inga Mark har ändrats.
     await db.oddsFetch.delete({ where: { id: fetchId } });
     const failed = fetch.legsFailed.length > 0 && fetch.legsOk.length === 0;
-    await log(db, { roundId, userId, step: STEP_FINISH, startedAt: t0, ok: true, message: failed ? "failed: Unibet svarade inte för någon avdelning" : "no-odds: Unibet har inga odds än" });
+    await log(db, { roundId, userId, step: STEP_FINISH, startedAt: t0, ok: true, message: failed ? "failed: Unibet svarade inte för någon lopp" : "no-odds: Unibet har inga odds än" });
     return ok({ saved: false });
   }
   const finishedAt = new Date(Math.max(now.getTime(), fetch.takenAt.getTime()));

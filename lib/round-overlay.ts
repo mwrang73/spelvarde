@@ -110,7 +110,7 @@ export function rejectedText(item: OutboxItem, error: string): string {
 // Toasten vid 409 (loppet hade redan startat).
 export function conflictText(item: OutboxItem): string {
   const m = metaOf(item);
-  if (m?.kind === "coupon") return "Raden: en avdelning hade redan startat, ändringen sparades inte.";
+  if (m?.kind === "coupon") return "Raden: ett lopp hade redan startat, ändringen sparades inte.";
   const horse = m && "horseName" in m ? m.horseName : "Hästen";
   return `${horse}: loppet hade redan startat, ändringen sparades inte.`;
 }

@@ -8,6 +8,7 @@ import { hhmm, ordinal } from "@/lib/format";
 import { POLL_INTERVAL_MS, POLL_WINDOW_MS, pollingRaces } from "@/lib/outcomes";
 import type { HitCount, OutcomeSummary, RaceDto } from "@/lib/types";
 import type { PlacedRow } from "@/lib/results-view";
+import { legName } from "@/lib/game-type";
 
 type RaceLike = Pick<RaceDto, "startAt" | "resultAt" | "cancelled"> & { started?: boolean };
 
@@ -125,11 +126,11 @@ export function marksSr(o: { interesting: boolean; spelbar: boolean; bet: boolea
 
 // Upplästes en gång när resultatet kommer medan vyn är öppen:
 // "Resultat i avd 7: Kentucky River vann. Bet 1 av 2 träff."
-export function resultAnnouncement(leg: number, placed: PlacedRow[], summary: OutcomeSummary | null | undefined): string {
+export function resultAnnouncement(gameType: string, leg: number, placed: PlacedRow[], summary: OutcomeSummary | null | undefined): string {
   const winners = placed.filter((p) => p.place === 1).map((p) => p.start.horse.name);
   const who = winners.length ? `${winners.join(" och ")} vann.` : "Placeringen är klar.";
   const bet = summary?.bet.total ? ` Bet ${summary.bet.hits} av ${summary.bet.total} träff.` : "";
-  return `Resultat i avd ${leg}: ${who}${bet}`;
+  return `Resultat i ${legName(gameType, leg)}: ${who}${bet}`;
 }
 
 // ---- S1: avdelningsraderna ------------------------------------------------------------

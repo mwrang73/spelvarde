@@ -13,6 +13,7 @@ import { hhmm } from "@/lib/format";
 import { byPlace, summaryText } from "@/lib/outcomes";
 import { mineLabel } from "@/lib/phase";
 import type { OutcomeSummary, RaceDto, StartDto, StartOutcomeDto } from "@/lib/types";
+import { legName, legNames } from "@/lib/game-type";
 
 export type BetVerdict = "hit" | "miss" | null;
 
@@ -101,27 +102,27 @@ function resultSentence(summary: OutcomeSummary | null | undefined): string {
 const startedAt = (r: RaceDto, now: number) => r.started || Date.parse(r.startAt) <= now;
 
 // roundSummary = RoundResponse.results.summary (hela omgången).
-export function nextCard(race: RaceDto, races: RaceDto[], roundId: string, now: number, roundSummary: OutcomeSummary | null): NextCard {
+export function nextCard(gameType: string, race: RaceDto, races: RaceDto[], roundId: string, now: number, roundSummary: OutcomeSummary | null): NextCard {
   const sorted = [...races].sort((a, b) => a.leg - b.leg);
   const next = sorted.find((r) => r.leg === race.leg + 1);
   const base = `/omgang/${roundId}`;
   if (next) {
-    const link = { label: `Till avd ${next.leg}`, href: `${base}/avd/${next.leg}` };
-    if (next.cancelled) return { title: `Avd ${next.leg} är inställd`, text: next.name, ...link };
+    const link = { label: `Till ${legName(gameType, next.leg)}`, href: `${base}/avd/${next.leg}` };
+    if (next.cancelled) return { title: `${legName(gameType, next.leg)} är inställd`, text: next.name, ...link };
     if (!startedAt(next, now)) {
       const mine = next.starts.flatMap((s) => {
         const l = s.scratched ? null : mineLabel(s.mark);
         return l ? [`${s.horse.name} är ${l}.`] : [];
       });
-      return { title: `Avd ${next.leg} startar ${hhmm(next.startAt)}`, text: mine.length ? mine.join(" ") : next.name, ...link };
+      return { title: `${legName(gameType, next.leg)} startar ${hhmm(next.startAt)}`, text: mine.length ? mine.join(" ") : next.name, ...link };
     }
-    if (next.resultAt) return { title: `Avd ${next.leg} · resultat`, text: resultSentence(next.summary), ...link };
-    return { title: `Avd ${next.leg} pågår`, text: "Väntar på resultat.", ...link };
+    if (next.resultAt) return { title: `${legName(gameType, next.leg)} · resultat`, text: resultSentence(next.summary), ...link };
+    return { title: `${legName(gameType, next.leg)} pågår`, text: "Väntar på resultat.", ...link };
   }
   const missing = sorted.filter((r) => !r.cancelled && !r.resultAt);
   const link = { label: "Till omgången", href: base };
   if (!missing.length) return { title: "Omgången är klar", text: (roundSummary && summaryText(roundSummary)) ?? "Inga markeringar i omgången.", ...link };
   const legs = missing.map((r) => r.leg);
-  const list = legs.length === 1 ? `Avd ${legs[0]}` : `Avd ${legs.slice(0, -1).join(", ")} och ${legs[legs.length - 1]}`;
-  return { title: `Väntar på avd ${legs[0]}`, text: `${list} saknar resultat.`, ...link };
+  const list = legNames(gameType, legs);
+  return { title: `Väntar på ${legName(gameType, legs[0])}`, text: `${list} saknar resultat.`, ...link };
 }

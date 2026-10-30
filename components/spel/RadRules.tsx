@@ -10,6 +10,7 @@ import type { TippaResult } from "@/lib/tippa";
 import { MAX_PER_LEG_DB_MAX, MAX_PER_LEG_MIN } from "@/lib/coupon";
 import { capHelp, capValue, favHelp, favOverLimit, favStrip, favStripLabel, favValue, ownSpikValue, prioHelp, prioHelpStarted, shownCap, spikHelp } from "@/lib/tippa-text";
 import { Bold } from "./RadLegCard";
+import { legName } from "@/lib/game-type";
 
 // Reglerna som de sparades vid spelstopp. prio ur legRoles (count = valda,
 // field = löpande i avdelningen).
@@ -91,8 +92,8 @@ export const RadRules = forwardRef<HTMLDivElement, Props>(function RadRules({ r,
                     <span className={`hn${l.struckOwnSpik ? " struck" : ""}`}>{name}</span>
                     {l.struckOwnSpik && <span className="rs scr">Struken</span>}
                   </span>
-                  <small>Avd {l.leg}</small>
-                  <button type="button" className="ibtn" aria-label={`Ta bort egen spik ${name}, avd ${l.leg}`} onClick={() => onRemoveOwn(l.leg)}>
+                  <small>{legName(r.gameType, l.leg)}</small>
+                  <button type="button" className="ibtn" aria-label={`Ta bort egen spik ${name}, ${legName(r.gameType, l.leg)}`} onClick={() => onRemoveOwn(l.leg)}>
                     <IconX />
                   </button>
                 </div>
@@ -149,12 +150,12 @@ export const RadRules = forwardRef<HTMLDivElement, Props>(function RadRules({ r,
             Auto
           </button>
           <button type="button" aria-pressed={chosen} aria-haspopup="dialog" disabled={off} onClick={onPrioChoose}>
-            Välj avd
+            Välj lopp
           </button>
         </span>
         <p className="help">
           {frozen ? (
-            <Bold text={prioHelpStarted(frozen.prio, frozen.allgMode)} />
+            <Bold text={prioHelpStarted(frozen.prio, frozen.allgMode, r.gameType)} />
           ) : (
             <>
               <Bold text={prioHelp(r)} />
@@ -162,7 +163,7 @@ export const RadRules = forwardRef<HTMLDivElement, Props>(function RadRules({ r,
                 <>
                   {" "}
                   <button type="button" className="linkish" aria-haspopup="dialog" onClick={onPrioChoose}>
-                    Byt avdelning
+                    Byt lopp
                   </button>
                 </>
               )}

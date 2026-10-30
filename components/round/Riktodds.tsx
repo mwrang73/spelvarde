@@ -101,7 +101,7 @@ export function RiktKeys({ v, variant }: { v: RiktView; variant: "desk" | "mobil
     },
     {
       k: "Unibet plats",
-      cls: over ? "up" : "",
+      cls: over ? "same up" : "same",
       body: (
         <>
           {unibetText}

@@ -10,6 +10,7 @@
 // och nedräkningen testas i lib/streck-odds.test.ts.
 
 import type { StreckRefreshResult } from "@/lib/fetch-round";
+import { legName } from "@/lib/game-type";
 import { odds, plural, relTime } from "@/lib/format";
 import { stockholmDateString, stockholmParts } from "@/lib/stockholm-time";
 import type { RoundResponse, UnibetFinishResponse, UnibetLegResponse, UnibetStartResponse } from "@/lib/types";
@@ -171,6 +172,7 @@ export type Change = { key: string; text: string };
 export type HorseRef = { startId: string; leg: number; number: number; name: string };
 
 export type RunSummary = {
+  gameType: string;
   newSpelbar: Change[];
   lostSpelbar: Change[];
   replaced: (HorseRef & { from: number; to: number | null })[];
@@ -180,7 +182,7 @@ export type RunSummary = {
   newIds: string[];
 };
 
-const label = (leg: number, number: number, name: string) => `Avd ${leg} · ${number} ${name}`;
+const label = (gameType: string, leg: number, number: number, name: string) => `${legName(gameType, leg)} · ${number} ${name}`;
 
 // Spelbar per häst före och efter (som diff i den tidigare StreckRefresh), och
 // det som Unibets avdelningar rapporterade.
@@ -201,9 +203,9 @@ export function summarize(before: RoundResponse, after: RoundResponse, legs: Uni
       const was = !!o.mark?.spelbar;
       const now = !!s.mark?.spelbar;
       if (!was && now) {
-        newSpelbar.push({ key: `n-${s.id}`, text: `${label(race.leg, s.number, s.horse.name)}: nu Spelbar` });
+        newSpelbar.push({ key: `n-${s.id}`, text: `${label(before.round.gameType, race.leg, s.number, s.horse.name)}: nu Spelbar` });
         newIds.push(s.id);
-      } else if (was && !now) lostSpelbar.push({ key: `l-${s.id}`, text: `${label(race.leg, s.number, s.horse.name)}: inte längre Spelbar` });
+      } else if (was && !now) lostSpelbar.push({ key: `l-${s.id}`, text: `${label(before.round.gameType, race.leg, s.number, s.horse.name)}: inte längre Spelbar` });
     }
   const refOf = (leg: number, n: number): HorseRef => byNumber.get(`${leg}:${n}`) ?? { startId: `${leg}:${n}`, leg, number: n, name: `nr ${n}` };
   const sorted = [...legs].sort((a, b) => a.leg - b.leg);
@@ -214,6 +216,7 @@ export function summarize(before: RoundResponse, after: RoundResponse, legs: Uni
     replaced: sorted.flatMap((l) => l.replaced.map((r) => ({ ...(byId.get(r.startId) ?? { startId: r.startId, leg: l.leg, number: 0, name: "häst" }), from: r.from, to: r.to }))),
     missing: sorted.flatMap((l) => l.missing.map((n) => refOf(l.leg, n))),
     scratchedAtUnibet: sorted.flatMap((l) => l.scratchedAtUnibet.map((n) => refOf(l.leg, n))),
+    gameType: after.round.gameType,
   };
 }
 
@@ -222,16 +225,16 @@ export function changeList(s: RunSummary): Change[] {
   return [
     ...s.newSpelbar,
     ...s.lostSpelbar,
-    ...s.replaced.map((r) => ({ key: `r-${r.startId}`, text: `${label(r.leg, r.number, r.name)}: ditt ${odds(r.from)} ersattes av ${r.to === null ? "inget odds" : odds(r.to)}` })),
-    ...s.missing.map((r) => ({ key: `m-${r.startId}`, text: `${label(r.leg, r.number, r.name)}: fanns inte hos Unibet` })),
-    ...s.scratchedAtUnibet.map((r) => ({ key: `s-${r.startId}`, text: `${label(r.leg, r.number, r.name)}: struken hos Unibet` })),
+    ...s.replaced.map((r) => ({ key: `r-${r.startId}`, text: `${label(s.gameType, r.leg, r.number, r.name)}: ditt ${odds(r.from)} ersattes av ${r.to === null ? "inget odds" : odds(r.to)}` })),
+    ...s.missing.map((r) => ({ key: `m-${r.startId}`, text: `${label(s.gameType, r.leg, r.number, r.name)}: fanns inte hos Unibet` })),
+    ...s.scratchedAtUnibet.map((r) => ({ key: `s-${r.startId}`, text: `${label(s.gameType, r.leg, r.number, r.name)}: struken hos Unibet` })),
   ];
 }
 
 // ---- Texter ---------------------------------------------------------------------------------
 
-// "Avd 6 och 8", "Avd 1–3", "Avd 2, 4 och 7". lower = "avd …".
-export function legsText(legs: number[], lower = false): string {
+// "V85-6 och V85-8", "V85-1–3", "V85-2, V85-4 och V85-7".
+export function legsText(legs: number[], gameType: string): string {
   const xs = [...new Set(legs)].sort((a, b) => a - b);
   if (!xs.length) return "";
   // Tre eller fler i följd skrivs som ett spann ("1–3").
@@ -239,12 +242,11 @@ export function legsText(legs: number[], lower = false): string {
   for (let i = 0; i < xs.length; ) {
     let j = i;
     while (j + 1 < xs.length && xs[j + 1] === xs[j] + 1) j++;
-    if (j - i >= 2) parts.push(`${xs[i]}–${xs[j]}`);
-    else for (let k = i; k <= j; k++) parts.push(String(xs[k]));
+    if (j - i >= 2) parts.push(`${legName(gameType, xs[i])}–${xs[j]}`);
+    else for (let k = i; k <= j; k++) parts.push(legName(gameType, xs[k]));
     i = j + 1;
   }
-  const body = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} och ${parts[parts.length - 1]}`;
-  return `${lower ? "avd" : "Avd"} ${body}`;
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} och ${parts[parts.length - 1]}`;
 }
 
 // Nedräkningen i bild: "1:42".
@@ -313,7 +315,7 @@ export type RunState = { streck: StreckPart; odds: OddsPart; summary: RunSummary
 // before = omgången före trycket (för "Oddsen är från tors 18:02").
 export function bannerFor(run: RunState, ctx: { before: RoundResponse; after: RoundResponse; now: Date; unmarked: number; legCount: number }): BannerModel | null {
   const { streck: s, odds: o, summary } = run;
-  const sum = summary ?? { newSpelbar: [], lostSpelbar: [], replaced: [], missing: [], scratchedAtUnibet: [], newIds: [] };
+  const sum = summary ?? { gameType: ctx.after.round.gameType, newSpelbar: [], lostSpelbar: [], replaced: [], missing: [], scratchedAtUnibet: [], newIds: [] };
   const gameType = ctx.after.round.gameType;
   const sOk = s.state === "ok";
   const sFail = s.state === "failed";
@@ -330,8 +332,8 @@ export function bannerFor(run: RunState, ctx: { before: RoundResponse; after: Ro
   const replacedText = r.length === 1 ? `1 odds du skrev in ersattes: ${r[0].name} ${odds(r[0].from)} blev ${r[0].to === null ? "inget odds" : odds(r[0].to)}.` : r.length > 1 ? `${r.length} odds du skrev in ersattes.` : "";
   const ch = s.result?.changes;
   const atg = ch ? [ch.scratched.length ? plural(ch.scratched.length, "struken", "strukna") : "", ch.driverChanges.length ? plural(ch.driverChanges.length, "kuskbyte", "kuskbyten") : ""].filter(Boolean).join(", ") : "";
-  const resume = s.result?.needsResume ? "Några avdelningar behöver hämtas om: tryck Slutför hämtningen." : "";
-  const startedLine = o.startedLegs.length ? `${legsText(o.startedLegs)} har startat och hämtades inte.${prevOdds ? ` Deras odds är från ${relTime(prevOdds, ctx.now)}.` : ""}` : "";
+  const resume = s.result?.needsResume ? "Några lopp behöver hämtas om: tryck Slutför hämtningen." : "";
+  const startedLine = o.startedLegs.length ? `${legsText(o.startedLegs, gameType)} har startat och hämtades inte.${prevOdds ? ` Deras odds är från ${relTime(prevOdds, ctx.now)}.` : ""}` : "";
   const undo = r.length === 1 ? { label: `Ångra för ${r[0].name}`, startId: r[0].startId } : r.length > 1 ? { label: `Ångra för alla (${r.length})`, startId: null } : null;
   const join = (...xs: string[]) => xs.filter(Boolean).join(" ");
   const extras = { undo: oSaved ? undo : null, unmarked: oSaved ? ctx.unmarked : 0, changes: oSaved || sOk ? changes : [] };
@@ -343,7 +345,7 @@ export function bannerFor(run: RunState, ctx: { before: RoundResponse; after: Ro
     return {
       tone: "warn",
       head: "Oddsen är hämtade, men ATG svarade inte.",
-      text: join(`${withOdds}, ${nNew ? plural(nNew, "ny Spelbar", "nya Spelbara") : "inga nya Spelbara"}.`, replacedText, prevStreck ? `Strecket och riktoddset är från ${relTime(prevStreck, ctx.now)}.` : "Strecket finns inte än.", o.state === "partial" ? `Unibet: ${legsText(o.failedLegs)} svarade inte.` : "", startedLine),
+      text: join(`${withOdds}, ${nNew ? plural(nNew, "ny Spelbar", "nya Spelbara") : "inga nya Spelbara"}.`, replacedText, prevStreck ? `Strecket och riktoddset är från ${relTime(prevStreck, ctx.now)}.` : "Strecket finns inte än.", o.state === "partial" ? `Unibet: ${legsText(o.failedLegs, gameType)} svarade inte.` : "", startedLine),
       retry: { label: "Hämta strecket igen", mode: { kind: "streck" }, icon: "refresh" },
       ...extras,
     };
@@ -380,9 +382,9 @@ export function bannerFor(run: RunState, ctx: { before: RoundResponse; after: Ro
     const got = total - o.failedLegs.length;
     return {
       tone: "warn",
-      head: join(streckHead, `Unibet: ${got} av ${total} avdelningar.`),
-      text: join(`${legsText(o.failedLegs)} svarade inte. Det som hämtades är sparat.`, `${withOdds}${nNew ? `, ${plural(nNew, "ny Spelbar", "nya Spelbara")}.` : ". Inga nya Spelbara."}`, replacedText, startedLine),
-      retry: o.fetchId ? { label: `Hämta ${legsText(o.failedLegs, true)}`, mode: { kind: "legs", fetchId: o.fetchId, legs: o.failedLegs }, icon: "dl" } : { label: "Hämta oddsen igen", mode: { kind: "odds" }, icon: "dl" },
+      head: join(streckHead, `Unibet: ${got} av ${total} lopp.`),
+      text: join(`${legsText(o.failedLegs, gameType)} svarade inte. Det som hämtades är sparat.`, `${withOdds}${nNew ? `, ${plural(nNew, "ny Spelbar", "nya Spelbara")}.` : ". Inga nya Spelbara."}`, replacedText, startedLine),
+      retry: o.fetchId ? { label: `Hämta ${legsText(o.failedLegs, gameType)}`, mode: { kind: "legs", fetchId: o.fetchId, legs: o.failedLegs }, icon: "dl" } : { label: "Hämta oddsen igen", mode: { kind: "odds" }, icon: "dl" },
       ...extras,
     };
   }
@@ -422,6 +424,7 @@ export type BoardView = {
 };
 
 export type BoardInput = {
+  gameType: string;
   online: boolean;
   now: Date;
   latestStreckAt: string | null;
@@ -450,7 +453,7 @@ export function boardView(i: BoardInput): BoardView {
   if (!i.online) return { ...base, kind: "off", expl: "offline", aria: "Ingen uppkoppling", disabled: true };
   if (r?.running) {
     const p = i.progress;
-    return { ...base, kind: "busy", value: p ? `${p.done}/${p.total}` : "…", expl: r.odds.state === "running" ? "hämtar odds" : "hämtar streck", aria: p ? `Hämtar streck och odds, avdelning ${Math.min(p.done + 1, p.total)} av ${p.total}` : "Hämtar streck och odds", disabled: true, icon: "spin" };
+    return { ...base, kind: "busy", value: p ? `${p.done}/${p.total}` : "…", expl: r.odds.state === "running" ? "hämtar odds" : "hämtar streck", aria: p ? `Hämtar streck och odds, lopp ${Math.min(p.done + 1, p.total)} av ${p.total}` : "Hämtar streck och odds", disabled: true, icon: "spin" };
   }
   if (r) {
     const sFail = r.streck.state === "failed";
@@ -460,7 +463,7 @@ export function boardView(i: BoardInput): BoardView {
     if (oFail) return { ...base, kind: "sOnly", expl: "oddsen misslyckades", aria: "Unibets odds misslyckades. Tryck för att försöka igen", tone: "old", dot: true, mode: { kind: "odds" } };
     if (sFail) return { ...base, kind: "uOnly", expl: "strecket misslyckades", aria: r.odds.state === "ok" || r.odds.state === "partial" ? "Oddsen hämtades, strecket misslyckades. Tryck för att försöka igen" : "Strecket misslyckades. Tryck för att försöka igen", tone: "old", dot: true, mode: { kind: "streck" } };
     if (r.odds.state === "partial" && r.odds.fetchId)
-      return { ...base, kind: "part", expl: "odds delvis", aria: `Strecket hämtades, Unibets odds för ${legsText(r.odds.failedLegs, true)} misslyckades. Tryck för att försöka igen`, tone: "old", dot: true, mode: { kind: "legs", fetchId: r.odds.fetchId, legs: r.odds.failedLegs } };
+      return { ...base, kind: "part", expl: "odds delvis", aria: `Strecket hämtades, Unibets odds för ${legsText(r.odds.failedLegs, i.gameType)} misslyckades. Tryck för att försöka igen`, tone: "old", dot: true, mode: { kind: "legs", fetchId: r.odds.fetchId, legs: r.odds.failedLegs } };
     if (r.finishedAt !== null && now - r.finishedAt < DONE_MS && (r.odds.state === "ok" || (r.odds.state === "idle" && r.streck.state === "ok")))
       return { ...base, kind: "done", expl: "nyss", aria: `Streck och odds hämtade ${rel}`, check: true, disabled: lockSec > 0 };
   }

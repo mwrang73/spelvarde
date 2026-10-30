@@ -16,6 +16,17 @@ export const legsFor = (t: string): number => (isGameType(t) ? LEGS[t] : 8);
 // Avdelningarna 1..n.
 export const legNumbers = (t: string): number[] => Array.from({ length: legsFor(t) }, (_, i) => i + 1);
 
+// Benämningen på ett lopp i spelet: "V85-1". Avdelning är ATG:s egen numrering
+// och kan vara en annan, så det är den här formen som visas i appen.
+export const legName = (gameType: string, leg: number | string): string => `${gameType}-${leg}`;
+
+// "V85-2", "V85-2 och V85-6", "V85-1, V85-2 och V85-6".
+export function legNames(gameType: string, legs: readonly (number | string)[]): string {
+  const names = legs.map((l) => legName(gameType, l));
+  if (names.length < 2) return names.join("");
+  return `${names.slice(0, -1).join(", ")} och ${names[names.length - 1]}`;
+}
+
 // Spelformen ur ATG:s spel-id ("V75_2026-11-29_5_5" → "V75"). null = okänd.
 export function gameTypeOfId(id: string): GameType | null {
   const p = id.split("_")[0];

@@ -24,7 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { BUDGET_SLIDER, couponDateLabel, couponText, DEFAULT_BUDGET, DEFAULT_MAX_PER_LEG, DEFAULT_ROW_PRICE, sameNumbers, type Selections } from "@/lib/coupon";
 import { BUDGET_ERROR, couponBody, parseBudget, parseRowPrice, ROW_PRICE_ERROR, selectionsOf, tippaLegs, toggleNumber } from "@/lib/coupon-ui";
 import { hhmm, odds, thousands } from "@/lib/format";
-import { legsFor } from "@/lib/game-type";
+import { legName, legsFor } from "@/lib/game-type";
 import { applySettings, xFactorsOf, type CouponBody } from "@/lib/round-overlay";
 import { BUDGET_OVER_MAX, buildRad, defaultSpikCount, type TippaLegResult, type TippaResult, type TippaRules, type TippaSuggestion } from "@/lib/tippa";
 import {
@@ -341,7 +341,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
     const { leg } = sheet;
     setSheet(null);
     const u = change((d) => lockLeg(d, leg, []));
-    toastUndo(`Avd ${leg} räknas av appen igen`, u);
+    toastUndo(`${legName(data.round.gameType, leg)} räknas av appen igen`, u);
   };
 
   const removeOwn = (leg: number) => {
@@ -350,7 +350,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
     const name = l?.horses[0]?.name ?? l?.scratched.find((s) => s.number === n)?.name ?? "";
     const idx = result.legs.filter((x) => x.kind === "OWN_SPIK").findIndex((x) => x.leg === leg);
     const u = change((d) => lockLeg(d, leg, []));
-    toastUndo(`Egen spik ${n} ${name} i avd ${leg} är borttagen`, u);
+    toastUndo(`Egen spik ${n} ${name} i ${legName(data.round.gameType, leg)} är borttagen`, u);
     window.requestAnimationFrame(() => {
       const xs = rulesRef.current?.querySelectorAll<HTMLElement>(".osp .ibtn");
       const next = xs && xs.length ? xs[Math.min(idx, xs.length - 1)] : null;
@@ -363,7 +363,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
     const spik = Math.max(result.spikEffective, ownAfterSpik(result, leg));
     setSheet(null);
     const u = change((d) => ({ ...lockLeg(d, leg, [n]), spikCount: spik }));
-    toastUndo(`Egen spik ${n} ${h?.name ?? ""} i avd ${leg}`, u);
+    toastUndo(`Egen spik ${n} ${h?.name ?? ""} i ${legName(data.round.gameType, leg)}`, u);
   };
 
   const applySuggestion = (s: TippaSuggestion) => {
@@ -485,13 +485,13 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   let budgetBanner: React.ReactNode = null;
   if (mode === "live" && result.status === "RULES_DONT_FIT")
     budgetBanner = (
-      <Banner tone="err" role="alert" className="m" actions={result.suggestions.length ? <Suggestions items={result.suggestions} onUse={applySuggestion} /> : undefined}>
+      <Banner tone="err" role="alert" className="m" actions={result.suggestions.length ? <Suggestions gameType={result.gameType} items={result.suggestions} onUse={applySuggestion} /> : undefined}>
         <Bold text={rulesDontFitText(result)} />
       </Banner>
     );
   else if (mode === "live" && result.status === "OWN_OVER_BUDGET")
     budgetBanner = (
-      <Banner tone="warn" className="m" actions={result.suggestions.length ? <Suggestions items={result.suggestions} onUse={applySuggestion} /> : undefined}>
+      <Banner tone="warn" className="m" actions={result.suggestions.length ? <Suggestions gameType={result.gameType} items={result.suggestions} onUse={applySuggestion} /> : undefined}>
         <Bold text={ownOverText(result)} />
       </Banner>
     );
@@ -581,7 +581,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         <section className="drad-r" aria-labelledby="h-radlist">
           {scratchBanners}
           <h2 className="sl rad-h" id="h-radlist">
-            Raden per avdelning
+            Raden per lopp
             {showRows && (
               <>
                 <span className="m-only">{listSummary(view)}</span>
@@ -621,7 +621,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         {announce}
       </span>
 
-      <Sheet className="rad-sh" open={!!legSheet && !!legSheetLeg} onClose={closeLeg} title={legSheet ? `Avd ${legSheet.leg} · välj hästar` : ""} sub={legSheetLeg ? legSheetSub(legSheetLeg) : undefined}>
+      <Sheet className="rad-sh" open={!!legSheet && !!legSheetLeg} onClose={closeLeg} title={legSheet ? `${legName(data.round.gameType, legSheet.leg)} · välj hästar` : ""} sub={legSheetLeg ? legSheetSub(legSheetLeg) : undefined}>
         {legSheet && legSheetLeg && (
           <RadLegSheet
             l={legSheetLeg}
@@ -638,7 +638,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         )}
       </Sheet>
 
-      <Sheet className="rad-sh" open={sheet?.kind === "spik"} onClose={() => setSheet(null)} title="Välj egen spik" sub="Avdelningen låses med en häst. Appen väljer resten av spikarna.">
+      <Sheet className="rad-sh" open={sheet?.kind === "spik"} onClose={() => setSheet(null)} title="Välj egen spik" sub="Loppet låses med en häst. Appen väljer resten av spikarna.">
         {sheet?.kind === "spik" && <RadSpikSheet r={result} legs={legs} rules={rules} initialLeg={sheet.leg} onConfirm={confirmSpik} onCancel={() => setSheet(null)} />}
       </Sheet>
 
@@ -681,15 +681,15 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
 
 function legSheetSub(l: TippaLegResult): string {
   const time = l.startAt ? `${hhmm(l.startAt)} · ` : "";
-  return `${time}${l.field.length} startande · i appens ordning. Väljer du själv låses avdelningen.`;
+  return `${time}${l.field.length} startande · i appens ordning. Väljer du själv låses loppet.`;
 }
 
-function Suggestions({ items, onUse }: { items: TippaSuggestion[]; onUse: (s: TippaSuggestion) => void }) {
+function Suggestions({ gameType, items, onUse }: { gameType: string; items: TippaSuggestion[]; onUse: (s: TippaSuggestion) => void }) {
   return (
     <>
       {items.map((s) => (
         <button key={`${s.kind}-${s.kind === "BUDGET" ? s.budget : s.kind === "SPIKES" ? s.spikCount : s.leg}`} type="button" className="btn secondary sm" aria-haspopup={s.kind === "EDIT_LEG" ? "dialog" : undefined} onClick={() => onUse(s)}>
-          {suggestionLabel(s)}
+          {suggestionLabel(s, gameType)}
         </button>
       ))}
     </>

@@ -10,6 +10,7 @@ import { hhmm } from "@/lib/format";
 import type { TippaHorse, TippaLegResult, TippaResult } from "@/lib/tippa";
 import { boldParts, favOutText, legSubline, legTypeLabel, legWhy, legWhyStarted, pctText, reasonClass, reasonLabel, riktText } from "@/lib/tippa-text";
 import type { LegRoleDto, ReasonCode } from "@/lib/types";
+import { legName } from "@/lib/game-type";
 
 // Text med **fetstil** som <b>. Procent får hårt mellanslag ("16,4 %" bryts inte).
 export function Bold({ text }: { text: string }) {
@@ -112,7 +113,7 @@ export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCa
   const why = (() => {
     if (started) return legWhyStarted(startedKind, { count: l.selection.length, field: l.field.length, cap });
     if (mode === "legacy") return null;
-    if (l.struckOwnSpik) return "Avdelningen saknar spik. Raden kan inte kopieras förrän den är vald.";
+    if (l.struckOwnSpik) return "Loppet saknar spik. Raden kan inte kopieras förrän den är vald.";
     return legWhy(r, l.leg);
   })();
   const favOut = mode === "live" ? favOutText(r, l.leg) : null;
@@ -147,7 +148,7 @@ export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCa
     );
   } else {
     body = (
-      <ul className="lhl" aria-label={`Valda hästar i avd ${l.leg}`}>
+      <ul className="lhl" aria-label={`Valda hästar i ${legName(r.gameType, l.leg)}`}>
         {l.horses.map((h) => {
           const isNew = fresh.includes(h.number);
           return (
@@ -190,7 +191,7 @@ export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCa
         <FlapNumber n={l.leg} size="sm" />
         <div className="lg-t">
           <h3 id={id}>
-            Avd {l.leg}
+            {legName(r.gameType, l.leg)}
             {l.startAt ? ` · ${hhmm(l.startAt)}` : ""}
           </h3>
           <span>{legSubline(l)}</span>
@@ -200,7 +201,7 @@ export const RadLegCard = forwardRef<HTMLButtonElement, Props>(function RadLegCa
           ref={penRef}
           type="button"
           className="lg-e"
-          aria-label={`Ändra avd ${l.leg}`}
+          aria-label={`Ändra ${legName(r.gameType, l.leg)}`}
           aria-haspopup="dialog"
           disabled={penOff}
           title={l.kind === "CANCELLED" && !started ? "Inställt lopp" : undefined}

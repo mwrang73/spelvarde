@@ -104,9 +104,9 @@ async function upsertPerson(db: PrismaClient, p: ParsedPerson, now: Date): Promi
 // "avd 2: 0 av 11 hästar" för avdelningar där starter föll bort i
 // tolkningen, eller fel antal avdelningar. null = allt kom med.
 export function incompleteLegs(parsed: ParsedGame): string | null {
-  const parts = parsed.races.filter((r) => r.starts.length < r.atgStarts).map((r) => `avd ${r.leg}: ${r.starts.length} av ${r.atgStarts} hästar`);
+  const parts = parsed.races.filter((r) => r.starts.length < r.atgStarts).map((r) => `lopp ${r.leg}: ${r.starts.length} av ${r.atgStarts} hästar`);
   const legs = legsFor(gameTypeOfId(parsed.atgGameId) ?? DEFAULT_GAME_TYPE);
-  if (parsed.races.length !== legs) parts.unshift(`${parsed.races.length} av ${legs} avdelningar`);
+  if (parsed.races.length !== legs) parts.unshift(`${parsed.races.length} av ${legs} lopp`);
   return parts.length ? parts.join(", ") : null;
 }
 
@@ -356,7 +356,7 @@ export async function fetchRaceStep(deps: FetchDeps, input: { roundId: string; l
     where: { roundId_leg: { roundId: input.roundId, leg: input.leg } },
     include: { starts: { include: { horse: true } } },
   });
-  if (!race) throw new FetchStepError("Avdelningen finns inte. Hämta omgången först.", 404);
+  if (!race) throw new FetchStepError("Loppet finns inte. Hämta omgången först.", 404);
 
   const fresh = (s: { recordsFetchedAt: Date | null; recordsError: string | null }) =>
     !!s.recordsFetchedAt && !s.recordsError && now.getTime() - s.recordsFetchedAt.getTime() < RECORDS_FRESH_MS;

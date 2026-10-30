@@ -3,6 +3,7 @@
 // klienten kan använda samma funktioner.
 import { FLAG_ORDER, type TipFlag } from "@/lib/tips/match";
 import { ROLE_LABEL, type TipRole } from "@/lib/tips/roles";
+import { legName } from "@/lib/game-type";
 
 export type FlagStart = { leg: number; number: number; name: string };
 export type FlagInput = {
@@ -18,7 +19,7 @@ export type FlagInput = {
 
 const first = (flags: string[]): TipFlag | null => FLAG_ORDER.find((f) => flags.includes(f)) ?? null;
 
-export function flagText(t: FlagInput): string | null {
+export function flagText(t: FlagInput, gameType: string): string | null {
   const f = first(t.flags);
   const s = t.start;
   switch (f) {
@@ -26,7 +27,7 @@ export function flagText(t: FlagInput): string | null {
       return null;
     case "NO_MATCH":
       return t.suggestion
-        ? `Kunde inte kopplas till en häst i ${t.leg !== null ? `avd ${t.leg}` : "omgången"}. Närmast är ${t.suggestion.number} ${t.suggestion.name}.`
+        ? `Kunde inte kopplas till en häst i ${t.leg !== null ? `${legName(gameType, t.leg)}` : "omgången"}. Närmast är ${t.suggestion.number} ${t.suggestion.name}.`
         : "Kunde inte kopplas till en häst i omgången.";
     case "ROLE_WORD_UNKNOWN":
       return `Osäker roll: texten säger "${t.roleWord ?? ""}", som tolkades som ${ROLE_LABEL[t.role]}.`;
@@ -35,17 +36,17 @@ export function flagText(t: FlagInput): string | null {
     case "ROLE_WORD_MISSING":
       return "Osäker roll: citatet säger inte tydligt vilken roll hästen har.";
     case "NAME_MISMATCH":
-      return s ? `Artikeln säger "${t.rawHorseName}", men nr ${s.number} i avd ${s.leg} heter ${s.name}.` : `Artikeln säger "${t.rawHorseName}".`;
+      return s ? `Artikeln säger "${t.rawHorseName}", men nr ${s.number} i ${legName(gameType, s.leg)} heter ${s.name}.` : `Artikeln säger "${t.rawHorseName}".`;
     case "NAME_SPELLING":
       return s ? `Namnet stavas "${t.rawHorseName}" i artikeln. Kopplat till ${s.number} ${s.name}.` : `Namnet stavas "${t.rawHorseName}" i artikeln.`;
     case "NUMBER_MISMATCH":
-      return s ? `Artikeln säger nr ${t.number ?? "?"}, men ${s.name} har nr ${s.number} i avd ${s.leg}.` : `Artikeln säger nr ${t.number ?? "?"}.`;
+      return s ? `Artikeln säger nr ${t.number ?? "?"}, men ${s.name} har nr ${s.number} i ${legName(gameType, s.leg)}.` : `Artikeln säger nr ${t.number ?? "?"}.`;
     case "NUMBER_MISSING":
       return "Numret stod inte i texten. Kopplat på namnet.";
     case "LEG_MISMATCH":
-      return s ? `Artikeln säger avd ${t.leg ?? "?"}, men ${s.name} går i avd ${s.leg}.` : `Artikeln säger avd ${t.leg ?? "?"}.`;
+      return s ? `Artikeln säger ${legName(gameType, t.leg ?? "?")}, men ${s.name} går i ${legName(gameType, s.leg)}.` : `Artikeln säger ${legName(gameType, t.leg ?? "?")}.`;
     case "LEG_MISSING":
-      return "Avdelningen stod inte i texten. Kopplat på namnet.";
+      return "Loppet stod inte i texten. Kopplat på namnet.";
     case "QUOTE_NO_NAME":
       return "Citatet nämner inte hästen. Kontrollera att det gäller rätt häst.";
     case "SCRATCHED":
@@ -74,9 +75,9 @@ export function flagShort(t: FlagInput): string | null {
     case "NUMBER_MISSING":
       return "Nummer saknas";
     case "LEG_MISMATCH":
-      return "Annan avd";
+      return "Annat lopp";
     case "LEG_MISSING":
-      return "Avd saknas";
+      return "Lopp saknas";
     case "QUOTE_NO_NAME":
       return "Namnet saknas i citatet";
     case "SCRATCHED":

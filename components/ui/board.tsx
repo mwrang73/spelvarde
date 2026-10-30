@@ -4,21 +4,35 @@
 import { odds } from "@/lib/format";
 import type { FormBox } from "@/lib/gallop";
 import { MANY_SIGNALS } from "@/lib/positive-signals";
+import type { PostEdge } from "@/lib/post-edge";
 import type { Override } from "@/lib/spelbar";
 import { IconCheck, IconCheckThin, IconInfo, IconOffline, IconTicket, IconWarn, IconX } from "./icons";
 import { WandSpark } from "./WandSpark";
+
+const EDGE_TEXT: Record<PostEdge, string> = { v: "V", p: "P", vp: "V+P" };
+
+// Brickan i löptext, så att statistikraden förklarar märket på startnumret.
+export function EdgeKey({ edge }: { edge: PostEdge }) {
+  return (
+    <i className={`spb spk ${edge}`} aria-hidden="true">
+      {EDGE_TEXT[edge]}
+    </i>
+  );
+}
 
 // ---- FlapNumber -----------------------------------------------------------------------
 
 // signals = antal positiva signaler (lib/positive-signals.ts): en bricka i
 // nedre hörnet, grön ring för 1–4 och fylld grön för 5 eller fler. Brickan är
 // dold för skärmläsare; raden säger antalet i text.
-export function FlapNumber({ n, size = "md", index, placed, signals }: { n: number | string; size?: "sm" | "md" | "lg"; index?: number; placed?: boolean; signals?: number | null }) {
+// edge = spårfördel (lib/post-edge.ts): en bricka i övre hörnet.
+export function FlapNumber({ n, size = "md", index, placed, signals, edge }: { n: number | string; size?: "sm" | "md" | "lg"; index?: number; placed?: boolean; signals?: number | null; edge?: PostEdge | null }) {
   const style = index !== undefined ? ({ "--i": Math.min(index, 12) } as React.CSSProperties) : undefined;
   return (
     <span className={`nr${size === "md" ? "" : ` ${size}`}${placed ? " pl" : ""}`} style={style} aria-hidden="true">
       <b>{n}</b>
       {signals ? <i className={`sigb${signals >= MANY_SIGNALS ? " many" : ""}`}>{signals}</i> : null}
+      {edge ? <i className={`spb ${edge}`}>{EDGE_TEXT[edge]}</i> : null}
     </span>
   );
 }
@@ -74,11 +88,18 @@ export function XBadge({ x, wide }: { x: "NONE" | "TROR" | "STARK" | undefined; 
 }
 
 // Trollspöt-märket (e4a avsnitt 18): samma trollspö som fliken Trollspöt.
-export function TrollBadge() {
+export function TrollBadge({ rank }: { rank?: number }) {
   return (
-    <span className="bdg tsb" role="img" aria-label="Trollspöt" title="Trollspöt">
-      <WandSpark />
-    </span>
+    <>
+      <span className="bdg tsb" role="img" aria-label={rank ? `Trollspöt, plats ${rank}` : "Trollspöt"} title="Trollspöt">
+        <WandSpark />
+      </span>
+      {rank ? (
+        <span className="trk" aria-hidden="true">
+          #{rank}
+        </span>
+      ) : null}
+    </>
   );
 }
 

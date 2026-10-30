@@ -23,7 +23,7 @@ export function currentTips(detail: StartDetailResponse | null): { current: TipD
 
 export const tipsHref = (startId: string) => `/kallor/granska?start=${startId}`;
 
-export function TipsCompact({ roundId, races, start, detail, locked, onExpand }: { roundId: string; races: RaceDto[]; start: StartDto; detail: StartDetailResponse | null; locked: boolean; onExpand?: (open: boolean) => void }) {
+export function TipsCompact({ gameType, roundId, races, start, detail, locked, onExpand }: { gameType: string; roundId: string; races: RaceDto[]; start: StartDto; detail: StartDetailResponse | null; locked: boolean; onExpand?: (open: boolean) => void }) {
   const [editing, setEditing] = useState<TipDto | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   if (!detail) {
@@ -95,7 +95,7 @@ export function TipsCompact({ roundId, races, start, detail, locked, onExpand }:
           })}
         </ul>
       )}
-      <TipEditSheet roundId={roundId} tip={editing} races={races} onClose={() => setEditing(null)} onSaved={() => loadDetail(start.id, true)} onRemoved={() => loadDetail(start.id, true)} />
+      <TipEditSheet gameType={gameType} roundId={roundId} tip={editing} races={races} onClose={() => setEditing(null)} onSaved={() => loadDetail(start.id, true)} onRemoved={() => loadDetail(start.id, true)} />
     </>
   );
 }

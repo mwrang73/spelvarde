@@ -27,6 +27,7 @@ import { isAllowed } from "@/lib/tips/robots";
 import { isTipRole, type TipRole } from "@/lib/tips/roles";
 import { extractArticle, stageOf, textHash, type ExtractedArticle } from "@/lib/tips/text";
 import { validateTips } from "@/lib/tips/validate";
+import { DEFAULT_GAME_TYPE } from "@/lib/game-type";
 import type {
   QuotaDto,
   RoundTipsDto,
@@ -436,6 +437,7 @@ type TipRow = Prisma.TipGetPayload<{ include: typeof tipInclude }>;
 type StartInfo = StartRef & { startAt: Date; horseId: string };
 
 type Ctx = {
+  gameType: string;
   now: Date;
   roundId: string;
   tips: TipRow[];
@@ -446,7 +448,8 @@ type Ctx = {
 };
 
 async function loadContext(db: Db | Tx, userId: string, roundId: string, now: Date): Promise<Ctx> {
-  const [tips, races] = await Promise.all([
+  const [round, tips, races] = await Promise.all([
+    db.round.findUnique({ where: { id: roundId }, select: { gameType: true } }),
     db.tip.findMany({ where: { userId, roundId }, include: tipInclude, orderBy: [{ createdAt: "asc" }, { id: "asc" }] }),
     db.race.findMany({ where: { roundId }, include: { starts: { include: { horse: { select: { name: true } } } } } }),
   ]);
@@ -458,7 +461,7 @@ async function loadContext(db: Db | Tx, userId: string, roundId: string, now: Da
     if (!lastStartAt || r.startAt > lastStartAt) lastStartAt = r.startAt;
     for (const s of r.starts) starts.set(s.id, { startId: s.id, leg: r.leg, number: s.number, name: s.horse.name, scratched: s.scratched, startAt: r.startAt, horseId: s.horseId });
   }
-  return { now, roundId, tips, byId: new Map(tips.map((t) => [t.id, t])), starts, legStartAt, lastStartAt };
+  return { gameType: round?.gameType ?? DEFAULT_GAME_TYPE, now, roundId, tips, byId: new Map(tips.map((t) => [t.id, t])), starts, legStartAt, lastStartAt };
 }
 
 function orderOf(t: { id: string; createdAt: Date; article: { publishedAt: Date | null; firstSeenAt: Date } }): OrderInput {
@@ -521,7 +524,7 @@ function tipDto(ctx: Ctx, t: TipRow): TipDto {
     startNumber: s ? s.number : null,
     match: s ? t.match : "NONE",
     flags,
-    flagText: flagText(flagInput),
+    flagText: flagText(flagInput, ctx.gameType),
     flagShort: flagShort(flagInput),
     suggestion: sug ? { startId: sug.startId, leg: sug.leg, number: sug.number, name: sug.name } : null,
     review: t.review,

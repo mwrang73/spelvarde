@@ -16,6 +16,7 @@ import { metaOf } from "@/lib/round-overlay";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { raceStarted } from "./RoundProvider";
 import { closeTagging, loadRaceTags, openTagging, saveRaceTag, selectTagStart, useRaceTags, useTaggingOpen, type TagCtx } from "./tagStore";
+import { legName } from "@/lib/game-type";
 
 const UNDO_MS = 10_000;
 
@@ -71,7 +72,7 @@ function TagSheet({ data, race, startId }: { data: RoundResponse; race: RaceDto;
   const idx = cur ? order.indexOf(cur) : -1;
   const prev = idx > 0 ? order[idx - 1] : null;
   const next = idx >= 0 && idx < order.length - 1 ? order[idx + 1] : null;
-  const ctx: TagCtx = { roundId, roundDate: data.round.date, trackName: data.round.trackName, race };
+  const ctx: TagCtx = { roundId, roundDate: data.round.date, trackName: data.round.trackName, gameType: data.round.gameType, race };
   const mine = cur ? tags.byStart[cur.id] : undefined;
   const curTags = mine?.tags ?? [];
   const [undo, setUndo] = useState<{ startId: string; tags: string[]; text: string; at: number } | null>(null);
@@ -158,7 +159,7 @@ function TagSheet({ data, race, startId }: { data: RoundResponse; race: RaceDto;
             <IconX />
           </button>
           <div className="ah-t">
-            <span className="ah-title">Tagga · avd {race.leg}</span>
+            <span className="ah-title">Tagga · {legName(data.round.gameType, race.leg)}</span>
             <span className="ah-sub">{hasResult ? "Resultatet finns" : "Startat · väntar på resultat"}</span>
           </div>
           <button type="button" className="btn ghost" onClick={closeTagging}>
@@ -178,7 +179,7 @@ function TagSheet({ data, race, startId }: { data: RoundResponse; race: RaceDto;
             <b className="num">{taggedCount}</b> av {order.length} taggade
           </span>
         </div>
-        <div className="tstrip" role="tablist" aria-label={`Hästar i avd ${race.leg}`}>
+        <div className="tstrip" role="tablist" aria-label={`Hästar i ${legName(data.round.gameType, race.leg)}`}>
           {order.map((s) => {
             const n = tags.byStart[s.id]?.tags.length ?? 0;
             return (

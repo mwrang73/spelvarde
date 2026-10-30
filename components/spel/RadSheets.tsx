@@ -14,6 +14,7 @@ import { buildRad, type TippaHorse, type TippaLeg, type TippaLegResult, type Tip
 import { krText, legSubline, pctText, previewChangeText, previewPickedLabel, prioSheetValue, spikPreviewTexts } from "@/lib/tippa-text";
 import { Kupong, type KupongLeg } from "./Kupong";
 import { Bold, HorseMarks, ReasonTags } from "./RadLegCard";
+import { legName } from "@/lib/game-type";
 
 // Låsning av en avdelning som regeländring (A4 och A5): låses det valda
 // prioriterade loppet blir det prioriterade loppet Auto.
@@ -122,7 +123,7 @@ export function RadLegSheet({
     <div ref={ref} className="radsh">
       <div className="prev brd" aria-live="polite">
         <div>
-          <small>Avd {l.leg}</small>
+          <small>{legName(rules.gameType, l.leg)}</small>
           <b>{left}</b>
         </div>
         <div>
@@ -134,7 +135,7 @@ export function RadLegSheet({
           <Bold text={previewChangeText(before, after, l.leg, touched ? picked : undefined)} />
         </p>
       </div>
-      <ul className="hchips" aria-label={`Hästar i avd ${l.leg}, i appens ordning`}>
+      <ul className="hchips" aria-label={`Hästar i ${legName(rules.gameType, l.leg)}, i appens ordning`}>
         {l.field.map((h) => {
           const on = picked.includes(h.number);
           const lim = l.favBanned && l.favorite?.number === h.number;
@@ -230,7 +231,7 @@ export function RadSpikSheet({ r, legs, rules, initialLeg, onConfirm, onCancel }
 
   return (
     <div ref={ref} className="radsh">
-      <div className="avd" role="tablist" aria-label="Avdelning" onKeyDown={onTabKey}>
+      <div className="avd" role="tablist" aria-label="Lopp" onKeyDown={onTabKey}>
         {r.legs.map((l) => {
           const has = l.kind === "OWN_SPIK";
           const off = !usable(l);
@@ -244,7 +245,7 @@ export function RadSpikSheet({ r, legs, rules, initialLeg, onConfirm, onCancel }
               aria-selected={l.leg === leg}
               aria-controls="rsp-p"
               aria-disabled={off || undefined}
-              aria-label={has ? `Avd ${l.leg}, har egen spik` : `Avd ${l.leg}`}
+              aria-label={has ? `${legName(r.gameType, l.leg)}, har egen spik` : `${legName(r.gameType, l.leg)}`}
               title={l.kind === "CANCELLED" ? "Inställt lopp" : undefined}
               tabIndex={l.leg === leg ? 0 : -1}
               onClick={() => !off && chooseLeg(l.leg)}
@@ -272,7 +273,7 @@ export function RadSpikSheet({ r, legs, rules, initialLeg, onConfirm, onCancel }
             </Banner>
           </div>
         )}
-        <ul className="hchips" role="radiogroup" aria-label={`Hästar i avd ${leg}`} onKeyDown={onRadioKey}>
+        <ul className="hchips" role="radiogroup" aria-label={`Hästar i ${legName(r.gameType, leg)}`} onKeyDown={onRadioKey}>
           {cur.field.map((h) => {
             const on = pick === h.number;
             return (
@@ -344,7 +345,7 @@ export function RadPrioSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
   const tabStop = pick !== null && ok.includes(pick) ? pick : ok[0];
   return (
     <div ref={ref} className="radsh">
-      <ul className="hchips" role="radiogroup" aria-label="Avdelningar" onKeyDown={onKey}>
+      <ul className="hchips" role="radiogroup" aria-label="Lopp" onKeyDown={onKey}>
         {options.map(({ l, off, res, sub, value }) => {
           const on = pick === l.leg;
           const fits = res && res.status !== "RULES_DONT_FIT";
@@ -355,7 +356,7 @@ export function RadPrioSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
                 <span className="hcm">
                   <span className="hl">
                     <span className="hc-name">
-                      Avd {l.leg}
+                      {legName(r.gameType, l.leg)}
                       {l.startAt ? ` · ${hhmm(l.startAt)}` : ""}
                     </span>
                     {l.leg === autoLeg && <span className="rs st">Mest öppna</span>}
@@ -385,7 +386,7 @@ export function RadPrioSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
       </ul>
       <div className="shbtns">
         <button type="button" className="btn primary" disabled={pick === null || !ok.includes(pick)} onClick={() => pick !== null && onConfirm(pick)}>
-          {pick !== null && ok.includes(pick) ? `Prioritera avd ${pick}` : "Prioritera"}
+          {pick !== null && ok.includes(pick) ? `Prioritera ${legName(r.gameType, pick)}` : "Prioritera"}
         </button>
         <button type="button" className="btn ghost" onClick={onCancel}>
           Avbryt
@@ -420,14 +421,14 @@ export function RadAtgSheet({
   useFocusOnOpen(ref, ".btn.primary");
   return (
     <div ref={ref} className="radsh">
-      <Kupong legs={kupong} rows={rows} cost={cost} left={left} favText={favText} className="mini flat" />
+      <Kupong gameType={gameType} legs={kupong} rows={rows} cost={cost} left={left} favText={favText} className="mini flat" />
       <p className="help">
         {allgLeg !== null && (
           <>
-            Avd {allgLeg} är allgarderad. Hos ATG trycker du på <b>Alla</b> i avd {allgLeg}.{" "}
+            {legName(gameType, allgLeg)} är allgarderad. Hos ATG trycker du på <b>Alla</b> i {legName(gameType, allgLeg)}.{" "}
           </>
         )}
-        Texten som kopieras har avdelningarna i ordning, och sist rader och kostnad.
+        Texten som kopieras har loppen i ordning, och sist rader och kostnad.
       </p>
       <div className="shbtns">
         <button type="button" className="btn primary" onClick={onCopy}>

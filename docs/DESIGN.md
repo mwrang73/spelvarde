@@ -87,6 +87,8 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 ### Tavlan
 - `AppHeader`: vyrubrik på tavlan med tillbaka eller logga, titel och underrad (versaler, `--head-ink-2`), plus högst två ikonknappar. På desktop är den toppmeny med Omgång, Källor och Statistik (56 px). I analysvyn är tillbaka en pil med synlig text ("← Avd 5", "← Omgång"), och hästkortet har ‹ › i en grupp till höger. Pil + text betyder tillbaka, två chevroner betyder byt häst. Omgång i menyn leder till omgången du är i.
 - `FlapNumber`: startnummer i en fällbladsruta med delad mitt (linje på 1 px vid 50 %) och bärnstensgula siffror med sken. Storlekar `sm` 24 × 28, `md` 30 × 36 och `lg` 46 × 56. Varianten `placed` är bärnstensgul ruta med mörk text och används för placering.
+- Spårfördel på `FlapNumber`: bricka i övre vänstra hörnet, V (fylld grön, bäst vinstspår), P (ljusgrön, bäst platsspår) eller V+P (samma spår). Statistikraden visar samma märke som förklaring. Spår benämns via `lib/post-edge.ts`.
+- Lopp benämns `V85-1`, `V75-1` osv. (`legName` i `lib/game-type.ts`), aldrig "Avd": avdelning är ATG:s egen numrering och kan vara en annan. Utan känd spelform: "Lopp 1".
 - `RaceTabs`: avdelning 1–8 som fällbladsrutor, `role="tablist"`. Vald flik är bärnstensgul med sken. En röd prick (8 px, `aria-label` "rusningslarm") visar ett olarmat larm i avdelningen.
 - `PhaseRail`: fyra rutor (Analys, Odds, Live och Klart) med dag under. Klara faser får "✓", och den aktiva har `aria-current="step"` och bärnstensgul bakgrund. Varje ruta är en länk till fasens vy.
 - `RaceStrip`: chips för distans, startmetod och klass, knappen "Loppstatistik ›" och en statistikrad ("Spår 5 vinner 12,2 %"). Klassbrickan är neutral (vanlig `.chip`), inte fylld bärnsten.

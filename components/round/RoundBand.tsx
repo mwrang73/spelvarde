@@ -11,11 +11,9 @@ export function RoundBand({ data, leg, onSelect }: { data: RoundResponse; leg: n
   const base = `/omgang/${data.round.id}`;
   return (
     <>
-      <nav className="pn bandp band-avd" aria-label="Avdelningar">
-        <h2 className="bl">
-          Avdelning
-        </h2>
-        <RaceTabs races={data.races} selected={leg} onSelect={onSelect} panelId="avd-panel" variant="band" />
+      <nav className="pn bandp band-avd" aria-label="Lopp">
+        <h2 className="bl">{data.round.gameType}</h2>
+        <RaceTabs gameType={data.round.gameType} races={data.races} selected={leg} onSelect={onSelect} panelId="avd-panel" variant="band" />
       </nav>
       <div className="pn bandp band-fas">
         <h2 className="bl">

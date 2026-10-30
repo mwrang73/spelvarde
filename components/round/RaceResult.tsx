@@ -17,6 +17,7 @@ import { checkedLine, hasAnyMarks, latestIso, placedRowSr, marksSr, resultAnnoun
 import type { OutcomeSummary, RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { OutcomeBadges } from "./parts";
 import { syncResults, useResultSync } from "./resultsStore";
+import { legName } from "@/lib/game-type";
 
 type Props = {
   data: RoundResponse;
@@ -39,18 +40,18 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
   const prev = useRef<{ leg: number; resultAt: string | null }>({ leg: race.leg, resultAt: race.resultAt });
   useEffect(() => {
     const p = prev.current;
-    if (p.leg === race.leg && !p.resultAt && race.resultAt) setAnnounce(resultAnnouncement(race.leg, view.placed, race.summary));
+    if (p.leg === race.leg && !p.resultAt && race.resultAt) setAnnounce(resultAnnouncement(data.round.gameType, race.leg, view.placed, race.summary));
     else if (p.leg !== race.leg) setAnnounce("");
     prev.current = { leg: race.leg, resultAt: race.resultAt };
     // view härleds ur race.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [race.leg, race.resultAt]);
 
-  const next = nextCard(race, data.races, roundId, now, data.results?.summary ?? null);
+  const next = nextCard(data.round.gameType, race, data.races, roundId, now, data.results?.summary ?? null);
   const nextLeg = data.races.find((r) => r.leg === race.leg + 1) ? race.leg + 1 : null;
 
   return (
-    <section className="rres" aria-label={`Resultat avd ${race.leg}`}>
+    <section className="rres" aria-label={`Resultat ${legName(data.round.gameType, race.leg)}`}>
       <p className="sr" aria-live="polite">
         {announce}
       </p>
@@ -60,9 +61,9 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
         <EmptyState icon={<IconFlag />} title="Loppet är inställt" text="ATG har ställt in loppet. Det räknas inte i statistiken." />
       ) : mode === "result" ? (
         <>
-          <Summary summary={race.summary ?? null} leg={race.leg} />
+          <Summary summary={race.summary ?? null} leg={race.leg} label={`Summering ${legName(data.round.gameType, race.leg)}`} />
           <h2 className="sl rsl">Placering</h2>
-          <ul className="rlist" aria-label={`Placering avd ${race.leg}`}>
+          <ul className="rlist" aria-label={`Placering ${legName(data.round.gameType, race.leg)}`}>
             {view.placed.map((p, i) => (
               <li key={p.start.id}>
                 <a
@@ -208,13 +209,13 @@ function Others({ items }: { items: OtherItem[] }) {
 
 // Summeringen på tavlan (.sumb). Utan markeringar: en hjälprad i stället.
 export function Summary({ summary, leg, label, heading }: { summary: OutcomeSummary | null; leg?: number; label?: string; heading?: string }) {
-  if (!hasAnyMarks(summary)) return leg !== undefined ? <p className="help rnone">Inga markeringar i avdelningen.</p> : null;
+  if (!hasAnyMarks(summary)) return leg !== undefined ? <p className="help rnone">Inga markeringar i loppet.</p> : null;
   const s = summary!;
   const boxes = summaryBoxes(s);
   return (
     <div className="sumw">
       {heading && <h2 className="sl">{heading}</h2>}
-      <div className={`sumb brd n${boxes.length}`} role="group" aria-label={label ?? `Summering avd ${leg}`}>
+      <div className={`sumb brd n${boxes.length}`} role="group" aria-label={label ?? "Summering"}>
         <span className="sr">{summarySr(s)}</span>
         {boxes.map((b) => (
           <div key={b.key} aria-hidden="true" className={b.key === "trollspot" ? "tsum" : undefined}>

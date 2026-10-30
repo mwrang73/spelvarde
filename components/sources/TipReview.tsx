@@ -22,6 +22,7 @@ import { dayAbs, dayTimeAbs, isCurrentApproved, isSure, roleLabel, stageLabel, t
 import type { TipArticleDto, TipDto } from "@/lib/types";
 import { errText, TipEditSheet } from "./TipEditSheet";
 import { loadTips, tipActions, useTips } from "./tipsStore";
+import { DEFAULT_GAME_TYPE, legName } from "@/lib/game-type";
 
 type Act = { ids: string[] };
 
@@ -33,6 +34,7 @@ const articleTime = (a: TipArticleDto) => Date.parse(a.publishedAt ?? a.firstSee
 export function TipReview({ roundId, desktop }: { roundId: string; desktop: boolean }) {
   const entry = useTips(roundId);
   const round = useRoundData(roundId);
+  const gameType = round?.round.gameType ?? DEFAULT_GAME_TYPE;
   const online = useOnline();
   const toast = useToast();
   const [stay, setStay] = useState<Set<string>>(() => new Set());
@@ -249,7 +251,7 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
   const firstRow = groups[0]?.tips[0]?.id ?? null;
   const selId = sel && groups.some((g) => g.tips.some((t) => t.id === sel)) ? sel : firstRow;
 
-  const cardProps = { stay, online, hit, onApprove: (t: TipDto) => void approve(t, "button"), onEdit: setEditing, onRemove: (t: TipDto) => void remove(t), onUndo: (t: TipDto) => void undo([t.id]) };
+  const cardProps = { gameType, stay, online, hit, onApprove: (t: TipDto) => void approve(t, "button"), onEdit: setEditing, onRemove: (t: TipDto) => void remove(t), onUndo: (t: TipDto) => void undo([t.id]) };
 
   return (
     <div className={`rv${desktop ? " rv-d" : ""}${!desktop && allSure.length ? " has-bar" : ""}`} ref={rootRef}>
@@ -281,7 +283,7 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
                   </colgroup>
                   <thead>
                     <tr>
-                      <th scope="col">Avd</th>
+                      <th scope="col">Lopp</th>
                       <th scope="col">Nr</th>
                       <th scope="col">Häst</th>
                       <th scope="col">Roll</th>
@@ -298,7 +300,7 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
                 {ids.length > 0 && (
                   <div className="rv-foot">
                     <p className="help">
-                      {unsureLine(unsureHere) ? `${unsureLine(unsureHere)!.replace(/\.$/, "")}. ` : ""}Tangenter: G godkänn · R rätta · Delete ta bort
+                      {unsureLine(unsureHere, gameType) ? `${unsureLine(unsureHere, gameType)!.replace(/\.$/, "")}. ` : ""}Tangenter: G godkänn · R rätta · Delete ta bort
                     </p>
                     <button type="button" className="btn primary" disabled={!online} title={!online ? "Ingen uppkoppling" : undefined} onClick={() => void approveAll(ids, g.article.id)}>
                       Godkänn {ids.length} tips
@@ -353,7 +355,7 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
                     {old.map((t) => (
                       <li key={t.id} className="tipc old">
                         <div className="th">
-                          <span className="av">Avd {t.startLeg ?? t.leg ?? "–"}</span>
+                          <span className="av">{legName(gameType, t.startLeg ?? t.leg ?? "–")}</span>
                           {t.startNumber !== null && <FlapNumber n={t.startNumber} size="sm" />}
                           <span className="pn">{tipHorse(t)}</span>
                           <RoleTag role={t.role} struck />
@@ -379,7 +381,7 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
           <button type="button" className="btn primary full" disabled={!online} title={!online ? "Ingen uppkoppling" : undefined} onClick={() => void approveAll(allSure, null)}>
             Godkänn {allSure.length} tips
           </button>
-          {unsureLine(unsure) && <p className="help">{unsureLine(unsure)}</p>}
+          {unsureLine(unsure, gameType) && <p className="help">{unsureLine(unsure, gameType)}</p>}
         </div>
       )}
 
@@ -388,6 +390,7 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
       </p>
 
       <TipEditSheet
+        gameType={gameType}
         roundId={roundId}
         tip={editing}
         races={round?.races ?? null}
@@ -427,6 +430,7 @@ function ArticleCard({ a, flat, count }: { a: TipArticleDto; flat?: boolean; cou
 }
 
 type CardProps = {
+  gameType: string;
   t: TipDto;
   stay: Set<string>;
   online: boolean;
@@ -538,7 +542,7 @@ function TipCard(p: CardProps) {
       tabIndex={-1}
     >
       <div className="th">
-        <span className="av">Avd {t.startLeg ?? t.leg ?? "–"}</span>
+        <span className="av">{legName(p.gameType, t.startLeg ?? t.leg ?? "–")}</span>
         {t.startNumber !== null && <FlapNumber n={t.startNumber} size="sm" />}
         <span className="pn">
           {unlinked ? `“${t.rawHorseName}”` : t.horseName}

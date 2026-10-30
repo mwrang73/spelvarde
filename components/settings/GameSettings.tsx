@@ -322,7 +322,7 @@ export function ModelAdmin() {
   }, []);
 
   const recomputed = (r: RiktoddsStepResponse | null | undefined) =>
-    r ? `Omgången räknades om med ${r.modelKey}: ${r.computed} starter${r.skippedLegs.length ? `, avd ${r.skippedLegs.join(", ")} utan riktodds (färre än 4 startande)` : ""}.` : "Ingen omgång att räkna om.";
+    r ? `Omgången räknades om med ${r.modelKey}: ${r.computed} starter${r.skippedLegs.length ? `, lopp ${r.skippedLegs.join(", ")} utan riktodds (färre än 4 startande)` : ""}.` : "Ingen omgång att räkna om.";
 
   const afterRecompute = async (roundId: string | null) => {
     clearDetails();

@@ -17,10 +17,11 @@ import { rawPost } from "@/components/api";
 import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { HorseNavButtons, type HorseNav } from "@/components/shell/AppHeader";
-import { Badge, Banner, BetToggle, FlapNumber, LampToggle, LowStreckTag, Skeleton, SpelbarToggle, spelbarOrigin } from "@/components/ui/board";
+import { Badge, Banner, BetToggle, EdgeKey, FlapNumber, LampToggle, LowStreckTag, Skeleton, SpelbarToggle, spelbarOrigin } from "@/components/ui/board";
 import { IconTicket } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
+import { postEdge, type PostEdge } from "@/lib/post-edge";
 import { ageSex, distShort, odds, ordinal, pct, placeChar, placeLabel, relTime, shortDay, thousands } from "@/lib/format";
 import { applyPendingComments, toleranceOf, xFactorsOf, type CommentBody, type PendingComment } from "@/lib/round-overlay";
 import { unibetRaceUrl } from "@/lib/odds-ui";
@@ -37,6 +38,7 @@ import { currentTips, TipsCompact, tipsHref } from "./TipsSection";
 import { FEATURES } from "@/lib/features";
 import { pctSignal, signalClass, signalLines, signalSr } from "@/lib/signals";
 import { MANY_SIGNALS, SIGNAL_KEYS, TOP3_BY_COUNT } from "@/lib/positive-signals";
+import { legName } from "@/lib/game-type";
 
 export function useDetail(startId: string) {
   return useSyncExternalStore(
@@ -150,7 +152,7 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
   const statsBody = d ? <StatsTable d={d} race={race} /> : detail.error ? <DetailError onRetry={retry} /> : <SkeletonBlock rows={4} />;
   const recordsBody = <Records d={d} error={detail.error} race={race} start={start} roundId={data.round.id} all={layout === "mobile" && recAll} />;
   const notesEmpty = !!d && !tips.length && !tipsPending && !comments.list.length;
-  const tipsBody = FEATURES.tips && !notesEmpty ? <TipsCompact roundId={data.round.id} races={data.races} start={start} detail={d} locked={started} /> : null;
+  const tipsBody = FEATURES.tips && !notesEmpty ? <TipsCompact gameType={data.round.gameType} roundId={data.round.id} races={data.races} start={start} detail={d} locked={started} /> : null;
 
   if (layout === "desk") {
     return (
@@ -164,13 +166,13 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
             <span className="meta sstat" aria-live="polite">
               {status}
             </span>
-            <a className="btn secondary xs" href={unibetRaceUrl(race)} target="_blank" rel="noopener noreferrer" aria-label={`Avd ${race.leg} hos Unibet (öppnas i ny flik)`}>
+            <a className="btn secondary xs" href={unibetRaceUrl(race)} target="_blank" rel="noopener noreferrer" aria-label={`${legName(data.round.gameType, race.leg)} hos Unibet (öppnas i ny flik)`}>
               Unibet ↗
             </a>
             <HorseNavButtons nav={nav.nav} className="xsg" />
           </span>
         </div>
-        <HorseBoard start={start} view={view} headingRef={headingRef} />
+        <HorseBoard start={start} edge={postEdge(race.statsLine, start.number)} view={view} headingRef={headingRef} />
         <div className="vr">
           {race.cancelled ? (
             <p className="vr-off">Inställt lopp. Inget att markera.</p>
@@ -375,12 +377,12 @@ function Flags({ start, now, rows }: { start: StartDto; now: Date; rows?: boolea
 }
 
 // Desktoptavlan i hästkortet (3.4 punkt 2): nummer, namn och info, flaggor och nyckeltal.
-function HorseBoard({ start, view, headingRef }: { start: StartDto; view: RiktView; headingRef: React.ForwardedRef<HTMLHeadingElement> }) {
+function HorseBoard({ start, edge, view, headingRef }: { start: StartDto; edge: PostEdge | null; view: RiktView; headingRef: React.ForwardedRef<HTMLHeadingElement> }) {
   const now = new Date();
   const info = [ageSex(start.horse.age, start.horse.sex), start.horse.record ? `rekord ${start.horse.record}` : null].filter(Boolean).join(" · ");
   return (
     <div className="hb brd">
-      <FlapNumber n={start.number} signals={start.signals?.count} />
+      <FlapNumber n={start.number} signals={start.signals?.count} edge={start.scratched ? null : edge} />
       <div className="hb-id">
         <h2 id={`hk-${start.id}`} ref={headingRef} tabIndex={-1} className="nm" title={start.horse.name}>
           {start.horse.name}
@@ -820,6 +822,7 @@ function StatsTable({ d, race }: { d: StartDetailResponse; race: RaceDto }) {
   const lifeEarn = h.life?.earnings ?? d.start.horse.earnings;
   const perStart = h.life?.starts ? (lifeEarn ?? 0) / h.life.starts : null;
   const starts = (y: YearStatsDto | null) => (y ? String(y.starts) : "–");
+  const edgeOf = postEdge(race.statsLine, d.start.number);
   return (
     <>
       <table className="stt">
@@ -869,12 +872,14 @@ function StatsTable({ d, race }: { d: StartDetailResponse; race: RaceDto }) {
       </table>
       <dl className="kv">
         <dt>
+          {edgeOf === "v" || edgeOf === "vp" ? <EdgeKey edge={edgeOf} /> : null}
           Spår {d.start.number}, {race.distance} m {race.startMethod === "VOLTE" ? "volte" : "auto"}, vinst
         </dt>
         <dd>{d.stats.post ? pct(d.stats.post.pct) : "–"}</dd>
         {d.stats.post?.placePct != null && (
           <>
             <dt>
+              {edgeOf === "p" ? <EdgeKey edge="p" /> : null}
               Spår {d.start.number}, plats{d.stats.post.label ? ` (${d.stats.post.label}, ${thousands(d.stats.post.races)} lopp)` : ""}
             </dt>
             <dd>{pct(d.stats.post.placePct)}</dd>
@@ -984,7 +989,7 @@ function Records({ d, error, race, start, roundId, all }: { d: StartDetailRespon
 function commentWhen(c: CommentDto): string {
   const parts: string[] = [shortDay((c.round?.date ?? c.createdAt).slice(0, 10))];
   if (c.round) parts.push(c.round.trackName);
-  if (c.leg) parts.push(`avd ${c.leg}`);
+  if (c.leg) parts.push(c.round ? legName(c.round.gameType, c.leg) : `lopp ${c.leg}`);
   if (c.result) parts.push(c.result.disqualified ? "diskad" : c.result.place && c.result.place >= 1 ? ordinal(c.result.place) : "oplacerad");
   return parts.join(" · ");
 }
@@ -997,7 +1002,7 @@ function useComments({ data, race, start, detail, onTouch }: { data: RoundRespon
   const [draftId, setDraftId] = useState(() => newClientId());
   const horseId = start.horse.id;
   const list = useMemo(() => (detail ? applyPendingComments(detail.comments, queue, horseId).filter((c) => c.clientId !== draftId) : []), [detail, queue, horseId, draftId]);
-  const ctx = { round: { id: data.round.id, date: data.round.date, trackName: data.round.trackName }, leg: race.leg };
+  const ctx = { round: { id: data.round.id, date: data.round.date, trackName: data.round.trackName, gameType: data.round.gameType }, leg: race.leg };
   const save = (clientId: string, body: CommentBody) => {
     onTouch();
     addToOutbox({ method: "PUT", url: `/api/comments/${clientId}`, body, meta: { kind: "comment", horseId, horseName: start.horse.name, clientId, ...ctx } });

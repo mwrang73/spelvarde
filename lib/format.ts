@@ -134,11 +134,6 @@ export function placeLabel(r: { place: number | null; galloped: boolean; disqual
   return r.galloped ? `galopp, ${base}` : base;
 }
 
-// "Avd 7 · 17:13"
-export function legTitle(leg: number, startAt: string): string {
-  return `Avd ${leg} · ${hhmm(startAt)}`;
-}
-
 export function ordinal(n: number): string {
   const last = n % 10;
   const lastTwo = n % 100;

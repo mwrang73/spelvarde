@@ -26,11 +26,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DESKTOP_QUERY, useIsDesktop, useMediaQuery, useNow } from "@/components/hooks";
 import { AppHeader, type HorseNav } from "@/components/shell/AppHeader";
-import { Banner, FlapNumber, FormStrip, GallopBadge, LampToggle, LowStreckTag, signalsSr, Skeleton } from "@/components/ui/board";
+import { Banner, EdgeKey, FlapNumber, FormStrip, GallopBadge, LampToggle, LowStreckTag, signalsSr, Skeleton } from "@/components/ui/board";
 import { TipTag } from "@/components/tips/RoleTag";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { ageSex, dayDate, hhmm, kr, methodLabel, money, pct, shortRaceName } from "@/lib/format";
+import { postEdge, postEdgeText, type PostEdge } from "@/lib/post-edge";
 import { FEATURES } from "@/lib/features";
 import { PHASE_LABELS } from "@/lib/phase";
 import { resultMode, showsResultToggle } from "@/lib/results-ui";
@@ -52,6 +53,7 @@ import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
 import { pctSignal, signalClass, signalSr } from "@/lib/signals";
 import { RefreshBanner, RefreshBoardButton } from "./StreckOdds";
+import { legName } from "@/lib/game-type";
 
 const PATH_RE = /^\/omgang\/([^/]+)\/avd\/(\d+)(?:\/hast\/([^/]+))?\/?$/;
 
@@ -93,10 +95,10 @@ export function RaceWorkspace() {
   if (!race)
     return (
       <>
-        <AppHeader title={`Avd ${leg}`} back={{ href: `/omgang/${roundId}`, label: "Tillbaka till omgången", text: "Omgång" }} />
+        <AppHeader title={`${legName(data.round.gameType, leg)}`} back={{ href: `/omgang/${roundId}`, label: "Tillbaka till omgången", text: "Omgång" }} />
         <main className="page" id="main">
           <Banner tone="info" className="m10">
-            Avdelningen finns inte i omgången.
+            Loppet finns inte i omgången.
           </Banner>
         </main>
       </>
@@ -257,7 +259,7 @@ function Workspace({
         go(avdUrl(to, q), "replace");
         window.scrollTo(0, 0);
       }
-      if (to !== leg) say(`Avdelning ${to}, ${shortRaceName(target.name)}, ${target.counts.starters} hästar`);
+      if (to !== leg) say(`${legName(data.round.gameType, to)}, ${shortRaceName(target.name)}, ${target.counts.starters} hästar`);
     },
     [avdUrl, hastUrl, data.races, leg, startId, listChosen, orderOf],
   );
@@ -422,7 +424,7 @@ function Workspace({
 
   const mode = resultMode(race, now);
   const segmented = canResult ? (
-    <div className="seg rsegc" role="group" aria-label="Visa avdelningen" title="R växlar">
+    <div className="seg rsegc" role="group" aria-label="Visa loppet" title="R växlar">
       <button type="button" aria-pressed={!showResult} onClick={() => setListChosen(true)}>
         Startlista
       </button>
@@ -451,7 +453,7 @@ function Workspace({
       )}
     </span>
   );
-  const raceInfo = `Avd ${leg} · start ${hhmm(race.startAt)} · ${race.counts.starters} hästar${race.counts.scratched > 0 ? ` · ${race.counts.scratched} ${race.counts.scratched === 1 ? "struken" : "strukna"}` : ""}${race.prize !== null ? ` · 1:a pris ${kr(race.prize)}` : ""}`;
+  const raceInfo = `${legName(data.round.gameType, leg)} · start ${hhmm(race.startAt)} · ${race.counts.starters} hästar${race.counts.scratched > 0 ? ` · ${race.counts.scratched} ${race.counts.scratched === 1 ? "struken" : "strukna"}` : ""}${race.prize !== null ? ` · 1:a pris ${kr(race.prize)}` : ""}`;
   const deskMeta = (
     <>
       {data.round.gameType} · {data.round.trackName} · {dayDate(data.round.date)} {data.round.date.slice(0, 4)}
@@ -467,7 +469,7 @@ function Workspace({
   const sheets = (
     <>
       <TagRace data={data} race={race} />
-      <Sheet open={statsOpen} onClose={() => setStatsOpen(false)} title="Loppstatistik" sub={`Avd ${leg} · ${race.distance} m ${methodLabel(race.startMethod)} · ${data.round.trackName}`}>
+      <Sheet open={statsOpen} onClose={() => setStatsOpen(false)} title="Loppstatistik" sub={`${legName(data.round.gameType, leg)} · ${race.distance} m ${methodLabel(race.startMethod)} · ${data.round.trackName}`}>
         <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
       </Sheet>
       <Sheet open={helpOpen} onClose={() => setHelpOpen(false)} title="Kolumnerna i startlistan">
@@ -475,7 +477,7 @@ function Workspace({
           Vinst och plats: i år och i fjol (ATG). Intjänat: total vinstsumma och per start. Spår v.: startnumrets vinst % på distansen och startmetoden (ATG 2 år). Siffran på startnumret: antal positiva signaler av 10. Rikt: riktodds för plats, modell {modelLabel(data.model?.key, !!data.model?.calibrated)}. Med X-faktor står riktoddset med X överst och det vanliga under. * = osäkert.
         </p>
         <h3 className="hsheet-h">Tangenter</h3>
-        <p className="help hsheet">← → byter avdelning. ↑ ↓ byter häst, Home och End går till första och sista. Enter går till hästkortet. I växlar Intressant. X stegar X-faktorn (Shift + X baklänges). R växlar Startlista och Resultat.</p>
+        <p className="help hsheet">← → byter lopp. ↑ ↓ byter häst, Home och End går till första och sista. Enter går till hästkortet. I växlar Intressant. X stegar X-faktorn (Shift + X baklänges). R växlar Startlista och Resultat.</p>
       </Sheet>
     </>
   );
@@ -491,7 +493,7 @@ function Workspace({
       <div className="twrap">
         <table className="tbl stbl">
           <caption className="sr">
-            Startlista avdelning {leg}, {race.counts.starters} hästar. Pil upp och ned väljer häst, Enter går till hästkortet, I växlar Intressant och X stegar X-faktorn.
+            Startlista {legName(data.round.gameType, leg)}, {race.counts.starters} hästar. Pil upp och ned väljer häst, Enter går till hästkortet, I växlar Intressant och X stegar X-faktorn.
           </caption>
           <colgroup>
             <col style={{ width: 56 }} />
@@ -540,7 +542,7 @@ function Workspace({
           </thead>
           <tbody>
             {ordered.map((s, i) => (
-              <DeskRow key={s.id} s={s} index={i} selected={s.id === start?.id} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
+              <DeskRow key={s.id} s={s} edge={s.scratched ? null : postEdge(race.statsLine, s.number)} index={i} selected={s.id === start?.id} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
             ))}
           </tbody>
         </table>
@@ -560,9 +562,9 @@ function Workspace({
             Intr.
           </span>
         </div>
-        <ul className="list mlist" aria-label={`Startlista avdelning ${leg}`}>
+        <ul className="list mlist" aria-label={`Startlista lopp ${leg}`}>
           {ordered.map((s, i) => (
-            <StartRow key={s.id} s={s} index={i} started={race.started} selected={s.id === start?.id} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
+            <StartRow key={s.id} s={s} edge={s.scratched ? null : postEdge(race.statsLine, s.number)} index={i} started={race.started} selected={s.id === start?.id} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
           ))}
         </ul>
         <ReviewBar race={race} setReviewed={setReviewed} />
@@ -571,7 +573,7 @@ function Workspace({
     return (
       <>
         <div className="stick">
-          <AppHeader title={`Avd ${leg}`} deskTitle={false} refresh={oddsOpen ? <RefreshBoardButton data={data} /> : undefined} deskMeta={deskMeta} />
+          <AppHeader title={`${legName(data.round.gameType, leg)}`} deskTitle={false} refresh={oddsOpen ? <RefreshBoardButton data={data} /> : undefined} deskMeta={deskMeta} />
         </div>
         <main className="av" id="main" data-list={wide ? "wide" : "narrow"} data-table={tableMode && !isWide ? "on" : undefined}>
           <RoundBand data={data} leg={leg} onSelect={selectLeg} />
@@ -591,7 +593,7 @@ function Workspace({
                 <button type="button" className="btn secondary xs" aria-haspopup="dialog" onClick={() => setStatsOpen(true)}>
                   {wide ? "Loppstatistik ›" : "Statistik ›"}
                 </button>
-                {wide && <UnibetChip race={race} />}
+                {wide && <UnibetChip race={race} gameType={data.round.gameType} />}
                 {!isWide && (
                   <button type="button" className="btn secondary xs" aria-pressed={tableMode} onClick={toggleTable}>
                     Tabell
@@ -631,7 +633,7 @@ function Workspace({
   }
 
   // ---- Mobil ------------------------------------------------------------------------------
-  const listTitle = showResult ? `Avd ${leg} · resultat` : `Avd ${leg} · ${shortRaceName(race.name)}`;
+  const listTitle = showResult ? `${legName(data.round.gameType, leg)} · resultat` : `${legName(data.round.gameType, leg)} · ${shortRaceName(race.name)}`;
   const listSub = !showResult
     ? `${data.round.gameType} · ${data.round.trackName} · start ${hhmm(race.startAt)} · ${race.counts.starters} hästar`
     : mode === "result" && race.resultAt
@@ -646,12 +648,12 @@ function Workspace({
           <AppHeader
             ref={mobHeading}
             title={start.horse.name}
-            lead={<FlapNumber n={start.number} signals={start.signals?.count} />}
+            lead={<FlapNumber n={start.number} signals={start.signals?.count} edge={start.scratched ? null : postEdge(race.statsLine, start.number)} />}
             sub={`${index + 1} av ${ordered.length} · ${start.driver?.name ?? "Kusk saknas"}`}
             back={{
               href: avdUrl(leg),
-              label: `Tillbaka till avd ${leg}`,
-              text: `Avd ${leg}`,
+              label: `Tillbaka till ${legName(data.round.gameType, leg)}`,
+              text: `${legName(data.round.gameType, leg)}`,
               onClick: (e) => {
                 e.preventDefault();
                 backToList();
@@ -665,7 +667,7 @@ function Workspace({
         )}
         {view === "list" && (
           <>
-            <RaceTabs races={data.races} selected={leg} onSelect={selectLeg} panelId="avd-panel" variant="scroll" />
+            <RaceTabs gameType={data.round.gameType} races={data.races} selected={leg} onSelect={selectLeg} panelId="avd-panel" variant="scroll" />
             <div className="strip brd">
               <div className="chips">
                 <span className="chip num">{race.distance} m</span>
@@ -678,18 +680,20 @@ function Workspace({
                 <button type="button" className="chip chip-btn" aria-haspopup="dialog" onClick={() => setStatsOpen(true)}>
                   Loppstatistik ›
                 </button>
-                <UnibetChip race={race} chip />
+                <UnibetChip race={race} gameType={data.round.gameType} chip />
               </div>
               <div className="statline">
                 {race.statsLine.ok ? (
                   <>
                     {race.statsLine.bestNumber && (
                       <span>
+                        <EdgeKey edge={race.statsLine.bestNumber.number === race.statsLine.bestPlace?.number ? "vp" : "v"} />
                         Spår {race.statsLine.bestNumber.number} vinner <b>{pct(race.statsLine.bestNumber.pct)}</b>
                       </span>
                     )}
                     {race.statsLine.bestPlace && (
                       <span>
+                        {race.statsLine.bestNumber?.number !== race.statsLine.bestPlace.number && <EdgeKey edge="p" />}
                         Spår {race.statsLine.bestPlace.number} plats <b>{pct(race.statsLine.bestPlace.pct)}</b>
                       </span>
                     )}
@@ -738,9 +742,9 @@ function Workspace({
                 <RaceResult data={data} race={race} now={now} selectedId={null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
               </div>
             )}
-            <ul className="list mlist" hidden={showResult} aria-label={`Startlista avdelning ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <ul className="list mlist" hidden={showResult} aria-label={`Startlista lopp ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               {ordered.map((s, i) => (
-                <StartRow key={s.id} s={s} index={i} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
+                <StartRow key={s.id} s={s} edge={s.scratched ? null : postEdge(race.statsLine, s.number)} index={i} started={race.started} href={hastUrl(leg, s.id)} onOpen={openHorse} onToggle={toggle} />
               ))}
             </ul>
             {!showResult && <ReviewBar race={race} setReviewed={setReviewed} />}
@@ -769,7 +773,7 @@ function Workspace({
 
 // ---- Rader -----------------------------------------------------------------------------
 
-type RowProps = { s: StartDto; index: number; started: boolean; href: string; onOpen: (s: StartDto) => void; onToggle: (s: StartDto, v: boolean) => void };
+type RowProps = { s: StartDto; edge: PostEdge | null; index: number; started: boolean; href: string; onOpen: (s: StartDto) => void; onToggle: (s: StartDto, v: boolean) => void };
 
 // Kusken och hästens totala vinstsumma sist (summan kortas aldrig, namnet först).
 function Driver({ s }: { s: StartDto }) {
@@ -794,9 +798,9 @@ function Driver({ s }: { s: StartDto }) {
 }
 
 // Öppnar loppet hos Unibet i en ny flik (Unibet går inte att bädda in).
-function UnibetChip({ race, chip }: { race: RaceDto; chip?: boolean }) {
+function UnibetChip({ race, gameType, chip }: { race: RaceDto; gameType: string; chip?: boolean }) {
   return (
-    <a className={chip ? "chip chip-btn chip-u" : "btn secondary xs"} href={unibetRaceUrl(race)} target="_blank" rel="noopener noreferrer" aria-label={`Avd ${race.leg} hos Unibet (öppnas i ny flik)`}>
+    <a className={chip ? "chip chip-btn chip-u" : "btn secondary xs"} href={unibetRaceUrl(race)} target="_blank" rel="noopener noreferrer" aria-label={`${legName(gameType, race.leg)} hos Unibet (öppnas i ny flik)`}>
       Unibet ↗
     </a>
   );
@@ -814,11 +818,11 @@ function SortButton({ bySignals, onToggle }: { bySignals: boolean; onToggle: () 
   );
 }
 
-function StartRow({ s, index, started, href, onOpen, onToggle, selected }: RowProps & { selected?: boolean }) {
+function StartRow({ s, edge, index, started, href, onOpen, onToggle, selected }: RowProps & { selected?: boolean }) {
   const on = !!s.mark?.interesting;
   return (
     <li className={`row g-an${on ? " is-i" : ""}${s.mark?.bet ? " is-b" : ""}${s.scratched ? " scr" : ""}${selected ? " sel" : ""}`} data-start={s.id} aria-current={selected ? "true" : undefined}>
-      <FlapNumber n={s.number} index={index} signals={s.signals?.count} />
+      <FlapNumber n={s.number} index={index} signals={s.signals?.count} edge={edge} />
       <a
         className="who"
         href={href}
@@ -830,7 +834,8 @@ function StartRow({ s, index, started, href, onOpen, onToggle, selected }: RowPr
         <span className="hl">
           <span className="sr">
             Nr {s.number}
-            {signalsSr(s.signals?.count)},{" "}
+            {signalsSr(s.signals?.count)}
+            {edge ? `, ${postEdgeText(edge)}` : ""},{" "}
           </span>
           <span className="hn">{s.horse.name}</span>
           <MarkBadges s={s} />
@@ -847,12 +852,12 @@ function StartRow({ s, index, started, href, onOpen, onToggle, selected }: RowPr
   );
 }
 
-function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowProps & { selected: boolean }) {
+function DeskRow({ s, edge, index, selected, started, href, onOpen, onToggle }: RowProps & { selected: boolean }) {
   const on = !!s.mark?.interesting;
   return (
     <tr className={`${on ? "is-i " : ""}${s.mark?.bet ? "is-b " : ""}${selected ? "sel " : ""}${s.scratched ? "scr" : ""}`} data-start={s.id} onClick={() => onOpen(s)} aria-current={selected ? "true" : undefined}>
       <td>
-        <FlapNumber n={s.number} index={index} signals={s.signals?.count} />
+        <FlapNumber n={s.number} index={index} signals={s.signals?.count} edge={edge} />
       </td>
       <td>
         <a
@@ -867,7 +872,8 @@ function DeskRow({ s, index, selected, started, href, onOpen, onToggle }: RowPro
           <span className="hl">
             <span className="sr">
               Nr {s.number}
-              {signalsSr(s.signals?.count)},{" "}
+              {signalsSr(s.signals?.count)}
+              {edge ? `, ${postEdgeText(edge)}` : ""},{" "}
             </span>
             <span className="hn">{s.horse.name}</span>
             <MarkBadges s={s} />
@@ -926,11 +932,13 @@ function StatLine({ race, roundId, gameType }: { race: RaceDto; roundId: string;
     <>
       {line.bestNumber && (
         <span>
+          <EdgeKey edge={line.bestNumber.number === line.bestPlace?.number ? "vp" : "v"} />
           Spår {line.bestNumber.number} vinner <b>{pct(line.bestNumber.pct)}</b>
         </span>
       )}
       {line.bestPlace ? (
         <span>
+          {line.bestNumber?.number !== line.bestPlace.number && <EdgeKey edge="p" />}
           Spår {line.bestPlace.number} plats <b>{pct(line.bestPlace.pct)}</b>
         </span>
       ) : (
@@ -1031,7 +1039,7 @@ function WorkspaceSkeleton({ leg, roundId, error, notFound, result }: { leg: num
   return (
     <>
       <div className="stick">
-        <AppHeader title={`Avd ${leg}`} sub="Laddar …" back={{ href: `/omgang/${roundId}`, label: "Tillbaka till omgången", text: "Omgång" }} deskTitle={false} />
+        <AppHeader title={`Lopp ${leg}`} sub="Laddar …" back={{ href: `/omgang/${roundId}`, label: "Tillbaka till omgången", text: "Omgång" }} deskTitle={false} />
         <div className="mavs brd m-only" aria-hidden="true">
           {Array.from({ length: 8 }, (_, i) => (
             <span key={i} className="mavs-sk" aria-selected={i + 1 === leg}>
@@ -1046,7 +1054,7 @@ function WorkspaceSkeleton({ leg, roundId, error, notFound, result }: { leg: num
         {banner ?? (
           <>
             <div className="pn bandp band-avd" aria-hidden="true">
-              <span className="bl">Avdelning</span>
+              <span className="bl">Lopp</span>
               <div className="seg nav avt">
                 {Array.from({ length: 8 }, (_, i) => (
                   <span key={i} aria-selected={i + 1 === leg}>
@@ -1065,7 +1073,7 @@ function WorkspaceSkeleton({ leg, roundId, error, notFound, result }: { leg: num
             </div>
             <div className="pn race" aria-label="Laddar startlistan">
               <div className="pn-h">
-                <span>Avd {leg}</span>
+                <span>Lopp {leg}</span>
               </div>
               <div className="rb brd" />
               <div className="twrap">

@@ -1,0 +1,858 @@
+<title>Spelvärde · Spelförslag, Visa spelbara och spårfördel</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens (kopia av styles/tokens.css) ===== */
+:root{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--fill-deep:#A45F00;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;
+--glow:rgba(242,154,0,.40);--up:#0E7A3B;--up-soft:#DDF3E5;
+--sig:#0E7A3B;--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--sig-fill-2:#BFE6CB;--sig-fill-2-ink:#0A4721;--sig-soft:#DDF3E5;--sig-text:#0A4721;
+--down:#C42B1F;--down-soft:#FBE1DD;--gal:#C42B1F;--gal-ink:#FFFFFF;--bet:#0D1014;--bet-ink:#FFFFFF;
+--chip-auto-bg:#DCE7F3;--chip-auto-ink:#0D2A4A;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;--head-up:#46D37E;
+--btn-fill:linear-gradient(#FFC85C,#F4A51F);--btn-edge:#9A5A00;--btn-glow:rgba(244,165,31,.25);
+--key-on:linear-gradient(#FFCB60,#F39A00);--key-on-ring:#A45F00;--key-on-edge:#6B3E00;--key-off:linear-gradient(#FFFFFF,#E2E6EB);--key-off-shadow:inset 0 0 0 1px #AEB6BF,0 2px 0 #9AA3AD;--key-dot:#B4BCC5;
+--board-chip-line:#3A4048;--board-auto:#A8D4FF;--board-auto-line:#2F4A66;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+--focus-ring:3px solid var(--focus);--focus-offset:2px}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill-deep:#8F5200;--focus:#7CC4FF;
+--head:#050607;--head-ink-2:#B9C0C8;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--glow:rgba(255,178,46,.55);--up:#46D37E;--up-soft:rgba(70,211,126,.14);
+--sig:#46D37E;--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--sig-fill-2:rgba(70,211,126,.30);--sig-fill-2-ink:#C8F7DA;--sig-soft:rgba(70,211,126,.16);--sig-text:#8BEDB3;
+--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--gal:#FF5A45;--gal-ink:#1A0400;--bet:#F3EFE4;--bet-ink:#0C0E11;
+--chip-auto-bg:#13263A;--chip-auto-ink:#A8D4FF;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);--key-off:linear-gradient(#2C3138,#1C2026);--key-off-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 2px 0 #000;--key-dot:#4A515A}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+.mk{padding:24px 24px 64px;max-width:1340px}
+.mk-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mk h1.mt{margin:0;font:700 26px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk .lead{max-width:980px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.mk h2.sec{margin:56px 0 4px;padding-top:14px;border-top:3px solid var(--fill);font:700 26px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.mk h3.alt{margin:34px 0 4px;font:700 21px/1.2 var(--f-name);text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mk h3.alt>.al{display:inline-grid;place-items:center;width:30px;height:34px;border-radius:4px;background:var(--flap-on);color:var(--flap-on-ink);font-family:var(--f-num)}
+.mk h3.alt>.recs{font:700 12px/1 var(--f-label);letter-spacing:.08em;background:var(--sig-fill);color:var(--sig-fill-ink);padding:5px 8px;border-radius:4px}
+.mk h4.part{margin:24px 0 8px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.mk p.sub{margin:0 0 12px;max-width:980px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.mk p.sub b{color:var(--ink)}
+.toc{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.toc a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:7px;background:var(--surface);color:var(--ink);text-decoration:none;font:700 14px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.scrollx{overflow-x:auto;padding-bottom:6px}
+.nt{max-width:1280px;margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.nt>div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:13.5px;line-height:1.45}
+.nt h5{margin:0 0 4px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.nt ul{margin:0;padding-left:18px}
+.nt p{margin:0 0 6px}
+.nt p:last-child{margin:0}
+.rec{margin-top:44px;background-color:var(--head);background-image:var(--matrix);background-size:4px 4px;color:var(--head-text);border-radius:10px;padding:16px 20px;max-width:1280px;font-size:14.5px;line-height:1.5}
+.rec h2{margin:0 0 6px;font:700 18px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.05em;color:var(--head-ink)}
+.rec b{color:var(--head-title)}
+.rec ul,.rec ol{margin:6px 0 12px;padding-left:20px}
+.cmp{width:100%;max-width:1000px;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);font-size:13.5px;line-height:1.35}
+.cmp th{font:700 11.5px/1.15 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:8px 10px;background:var(--surface-3)}
+.cmp td{padding:7px 10px;border-top:1px solid var(--line);vertical-align:top}
+.cmp td.y{color:var(--sig);font-weight:700;white-space:nowrap}
+.cmp td.n{color:var(--ink-2);font-weight:700;white-space:nowrap}
+.bf{width:1282px;border:1px solid #000;border-radius:10px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.35);background:#2a2d31}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:620px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+div.vp{width:1280px;height:780px;overflow-y:auto;overflow-x:hidden;position:relative;background:var(--bg);color:var(--ink)}
+.phwrap{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+.phc{display:grid;gap:8px;justify-items:start}
+.phc>span{font:700 12px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);max-width:410px}
+.ph{width:410px;height:864px;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;position:relative;background:var(--bg);box-shadow:0 20px 50px rgba(0,0,0,.35);flex:none}
+.ph-in{width:390px;height:844px;position:relative;overflow:hidden}
+.ph-scroll{position:absolute;left:0;right:0;top:0;bottom:64px;overflow-y:auto;overflow-x:hidden}
+.states{margin-top:12px;max-width:1280px;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px 22px;background:var(--surface-2);border:1px solid var(--line)}
+.states figure{margin:0;display:grid;gap:5px;align-content:start;max-width:390px}
+.states figcaption{font:700 11.5px/1.25 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.states figcaption b{color:var(--ink)}
+.states .statline{padding:6px 10px;border-radius:6px 6px 0 0;margin-bottom:-5px}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+
+/* ===== Från styles/app.css ===== */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+.help{font-size:13px;color:var(--ink-2);line-height:1.4;margin:0}
+.spel-help{margin:0 12px 6px}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 8px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{min-width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;gap:2px;border:0;background:none;color:var(--head-ink);flex:none;border-radius:8px;text-decoration:none;font:700 13px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.ibtn svg{width:20px;height:20px}
+.dhead{height:56px;display:flex;align-items:center;gap:14px;padding:0 16px}
+.logo{display:inline-grid;place-items:center;width:30px;color:var(--head-ink);flex:none}
+.logo svg{width:26px;height:26px}
+.ah-brand{font:800 26px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0;white-space:nowrap}
+.dnav{display:flex;gap:2px;margin-left:60px;flex:1}
+.dnav a{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;text-decoration:none;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2)}
+.dnav a[aria-current="page"]{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2);text-align:right;line-height:1.35}
+.dtitle{display:flex;align-items:center;gap:14px;padding:6px 16px 10px}
+.dtitle h1{margin:0;font:700 24px/1.05 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title)}
+.dtitle small{display:block;font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);height:64px;padding-bottom:10px;background:var(--surface);border-top:1px solid var(--line);z-index:3}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);position:relative;text-decoration:none}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--fill)}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);font-variant-numeric:tabular-nums;text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr b{display:block}
+.nr.sm{width:26px;height:28px;font-size:14px;letter-spacing:-.04em}
+.nr .sigb{position:absolute;right:-6px;bottom:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;display:grid;place-items:center;font:700 10px/1 var(--f-num);font-style:normal;color:var(--sig);background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--sig);text-shadow:none;z-index:1}
+.nr .sigb.many{background:var(--sig-fill);color:var(--sig-fill-ink);box-shadow:none}
+.nr.sm .sigb{right:-5px;bottom:-4px;min-width:14px;height:14px;font-size:9px}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.bdg.g{background:var(--gal);color:var(--gal-ink)}
+.bdg.x,.bdg.xp{background:var(--head);color:var(--head-ink);box-shadow:inset 0 0 0 1px var(--head-line)}
+.bdg.xp{padding:0 2px;max-width:22px;letter-spacing:0}
+.bdg.tsb{background:var(--head);color:var(--head-ink);box-shadow:inset 0 0 0 1px var(--fill-deep);padding:0 1px}
+.bdg.tsb svg{width:13px;height:13px}
+.trk{font:700 11px/1 var(--f-num);color:var(--accent);flex:none;margin-left:-1px}
+.tag{display:inline-flex;align-items:center;min-height:19px;padding:1px 5px;border-radius:4px;font:700 10.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none;white-space:nowrap}
+.tag.good{background:var(--up-soft);color:var(--up)}
+.tag.scr-tag{color:var(--ink-2)}
+.hl{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}
+.hn{font:700 17px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:min(6em,100%);color:inherit;text-decoration:none}
+.kt{font-size:12px;line-height:1.25;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.kt2{display:flex;gap:6px;min-width:0}
+.kt2>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.kt-earn{flex:none;font:600 12px/1.25 var(--f-num);color:var(--ink-2)}
+.sigs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.note{display:block;font-size:11.5px;line-height:1.3;color:var(--ink-2);margin-top:3px}
+.lamp,.betk{width:44px;height:44px;display:inline-grid;place-items:center;border:0;background:transparent;padding:0;border-radius:8px;flex:none;color:inherit}
+.lamp-i{display:inline-grid;place-items:center;position:relative;width:28px;height:28px;border-radius:6px;background:var(--key-off);box-shadow:var(--key-off-shadow)}
+.lamp-i svg{width:18px;height:18px}
+.lamp .lamp-i::before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:var(--key-dot)}
+.lamp .lamp-i svg{opacity:0;color:var(--fill-ink)}
+.lamp[aria-pressed="true"] .lamp-i{background:var(--key-on);box-shadow:0 0 0 1px var(--key-on-ring),0 0 16px var(--glow),0 1px 0 var(--key-on-edge)}
+.lamp[aria-pressed="true"] .lamp-i::before{opacity:0}
+.lamp[aria-pressed="true"] .lamp-i svg{opacity:1}
+.betk .lamp-i svg{opacity:.6;color:var(--ink-2)}
+.seg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{min-height:44px;padding:0 14px;border:0;background:transparent;font:700 14.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink-2);white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button svg{width:16px;height:16px}
+.segw{padding:8px 10px;display:flex}
+.segw .seg{width:100%}
+.segw .seg button{flex:1;padding:0 6px;font-size:13.5px}
+.troll-btn{color:var(--accent)!important}
+.seg .troll-btn[aria-pressed="true"]{background:var(--head);color:var(--head-ink)!important;box-shadow:inset 0 0 0 1px var(--fill-deep),0 0 12px var(--glow)}
+.dtabs{display:flex;gap:4px;padding:12px 0 0;border-bottom:1px solid var(--line)}
+.dtabs button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;min-height:44px;padding:10px 14px;font:700 14px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);border-bottom:3px solid transparent}
+.dtabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--fill)}
+.dtabs button.troll-btn[aria-pressed="true"]{text-shadow:0 0 10px var(--glow)}
+.dtabs svg{width:16px;height:16px}
+.btn{position:relative;min-height:44px;padding:0 14px;border-radius:7px;border:1.5px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;white-space:nowrap;font:700 14.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;text-decoration:none;color:inherit}
+.btn svg{width:17px;height:17px;flex:none}
+.btn.primary{background:var(--btn-fill);color:var(--fill-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 3px 0 var(--btn-edge),0 6px 14px var(--btn-glow)}
+.btn.secondary{background:linear-gradient(var(--surface),var(--surface-2));border:1px solid var(--line-strong);color:var(--ink);box-shadow:0 3px 0 var(--line-strong)}
+.srefresh{margin:6px 12px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.srefresh .k{display:block;font:700 11.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:3px}
+.srefresh p{margin:0;font-size:13.5px}
+.srefresh .num{font-weight:700;font-size:12.5px}
+.dsec-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0 6px}
+.dsec-h h2{margin:0;font:700 22px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em}
+.sortbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px}
+.chk{display:inline-flex;align-items:center;gap:10px;min-height:44px;font:700 14px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink)}
+.chk input{width:22px;height:22px;margin:0;accent-color:var(--fill-deep)}
+.sl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.plist{list-style:none;margin:0;padding:0}
+.pcard{margin:0 10px 14px;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.pgh{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 10px;background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);border-bottom:2px solid var(--fill)}
+.pgh h4{margin:0;font:700 15px/1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title)}
+.pgh>span:last-child{margin-left:auto;font:700 11.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+:root[data-theme="dark"] .pgh{background:var(--surface-3);border-bottom:1.5px solid var(--line-strong)}
+:root[data-theme="dark"] .pcard{border-width:1.5px;border-radius:12px;box-shadow:var(--shadow);margin-bottom:20px}
+.brow{display:grid;column-gap:6px;row-gap:3px;align-items:center;padding:6px 6px 6px 10px;min-height:60px;border-bottom:1px solid var(--line);background:var(--surface)}
+.plist>.brow:nth-child(even){background:var(--surface-2)}
+.brow.xa{grid-template-columns:26px minmax(0,1fr) 72px 44px}
+.brow.xb{grid-template-columns:26px minmax(0,1fr) 46px 72px 44px}
+.brow>.nr{grid-row:1;grid-column:1}
+.brow>.pmain{grid-row:1;grid-column:2}
+.brow.xa>.ofc{grid-row:1;grid-column:3}
+.brow.xa>.betk,.brow.xa>.lamp{grid-row:1;grid-column:4}
+.brow.xb>.spkc{grid-row:1;grid-column:3}
+.brow.xb>.ofc{grid-row:1;grid-column:4}
+.brow.xb>.betk,.brow.xb>.lamp{grid-row:1;grid-column:5}
+.pmain{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pm{font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm b{font-family:var(--f-num);color:var(--ink)}
+.pm b.rkx{color:var(--accent)}
+.ofc{display:flex;flex-direction:column;align-items:center;gap:3px}
+.spkc{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.mic{font:600 11px/1 var(--f-label);letter-spacing:.03em;color:var(--ink-2);white-space:nowrap}
+.up-t{color:var(--down)!important}
+.dn-t{color:var(--up)!important}
+.spk{display:block;overflow:visible}
+.spk polyline{fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linejoin:round}
+.spk circle{fill:var(--accent)}
+.spk line{stroke:var(--line-strong);stroke-width:1;stroke-dasharray:2 2}
+.trend{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.trend span{font:700 12.5px var(--f-num)}
+.trend small{display:block;font:500 11px var(--f-body);color:var(--ink-2)}
+.dim{color:var(--ink-2)}
+.oin{width:68px;height:40px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--bg);color:var(--ink);font:700 16px/1 var(--f-num);text-align:center;padding:0 4px}
+.oin::placeholder{color:var(--ink-2);opacity:.7}
+.oin:focus-visible{outline:none;border-color:var(--focus);box-shadow:0 0 0 3px var(--focus)}
+.oin.over{border:2px solid var(--sig);background:var(--sig-soft);box-shadow:0 0 10px rgba(70,211,126,.25)}
+.oin.near{border:2px solid var(--down);background:var(--sig-soft)}
+.sv{display:inline-flex;align-items:center;gap:3px;font:700 11.5px/1 var(--f-num);color:var(--ink-2);white-space:nowrap;min-height:16px}
+.sv i{font:700 10.5px/1 var(--f-label);font-style:normal;letter-spacing:.04em;text-transform:uppercase}
+.sv.over{color:var(--sig)}
+.sv.near{color:var(--down)}
+.sv.tmin-h{color:var(--accent)}
+.rest{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:8px 10px 8px 12px;font-size:13.5px;color:var(--ink-2);background:var(--surface);border-bottom:1px solid var(--line);text-decoration:none}
+.twrap{padding:4px 0 0}
+.tbl{width:100%;font-size:14px}
+.tbl th{font:700 11.5px/1.1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:9px 6px;white-space:nowrap;border-bottom:1.5px solid var(--line-strong);background:var(--surface-3)}
+.tbl th abbr{text-decoration:none}
+.tbl th .thsub{display:block;font-size:9.5px;letter-spacing:.04em;opacity:.8}
+.tbl td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle;line-height:1.2}
+.tbl td:first-child,.tbl th:first-child{padding-left:10px}
+.tbl .r{text-align:right}
+.tbl .c{text-align:center}
+.tbl .hl{gap:6px}
+.tbl .hn{font-size:17.5px}
+.ptbl{table-layout:fixed;border-collapse:separate;border-spacing:0}
+.ptbl caption{caption-side:top;text-align:left;padding:10px 0 6px;font:700 12px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.ptbl caption span+span{margin-left:12px}
+.ptbl .oin{width:76px;height:40px;font-size:17px}
+.ptbl .sv{font-size:12.5px}
+.ptbl tbody td{background:var(--surface)}
+.ptbl tr.gh th{padding:0;border:0;background:none;letter-spacing:0;text-transform:none}
+.ptbl tr.gh .pgh{border:1px solid var(--line-strong);border-bottom:2px solid var(--fill);border-radius:10px 10px 0 0}
+.ptbl tr.pgap td{height:14px;padding:0;border:0;background:none!important}
+.ptbl tbody td:first-child{border-left:1px solid var(--line-strong)}
+.ptbl tbody td:last-child{border-right:1px solid var(--line-strong)}
+.ptbl tbody tr.pgap td{border:0}
+.ptbl tbody tr:last-child td{border-bottom:1px solid var(--line-strong)}
+.rk{position:relative;font:700 13.5px/1 var(--f-num);text-align:right;color:var(--ink);white-space:nowrap}
+.rk.two{display:inline-flex;flex-direction:column;align-items:flex-end;gap:3px}
+.rk .rkx{color:var(--accent)}
+.rk .rk0{font:500 11px/1 var(--f-num);color:var(--ink-2)}
+.tchance{display:inline-grid;justify-items:end;gap:3px;min-width:44px}
+.tchance b{font:700 13.5px/1 var(--f-num)}
+.tchance i{display:block;height:3px;background:var(--fill);border-radius:2px;max-width:44px}
+.mnv{font:700 13.5px/1 var(--f-num);white-space:nowrap}
+.mnv.ok,.kvs b.ok{color:var(--sig)}
+.est{font:500 13px/1 var(--f-num);color:var(--ink-2);white-space:nowrap}
+
+/* Nytt: nyckeltalsraden i mobilen (Chans, Odds ≈, Minst). */
+.bx{grid-row:2;grid-column:2/-1;min-width:0}
+.kvs{display:flex;gap:14px;align-items:baseline;white-space:nowrap}
+.kvs small{font:700 10.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.kvs b{font:700 12.5px/1 var(--f-num)}
+.why{margin:0 12px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13.5px;line-height:1.4}
+.why summary{min-height:44px;display:flex;align-items:center;padding:0 12px;font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.why p{margin:0;padding:0 12px 8px}
+.pp[data-sort="0"] .s-alt,.pp[data-sort="1"] .s-per{display:none}
+.scr .p-troll,.scr .p-plats,.scr .p-rad{display:none}
+.scr[data-tab="troll"] .p-troll,.scr[data-tab="plats"] .p-plats,.scr[data-tab="rad"] .p-rad{display:block}
+.spw{max-width:900px;margin:0 auto}
+.spw .srefresh{margin:10px 0}
+.spw .sortbar{padding:0}
+.spw .why{margin:0 0 8px}
+.spw .spel-help{margin:0 0 4px}
+.radnote{padding:24px 12px}
+
+/* Nytt: snabbfiltret Visa spelbara (punkt 5). */
+.ol-head{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;padding:10px 12px 0}
+.ol-head .seg button{min-height:44px;font-size:13px}
+.ol-count{margin:0;font-size:14px;color:var(--ink-2);flex-basis:100%}
+.ol-count b{color:var(--ink);font-family:var(--f-num)}
+.qf{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1.5px solid var(--line-strong);border-radius:7px;background:var(--surface);font:700 13.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+.qf .num{font-size:12.5px;font-weight:700}
+.qf .ck{display:none;font-size:13px}
+.qf[aria-pressed="true"]{background:var(--fill);color:var(--fill-ink);border-color:var(--fill-deep);box-shadow:0 0 14px var(--glow)}
+.qf[aria-pressed="true"] .ck{display:inline}
+.qf[aria-pressed="true"] .bdg.s{background:var(--fill-ink);color:var(--fill)}
+.scr[data-f="1"] .hid{display:none}
+.scr[data-f="1"] .cnt-off,.scr:not([data-f="1"]) .cnt-on{display:none}
+.olw{max-width:1000px;margin:0 auto}
+.olw .ol-head{padding:14px 0 0}
+.olw .ol-count{flex-basis:auto;margin-left:auto}
+.empty{margin:14px 12px;padding:20px 16px;border-radius:10px;display:grid;justify-items:center;gap:8px;text-align:center}
+.empty h3{margin:0;font:700 20px/1.1 var(--f-name);text-transform:uppercase;color:var(--head-title)}
+.empty p{margin:0;font-size:14px;line-height:1.4;color:var(--head-ink-2)}
+
+/* Startlistan (punkt 6). */
+.mavs{display:flex;gap:4px;padding:2px 8px 8px;overflow-x:auto}
+.mavs button{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;padding:0 8px 0 4px;border:1px solid var(--head-line);border-radius:6px;background:rgba(255,255,255,.04);color:var(--head-ink-2);font:600 12px/1.1 var(--f-label);letter-spacing:.03em;text-align:left;text-transform:uppercase}
+.mavs button small{display:block;font:500 10.5px/1.2 var(--f-num);text-transform:none;letter-spacing:0}
+.mavs button[aria-selected="true"]{background:var(--fill);color:var(--fill-ink);border-color:var(--fill-deep)}
+.mavs button[aria-selected="true"] .nr{background:var(--head)}
+.strip{padding:0 10px 8px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid var(--head-line)}
+.chips{display:flex;gap:5px;flex-wrap:nowrap;overflow:hidden;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:1px 8px;border-radius:5px;font:700 12.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;flex:0 0 auto;border:1px solid transparent;position:relative;background:var(--surface-2);color:var(--ink)}
+.brd .chip{background:rgba(255,255,255,.04);color:var(--head-text);border-color:var(--board-chip-line)}
+.brd .chip-auto{color:var(--board-auto);border-color:var(--board-auto-line)}
+.chip-btn{min-height:28px;margin-left:auto;flex:none;cursor:pointer}
+.brd .chip-btn{color:var(--head-ink);border-color:rgba(255,178,46,.5);background:transparent}
+.statline{font:500 12.5px/1.3 var(--f-body);color:var(--head-ink-2);display:flex;gap:4px 10px;flex-wrap:wrap;align-items:center}
+.statline b{color:var(--head-ink);font-family:var(--f-num);font-weight:700}
+.statline>span{display:inline-flex;align-items:center;gap:4px}
+.statline .lnk{color:var(--head-ink);text-decoration:underline;text-underline-offset:3px;font-weight:600}
+.cols,.row{display:grid;column-gap:6px;align-items:center}
+.cols{height:24px;background:var(--surface-3);font:700 10.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.cols .r{text-align:right}
+.cols .c{text-align:center}
+.list{list-style:none;margin:0;padding:0}
+.row{height:44px;box-shadow:inset 0 -1px 0 var(--line);background:var(--surface);position:relative}
+.list>.row:nth-child(even){background:var(--surface-2)}
+.g-an{grid-template-columns:32px minmax(0,1fr) 52px 38px 44px;padding:0 2px 0 8px}
+.row.is-i::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:3px;border-radius:0 3px 3px 0;background:var(--fill);box-shadow:0 0 10px var(--glow)}
+.row.is-i .hn{color:var(--accent)}
+.row.sel,.list>.row.sel:nth-child(even){background:var(--accent-soft)}
+.row.scr .hn{text-decoration:line-through;color:var(--ink-2)}
+.row.scr .form,.row.scr .nr{opacity:.45}
+.who{min-width:0;height:44px;display:flex;flex-direction:column;justify-content:center;color:inherit;text-decoration:none}
+.form{display:flex;gap:1px;justify-self:center}
+.form i{display:grid;place-items:center;width:9.6px;height:18px;font:700 11px/1 var(--f-num);font-style:normal;background:var(--surface-3);color:var(--ink);border-radius:2px}
+.form i.w{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.form i.w2{background:var(--sig-fill-2);color:var(--sig-fill-2-ink)}
+.form i.gx{background:var(--gal);color:var(--gal-ink)}
+/* Spårmärket. Samma färglogik som formrutorna: fylld grön = seger, ljus grön = plats. */
+.sp{display:inline-flex;align-items:center;gap:2px;height:17px;padding:0 4px 0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.02em;flex:none;white-space:nowrap}
+.sp svg{width:8px;height:11px;flex:none}
+.sp.v,.sp.vp{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.sp.p{background:var(--sig-fill-2);color:var(--sig-fill-2-ink)}
+.sp.low{background:transparent;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--ink-2);outline:0;border-radius:3px}
+.brd .sp.low{color:var(--head-ink-2);box-shadow:inset 0 0 0 1px var(--head-ink-2)}
+.brd .sp.p{background:#BFE6CB;color:#0A4721}
+.spc{position:absolute;left:-6px;top:-5px;min-width:15px;height:15px;padding:0 3px;border-radius:3px;display:grid;place-items:center;font:700 10px/1 var(--f-label);letter-spacing:0;text-shadow:none;z-index:1;box-shadow:0 0 0 1.5px var(--surface)}
+.spc.v,.spc.vp{background:var(--sig-fill);color:var(--sig-fill-ink)}
+.spc.p{background:var(--sig-fill-2);color:var(--sig-fill-2-ink)}
+.spc.low{background:var(--surface);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--ink-2),0 0 0 1.5px var(--surface)}
+.ktsp{flex:none;font:700 11.5px/1.25 var(--f-num);color:var(--sig);white-space:nowrap}
+.ktsp.p{color:var(--sig)}
+.ktsp.low{color:var(--ink-2);font-weight:500}
+/* Desktop: analysvyn. */
+.av{display:grid;grid-template-columns:450px minmax(0,1fr);gap:12px;padding:12px 16px}
+.band{grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:nowrap}
+.band .bandp{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.band .bl{font:700 11px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.band .seg button{min-height:40px;padding:0 10px;font-size:13px}
+.band .seg button[aria-pressed="true"]{background:var(--fill);color:var(--fill-ink)}
+.pn{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0}
+.pn-h{height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--surface-2);box-shadow:inset 0 -1px 0 var(--line);font:700 12.5px/1 var(--f-label);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+.pn-h h2,.pn-h h3{margin:0;font:inherit}
+.pn-h .end{margin-left:auto;display:flex;gap:8px;align-items:center}
+.xs{font:700 12px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;padding:6px 8px;border:1px solid var(--line-strong);border-radius:5px;background:var(--surface);color:var(--ink)}
+.rb{padding:8px 10px;display:grid;gap:6px}
+.rb h1{margin:0;font:700 20px/1.05 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title)}
+.hb{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:12px;row-gap:8px;align-items:center;padding:10px 12px}
+.hb .nm{margin:0;font:700 24px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb .inf{margin:4px 0 0;font-size:13.5px;line-height:16px;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb .inf b{color:var(--head-text);font-weight:600}
+.hb-flag{grid-column:1/-1;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--head-text)}
+.hb-flag b{font-family:var(--f-num);color:var(--head-ink)}
+.keys{display:grid;grid-auto-flow:column;grid-auto-columns:max-content;align-self:stretch;align-items:center}
+.key{display:grid;grid-template-rows:12px 30px;row-gap:2px;align-content:center;padding:0 12px;min-width:84px;border-left:1px solid var(--head-line)}
+.key:last-child{padding-right:0}
+.key small{font:700 10px/12px var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap}
+.key b{font:700 20px/30px var(--f-num);color:var(--head-title);white-space:nowrap}
+/* Beslut: Riktodds plats och Unibet plats är lika stora. */
+.key b.eq{font-size:26px}
+.key b.big{color:var(--head-ink);text-shadow:0 0 14px var(--glow)}
+.key b.up,.key .k-up{color:var(--head-up)}
+.key .k-up{font-size:13px}
+.secs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.secs>section+section{border-left:1px solid var(--line)}
+.secs .pn-b{padding:10px;font-size:13.5px;line-height:1.4}
+.secs p{margin:0 0 6px}
+.hsv{font:700 13px var(--f-num);color:var(--sig)}
+.sl2{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.sl2 li{display:grid;grid-template-columns:16px 68px minmax(0,1fr);gap:6px;align-items:baseline}
+.sl2 li i{font-style:normal;font-weight:700;text-align:center}
+.sl2 li.ok i,.sl2 li.ok b{color:var(--sig)}
+.sl2 li.no{color:var(--ink-2)}
+.kv{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center}
+.kv dt{color:var(--ink-2);min-width:0}
+.kv dd{margin:0;font:700 13px var(--f-num);display:inline-flex;gap:5px;align-items:center;justify-content:flex-end}
+</style>
+
+<div class="mk">
+  <div class="mk-top">
+    <h1 class="mt">Spelvärde · Mockup: Spelförslag, Visa spelbara och spårfördel</h1>
+    <div class="seg" role="group" aria-label="Tema">
+      <button type="button" data-t="light" aria-pressed="true">Ljust</button>
+      <button type="button" data-t="dark" aria-pressed="false">Mörkt</button>
+    </div>
+  </div>
+  <p class="lead">Exempel från Bjerke lör 31 okt. Hästar, kuskar, riktodds och Unibet-odds för de sju spelbara kommer från skärmbilden. Chans är härledd ur riktoddset. Odds ≈, Minst, spårprocent och hästar utöver bilden är påhittade exempelvärden. Allt är klickbart där det går: flikarna, filtret och sorteringen växlar på riktigt, och telefonerna går att skrolla.</p>
+  <p class="lead"><b>Beslut som redan följs här:</b> V85-1 i stället för Avd 1, riktoddset överlappar inte Unibet-rutan, och Riktodds plats och Unibet plats är lika stora i analysvyn.</p>
+  <nav class="toc" aria-label="Innehåll">
+    <a href="#p2">Punkt 2 · Trollspöt och Platsspel</a>
+    <a href="#p5">Punkt 5 · Visa spelbara</a>
+    <a href="#p6">Punkt 6 · Spårfördel</a>
+    <a href="#rek">Rekommendation och frågor</a>
+  </nav>
+
+  <h2 class="sec" id="p2">Punkt 2 · Trollspöt och Platsspel får samma upplägg</h2>
+  <p class="sub">Grunden är Platsspels rad i båda flikarna: samma kolumner i samma ordning, med tre nya tal från Trollspöt. Bara handlingen längst till höger skiljer: <b>Intressant</b> i Trollspöt, <b>Bet</b> i Platsspel. Byt flik i ramarna för att se att bara innehållet ändras.</p>
+  <h4 class="part">Vad som skiljer flikarna i dag</h4>
+  <div class="scrollx">
+    <table class="cmp">
+      <thead><tr><th>Information</th><th>Trollspöt i dag</th><th>Platsspel i dag</th><th>I båda efter ändringen</th></tr></thead>
+      <tbody>
+        <tr><td>Chans till topp 3, med stapel på desktop</td><td class="y">Ja</td><td class="n">Saknas</td><td>Kolumnen Chans</td></tr>
+        <tr><td>Uppskattat platsodds ur strecket (≈)</td><td class="y">Ja</td><td class="n">Saknas</td><td>Kolumnen Odds ≈</td></tr>
+        <tr><td>Minst X: lägsta Unibet-odds för spelvärde</td><td class="y">Ja</td><td class="n">Bara om oddset saknas</td><td>Kolumnen Minst, med ✓ när Unibet når den</td></tr>
+        <tr><td>Placering i Trollspöt (1–10)</td><td class="y">Ja</td><td class="n">Saknas</td><td>Trollspöt-märket med #placering</td></tr>
+        <tr><td>Rutan Så väljs listan</td><td class="y">Ja, sidoruta</td><td class="n">Saknas</td><td>Fällbar rad i Trollspöt, så att bredden blir densamma</td></tr>
+        <tr><td>Intressant-lampan</td><td class="y">Ja</td><td class="n">Bara Inte markerade</td><td>Oförändrat: handling per flik</td></tr>
+        <tr><td>Riktodds, X-faktor och skillnad</td><td class="n">Saknas</td><td class="y">Ja</td><td>Kolumnerna Rikt och Skillnad</td></tr>
+        <tr><td>Unibet-fält som går att rätta</td><td class="n">Bara text</td><td class="y">Ja</td><td>Kolumnen Unibet</td></tr>
+        <tr><td>Bet</td><td class="n">Saknas</td><td class="y">Ja</td><td>Oförändrat: handling per flik</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div data-r="p2a"></div>
+  <div data-r="p2b"></div>
+  <div class="nt">
+    <div>
+      <h5>Krock som blir synlig: ringen och Minst</h5>
+      <p>Ringen jämför Unibet med riktoddset <b>med</b> X-faktor. Minst räknas på riktoddset <b>utan</b> X-faktor och tar också med 2,00 och marknadens odds. Därför kan en häst vara spelbar men inte nå Minst.</p>
+      <p>Exempel: Fly Express har grön ring (+0,12) men Unibet 2,20 når inte Minst 2,50. Det sker redan i dag, men syns inte eftersom talen står i olika flikar. Frågan står längst ned.</p>
+    </div>
+    <div>
+      <h5>Vad som händer med lägen</h5>
+      <ul>
+        <li>Inga streck: Trollspöt visar dagens text och Chans, Odds ≈ och Minst visar – i Platsspel.</li>
+        <li>Odds saknas: tomt fält med "minst 3,75" under.</li>
+        <li>Under 10 hästar: "6 hästar klarar gränsen." över listan.</li>
+        <li>Lopp som startat: Trollspöt tar bort hästen, Platsspel visar taggen Startat.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec" id="p5">Punkt 5 · Snabbfilter Visa spelbara</h2>
+  <p class="sub">Ett alternativ: lösningen är given. Filtret ligger i listan <b>Unibets odds</b>, på samma rad som Lista och En i taget, och finns inte i En i taget. Tryck på det i ramarna: hästar utan ring försvinner, och avdelningar utan träff döljs helt.</p>
+  <h3 class="alt"><span class="al">A</span>Filter i listans rubrikrad</h3>
+  <div data-r="p5"></div>
+  <h4 class="part">Så stämmer filtret med markeringarna</h4>
+  <p class="sub"><b>Flaggan <code>mark.spelbar</code> räcker inte ensam.</b> Ringen kommer från oddsklassen och gäller alla hästar, medan flaggan också kräver Intressant och minst 1,75. Med bara flaggan skulle grönringade hästar i Inte markerade försvinna. Regeln nedan följer det du bad om, och flaggan avgör i Intressant-grupperna.</p>
+  <div class="scrollx">
+    <table class="cmp">
+      <thead><tr><th>Häst</th><th>Ring</th><th>Flaggan spelbar</th><th>Med filtret</th></tr></thead>
+      <tbody>
+        <tr><td>Intressant, Unibet över riktoddset</td><td>Grön</td><td>Ja</td><td class="y">Visas</td></tr>
+        <tr><td>Intressant, högst 0,10 under riktoddset</td><td>Röd, "nära"</td><td>Ja</td><td class="y">Visas</td></tr>
+        <tr><td>Spelbar satt av dig, oddset är under riktoddset</td><td>Ingen</td><td>Ja</td><td class="y">Visas, ditt val gäller</td></tr>
+        <tr><td>Inte markerad, grön eller röd ring, minst 1,75</td><td>Grön eller röd</td><td>Nej, inte Intressant</td><td class="y">Visas</td></tr>
+        <tr><td>Ring men Unibet under 1,75</td><td>Grön eller röd</td><td>Nej</td><td class="n">Döljs</td></tr>
+        <tr><td>Spelbar borttagen av dig</td><td>Grön eller röd</td><td>Nej</td><td class="n">Döljs, ditt val gäller</td></tr>
+        <tr><td>Unibet mer än 0,10 under riktoddset</td><td>Ingen</td><td>Nej</td><td class="n">Döljs</td></tr>
+        <tr><td>Odds saknas, även Trollspöt-häst med "minst"</td><td>Ingen</td><td>Nej</td><td class="n">Döljs</td></tr>
+        <tr><td>Bet men inte spelbar längre</td><td>Ingen</td><td>Nej</td><td class="n">Döljs enligt ditt önskemål, se fråga 3</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="nt">
+    <div>
+      <h5>Beteende</h5>
+      <ul>
+        <li>Av som standard. Valet sparas i webbläsaren, som Bästa spel först.</li>
+        <li>Rättar du ett odds under gränsen ligger hästen kvar med ringen borta tills du slår av filtret. Raden hoppar inte bort under fingret. Samma frysning finns redan i Platsspel.</li>
+        <li>Nya hästar som blir spelbara efter Hämta streck och odds kommer in direkt.</li>
+      </ul>
+    </div>
+    <div>
+      <h5>Tangentbord och skärmläsare</h5>
+      <ul>
+        <li>Knapp med aria-pressed, tryckyta minst 44 × 44.</li>
+        <li>Raden "Visar 8 av 16" är role="status" och läses upp när filtret ändras.</li>
+        <li>Fokus stannar på filterknappen. Valt läge bärs av ✓ och text, inte bara av färgen.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec" id="p6">Punkt 6 · Spårfördel i startlistan</h2>
+  <p class="sub"><b>Inget behöver laddas.</b> Bästa vinstspår och platsspår finns redan i omgångens data (<code>race.statsLine</code>). Det är bara tabellen i arket Loppstatistik som hämtas när arket öppnas. Märkena syns därför direkt när startlistan visas, både i mobil och på desktop, och även offline om omgången är sparad. Statistiken är uppdelad på <b>startmetod och distans</b> (auto eller volte) och omfattar två år.</p>
+  <p class="sub">Alternativen skiljer sig i var märket sitter. Alla tre gäller samma lägen. Statistikraden ovanför listan använder samma märke och fungerar som förklaring direkt på skärmen.</p>
+  <div data-r="p6a"></div>
+  <div data-r="p6b"></div>
+  <div data-r="p6c"></div>
+  <div class="nt">
+    <div>
+      <h5>Vad statistiken innehåller</h5>
+      <ul>
+        <li>Per startnummer: starter, segrar, topp 3, vinst % och plats %.</li>
+        <li>Filter: startmetod och exakt distans, annars distansgrupp, två år bakåt.</li>
+        <li>Spärrar i dag: minst 150 lopp i tabellen och minst 15 starter för en procent.</li>
+        <li>Saknas tabellen används travstatistik.se, som bara har vinst %. Då finns inget platsmärke.</li>
+      </ul>
+    </div>
+    <div>
+      <h5>Litet underlag: ny data behövs</h5>
+      <p>Ett spår med 16 starter kan i dag bli "bäst" på slumpen, och <code>statsLine</code> säger inte hur många starter som ligger bakom. Märket "V?" kräver att antalet starter för det bästa spåret läggs till i <code>statsLine</code>.</p>
+      <p>Förslag: under 100 starter blir märket streckat med frågetecken. Gränsen är ett förslag, se fråga 5.</p>
+    </div>
+    <div>
+      <h5>Regler för märket</h5>
+      <ul>
+        <li>Bäst räknas bland hästar som inte är strukna. Stryks hästen flyttar märket till näst bästa spår.</li>
+        <li>Inställt lopp: inget märke. Resultatvyn: inget märke.</li>
+        <li>Hästkortet visar samma märke med text och procent.</li>
+        <li>Taggen Spår bland signalerna är något annat: plats % minst 15 % över medel. Den finns kvar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <section class="rec" id="rek">
+    <h2>Rekommendation</h2>
+    <ul>
+      <li><b>Punkt 2: A, kort per lopp i båda flikarna.</b> Det är det du bad om, och Trollspöts rangordning finns kvar ett klick bort med Högst chans först.</li>
+      <li><b>Punkt 5: A, filter i listans rubrikrad.</b></li>
+      <li><b>Punkt 6: A, märke efter namnet.</b> Märket är lättast att läsa och följer de märken du redan känner igen. Priset är att långa namn kortas lite tidigare.</li>
+    </ul>
+    <h2>Frågor till Mikael</h2>
+    <ol>
+      <li><b>Ring och Minst:</b> en häst kan ha grön ring utan att nå Minst, till exempel Fly Express. Ska Minst räknas med X-faktor, så att de oftare säger samma sak? Annars står båda kvar som i mockupen. Jag föreslår med X-faktor.</li>
+      <li><b>Unibet-fält i Trollspöt:</b> mockupen låter dig rätta oddset även där. Det är nytt i den fliken. Vill du ha det, eller ska det vara skrivskyddat?</li>
+      <li><b>Bet utan ring i filtret:</b> du sa att övriga döljs, så en häst du redan spelat kan försvinna. Jag föreslår att hästar med Bet alltid visas.</li>
+      <li><b>Vilken statistik styr märket:</b> Alla banor, som i dagens statistikrad, eller banans egen när den har minst 150 lopp? Jag föreslår Alla banor. På Bjerke bör vi också kontrollera att underlaget över huvud taget är relevant.</li>
+      <li><b>Gräns för litet underlag:</b> är 100 starter rimligt? Ska spår med litet underlag visas streckade, eller inte alls?</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+(function(){
+  var MI='−',NB=' ';
+  var I={
+    wheel:'<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.6"/><g stroke="currentColor" stroke-width="1.5"><path d="M16 16L16 4M16 16L24.5 7.5M16 16L28 16M16 16L24.5 24.5M16 16L16 28M16 16L7.5 24.5M16 16L4 16M16 16L7.5 7.5"/></g><circle cx="16" cy="16" r="3.4" fill="currentColor"/></svg>',
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    ticket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg>',
+    wand:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5 13.5 10.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12.6 9.6l1.8 1.8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><path d="M17 2.5v4M15 4.5h4M20.5 9v3M19 10.5h3M10.5 3v2.4M9.3 4.2h2.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    lanes:'<svg viewBox="0 0 8 11" aria-hidden="true"><path d="M1 0v11M4 0v11M7 0v11" stroke="currentColor" stroke-width="1.2"/></svg>',
+    home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/></svg>',
+    src:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 4h14v16H5zM8 9h8M8 13h8"/></svg>',
+    chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>'
+  };
+  function od(v){return v==null?'–':v.toFixed(2).replace('.',',')}
+  function pc(v){return String(v).replace('.',',')+NB+'%'}
+  function sg(d){d=Math.round(d*100)/100;return (d>0?'+':d<0?MI:'±')+od(Math.abs(d))}
+  function ref(h){return h.rx!=null?h.rx:h.r}
+  function cl(h){if(h.u==null||h.r==null)return '';var d=Math.round((h.u-ref(h))*100)/100;return d>0?'over':d>=-0.1?'near':'under'}
+  function reached(h){return h.u!=null&&h.m!=null&&h.u>=h.m-1e-9}
+
+  var S='<span class="bdg s" role="img" aria-label="Spelbar">S</span>';
+  var LOW='<span class="tag good">Lågt streck</span>';
+  function xb(x){return '<span class="bdg '+(x==='X+'?'xp':'x')+'" role="img" aria-label="X-faktor: '+(x==='X+'?'Stark känsla':'Tror på')+'">'+x+'</span>'}
+  function tsb(rk){return '<span class="bdg tsb" role="img" aria-label="Trollspöt, plats '+rk+'">'+I.wand+'</span><span class="trk" aria-hidden="true">#'+rk+'</span>'}
+  function nr(n,sm,sig,extra){return '<span class="nr'+(sm?' sm':'')+'" aria-hidden="true"><b>'+n+'</b>'+(sig?'<i class="sigb'+(sig>=4?' many':'')+'">'+sig+'</i>':'')+(extra||'')+'</span>'}
+  function bet(n){return '<button type="button" class="betk" aria-pressed="false" aria-label="Bet: '+n+'"><span class="lamp-i">'+I.ticket+'</span></button>'}
+  function lamp(n,on){return '<button type="button" class="lamp" aria-pressed="'+(on?'true':'false')+'" aria-label="Intressant: '+n+'"><span class="lamp-i">'+I.check+'</span></button>'}
+  function tog(h,tab){return tab==='plats'?bet(h.name):lamp(h.name,h.i)}
+  function fld(h){var c=cl(h);return '<input class="oin'+(c==='over'||c==='near'?' '+c:'')+'" type="text" inputmode="decimal" autocomplete="off" placeholder="–,––" value="'+(h.u==null?'':od(h.u))+'" aria-label="Unibet platsodds för '+h.name+'">'}
+  function sv(h){
+    if(h.u==null)return h.m?'<span class="sv tmin-h">minst '+od(h.m)+'</span>':'<span class="sv">&nbsp;</span>';
+    var c=cl(h);return '<span class="sv'+(c==='under'?'':' '+c)+'">'+sg(h.u-ref(h))+(c==='near'?' <i>nära</i>':'')+'</span>';
+  }
+  function sigs(h,withLow){var t=(h.tags||[]).map(function(x){return '<span class="tag good">'+x+'</span>'}).join('');if(withLow&&h.low)t=LOW+t;return t?'<span class="sigs" aria-label="Signaler">'+t+'</span>':''}
+  function notes(h){return h.note?'<span class="note">'+h.note+'</span>':''}
+  function nm(h,mob){return '<span class="hl"><a class="hn" href="#">'+h.name+' ›</a>'+(h.rk?tsb(h.rk):'')+(!mob&&h.low?LOW:'')+(h.s?S:'')+(h.x?xb(h.x):'')+'</span>'}
+  function kvs(h){var ok=reached(h);return '<span class="kvs"><span><small>Chans</small> <b>'+pc(h.c)+'</b></span><span><small>Odds ≈</small> <b>'+od(h.e)+'</b></span><span><small>Minst</small> <b class="'+(ok?'ok':'')+'">'+od(h.m)+(ok?' ✓':'')+'</b></span></span>'}
+  function legt(h){return 'V85-'+h.a+' · '+h.t}
+
+  // ---- Data från ol.png, kompletterad med exempelvärden ----
+  var H=[
+    {a:1,t:'15:00',n:10,name:'Fly Express',k:'Christoffer Eriksson',sig:6,low:1,s:1,x:'X',i:1,r:2.60,rx:2.08,u:2.20,c:38,e:2.30,m:2.50,rk:4,tags:['Kusk','Tränare','Barfota','Form 2/5','Pengar','Felfri'],f:2.10,w:5.40},
+    {a:2,t:'15:22',n:8,name:'Tangen Nils',k:'Tom Erik Solberg',sig:6,low:1,s:1,i:1,r:4.03,u:4.50,c:25,e:3.40,m:3.93,rk:9,tags:['Kusk','Barfota','Plats 76 %','Form 4/5','Pengar','Felfri'],f:4.80,w:15.20},
+    {a:3,t:'15:44',n:11,name:'Urban Tile',k:'Kristian Malmin',sig:5,s:1,i:1,r:2.15,u:2.20,c:47,e:2.00,m:2.05,rk:2,tags:['Kusk','Tränare','Barfota','Plats 78 %','Form 4/5'],f:2.20,w:4.10},
+    {a:4,t:'16:06',n:8,name:'Clarissa',k:'Alessandro Gocciadoro',sig:3,s:1,x:'X+',i:1,r:3.12,rx:2.08,u:2.50,c:32,e:2.90,m:3.02,rk:5,tags:['Barfota','Form 3/5','Pengar'],f:2.30,w:6.20},
+    {a:4,t:'16:06',n:10,name:'Castor the Star',k:'Mats E Djuse',sig:2,s:1,x:'X+',i:1,r:4.44,rx:2.96,u:2.88,c:23,e:3.80,m:4.34,rk:10,tags:['Barfota','Felfri'],note:'Spelbar: högst 0,10 under riktoddset',f:3.10,w:9.80},
+    {a:5,t:'16:28',n:3,name:'Paleo Boko',k:'Robert Bergh',sig:3,s:1,i:1,r:1.94,u:2.25,c:52,e:2.10,m:2.10,rk:1,tags:['Kusk','Tränare','Form 3/5'],f:2.25,w:3.90},
+    {a:5,t:'16:28',n:4,name:'Orazi Cesare',k:'Thomas Dalborg',sig:2,s:1,x:'X',i:1,r:2.40,rx:1.92,u:2.10,c:42,e:2.35,m:2.35,rk:3,tags:['Spår','Form 3/5'],f:2.30,w:5.10},
+    {a:6,t:'16:50',n:5,name:'Jaguar Godiva',k:'Magnus Teien Gundersen',sig:3,i:1,r:3.30,u:2.90,c:30,e:2.40,m:3.20,rk:6,tags:['Kusk','Form 3/5'],f:2.80,w:7.70},
+    {a:7,t:'17:12',n:2,name:'Great Old Dance',k:'Kim Eriksson',sig:4,i:1,r:3.57,u:null,c:28,e:2.80,m:3.47,rk:7,tags:['Tränare','Barfota','Form 4/5','Felfri']},
+    {a:8,t:'17:34',n:6,name:'Ragnar Hall',k:'Øystein Tjomsland',sig:2,i:0,r:3.85,u:null,c:26,e:3.00,m:3.75,rk:8,tags:['Pengar','Felfri']}
+  ];
+  var byName={};H.forEach(function(h){byName[h.name]=h});
+  function pick(n,ext){var o={};for(var k in byName[n])o[k]=byName[n][k];for(var j in (ext||{}))o[j]=ext[j];return o}
+  var PL=H.filter(function(h){return h.s});
+  var TR=H.slice().sort(function(a,b){return b.c-a.c});
+  var VAL=PL.slice().sort(function(a,b){return (b.u/ref(b))-(a.u/ref(a))});
+  var REST='Jaguar Godiva, Hickovelocissimo, Great Old Dance, J.C., Gigant Tider, Tordenskjold, Voje Lotta, Grisle Tore G.L., Prinsesse Ness Tjo, Pauhunri Boko, Sauron Zon, Daim Brodda, Crown, Lando Mearas, Yellowstone Doc, Peacekeeper, Neil Jung, Livorno, Mimosa to Martini …';
+
+  function groups(list){var o=[];list.forEach(function(h){var g=o[o.length-1];if(g&&g.a===h.a)g.items.push(h);else o.push({a:h.a,t:h.t,items:[h]})});return o}
+  function gcount(n,tab){return tab==='plats'?(n+' spelbar'+(n===1?'':'a')):(n+' att bevaka')}
+
+  // ---- Punkt 2: den gemensamma raden ----
+  function mRow(h,tab,flat){
+    return '<li class="brow xa">'+nr(h.n,1,h.sig)+
+      '<div class="pmain">'+nm(h,1)+(flat?'<span class="pm">'+legt(h)+'</span>':'')+
+      '<span class="pm">rikt <b>'+od(h.r)+'</b>'+(h.rx?' → X <b class="rkx">'+od(h.rx)+'</b>':'')+'</span></div>'+
+      '<span class="ofc">'+fld(h)+sv(h)+'</span>'+tog(h,tab)+
+      '<div class="bx">'+kvs(h)+sigs(h,1)+notes(h)+'</div></li>';
+  }
+  function dRow(h,tab,flat){
+    var ok=reached(h);
+    return '<tr><td>'+nr(h.n,0,h.sig)+'</td><td>'+nm(h,0)+
+      '<span class="kt">'+(flat?legt(h)+' · ':'')+h.k+'</span>'+sigs(h,0)+notes(h)+'</td>'+
+      '<td class="r"><span class="tchance"><b>'+pc(h.c)+'</b><i aria-hidden="true" style="width:'+h.c+'%"></i></span></td>'+
+      '<td class="r"><span class="est">≈ '+od(h.e)+'</span></td>'+
+      '<td class="r"><span class="mnv'+(ok?' ok':'')+'">'+od(h.m)+(ok?' ✓':'')+'</span>'+(ok?'<span class="sr"> Unibet når gränsen</span>':'')+'</td>'+
+      '<td class="r">'+(h.rx?'<span class="rk two"><span class="rkx">'+od(h.rx)+'</span><span class="rk0">utan X '+od(h.r)+'</span></span>':'<span class="rk">'+od(h.r)+'</span>')+'</td>'+
+      '<td class="r">'+fld(h)+'</td><td class="r">'+(h.u==null?'<span class="sv">–</span>':sv(h))+'</td><td class="c">'+tog(h,tab)+'</td></tr>';
+  }
+  function dTable(list,tab,flat){
+    var cols=[52,0,62,62,64,92,90,78,52];
+    var cg='<colgroup>'+cols.map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('')+'</colgroup>';
+    var hd='<thead><tr><th scope="col">Nr</th><th scope="col">Häst</th><th scope="col" class="r"><abbr title="Chans till topp 3 enligt modellen">Chans</abbr></th><th scope="col" class="r"><abbr title="Uppskattat platsodds ur strecket">Odds ≈</abbr></th><th scope="col" class="r"><abbr title="Lägsta Unibet-odds för spelvärde">Minst</abbr></th><th scope="col" class="r">Rikt</th><th scope="col" class="r">Unibet</th><th scope="col" class="r">Skillnad</th><th scope="col" class="c">'+(tab==='plats'?'Bet':'<abbr title="Intressant">Intr.</abbr>')+'</th></tr></thead>';
+    var body;
+    if(flat){body='<tbody>'+list.map(function(h){return dRow(h,tab,1)}).join('')+'</tbody>'}
+    else{body=groups(list).map(function(g,i){
+      return '<tbody>'+(i?'<tr class="pgap" aria-hidden="true"><td colspan="9"></td></tr>':'')+
+        '<tr class="gh"><th colspan="9" scope="colgroup"><div class="pgh">'+nr(g.a,1)+'<h4>'+legt(g)+'</h4><span>'+gcount(g.items.length,tab)+'</span></div></th></tr>'+
+        g.items.map(function(h){return dRow(h,tab,0)}).join('')+'</tbody>';
+    }).join('')}
+    return '<div class="twrap"><table class="tbl ptbl spel">'+cg+hd+body+'</table></div>';
+  }
+  function mList(list,tab,flat){
+    if(flat)return '<section class="pcard"><ul class="plist">'+list.map(function(h){return mRow(h,tab,1)}).join('')+'</ul></section>';
+    return groups(list).map(function(g){
+      return '<section class="pcard" aria-label="'+legt(g)+'"><div class="pgh">'+nr(g.a,1)+'<h4>'+legt(g)+'</h4><span>'+gcount(g.items.length,tab)+'</span></div><ul class="plist">'+g.items.map(function(h){return mRow(h,tab,0)}).join('')+'</ul></section>';
+    }).join('');
+  }
+  function list(items,tab,dev,flat){return dev==='d'?dTable(items,tab,flat):mList(items,tab,flat)}
+  var WHY='<details class="why"><summary>Så väljs listan</summary><p>De 10 hästarna med högst chans till topp 3 enligt modellen, bland dem som enligt strecket troligen får minst 1,80 i platsodds.</p><p><b>Minst</b> är det lägsta Unibet-odds som ger spelvärde: det högsta av 2,00, riktoddset minus toleransen (0,10) och marknadens odds.</p><p class="help">I backtestet kom de här hästarna topp 3 i 29 % av fallen, mot 18 % för alla hästar med odds över 2,0. Listan är ett stöd att bevaka, inget spelbeslut.</p></details>';
+  function sortRow(label,help){return '<div class="sortbar"><label class="chk"><input type="checkbox" data-sort>'+label+'</label><span class="help">'+help+'</span></div>'}
+  function pTroll(alt,dev){
+    var h=dev==='d'?'<div class="dsec-h"><h2>Trollspöt · 10 hästar att bevaka</h2><span class="help">7 spelbara</span></div>':'';
+    if(alt==='B')return '<div class="pp" data-sort="0">'+h+WHY+'<p class="help spel-help">Högst chans till topp 3 först.</p><div class="s-per">'+list(TR,'troll',dev,1)+'</div></div>';
+    return '<div class="pp" data-sort="0">'+h+WHY+sortRow('Högst chans först','Sorterat per lopp')+'<div class="s-per">'+list(H,'troll',dev,0)+'</div><div class="s-alt">'+list(TR,'troll',dev,1)+'</div></div>';
+  }
+  function pPlats(dev){
+    var h=dev==='d'?'<div class="dsec-h"><h2>Platsspel hos Unibet</h2><span class="help">Bet 0 av 7 spelbara</span></div>':'';
+    var rest='<h3 class="sl">Intressant men inte spelbara (28)</h3><a class="rest" href="#"><span>'+REST+'</span><span aria-hidden="true">›</span></a>';
+    return '<div class="pp" data-sort="0">'+h+'<p class="help spel-help">Markera Bet på det du spelar hos Unibet. Rätta oddset om det har ändrats.</p>'+sortRow('Bästa spel först','Sorterat per lopp')+'<div class="s-per">'+list(PL,'plats',dev,0)+'</div><div class="s-alt">'+list(VAL,'plats',dev,1)+'</div>'+rest+'</div>';
+  }
+  function tabBtns(cur){
+    function b(id,txt,cls){return '<button type="button" '+(cls?'class="'+cls+'" ':'')+'data-go="'+id+'" aria-pressed="'+(cur===id?'true':'false')+'">'+txt+'</button>'}
+    return b('troll',I.wand+' Trollspöt','troll-btn')+b('plats','Platsspel')+b('rad','V85-rad');
+  }
+  var REFRESH='<div class="srefresh"><p><span class="k">Streck och odds</span>Streck <span class="num">i dag 13:02</span> · Odds <span class="num">i dag 13:02</span></p><button type="button" class="btn secondary">'+I.dl+' Hämta streck och odds</button></div>';
+  function scrP2(alt,dev,tab){
+    var panels='<div class="p-troll">'+pTroll(alt,dev)+'</div><div class="p-plats">'+pPlats(dev)+'</div><div class="p-rad"><p class="help radnote">V85-raden ändras inte i den här mockupen.</p></div>';
+    if(dev==='m')return '<div class="scr" data-tab="'+tab+'"><div class="ah brd"><a class="ibtn" href="#" aria-label="Tillbaka till omgången">'+I.back+'</a><div class="ah-t"><span class="ah-title">Spelförslag</span><span class="ah-sub">V85 · Bjerke · lör 31 okt</span></div></div><div class="segw"><div class="seg" role="group" aria-label="Spelförslag">'+tabBtns(tab)+'</div></div>'+REFRESH+panels+'</div>';
+    return '<div class="scr" data-tab="'+tab+'">'+dhead()+'<div class="dtitle brd"><a class="ibtn" href="#">'+I.back+' Omgången</a><h1>Spelförslag<small>V85 · Bjerke · lör 31 okt</small></h1></div><div class="spw"><div class="dtabs" role="group" aria-label="Spelförslag">'+tabBtns(tab)+'</div>'+REFRESH+panels+'</div></div>';
+  }
+  function dhead(){return '<div class="dhead brd"><span class="logo">'+I.wheel+'</span><span class="ah-brand">Spelvärde</span><nav class="dnav" aria-label="Huvudmeny"><a href="#" aria-current="page">Omgång</a><a href="#">Källor</a><a href="#">Statistik</a></nav></div>'}
+  function tabbar(){return '<nav class="tabbar" aria-label="Huvudmeny"><a class="tab" href="#" aria-current="page">'+I.home+'Omgång</a><a class="tab" href="#">'+I.src+'Källor</a><a class="tab" href="#">'+I.chart+'Statistik</a></nav>'}
+  function ph(inner,label){return '<div class="phc"><span>'+label+'</span><div class="ph"><div class="ph-in"><div class="ph-scroll">'+inner+'</div>'+tabbar()+'</div></div></div>'}
+  function bf(url,inner,label){return '<div class="phc" style="margin-top:18px"><span style="max-width:none">'+label+'</span><div class="scrollx" style="max-width:100%"><div class="bf"><div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.vercel.app/'+url+'</span></div><div class="vp">'+inner+'</div></div></div></div>'}
+  function altP2(alt,title,rec,sub){
+    return '<h3 class="alt"><span class="al">'+alt+'</span>'+title+(rec?'<span class="recs">Rekommenderas</span>':'')+'</h3><p class="sub">'+sub+'</p>'+
+      '<div class="phwrap">'+ph(scrP2(alt,'m','troll'),'Mobil 390 px · Trollspöt')+ph(scrP2(alt,'m','plats'),'Mobil 390 px · Platsspel')+'</div>'+
+      bf('omgang/…/spel?flik=trollspot',scrP2(alt,'d','troll'),'Webbläsare · Trollspöt')+
+      bf('omgang/…/spel?flik=plats',scrP2(alt,'d','plats'),'Webbläsare · Platsspel');
+  }
+
+  // ---- Punkt 5 ----
+  var O=[
+    {a:1,t:'15:00',n:3,name:'Hickovelocissimo',k:'Vidar Hop',r:3.10,u:2.60,f:2.75,w:9.20,i:1},
+    {a:1,t:'15:00',n:7,name:'J.C.',k:'Frode Hamre',r:5.40,u:3.40,f:3.40,w:14.50,i:1,over5:1},
+    pick('Fly Express'),
+    {a:2,t:'15:22',n:2,name:'Gigant Tider',k:'Gunnar Austevoll',r:3.90,u:3.10,f:3.30,w:11.00,i:1},
+    pick('Tangen Nils'),
+    {a:3,t:'15:44',n:4,name:'Tordenskjold',k:'Ulf Ohlsson',r:3.40,u:2.90,f:2.90,w:8.40,i:1},
+    pick('Urban Tile'),
+    {a:4,t:'16:06',n:5,name:'Voje Lotta',k:'Björn Goop',r:4.10,u:3.20,f:3.00,w:10.60,i:1},
+    pick('Clarissa'),pick('Castor the Star'),pick('Paleo Boko'),pick('Orazi Cesare'),
+    {a:6,t:'16:50',n:5,name:'Jaguar Godiva',k:'Magnus Teien Gundersen',r:3.30,u:2.90,f:2.80,w:7.70,i:1},
+    {a:7,t:'17:12',n:2,name:'Great Old Dance',k:'Kim Eriksson',r:3.57,u:null,i:1}
+  ];
+  var OU=[
+    {a:6,t:'16:50',n:9,name:'Sir Lancelot',k:'Geir Vegard Gundersen',r:3.45,u:3.60,f:3.40,w:9.00,unm:1},
+    {a:8,t:'17:34',n:6,name:'Ragnar Hall',k:'Øystein Tjomsland',r:3.85,u:null,m:3.75,unm:1,rk:8}
+  ];
+  function vis(h){if(h.s)return true;var c=cl(h);return !!h.unm&&(c==='over'||c==='near')&&h.u>=1.75}
+  function spark(h,w,g){
+    if(h.u==null||h.f==null)return '';
+    var v=[h.f,(h.f+h.u)/2,h.u],rk=ref(h),all=v.concat([rk]),lo=Math.min.apply(null,all),hi=Math.max.apply(null,all);
+    if(hi-lo<0.1){hi+=0.05;lo-=0.05}
+    function y(x){return g-2-((x-lo)/(hi-lo))*(g-4)}
+    var pts=v.map(function(x,i){return (i/(v.length-1)*w).toFixed(1)+','+y(x).toFixed(1)}).join(' ');
+    return '<svg class="spk" width="'+w+'" height="'+g+'" aria-hidden="true"><line x1="0" x2="'+w+'" y1="'+y(rk).toFixed(1)+'" y2="'+y(rk).toFixed(1)+'"></line><polyline points="'+pts+'"></polyline><circle cx="'+w+'" cy="'+y(h.u).toFixed(1)+'" r="2"></circle></svg>';
+  }
+  function mic(h){
+    if(h.u==null||h.f==null)return '';
+    var x=Math.round((h.u-h.f)*100)/100;
+    if(x===0)return '<small class="mic">= '+od(h.f)+'</small>';
+    return '<small class="mic '+(x>0?'up-t':'dn-t')+'">'+(x>0?'▲':'▼')+' fr '+od(h.f)+'</small>';
+  }
+  function oNm(h){return '<span class="hl"><a class="hn" href="#">'+h.name+' ›</a>'+(h.rk?'<span class="bdg tsb" role="img" aria-label="Trollspöt">'+I.wand+'</span>':'')+(h.s?S:'')+(h.x?xb(h.x):'')+(h.over5?'<span class="tag">Rikt över 5</span>':'')+(h.s&&h.f&&h.u<h.f?'<span class="tag good">Sjunker</span>':'')+'</span>'}
+  function oMRow(h){
+    return '<li class="brow xb'+(vis(h)?'':' hid')+'">'+nr(h.n,1)+'<div class="pmain">'+oNm(h)+'<span class="pm">rikt <b>'+od(h.r)+'</b>'+(h.rx?' → X <b class="rkx">'+od(h.rx)+'</b>':'')+'</span></div><span class="spkc">'+spark(h,40,18)+mic(h)+'</span><span class="ofc">'+fld(h)+sv(h)+'</span>'+(h.unm?lamp(h.name,0):bet(h.name))+'</li>';
+  }
+  function oDRow(h){
+    return '<tr class="'+(vis(h)?'':'hid')+'"><td>'+nr(h.n,0)+'</td><td>'+oNm(h)+'<span class="kt">'+(h.unm?legt(h)+' · ':'')+h.k+'</span></td>'+
+      '<td class="r">'+(h.rx?'<span class="rk two"><span class="rkx">'+od(h.rx)+'</span><span class="rk0">utan X '+od(h.r)+'</span></span>':'<span class="rk">'+od(h.r)+'</span>')+'</td>'+
+      '<td class="r">'+fld(h)+'</td><td class="r">'+(h.u==null?(h.m?sv(h):'<span class="sv">–</span>'):sv(h))+'</td>'+
+      '<td><span class="trend">'+spark(h,44,20)+(h.f!=null&&h.u!=null?mic(h):'')+'</span></td>'+
+      '<td class="r num dim">'+od(h.w)+'</td><td class="c">'+(h.unm?lamp(h.name,0):bet(h.name))+'</td></tr>';
+  }
+  function oGrpHead(g){var n=g.items.filter(function(h){return h.s}).length;return n+' spelbar'+(n===1?'':'a')}
+  function oMob(){
+    var gs=groups(O).map(function(g){var any=g.items.some(vis);
+      return '<section class="'+(any?'':'hid')+'"><h3 class="sl"><span>'+legt(g)+'</span><span>'+oGrpHead(g)+'</span></h3><ul class="plist">'+g.items.map(oMRow).join('')+'</ul></section>'}).join('');
+    return gs+'<section><h3 class="sl"><span>Inte markerade (<span class="cnt-off">2</span><span class="cnt-on">1</span>)</span></h3><p class="help spel-help hid">Hästar du inte har markerat som är med i Trollspöt eller har spelbara odds. Tänd Intressant så kommer de med.</p><ul class="plist">'+OU.map(oMRow).join('')+'</ul></section>';
+  }
+  function oDesk(){
+    var cols=[56,0,92,92,96,118,70,56];
+    var cg='<colgroup>'+cols.map(function(w){return w?'<col style="width:'+w+'px">':'<col>'}).join('')+'</colgroup>';
+    function hd(lastI){return '<thead><tr><th scope="col">Nr</th><th scope="col">Häst</th><th scope="col" class="r">Rikt</th><th scope="col" class="r">Unibet<span class="thsub">plats</span></th><th scope="col" class="r">Skillnad<span class="thsub">mot rikt</span></th><th scope="col">Sedan första<span class="thsub">hämtningen</span></th><th scope="col" class="r">Vinnare</th><th scope="col" class="c">'+(lastI?'<abbr title="Intressant">Intr.</abbr>':'Bet')+'</th></tr></thead>'}
+    var gs=groups(O).map(function(g){var any=g.items.some(vis);
+      return '<div class="twrap'+(any?'':' hid')+'"><table class="tbl ptbl odds"><caption><span>'+legt(g)+'</span><span>'+oGrpHead(g)+'</span></caption>'+cg+hd(0)+'<tbody>'+g.items.map(oDRow).join('')+'</tbody></table></div>'}).join('');
+    return gs+'<div class="twrap"><table class="tbl ptbl odds"><caption><span>Inte markerade (<span class="cnt-off">2</span><span class="cnt-on">1</span>)</span></caption>'+cg+hd(1)+'<tbody>'+OU.map(oDRow).join('')+'</tbody></table></div>';
+  }
+  function olHead(on,dis){
+    return '<div class="ol-head"><div class="seg" role="group" aria-label="Visa"><button type="button" aria-pressed="true">Lista</button><button type="button" aria-pressed="false">En i taget</button></div>'+
+      '<button type="button" class="qf" data-fl aria-pressed="'+(on?'true':'false')+'"><span class="ck" aria-hidden="true">✓</span>'+S+'Visa spelbara <span class="num">'+(dis?'0':'8')+'</span></button>'+
+      '<p class="ol-count" role="status">'+(dis?'Visar <b>0</b> av <b>16</b>':'<span class="cnt-off">Odds <b>13</b> av <b>14</b> · <b>7</b> spelbara</span><span class="cnt-on">Visar <b>8</b> av <b>16</b> · <b>8</b> dolda</span>')+'</p></div>';
+  }
+  function oScrM(on){
+    return '<div class="scr" data-f="'+(on?1:0)+'"><div class="ah brd"><a class="ibtn" href="#" aria-label="Tillbaka till omgången">'+I.back+'</a><div class="ah-t"><span class="ah-title">Unibets odds</span><span class="ah-sub">V85 · Bjerke</span></div></div>'+olHead(on)+oMob()+'</div>';
+  }
+  function oScrEmpty(){
+    return '<div class="scr" data-f="1"><div class="ah brd"><a class="ibtn" href="#" aria-label="Tillbaka till omgången">'+I.back+'</a><div class="ah-t"><span class="ah-title">Unibets odds</span><span class="ah-sub">V85 · Bjerke</span></div></div>'+olHead(1,1)+
+      '<div class="empty brd"><h3>Inga spelbara odds än</h3><p>Ingen häst har nått riktoddset eller ligger högst 0,10 under det. Hämta oddsen igen, eller visa alla hästar.</p><button type="button" class="btn primary">Visa alla hästar</button></div></div>';
+  }
+  function p5(){
+    return '<div class="phwrap">'+ph(oScrM(0),'Mobil · Filtret av')+ph(oScrM(1),'Mobil · Filtret på')+ph(oScrEmpty(),'Mobil · Inga träffar')+'</div>'+
+      bf('omgang/…/odds','<div class="scr" data-f="1">'+dhead()+'<div class="dtitle brd"><a class="ibtn" href="#">'+I.back+' Omgången</a><h1>Unibets odds<small>V85 · Bjerke</small></h1></div><div class="olw">'+olHead(1)+oDesk()+'</div></div>','Webbläsare · Filtret på');
+  }
+
+  // ---- Punkt 6 ----
+  var SL=[
+    {n:1,name:'Yellowstone Doc',k:'Frode Hamre',sig:2,form:'30g02',r:6.10,e:'388 tkr'},
+    {n:2,name:'Peacekeeper',k:'Vidar Hop',sig:1,form:'00504',r:9.40,e:'214 tkr'},
+    {n:3,name:'Paleo Boko',k:'Robert Bergh',sig:3,form:'13205',r:1.94,e:'1,2 Mkr',i:1,s:1,mk:'v'},
+    {n:4,name:'Orazi Cesare',k:'Thomas Dalborg',sig:2,form:'21034',r:2.40,rx:1.92,x:'X',e:'842 tkr',i:1,s:1,mk:'p'},
+    {n:5,name:'Neil Jung',k:'Gunnar Austevoll',sig:1,form:'05g00',r:12.30,e:'156 tkr',g:1},
+    {n:6,name:'Livorno',k:'Øystein Tjomsland',sig:2,form:'40320',r:7.25,e:'301 tkr'},
+    {n:7,name:'Daim Brodda',k:'Magnus Teien Gundersen',sig:0,form:'00600',r:14.80,e:'97 tkr'},
+    {n:8,name:'Crown',k:'Geir Vegard Gundersen',sig:3,form:'12040',r:4.35,e:'522 tkr',i:1},
+    {n:9,name:'Lando Mearas',k:'Ulf Ohlsson',sig:1,form:'00302',r:8.60,e:'245 tkr'},
+    {n:10,name:'Sauron Zon',k:'Kim Eriksson',sig:0,form:'0g000',r:null,e:'64 tkr',scr:1},
+    {n:11,name:'Pauhunri Boko',k:'Björn Goop',sig:2,form:'30102',r:5.20,e:'476 tkr',i:1},
+    {n:12,name:'Mimosa to Martini',k:'Dag-Sveinung Dalen',sig:1,form:'06000',r:11.90,e:'133 tkr'}
+  ];
+  var MKT={v:['V','Bästa spår för vinst'],p:['P','Bästa spår för plats'],vp:['V+P','Bästa spår för både vinst och plats'],low:['V?','Bästa spår för vinst, men litet underlag']};
+  var PCT={v:'V 14,6'+NB+'%',p:'P 39,8'+NB+'%',vp:'V 15,8 · P 42,3'+NB+'%',low:'V? 18,8'+NB+'%'};
+  function spA(k){return '<span class="sp '+k+'" role="img" aria-label="'+MKT[k][1]+'">'+I.lanes+MKT[k][0]+'</span>'}
+  function spB(k){return '<span class="spc '+k+'" role="img" aria-label="'+MKT[k][1]+'">'+MKT[k][0]+'</span>'}
+  function spC(k){return '<span class="ktsp '+k+'" role="img" aria-label="'+MKT[k][1]+'">'+PCT[k]+'</span>'}
+  function formS(s){return '<span class="form" role="img" aria-label="Form">'+s.split('').map(function(c){return '<i class="'+(c==='1'?'w':c==='2'?'w2':c==='g'?'gx':'')+'" aria-hidden="true">'+c+'</i>'}).join('')+'</span>'}
+  function sRow(h,alt,sel){
+    var m=h.mk,num=nr(h.n,0,h.sig,alt==='B'&&m?spB(m):'');
+    var earn=(alt==='C'&&m)?'':'<b class="kt-earn">'+h.e+'</b>';
+    return '<li class="row g-an'+(h.i?' is-i':'')+(h.scr?' scr':'')+(sel?' sel':'')+'">'+num+
+      '<a class="who" href="#"><span class="hl"><span class="hn">'+h.name+'</span>'+(alt==='A'&&m?spA(m):'')+(h.s?S:'')+(h.x?xb(h.x):'')+(h.g?'<span class="bdg g" role="img" aria-label="Galoppvarning">G</span>':'')+(h.scr?'<span class="tag scr-tag">Struken</span>':'')+'</span>'+
+      '<span class="kt kt2"><span>'+h.k+'</span>'+(alt==='C'&&m?spC(m):'')+earn+'</span></a>'+
+      formS(h.form)+'<span class="rk'+(h.rx?' x':'')+'">'+(h.scr||h.r==null?'–':'<span class="'+(h.rx?'rkx':'')+'" style="'+(h.rx?'color:var(--accent)':'')+'">'+od(h.rx||h.r)+'</span>')+'</span>'+lamp(h.name,h.i)+'</li>';
+  }
+  function stat(kind){
+    var l=function(k){return spA(k)};
+    if(kind==='both')return '<span>'+l('vp')+' Spår 1 vinner <b>15,8'+NB+'%</b> · plats <b>42,3'+NB+'%</b></span>';
+    if(kind==='low')return '<span>'+l('low')+' Spår 12 vinner <b>18,8'+NB+'%</b> · bara 16 starter</span>';
+    if(kind==='fallback')return '<span>'+l('v')+' Spår 3 vinner <b>14,6'+NB+'%</b></span><span>Spår 1 <b>12,0'+NB+'%</b></span>';
+    if(kind==='none')return '<span>Statistik saknas just nu</span><span class="lnk">Hämta igen</span>';
+    return '<span>'+l('v')+' Spår 3 vinner <b>14,6'+NB+'%</b></span><span>'+l('p')+' Spår 4 plats <b>39,8'+NB+'%</b></span><span>Favorit vinner <b>31,0'+NB+'%</b></span><span><b>4</b> intressanta</span>';
+  }
+  var LEGS=['Rally','Bjerke Open','Trav 3','Stoe 4','Bronsen','Trav 6','Trav 7','Final'];
+  function mavs(){return LEGS.map(function(n,i){var on=i===4;return '<button type="button" role="tab" aria-selected="'+on+'">'+nr(i+1,1)+'<span>'+n+'<small>'+['15:00','15:22','15:44','16:06','16:28','16:50','17:12','17:34'][i]+'</small></span></button>'}).join('')}
+  function chips(){return '<div class="chips"><span class="chip num">2100 m</span><span class="chip chip-auto">Auto</span><span class="chip">Bronsen</span><button type="button" class="chip chip-btn">Loppstatistik ›</button></div>'}
+  function colsRow(){return '<div class="cols g-an"><span>Nr ↕</span><span>Häst · kusk</span><span class="c">Form</span><span class="r">Rikt</span><span class="c">Intr.</span></div>'}
+  function scrSL(alt){
+    return '<div class="ah brd"><a class="ibtn" href="#" aria-label="Tillbaka till omgången">'+I.back+'Omgång</a><div class="ah-t"><span class="ah-title">V85-5 · Bronsen</span><span class="ah-sub">V85 · Bjerke · start 16:28 · 12 hästar</span></div></div>'+
+      '<div class="mavs brd" role="tablist" aria-label="V85-lopp">'+mavs()+'</div><div class="strip brd">'+chips()+'<div class="statline">'+stat()+'</div></div>'+colsRow()+
+      '<ul class="list" aria-label="Startlista V85-5">'+SL.map(function(h){return sRow(h,alt)}).join('')+'</ul>';
+  }
+  function deskAv(alt){
+    var p=SL[2];
+    var seg8='<div class="seg" role="group" aria-label="V85-lopp">'+[1,2,3,4,5,6,7,8].map(function(n){return '<button type="button" aria-pressed="'+(n===5)+'">'+n+'</button>'}).join('')+'</div>';
+    var fas='<div class="seg" role="group" aria-label="Fas"><button type="button">✓ Analys</button><button type="button" aria-pressed="true">Odds</button><button type="button">Live</button><button type="button">Klart</button></div>';
+    var tools='<button type="button" class="btn primary">'+I.wand+'Trollspöt</button><button type="button" class="btn secondary">Unibets odds</button><button type="button" class="btn secondary">Spelförslag</button>';
+    var card='<article class="pn"><div class="pn-h"><h2>Hästkortet</h2><span>· 3 av 12</span><span class="end"><button type="button" class="xs">Unibet ↗</button></span></div>'+
+      '<div class="hb brd">'+nr(p.n,0,p.sig,alt==='B'?spB('v'):'')+'<div><h3 class="nm">Paleo Boko</h3><p class="inf">6 år v · rekord 1.12,4a · <b>Robert Bergh</b></p></div>'+
+      '<div class="keys" role="list" aria-label="Nyckeltal"><div class="key" role="listitem"><small>Riktodds plats</small><b class="num eq big">1,94</b></div><div class="key" role="listitem"><small>Unibet plats</small><b class="num eq up">2,25<span class="k-up"> ▲</span></b></div><div class="key" role="listitem"><small>Vinnare</small><b class="num">3,90</b></div><div class="key" role="listitem"><small>Signaler</small><b class="num">3/10</b></div></div>'+
+      '<div class="hb-flag">'+spA('v')+'<span>Bästa vinstspår i loppet: spår 3 vinner <b>14,6'+NB+'%</b>, 2100 m auto</span></div></div>'+
+      '<div class="secs"><section><div class="pn-h"><h3>Riktodds plats</h3></div><div class="pn-b"><p><span class="hsv">+0,31</span> <b>Spelbar</b>, Unibet ger mer än riktoddset.</p><p class="help">Chans till topp 3 ≈ 52 % → 1 / 0,52 = 1,94</p></div></section>'+
+      '<section><div class="pn-h"><h3>Positiva signaler</h3><span class="end">3 av 10</span></div><div class="pn-b"><ul class="sl2"><li class="ok"><i>✓</i><b>Kusk</b><span>Robert Bergh vinner 24 %</span></li><li class="ok"><i>✓</i><b>Tränare</b><span>vinner 21 %</span></li><li class="ok"><i>✓</i><b>Form</b><span>3 av 5 topp 3</span></li><li class="no"><i>–</i><b>Spår</b><span>Plats 33 % mot medel 31 %</span></li></ul></div></section>'+
+      '<section><div class="pn-h"><h3>Statistik</h3></div><div class="pn-b"><dl class="kv"><dt>Spår 3, 2100 m auto, vinst</dt><dd>14,6'+NB+'% '+spA('v')+'</dd><dt>Spår 3, plats (alla banor, 4 812 lopp)</dt><dd>33,4'+NB+'%</dd><dt>Kusken vinner i år</dt><dd>24'+NB+'%</dd><dt>Tränaren vinner i år</dt><dd>21'+NB+'%</dd></dl></div></section></div></article>';
+    return dhead()+'<div class="av"><div class="band"><div class="bandp"><span class="bl">V85</span>'+seg8+'</div><div class="bandp"><span class="bl">Fas</span>'+fas+'</div><div class="bandp" style="margin-left:auto"><span class="bl">Verktyg</span>'+tools+'</div></div>'+
+      '<section class="pn"><div class="pn-h"><h2>V85-5 · Bronsen</h2><span class="end"><button type="button" class="xs">Statistik ›</button></span></div><div class="rb brd">'+chips()+'<div class="statline">'+stat()+'</div></div>'+colsRow()+'<ul class="list">'+SL.map(function(h){return sRow(h,alt,h.n===3)}).join('')+'</ul></section>'+card+'</div>';
+  }
+  function fig(cap,kind,row,alt){
+    var r=Object.assign({k:'Kusk',sig:2,form:'12030',r:3.20,e:'420 tkr'},row);
+    return '<figure><figcaption><b>'+cap[0]+'.</b> '+cap[1]+'</figcaption><div class="statline brd">'+stat(kind)+'</div><ul class="list">'+sRow(r,alt)+'</ul></figure>';
+  }
+  function matrix(alt){
+    return '<h4 class="part">Alla lägen i alternativ '+alt+'</h4><div class="states">'+
+      fig(['Bäst vinnarspår','Fylld grön, som en etta i formen.'],undefined,{n:3,name:'Paleo Boko',k:'Robert Bergh',sig:3,form:'13205',r:1.94,e:'1,2 Mkr',i:1,s:1,mk:'v'},alt)+
+      fig(['Bäst platsspår','Ljusgrön, som en tvåa i formen.'],undefined,{n:4,name:'Orazi Cesare',k:'Thomas Dalborg',sig:2,form:'21034',r:2.40,rx:1.92,x:'X',e:'842 tkr',i:1,s:1,mk:'p'},alt)+
+      fig(['Samma spår bäst på båda','Ett märke, inte två.'],'both',{n:1,name:'Yellowstone Doc',k:'Frode Hamre',form:'30g02',r:6.10,e:'388 tkr',mk:'vp'},alt)+
+      fig(['Litet underlag','Streckat med frågetecken, under 100 starter.'],'low',{n:12,name:'Mimosa to Martini',k:'Dag-Sveinung Dalen',sig:1,form:'06000',r:11.90,e:'133 tkr',mk:'low'},alt)+
+      fig(['Bara vinst finns','Statistikbasen räcker inte, travstatistik.se används. Inget platsmärke.'],'fallback',{n:3,name:'Paleo Boko',k:'Robert Bergh',sig:3,form:'13205',r:1.94,e:'1,2 Mkr',i:1,s:1,mk:'v'},alt)+
+      fig(['Statistik saknas','Inget märke. Raden ser ut som i dag.'],'none',{n:3,name:'Paleo Boko',k:'Robert Bergh',sig:3,form:'13205',r:1.94,e:'1,2 Mkr',i:1,s:1},alt)+
+      '</div>';
+  }
+  function altP6(alt,title,rec,sub){
+    return '<h3 class="alt"><span class="al">'+alt+'</span>'+title+(rec?'<span class="recs">Rekommenderas</span>':'')+'</h3><p class="sub">'+sub+'</p>'+
+      '<div class="phwrap">'+ph(scrSL(alt),'Mobil 390 px · Startlistan V85-5')+'</div>'+
+      bf('omgang/…/avd/5/hast/…',deskAv(alt),'Webbläsare · Analysvyn med hästkortet')+matrix(alt);
+  }
+
+  // ---- Rita ut ----
+  var R={
+    p2a:function(){return altP2('A','Kort per lopp i båda flikarna',1,'<b>Ger:</b> flikarna ser likadana ut vid byte, och samma lopp ligger på samma plats. Trollspöts rangordning finns kvar med <b>Högst chans först</b>. <b>Kostar:</b> rangordningen syns inte direkt, bara som #placering på märket.')},
+    p2b:function(){return altP2('B','Samma rad, men Trollspöt förblir en rangordning',0,'<b>Ger:</b> Trollspöt läses uppifrån som i dag, bästa chansen först. <b>Kostar:</b> raderna är lika men listan byter form vid flikbyte, och hästar i samma lopp hamnar isär.')},
+    p5:p5,
+    p6a:function(){return altP6('A','Märke efter namnet',1,'<b>Ger:</b> tydligast, i samma familj som S, X och G. Går att läsa även för den som inte minns koden, eftersom statistikraden förklarar den. <b>Kostar:</b> tar 20–30 px, så långa namn kortas tidigare.')},
+    p6b:function(){return altP6('B','Bricka på startnumret',0,'<b>Ger:</b> tar ingen bredd från namnet och sitter på själva spårnumret. <b>Kostar:</b> liten text på 10 px, och startnumret bär redan signalbrickan. Lätt att förbise när du skannar listan.')},
+    p6c:function(){return altP6('C','Procent i kuskraden',0,'<b>Ger:</b> du ser procenten direkt och behöver inte öppna något. <b>Kostar:</b> vinstsumman får ge plats på märkta rader, och kusknamnet kortas mycket i mobilen.')}
+  };
+  document.querySelectorAll('[data-r]').forEach(function(el){
+    try{var fn=R[el.getAttribute('data-r')];el.innerHTML=fn?fn():''}
+    catch(e){el.textContent='Kunde inte rita den här delen: '+e.message}
+  });
+
+  // ---- Interaktion ----
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    var a=t.closest('a[href="#"]');if(a)e.preventDefault();
+    var th=t.closest('[data-t]');
+    if(th){document.documentElement.setAttribute('data-theme',th.getAttribute('data-t'));document.querySelectorAll('[data-t]').forEach(function(x){x.setAttribute('aria-pressed',String(x===th))});return}
+    var go=t.closest('[data-go]');
+    if(go){var s=go.closest('.scr');s.setAttribute('data-tab',go.getAttribute('data-go'));s.querySelectorAll('[data-go]').forEach(function(x){x.setAttribute('aria-pressed',String(x===go))});return}
+    var fl=t.closest('[data-fl]');
+    if(fl){var sc=fl.closest('.scr');var on=sc.getAttribute('data-f')==='1';sc.setAttribute('data-f',on?'0':'1');fl.setAttribute('aria-pressed',String(!on));return}
+  });
+  document.addEventListener('change',function(e){
+    var t=e.target;
+    if(t.matches&&t.matches('input[data-sort]')){
+      var pp=t.closest('.pp');pp.setAttribute('data-sort',t.checked?'1':'0');
+      var help=t.closest('.sortbar').querySelector('.help');
+      if(help)help.textContent=t.checked?(pp.closest('.p-troll')?'Sorterat på chans till topp 3':'Värde = Unibet ÷ riktodds − 1'):'Sorterat per lopp';
+    }
+  });
+})();
+</script>

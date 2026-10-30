@@ -18,6 +18,27 @@ export function useOnline(): boolean {
   );
 }
 
+// Ett av/på-val som sparas i webbläsaren. Av tills lagringen är läst.
+export function useStoredFlag(key: string): [boolean, (v: boolean) => void] {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    try {
+      setOn(localStorage.getItem(key) === "1");
+    } catch {
+      // ingen lagring
+    }
+  }, [key]);
+  const set = (v: boolean) => {
+    setOn(v);
+    try {
+      localStorage.setItem(key, v ? "1" : "0");
+    } catch {
+      // ingen lagring
+    }
+  };
+  return [on, set];
+}
+
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (fn) => {

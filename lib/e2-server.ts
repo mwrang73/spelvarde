@@ -14,7 +14,7 @@ import { currentRoundId } from "@/lib/round-server";
 import type { CouponResponse, LegRolesDto, MarkResponse, ModelResponse, SettingsDto } from "@/lib/types";
 import { parseSettingsBody, type Result } from "@/lib/validate";
 import { checkFactors } from "@/lib/xfactor";
-import { legsFor, spikMaxFor } from "@/lib/game-type";
+import { legName, legsFor, spikMaxFor } from "@/lib/game-type";
 
 type Db = PrismaClient;
 export type Reply<T = unknown> = { status: number; body: T | { error: string } };
@@ -141,10 +141,10 @@ export async function saveCoupon(db: Db, userId: string, roundId: string, body: 
   const checkNumbers = (sel: Record<number, number[]>): Reply<never> | null => {
     for (const [leg, nums] of Object.entries(sel)) {
       const race = round.races.find((r) => r.leg === Number(leg));
-      if (!race || Number(leg) > legs) return err(400, `Avd ${leg} finns inte i omgången.`);
+      if (!race || Number(leg) > legs) return err(400, `${legName(round.gameType, leg)} finns inte i omgången.`);
       const have = new Set(race.starts.map((s) => s.number));
       const bad = nums.find((n) => !have.has(n));
-      if (bad !== undefined) return err(400, `Startnummer ${bad} finns inte i avd ${leg}.`);
+      if (bad !== undefined) return err(400, `Startnummer ${bad} finns inte i ${legName(round.gameType, leg)}.`);
     }
     return null;
   };
@@ -173,7 +173,7 @@ export async function saveCoupon(db: Db, userId: string, roundId: string, body: 
   const spikCount = input.spikCount !== undefined ? input.spikCount : (existing?.spikCount ?? null);
   const allgMode = input.allgMode !== undefined ? input.allgMode : (existing?.allgMode ?? null);
   const allgLeg = input.allgLeg !== undefined ? input.allgLeg : (existing?.allgLeg ?? null);
-  if (input.allgLeg !== undefined && input.allgLeg !== null && input.allgLeg > legs) return err(400, `Avd ${input.allgLeg} finns inte i omgången.`);
+  if (input.allgLeg !== undefined && input.allgLeg !== null && input.allgLeg > legs) return err(400, `${legName(round.gameType, input.allgLeg)} finns inte i omgången.`);
   if (allgMode === null && spikCount !== null) return err(400, ALLG_MODE_ERROR);
   if (allgMode === "CHOSEN") {
     if (allgLeg === null) return err(400, PRIO_LEG_MISSING_ERROR);

@@ -3,7 +3,7 @@
 // testade i lib/coupon.test.ts. Raden räknas i klienten (lib/tippa.ts, E6);
 // servern sparar kupongen (PUT /api/rounds/[id]/coupon) och kontrollerar den.
 
-import { legsFor } from "@/lib/game-type";
+import { legName, legsFor } from "@/lib/game-type";
 import { stockholmParts } from "@/lib/stockholm-time";
 import type { AllgMode, LegRoleDto, LegRoleKind, LegRolesDto, ReasonCode } from "@/lib/types";
 import type { Result } from "@/lib/validate";
@@ -61,10 +61,10 @@ export function couponText(round: { trackName: string; date: string; gameType: s
     if (opts?.allgLeg === leg && info && info.all.length && hasAll) {
       const all = [...info.all].sort((a, b) => a - b);
       const scr = [...scrSet].filter((n) => all.includes(n)).sort((a, b) => a - b);
-      lines.push(`Avd ${leg}: alla (${all[0]}–${all[all.length - 1]}${scr.length ? `, utom ${joinOch(scr)}` : ""})`);
+      lines.push(`${legName(round.gameType, leg)}: alla (${all[0]}–${all[all.length - 1]}${scr.length ? `, utom ${joinOch(scr)}` : ""})`);
       continue;
     }
-    lines.push(`Avd ${leg}: ${nums.length ? nums.join(", ") : "–"}`);
+    lines.push(`${legName(round.gameType, leg)}: ${nums.length ? nums.join(", ") : "–"}`);
   }
   lines.push(`${rows} ${rows === 1 ? "rad" : "rader"} · ${krText(couponCost(rows, rowPrice))}`);
   return lines.join("\n");
@@ -95,10 +95,10 @@ const COUPON_KEYS = ["budget", "rowPrice", "selections", "lockedLegs", "spikCoun
 // Spikar i databasen: 0–8 (Coupon_spikCount_check). Spelformens tak i saveCoupon.
 export const SPIK_COUNT_DB_MAX = 8;
 export const LEG_ROLES_MAX_CHARS = 6000;
-export const ALLG_MODE_ERROR = "Prioriterat lopp ska vara Auto eller en vald avdelning.";
+export const ALLG_MODE_ERROR = "Prioriterat lopp ska vara Auto eller ett valt lopp.";
 // Felsvaren för det prioriterade loppet som kräver omgången (saveCoupon).
 export const PRIO_LEG_MISSING_ERROR = "Välj vilket lopp som ska prioriteras.";
-export const PRIO_LEG_LOCKED_ERROR = "Det prioriterade loppet kan inte vara en låst avdelning.";
+export const PRIO_LEG_LOCKED_ERROR = "Det prioriterade loppet kan inte vara ett låst lopp.";
 // E6b (docs/specs/e6b-max-per-lopp.md 4.2–4.4): Max hästar per lopp. Databasen
 // har villkoret 3–30 (Coupon_maxPerLeg_check); 30 = högsta startnumret i
 // parseSelections. Ingen kontroll mot omgången: ett tak över största fältet
@@ -113,12 +113,12 @@ export const COPIED_AT_ERROR = "Ogiltig kopieringstid.";
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
 function parseSelections(sel: unknown, what: string): Result<Selections> {
-  if (!sel || typeof sel !== "object" || Array.isArray(sel)) return fail(`${what} ska vara ett objekt med avdelning som nyckel.`);
+  if (!sel || typeof sel !== "object" || Array.isArray(sel)) return fail(`${what} ska vara ett objekt med lopp som nyckel.`);
   const selections: Selections = {};
   for (const [k, v] of Object.entries(sel as Record<string, unknown>)) {
     const leg = Number(k);
-    if (!/^[1-8]$/.test(k)) return fail("Avdelningarna är 1–8.");
-    if (!Array.isArray(v) || v.length > 30 || !v.every((n) => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 30)) return fail(`Ogiltiga startnummer i avd ${leg}.`);
+    if (!/^[1-8]$/.test(k)) return fail("Loppen är 1–8.");
+    if (!Array.isArray(v) || v.length > 30 || !v.every((n) => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 30)) return fail(`Ogiltiga startnummer i lopp ${leg}.`);
     selections[leg] = [...new Set(v as number[])].sort((a, b) => a - b);
   }
   return { ok: true, value: selections };
@@ -138,7 +138,7 @@ export function parseCouponBody(body: Record<string, unknown>): Result<CouponInp
   if (!sel.ok) return sel;
   const selections = sel.value;
   const lockedRaw = body.lockedLegs ?? [];
-  if (!Array.isArray(lockedRaw) || !lockedRaw.every((n) => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 8)) return fail("lockedLegs ska vara avdelningar 1–8.");
+  if (!Array.isArray(lockedRaw) || !lockedRaw.every((n) => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 8)) return fail("lockedLegs ska vara lopp 1–8.");
   const lockedLegs = [...new Set(lockedRaw as number[])].sort((a, b) => a - b);
   const out: CouponInput = { budget, rowPrice, selections, lockedLegs };
 
@@ -155,7 +155,7 @@ export function parseCouponBody(body: Record<string, unknown>): Result<CouponInp
   if (body.allgLeg !== undefined) {
     const v = body.allgLeg;
     if (v !== null && (typeof v !== "number" || !Number.isInteger(v))) return fail(ALLG_MODE_ERROR);
-    if (typeof v === "number" && (v < 1 || v > 8)) return fail(`Avd ${v} finns inte i omgången.`);
+    if (typeof v === "number" && (v < 1 || v > 8)) return fail(`Lopp ${v} finns inte i omgången.`);
     out.allgLeg = v as number | null;
   }
   if (body.maxPerLeg !== undefined) {

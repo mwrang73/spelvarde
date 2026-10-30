@@ -84,11 +84,11 @@ describe("Nästa steg (3.2)", () => {
   it("2. ofullständig hämtning går före allt annat", () => {
     expect(nextStep({ now, round: round(races(), "PARTIAL"), nextAvailable: null }).kind).toBe("RESUME_FETCH");
   });
-  it("8. Analys: första avdelningen som inte är genomgången", () => {
+  it("8. Analys: första loppet som inte är genomgången", () => {
     const s = nextStep({ now, round: round(races({}, { 1: { reviewed: true }, 2: { reviewed: true } })), nextAvailable: null });
     expect(s.kind).toBe("ANALYZE_LEG");
-    expect(s.title).toBe("Analysera avd 3 – Lopp 3");
-    expect(s.action).toEqual({ type: "link", label: "Till avd 3", href: "/omgang/r1/avd/3" });
+    expect(s.title).toBe("Analysera V85-3 – Lopp 3");
+    expect(s.action).toEqual({ type: "link", label: "Till V85-3", href: "/omgang/r1/avd/3" });
   });
   it("8. allt genomgånget: ingen primärknapp", () => {
     const s = nextStep({ now, round: round(races({ reviewed: true })), nextAvailable: null });
@@ -109,12 +109,12 @@ describe("Nästa steg (3.2)", () => {
     const liveNow = at("2026-10-24T13:30:00Z");
     const f = { odds: true, coupon: true, live: true, raceView: true, stats: true, results: true, tips: false };
     const rs = round(races());
-    expect(nextStep({ now: liveNow, round: rs, nextAvailable: null, unackedAlarms: [{ leg: 7, horseName: "Mateo di Quattro", kind: "RUSH" }], features: f }).title).toBe("Rusning i avd 7 – Mateo di Quattro");
+    expect(nextStep({ now: liveNow, round: rs, nextAvailable: null, unackedAlarms: [{ leg: 7, horseName: "Mateo di Quattro", kind: "RUSH" }], features: f }).title).toBe("Rusning i V85-7 – Mateo di Quattro");
     const s = nextStep({ now: liveNow, round: rs, nextAvailable: null });
-    expect(s.title).toBe("Avd 3 startar 15:44");
+    expect(s.title).toBe("V85-3 startar 15:44");
     // E4a: meningen är loppnamnet utan markeringar, och knappen leder till S2.
     expect(s.text).toBe("Lopp 3");
-    expect(s.action).toEqual({ type: "link", label: "Till avd 3", href: "/omgang/r1/avd/3" });
+    expect(s.action).toEqual({ type: "link", label: "Till V85-3", href: "/omgang/r1/avd/3" });
   });
   it("4. E4a: dina hästar i nästa avdelning", () => {
     const liveNow = at("2026-10-24T13:30:00Z");
@@ -128,8 +128,8 @@ describe("Nästa steg (3.2)", () => {
     const late = at("2026-10-24T16:20:00Z");
     const rs = round(races({ hasResult: true }, { 7: { hasResult: false }, 8: { hasResult: false } }));
     const s = nextStep({ now: late, round: rs, nextAvailable: null });
-    expect(s).toMatchObject({ kind: "LIVE_WAITING", title: "Väntar på resultat i avd 7", text: "Placeringen hämtas automatiskt från ATG." });
-    expect(s.action).toEqual({ type: "link", label: "Till avd 7", href: "/omgang/r1/avd/7" });
+    expect(s).toMatchObject({ kind: "LIVE_WAITING", title: "Väntar på resultat i V85-7", text: "Placeringen hämtas automatiskt från ATG." });
+    expect(s.action).toEqual({ type: "link", label: "Till V85-7", href: "/omgang/r1/avd/7" });
   });
   it("9. Efteranalysen är klar, med summeringen", () => {
     const done = round(races({ hasResult: true }));

@@ -648,6 +648,7 @@ main.av .linkish::after, .hkm .linkish::after { content: ""; position: absolute;
   .key small { font: 700 10px/12px var(--f-label); letter-spacing: .08em; text-transform: uppercase; color: var(--head-ink-2); white-space: nowrap; }
   .key b { font: 700 20px/30px var(--f-num); color: var(--head-title); white-space: nowrap; }
   .key b.big { font-size: 28px; color: var(--head-ink); text-shadow: 0 0 14px var(--glow); }
+  .key b.same { font-size: 28px; }
   .key b sup { font-size: 14px; vertical-align: 10px; margin-left: 1px; }
   .key b.up, .key .k-up { color: var(--head-up); }
   .key .k-up { font-size: 13px; }
@@ -1109,6 +1110,7 @@ main.av .linkish::after, .hkm .linkish::after { content: ""; position: absolute;
   .odds-page .kp { margin-top: 10px; }
   .spel { max-width: 1280px; margin: 0 auto; }
   .spel-help { margin: 0 20px 4px; }
+  .spel .why { margin: 0 20px 8px; }
   .spel .sl.tight, .spel .sl { padding-left: 20px; padding-right: 20px; }
   .spel .rest { margin: 0 20px; border: 1px solid var(--line); border-radius: 8px; }
   .spel .budget { margin: 4px 20px 10px; }
@@ -1180,6 +1182,14 @@ main.av .linkish::after, .hkm .linkish::after { content: ""; position: absolute;
 .nr .sigb { position: absolute; right: -6px; bottom: -5px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; display: grid; place-items: center; font: 700 10px/1 var(--f-num); font-style: normal; color: var(--sig); background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--sig); text-shadow: none; z-index: 1; }
 .nr .sigb.many { background: var(--sig-fill); color: var(--sig-fill-ink); box-shadow: none; }
 .nr.sm .sigb { right: -5px; bottom: -4px; min-width: 14px; height: 14px; font-size: 9px; }
+/* Spårfördel: bricka på startnumret (FlapNumber), samma färglogik som formrutorna. */
+.nr .spb, .spb.spk { min-width: 15px; height: 15px; padding: 0 3px; border-radius: 3px; display: grid; place-items: center; font: 700 10px/1 var(--f-label); font-style: normal; letter-spacing: 0; text-shadow: none; }
+.nr .spb { position: absolute; left: -6px; top: -5px; z-index: 1; box-shadow: 0 0 0 1.5px var(--surface); }
+.nr.sm .spb { left: -5px; top: -4px; }
+.spb.spk { display: inline-grid; margin-right: 4px; vertical-align: 1px; }
+.spb.v, .spb.vp { background: var(--sig-fill); color: var(--sig-fill-ink); }
+.spb.p { background: var(--sig-fill-2); color: var(--sig-fill-2-ink); }
+.brd .spb.spk.p { background: #BFE6CB; color: #0A4721; }
 .tag.lowst { font-size: 10.5px; min-height: 18px; padding: 1px 5px; }
 /* Sortering via Nr-rubriken (startnummer eller antal signaler). */
 .slist .tbl th:first-child { width: 46px; }
@@ -1212,26 +1222,10 @@ main.av .linkish::after, .hkm .linkish::after { content: ""; position: absolute;
 .dtabs button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--fill); }
 .dtabs svg { width: 16px; height: 16px; }
 /* Trollspöt-listan. */
-.troll { display: grid; gap: 14px; }
-.troll-why { margin: 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 14px; }
-.troll-why h3 { margin: 0 0 6px; font: 700 13px/1.2 var(--f-label); letter-spacing: .08em; text-transform: uppercase; }
-.troll-why p { margin: 0 0 8px; }
-.troll-why p:last-child { margin: 0; }
 .tchance { display: inline-grid; justify-items: end; gap: 3px; min-width: 52px; }
 .tchance i { display: block; height: 3px; background: var(--fill); border-radius: 2px; max-width: 52px; }
-.tstate { font: 600 12.5px/1.2 var(--f-num); white-space: nowrap; }
-.tstate.up { color: var(--sig-text); background: var(--sig-soft); box-shadow: inset 0 0 0 1px var(--sig); padding: 2px 6px; border-radius: 4px; }
-.tstate.dn { color: var(--ink-2); }
 .tlink { color: inherit; text-decoration: none; }
 .tlink:hover { text-decoration: underline; text-underline-offset: 3px; }
-.trow .pm { display: block; }
-.ttbl .sigs { max-width: 260px; }
-@media (min-width: 1024px) {
-  .troll { grid-template-columns: minmax(0, 1fr) 260px; align-items: start; padding: 0 20px; }
-  .troll .twrap { padding: 4px 0 0; }
-  .troll-why { margin: 4px 0 0; }
-}
-.ttbl td.num { white-space: nowrap; }
 /* Trollspöt sticker ut: glimmande trollspö, tavlans gula ljus. */
 .wand { width: 18px; height: 18px; flex: none; overflow: visible; }
 .wand .wand-s { opacity: .25; transform-box: fill-box; transform-origin: center; animation: wandSpark 2.4s ease-in-out infinite; }
@@ -1249,21 +1243,10 @@ main.av .linkish::after, .hkm .linkish::after { content: ""; position: absolute;
 .qlink.troll-link svg { color: var(--fill-ink); }
 .qlink.troll-link .wand { width: 22px; height: 22px; filter: drop-shadow(0 0 3px rgba(255, 255, 255, .7)); }
 /* Trollspöt i mobilen: lägre rader, minst X i en ruta till höger och Intressant ytterst. */
-.brow.trow { grid-template-columns: 26px minmax(0, 1fr) 58px 44px; min-height: 0; padding-top: 7px; padding-bottom: 7px; }
-.trow .sigs.one { margin-top: 2px; }
-.trow .sigs.one .tag { flex: none; }
 .tag.more { background: var(--surface-3); color: var(--ink-2); }
-.tmin { grid-row: 1; grid-column: 3; display: grid; justify-items: center; align-content: center; height: 44px; border: 1.5px solid var(--line-strong); border-radius: 8px; background: var(--surface); line-height: 1; }
-.tmin b { font: 700 15.5px/1 var(--f-num); }
-.tmin small { font: 600 10px/1.2 var(--f-label); letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); margin-top: 2px; }
-.tmin.up { border-color: var(--sig); background: var(--sig-soft); }
-.tmin.up b { color: var(--sig-text); }
-.tmin.dn b { color: var(--ink-2); }
-.trow > .lamp { grid-row: 1; grid-column: 4; }
-.trow .sigs.one .tag { font-size: 10.5px; padding: 1px 5px; min-height: 19px; }
 /* S4 Unibets odds som lista. */
 .ol-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px 0; }
-.ol-head .seg button { min-height: 38px; font-size: 13px; }
+.ol-head .seg button { min-height: 44px; font-size: 13px; }
 .ol-count { margin: 0; font-size: 14px; color: var(--ink-2); }
 .ol-count b { color: var(--ink); }
 .ol-back { margin: 8px 12px 0; }
@@ -1457,6 +1440,26 @@ a.rrow:hover .pn { text-decoration: underline; text-underline-offset: 3px; }
 .bdg.tsb .wand .wand-s { animation: none; opacity: .95; transform: none; }
 /* "minst 2,40" under fältet för en Trollspöt-häst utan odds (S4, S6). */
 .sv.tmin-h { color: var(--accent); }
+.trk { flex: none; font: 700 11.5px/1 var(--f-num); color: var(--accent); }
+/* Chans, Odds ≈ och Minst i Trollspöt och Platsspel. Mobilen har dem i en rad under hästen. */
+.est { font: 500 13px/1 var(--f-num); color: var(--ink-2); white-space: nowrap; }
+.mnv { font: 700 13.5px/1 var(--f-num); white-space: nowrap; }
+.mnv.ok, .kvs b.ok { color: var(--sig); }
+.brow > .bx { grid-row: 2; grid-column: 2 / -1; min-width: 0; }
+.kvs { display: flex; gap: 14px; align-items: baseline; white-space: nowrap; }
+.kvs small { font: 700 10.5px/1 var(--f-label); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.kvs b { font: 700 12.5px/1 var(--f-num); }
+.why { margin: 0 12px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 13.5px; line-height: 1.4; }
+.why summary { min-height: 44px; display: flex; align-items: center; padding: 0 12px; font: 700 13px/1.2 var(--f-label); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.why p { margin: 0; padding: 0 12px 8px; }
+/* Snabbfiltret Visa spelbara i Unibets odds. */
+.qf { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1.5px solid var(--line-strong); border-radius: 7px; background: var(--surface); font: 700 13.5px/1 var(--f-label); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); white-space: nowrap; cursor: pointer; }
+.qf .num { font-size: 12.5px; }
+.qf .ck { display: none; font-size: 13px; }
+.qf[aria-pressed="true"] { background: var(--fill); color: var(--fill-ink); border-color: var(--fill-deep); box-shadow: 0 0 14px var(--glow); }
+.qf[aria-pressed="true"] .ck { display: inline; }
+.qf[aria-pressed="true"] .bdg.s { background: var(--fill-ink); color: var(--fill); }
+.ol-head .ol-tools { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
 /* S1: resultatstatus i avdelningsraderna. */
 .tag.live { background: var(--accent-soft); color: var(--accent); }
 .orow .hit { font-size: 11.5px; padding: 4px 6px; }
@@ -1956,7 +1959,6 @@ section.lg { margin-bottom: 14px; }
 .dact .help { text-align: center; }
 /* Desktop: två kolumner, budget och regler till vänster */
 @media (min-width: 1024px) {
-  .spel-p.plats { max-width: 900px; }
   .spel-p.rad > .ban.m10 { margin: 12px 20px 0; }
   .drad { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 24px; padding: 16px 20px 20px; align-items: start; }
   .drad-l { position: sticky; top: 12px; max-height: calc(100dvh - 24px); overflow: auto; }

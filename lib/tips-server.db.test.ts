@@ -389,7 +389,7 @@ describe.skipIf(skip)("Hämta tips mot Postgres", () => {
   });
 
   it("efter loppets start går tipsen i loppet inte att ändra", async () => {
-    clock = new Date("2026-10-31T14:00:01Z"); // avd 1 startade 15:00 svensk tid
+    clock = new Date("2026-10-31T14:00:01Z"); // V85-1 startade 15:00 svensk tid
     const list = (await tips()).tips;
     const fly = tipBy(list, "Fly Express", syntId);
     expect(fly.locked).toBe(true);

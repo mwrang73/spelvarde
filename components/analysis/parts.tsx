@@ -7,6 +7,7 @@ import { BetBadge, Badge, FlapNumber } from "@/components/ui/board";
 import { IconCheck, IconChev, IconInfo, IconWarn, IconX } from "@/components/ui/icons";
 import { type Board, type Conclusion, type Group, type Missed, type OverTime, type Play, type RoundAnalysis, supportLabel, UNIT_KR } from "@/lib/analysis";
 import { dayDate, ordinal } from "@/lib/format";
+import { legName } from "@/lib/game-type";
 
 const fmt = (x: number, d = 2) => x.toFixed(d).replace(".", ",");
 export const signedU = (x: number) => `${x > 0.004 ? "+" : x < -0.004 ? "−" : "±"}${fmt(Math.abs(x))}`;
@@ -127,7 +128,7 @@ export function Compare({ groups, flat }: { groups: Group[]; flat?: boolean }) {
 const placeTxt = (p: { place: number | null; disqualified: boolean; galloped: boolean; hit: boolean | null }) =>
   p.hit === null ? "–" : p.disqualified ? "Diskad" : p.place && p.place >= 1 ? ordinal(p.place) : p.galloped ? "Galopp" : "Oplacerad";
 
-export function Plays({ plays, href }: { plays: Play[]; href: (p: Play) => string }) {
+export function Plays({ plays, href, gameType }: { plays: Play[]; href: (p: Play) => string; gameType: string }) {
   if (!plays.length) return <p className="help pad">Inga Bet i omgången.</p>;
   return (
     <ul className="plays" aria-label="Dina spel">
@@ -137,7 +138,7 @@ export function Plays({ plays, href }: { plays: Play[]; href: (p: Play) => strin
           <div className="pmain">
             <span className="hl">
               <span className="sr">
-                Avd {p.leg}, nr {p.number},{" "}
+                {legName(gameType, p.leg)}, nr {p.number},{" "}
               </span>
               <Link className="hn tlink" href={href(p)}>
                 {p.horseName}
@@ -146,7 +147,7 @@ export function Plays({ plays, href }: { plays: Play[]; href: (p: Play) => strin
               {p.xFactor !== "NONE" && <Badge kind={p.xFactor === "STARK" ? "xp" : "x"} />}
             </span>
             <span className="pm">
-              Avd {p.leg} · rikt m X <b>{(p.riktoddsX ?? p.riktodds) !== null ? fmt((p.riktoddsX ?? p.riktodds)!) : "–"}</b>
+              {legName(gameType, p.leg)} · rikt m X <b>{(p.riktoddsX ?? p.riktodds) !== null ? fmt((p.riktoddsX ?? p.riktodds)!) : "–"}</b>
             </span>
             <span className="why">
               {p.quality && <span className={`tag ${p.quality === "good" ? "good" : "bad"}`}>{p.quality === "good" ? "Bra spel" : "Svagt spel"}</span>}
@@ -175,7 +176,7 @@ export function Plays({ plays, href }: { plays: Play[]; href: (p: Play) => strin
   );
 }
 
-export function MissedList({ list, total }: { list: Missed[]; total: number }) {
+export function MissedList({ list, total, gameType }: { list: Missed[]; total: number; gameType: string }) {
   if (!list.length) return null;
   return (
     <>
@@ -189,7 +190,7 @@ export function MissedList({ list, total }: { list: Missed[]; total: number }) {
                 <Badge kind="s" />
               </span>
               <span className="pm">
-                Avd {m.leg} · Unibet <b>{m.unibetOdds !== null ? fmt(m.unibetOdds) : "–"}</b> · rikt <b>{(m.riktoddsX ?? m.riktodds) !== null ? fmt((m.riktoddsX ?? m.riktodds)!) : "–"}</b>
+                {legName(gameType, m.leg)} · Unibet <b>{m.unibetOdds !== null ? fmt(m.unibetOdds) : "–"}</b> · rikt <b>{(m.riktoddsX ?? m.riktodds) !== null ? fmt((m.riktoddsX ?? m.riktodds)!) : "–"}</b>
               </span>
             </div>
             <div className="res">
@@ -207,7 +208,7 @@ export function MissedList({ list, total }: { list: Missed[]; total: number }) {
 }
 
 export function Tags({ tags, flat }: { tags: RoundAnalysis["tags"]; flat?: boolean }) {
-  if (!tags.tagged) return <p className="help pad">Inga taggar. Använd Tagga loppet i avdelningen efter start.</p>;
+  if (!tags.tagged) return <p className="help pad">Inga taggar. Använd Tagga loppet i loppet efter start.</p>;
   const chips = (list: { tag: string; count: number }[]) => (
     <div className="tgc">
       {list.map((t) => (

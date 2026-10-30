@@ -163,7 +163,7 @@ export function RefreshRow({ data }: { data: RoundResponse }) {
   if (running && r) {
     const done = r.odds.lamps.filter((l) => l === "on" || l === "bad" || l === "started").length;
     const s = r.streck.state === "ok" ? "strecket klart" : r.streck.state === "failed" ? "strecket misslyckades" : r.streck.state === "running" ? "strecket hämtas" : "";
-    const o = r.odds.state === "running" ? `odds avd ${Math.min(done + 1, r.odds.lamps.length)} av ${r.odds.lamps.length}` : "";
+    const o = r.odds.state === "running" ? `odds lopp ${Math.min(done + 1, r.odds.lamps.length)} av ${r.odds.lamps.length}` : "";
     live = `Hämtar … ${[s, o].filter(Boolean).join(", ")}`;
   } else
     live = (

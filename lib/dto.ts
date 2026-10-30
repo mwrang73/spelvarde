@@ -129,13 +129,13 @@ export function riktoddsDetailDto(r: Riktodds, model: ModelVersion): RiktoddsDet
 
 // Det som commentDto behöver för sammanhanget (omgång, avdelning, resultat).
 export const COMMENT_INCLUDE = {
-  round: { select: { id: true, date: true, trackName: true } },
+  round: { select: { id: true, date: true, trackName: true, gameType: true } },
   start: { select: { place: true, disqualified: true, resultAt: true, race: { select: { leg: true } } } },
 } as const;
 
 export function commentDto(
   c: HorseComment & {
-    round?: { id: string; date: Date; trackName: string } | null;
+    round?: { id: string; date: Date; trackName: string; gameType: string } | null;
     start?: { place: number | null; disqualified: boolean; resultAt: Date | null; race: { leg: number } } | null;
   },
 ): CommentDto {
@@ -150,7 +150,7 @@ export function commentDto(
     text: c.text,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
-    round: c.round ? { id: c.round.id, date: dateStr(c.round.date), trackName: c.round.trackName } : null,
+    round: c.round ? { id: c.round.id, date: dateStr(c.round.date), trackName: c.round.trackName, gameType: c.round.gameType } : null,
     leg: c.start?.race.leg ?? null,
     result: c.start?.resultAt ? { place: c.start.place, disqualified: c.start.disqualified } : null,
   };

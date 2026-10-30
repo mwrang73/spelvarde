@@ -16,14 +16,14 @@ describe("Kopiera rad", () => {
     const sel = { 1: [10, 3], 2: [5], 3: [1, 2], 4: [4, 6], 5: [7, 8], 6: [1, 2, 3], 7: [1, 2, 3], 8: [1, 2] };
     expect(couponDateLabel("2026-10-24")).toBe("lör 24 okt 2026");
     expect(couponText({ trackName: "Jägersro", date: "2026-10-24", gameType: "V85" }, sel, 0.5)).toBe(
-      ["V85 Jägersro lör 24 okt 2026", "Avd 1: 3, 10", "Avd 2: 5", "Avd 3: 1, 2", "Avd 4: 4, 6", "Avd 5: 7, 8", "Avd 6: 1, 2, 3", "Avd 7: 1, 2, 3", "Avd 8: 1, 2", "288 rader · 144,00 kr"].join("\n"),
+      ["V85 Jägersro lör 24 okt 2026", "V85-1: 3, 10", "V85-2: 5", "V85-3: 1, 2", "V85-4: 4, 6", "V85-5: 7, 8", "V85-6: 1, 2, 3", "V85-7: 1, 2, 3", "V85-8: 1, 2", "288 rader · 144,00 kr"].join("\n"),
     );
     expect(couponText({ trackName: "Jägersro", date: "2026-10-24", gameType: "V85" }, { 1: [3] }, 0.5).split("\n").at(-1)).toBe("0 rader · 0,00 kr");
   });
 });
 
 describe("Kopiera rad för V75", () => {
-  it("sju avdelningar och V75 i rubriken", () => {
+  it("sju lopp och V75 i rubriken", () => {
     const sel = { 1: [1], 2: [2], 3: [3], 4: [4], 5: [5], 6: [6], 7: [7, 8] };
     const text = couponText({ trackName: "Solvalla", date: "2026-11-28", gameType: "V75" }, sel, 0.5).split("\n");
     expect(text[0]).toBe("V75 Solvalla lör 28 nov 2026");
@@ -65,15 +65,15 @@ describe("E6: Kopiera-texten med allgardering", () => {
 
   it("mockupens hela text för Bjerke", () => {
     expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg() })).toBe(
-      ["V85 Bjerke lör 31 okt 2026", "Avd 1: 7, 10, 12", "Avd 2: 2", "Avd 3: 1, 5, 9, 13", "Avd 4: 1", "Avd 5: alla (1–12)", "Avd 6: 3", "Avd 7: 3, 4, 11, 14", "Avd 8: 4", "576 rader · 288,00 kr"].join("\n"),
+      ["V85 Bjerke lör 31 okt 2026", "V85-1: 7, 10, 12", "V85-2: 2", "V85-3: 1, 5, 9, 13", "V85-4: 1", "V85-5: alla (1–12)", "V85-6: 3", "V85-7: 3, 4, 11, 14", "V85-8: 4", "576 rader · 288,00 kr"].join("\n"),
     );
   });
   it("med strukna i allgarderingen", () => {
-    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg({ 5: [7] }) }).split("\n")[5]).toBe("Avd 5: alla (1–12, utom 7)");
-    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg({ 5: [7, 3] }) }).split("\n")[5]).toBe("Avd 5: alla (1–12, utom 3 och 7)");
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg({ 5: [7] }) }).split("\n")[5]).toBe("V85-5: alla (1–12, utom 7)");
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5, { allgLeg: 5, numbersByLeg: numbersByLeg({ 5: [7, 3] }) }).split("\n")[5]).toBe("V85-5: alla (1–12, utom 3 och 7)");
   });
   it("utan opts som före E6", () => {
-    expect(couponText(BJERKE_ROUND, r.selections, 0.5).split("\n")[5]).toBe("Avd 5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12");
+    expect(couponText(BJERKE_ROUND, r.selections, 0.5).split("\n")[5]).toBe("V85-5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12");
   });
 });
 
@@ -95,10 +95,10 @@ describe("E6: parseCouponBody", () => {
     expect(n.ok && n.value).toMatchObject({ spikCount: null, allgMode: null, allgLeg: null, legRoles: null, copiedAt: null, copiedSelections: null });
   });
   it("avvisar okänd allgMode, spikCount 9, legRoles med okänd kod och fel kopieringstid", () => {
-    expect(parseCouponBody({ ...body, allgMode: "NONE" })).toEqual({ ok: false, error: "Prioriterat lopp ska vara Auto eller en vald avdelning." });
+    expect(parseCouponBody({ ...body, allgMode: "NONE" })).toEqual({ ok: false, error: "Prioriterat lopp ska vara Auto eller ett valt lopp." });
     expect(parseCouponBody({ ...body, spikCount: 9 }).ok).toBe(false);
     expect(parseCouponBody({ ...body, spikCount: 2.5 }).ok).toBe(false);
-    expect(parseCouponBody({ ...body, allgLeg: 9 })).toEqual({ ok: false, error: "Avd 9 finns inte i omgången." });
+    expect(parseCouponBody({ ...body, allgLeg: 9 })).toEqual({ ok: false, error: "Lopp 9 finns inte i omgången." });
     expect(parseCouponBody({ ...body, legRoles: { ...roles, legs: { "1": { k: "OPEN", h: { "7": ["XYZ"] } } } } })).toEqual({ ok: false, error: "Ogiltiga skäl i raden." });
     expect(parseCouponBody({ ...body, legRoles: { ...roles, v: 2 } }).ok).toBe(false);
     expect(parseCouponBody({ ...body, legRoles: { ...roles, legs: { "9": { k: "OPEN" } } } }).ok).toBe(false);
@@ -140,7 +140,7 @@ describe("E6b: maxPerLeg i kroppen", () => {
   });
   it("felsvaren för prioriterat lopp", () => {
     expect(PRIO_LEG_MISSING_ERROR).toBe("Välj vilket lopp som ska prioriteras.");
-    expect(PRIO_LEG_LOCKED_ERROR).toBe("Det prioriterade loppet kan inte vara en låst avdelning.");
+    expect(PRIO_LEG_LOCKED_ERROR).toBe("Det prioriterade loppet kan inte vara ett låst lopp.");
   });
 });
 
@@ -160,15 +160,15 @@ describe("E6b: Kopiera skriver alla bara när alla löpande är med", () => {
   const line5 = (sel: number[], opts?: Parameters<typeof couponText>[3]) => couponText(round, { ...base, 5: sel }, 0.5, opts).split("\n")[5];
 
   it("allgLeg 5 med alla löpande ger alla (1–13)", () => {
-    expect(line5(all13, { allgLeg: 5, numbersByLeg: nb() })).toBe("Avd 5: alla (1–13)");
+    expect(line5(all13, { allgLeg: 5, numbersByLeg: nb() })).toBe("V85-5: alla (1–13)");
     // Struken 7 behöver inte vara med.
-    expect(line5(all13.filter((n) => n !== 7), { allgLeg: 5, numbersByLeg: nb([7]) })).toBe("Avd 5: alla (1–13, utom 7)");
+    expect(line5(all13.filter((n) => n !== 7), { allgLeg: 5, numbersByLeg: nb([7]) })).toBe("V85-5: alla (1–13, utom 7)");
   });
   it("allgLeg 5 där valet saknar två löpande ger numren", () => {
     const sel = all13.filter((n) => n !== 2 && n !== 13);
-    expect(line5(sel, { allgLeg: 5, numbersByLeg: nb() })).toBe(`Avd 5: ${sel.join(", ")}`);
+    expect(line5(sel, { allgLeg: 5, numbersByLeg: nb() })).toBe(`V85-5: ${sel.join(", ")}`);
   });
   it("prioriterat lopp (PRIO) utan allgLeg ger numren", () => {
-    expect(line5([1, 3, 4, 6, 9, 11, 12], { allgLeg: null, numbersByLeg: nb() })).toBe("Avd 5: 1, 3, 4, 6, 9, 11, 12");
+    expect(line5([1, 3, 4, 6, 9, 11, 12], { allgLeg: null, numbersByLeg: nb() })).toBe("V85-5: 1, 3, 4, 6, 9, 11, 12");
   });
 });

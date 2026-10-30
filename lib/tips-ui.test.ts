@@ -68,7 +68,7 @@ describe("övrigt", () => {
     expect(scanStepText("Travstugan", "ok", 0, 1)).toBe("Travstugan: inget nytt");
     expect(scanStepText("Travstugan", "noArticle", 0, 0)).toBe("Travstugan: ingen artikel om omgången");
     const u = { horseName: "Fly Express", rawHorseName: "Fly Express", startLeg: 1, leg: 1 } as TipDto;
-    expect(unsureLine([u])).toBe("1 osäkert tips väntar: Fly Express i avd 1");
-    expect(unsureLine([u, u])).toBe("2 osäkra tips väntar.");
+    expect(unsureLine([u], "V85")).toBe("1 osäkert tips väntar: Fly Express i V85-1");
+    expect(unsureLine([u, u], "V85")).toBe("2 osäkra tips väntar.");
   });
 });

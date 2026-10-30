@@ -68,7 +68,7 @@ function round(): RoundResponse {
     currentRoundId: "R",
     phase: "ANALYS",
     phaseRail: [],
-    nextStep: { kind: "ANALYZE_LEG", title: "Analysera avd 1 – Lopp 1", text: "", action: null },
+    nextStep: { kind: "ANALYZE_LEG", title: "Analysera V85-1 – Lopp 1", text: "", action: null },
     fetch: { status: "COMPLETE", fetchedAt: null, lastChanges: null, resumeFrom: null, lastError: null },
     races: [race(1, [start("a", 1), start("b", 2)]), race(2, [start("c", 1, true)])],
     latestStreck: null,
@@ -85,13 +85,13 @@ const item = (meta: Record<string, unknown>, extra: Partial<OutboxItem> = {}): O
 const markItem = (startId: string, interesting: boolean) => item({ kind: "mark", roundId: "R", raceId: "r1", startId, horseName: "Häst", interesting });
 
 describe("applyPending", () => {
-  it("lägger Intressant ovanpå cachen och räknar om avdelningen", () => {
+  it("lägger Intressant ovanpå cachen och räknar om loppet", () => {
     const out = applyPending(round(), [markItem("a", true)], NOW);
     const r1 = out.races[0];
     expect(r1.starts[0].mark?.interesting).toBe(true);
     expect(r1.counts.interesting).toBe(1);
     expect(r1.reviewed).toBe(true);
-    // Nästa steg går vidare till avd 2? Nej: avd 2 är redan genomgången, så allt är klart.
+    // Nästa steg går vidare till V85-2? Nej: V85-2 är redan genomgången, så allt är klart.
     expect(out.nextStep.kind).toBe("ALL_REVIEWED");
   });
 
@@ -101,7 +101,7 @@ describe("applyPending", () => {
     expect(out.races[0].reviewed).toBe(false);
   });
 
-  it("Inga intressanta här markerar avdelningen som genomgången, och Ångra tar bort det", () => {
+  it("Inga intressanta här markerar loppet som genomgången, och Ångra tar bort det", () => {
     const review = (reviewed: boolean) => item({ kind: "review", roundId: "R", raceId: "r1", reviewed, noneInteresting: reviewed });
     expect(applyPending(round(), [review(true)], NOW).races[0].review?.noneInteresting).toBe(true);
     expect(applyPending(round(), [review(true), review(false)], NOW).races[0].reviewed).toBe(false);
@@ -193,7 +193,7 @@ describe("E2: Spelbar, Bet, odds och kupong i det optimistiska läget", () => {
   it("toasttexterna säger vad som inte sparades", () => {
     expect(retryText(put("a", { bet: true }))).toBe("Kunde inte spara Bet för Häst. Försöker igen.");
     expect(retryText(put("a", { unibetOdds: 3.1 }))).toBe("Kunde inte spara oddset för Häst. Försöker igen.");
-    expect(conflictText(item({ kind: "coupon", roundId: "R" }))).toBe("Raden: en avdelning hade redan startat, ändringen sparades inte.");
+    expect(conflictText(item({ kind: "coupon", roundId: "R" }))).toBe("Raden: ett lopp hade redan startat, ändringen sparades inte.");
   });
 });
 

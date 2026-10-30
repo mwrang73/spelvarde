@@ -83,7 +83,7 @@ function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
     const raw = legs.find((y) => y.leg === l.leg)!;
     const scratched = new Set(raw.starts.filter((s) => s.scratched).map((s) => s.number));
     const runners = raw.starts.filter((s) => !s.scratched).map((s) => s.number);
-    // 2. Grupperna i öppna avdelningar med minst 4 löpande.
+    // 2. Grupperna i öppna lopp med minst 4 löpande.
     if (l.kind === "OPEN" && runners.length >= 4) {
       const codes = l.horses.flatMap((h) => h.reasons);
       expect(codes.includes("T3")).toBe(true);
@@ -95,7 +95,7 @@ function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
         expect(codes.includes("SKR") || codes.includes("LOW")).toBe(true);
       }
     }
-    // 4. Låsta avdelningar oförändrade, utom strukna (6.5.3).
+    // 4. Låsta lopp oförändrade, utom strukna (6.5.3).
     const lock = rules.locked[l.leg];
     if (lock?.length && !raw.cancelled && runners.length) {
       const kept = [...new Set(lock)].filter((n) => runners.includes(n)).sort((a, b) => a - b);
@@ -103,7 +103,7 @@ function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
       else if (lock.some((n) => scratched.has(n)) && new Set(lock).size === 1) expect(l.struckOwnSpik).toBe(true);
       else expect(l.unlocked).toBe(true);
     }
-    // 5. Ingen struken häst i en avdelning som appen fyller.
+    // 5. Ingen struken häst i ett lopp som appen fyller.
     if (l.kind === "OPEN" || l.kind === "SPIK" || l.kind === "ALLG") for (const n of l.selection) expect(scratched.has(n)).toBe(false);
   }
   // 3. Favoritspärren.
@@ -111,7 +111,7 @@ function checkProperties(legs: TippaLeg[], rules: TippaRules, x: TippaResult) {
     expect(x.favOver).not.toBeNull();
     expect(x.forcedFav).toBeGreaterThan(x.favLimit);
   }
-  // 6. Antal spikavdelningar = spikEffective.
+  // 6. Antal spiklopp = spikEffective.
   expect(x.spikLegs.length + x.ownSpikLegs.length).toBe(x.spikEffective);
   // 7. Allgarderingen aldrig i låst eller inställd avdelning.
   if (x.allgLeg !== null) {

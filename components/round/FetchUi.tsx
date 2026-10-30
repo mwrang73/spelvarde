@@ -29,14 +29,14 @@ export function FetchSteps({ state }: { state: ChainState }) {
           <li className={p.legsDone >= 8 ? "ok" : p.step === "RACE" ? "cur" : undefined}>
             {p.legsDone >= 8 ? (
               <>
-                Avdelningar <span aria-label="klara">✓</span>
+                Lopp <span aria-label="klara">✓</span>
               </>
             ) : p.step === "RACE" && p.leg ? (
               <>
-                Avd {p.leg} av 8 <Dots />
+                Lopp {p.leg} av 8 <Dots />
               </>
             ) : (
-              "Avdelningar"
+              "Lopp"
             )}
           </li>
           <li className={p.statsDone ? "ok" : p.step === "STATS" ? "cur" : undefined}>

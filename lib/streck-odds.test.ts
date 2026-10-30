@@ -49,7 +49,7 @@ const startOk = (legs: { leg: number; eventKey: string | null; skipped: "started
 const allLegs = (n = 8) => Array.from({ length: n }, (_, i) => ({ leg: i + 1, eventKey: `e${i + 1}`, skipped: null }));
 
 describe("oddskedjan", () => {
-  it("start, högst 4 avdelningar samtidigt, finish", async () => {
+  it("start, högst 4 lopp samtidigt, finish", async () => {
     const s = fakeServer((url) => {
       if (url.endsWith("/unibet")) return startOk(allLegs());
       const m = /legs\/(\d)$/.exec(url);
@@ -97,7 +97,7 @@ describe("oddskedjan", () => {
     expect(o.fetchId).toBeNull();
   });
 
-  it("delvis: avd 6 och 8 svarar inte, startade lopp blir randiga", async () => {
+  it("delvis: V85-6 och V85-8 svarar inte, startade lopp blir randiga", async () => {
     const legs = allLegs().map((l) => (l.leg <= 2 ? { ...l, eventKey: null, skipped: "started" as const } : l));
     const s = fakeServer((url) => {
       if (url.endsWith("/unibet")) return startOk(legs);
@@ -161,8 +161,8 @@ describe("jämförelsen före och efter", () => {
   it("nya och förlorade Spelbara, ersatta odds och hästar som saknas", () => {
     const { before, after } = beforeAfter();
     const s = summarize(before, after, [leg(1, { replaced: [{ startId: "k", from: 3.1, to: 2.75 }] }), leg(5, { missing: [13] })]);
-    expect(s.newSpelbar.map((c) => c.text)).toEqual(["Avd 2 · 2 Polly Vici: nu Spelbar"]);
-    expect(s.lostSpelbar.map((c) => c.text)).toEqual(["Avd 1 · 5 Kaley D.C.: inte längre Spelbar"]);
+    expect(s.newSpelbar.map((c) => c.text)).toEqual(["V85-2 · 2 Polly Vici: nu Spelbar"]);
+    expect(s.lostSpelbar.map((c) => c.text)).toEqual(["V85-1 · 5 Kaley D.C.: inte längre Spelbar"]);
     expect(s.newIds).toEqual(["p"]);
     expect(s.replaced).toEqual([{ startId: "k", leg: 1, number: 5, name: "Kaley D.C.", from: 3.1, to: 2.75 }]);
     expect(s.missing.map((m) => m.name)).toEqual(["Mondavi"]);
@@ -208,11 +208,11 @@ describe("banderollen", () => {
     expect(b.tone).toBe("info");
     expect(`${b.head} ${b.text}`).toBe("Strecket är uppdaterat. Unibet har inga odds för V85 än, de brukar komma på torsdagen. Inga odds sparades.");
   });
-  it("delvis: Hämta avd 6 och 8", () => {
+  it("delvis: Hämta V85-6 och V85-8", () => {
     const b = bannerFor({ streck: streckOk, odds: ok({ state: "partial", failedLegs: [6, 8] }), summary: { ...sum, replaced: [], newSpelbar: [] } }, ctx)!;
-    expect(b.head).toBe("Strecket är uppdaterat. Unibet: 6 av 8 avdelningar.");
-    expect(b.text.startsWith("Avd 6 och 8 svarade inte. Det som hämtades är sparat.")).toBe(true);
-    expect(b.retry).toEqual({ label: "Hämta avd 6 och 8", mode: { kind: "legs", fetchId: "f1", legs: [6, 8] }, icon: "dl" });
+    expect(b.head).toBe("Strecket är uppdaterat. Unibet: 6 av 8 lopp.");
+    expect(b.text.startsWith("V85-6 och V85-8 svarade inte. Det som hämtades är sparat.")).toBe(true);
+    expect(b.retry).toEqual({ label: "Hämta V85-6 och V85-8", mode: { kind: "legs", fetchId: "f1", legs: [6, 8] }, icon: "dl" });
   });
   it("båda misslyckades", () => {
     const b = bannerFor({ streck: { ...idleStreck(), state: "failed" }, odds: { ...idleOdds(8), state: "failed" }, summary: sum }, ctx)!;
@@ -229,12 +229,12 @@ describe("banderollen", () => {
   });
   it("lopp har startat", () => {
     const b = bannerFor({ streck: streckOk, odds: ok({ startedLegs: [1, 2, 3] }), summary: { ...sum, replaced: [] } }, ctx)!;
-    expect(b.text).toContain("Avd 1–3 har startat och hämtades inte. Deras odds är från i dag 18:02.");
+    expect(b.text).toContain("V85-1–3 har startat och hämtades inte. Deras odds är från i dag 18:02.");
   });
 });
 
 describe("tavelknappen", () => {
-  const base: BoardInput = { online: true, now: NOW, latestStreckAt: "2026-10-22T19:00:00.000Z", latestOdds: { fetchId: "f1", takenAt: "2026-10-22T19:00:00.000Z", finishedAt: null, legsOk: [], legsFailed: [], legsSkipped: [] }, lastOddsAttempt: null, run: null, progress: null };
+  const base: BoardInput = { gameType: "V85", online: true, now: NOW, latestStreckAt: "2026-10-22T19:00:00.000Z", latestOdds: { fetchId: "f1", takenAt: "2026-10-22T19:00:00.000Z", finishedAt: null, legsOk: [], legsFailed: [], legsSkipped: [] }, lastOddsAttempt: null, run: null, progress: null };
   const run = (p: Partial<RunState> & { finishedAt?: number | null; running?: boolean }) => ({ streck: streckOk, odds: ok(), summary: null, running: false, finishedAt: null, ...p });
 
   it("viloläge: tiden för den äldsta delen", () => {
@@ -258,7 +258,7 @@ describe("tavelknappen", () => {
     const v = boardView({ ...base, run: run({ running: true, odds: { ...idleOdds(8), state: "running" } }), progress: { done: 2, total: 8 } });
     expect(v.kind).toBe("busy");
     expect(v.value).toBe("2/8");
-    expect(v.aria).toBe("Hämtar streck och odds, avdelning 3 av 8");
+    expect(v.aria).toBe("Hämtar streck och odds, lopp 3 av 8");
     expect(v.disabled).toBe(true);
   });
   it("klart i 10 s, sedan spärr", () => {
@@ -305,12 +305,12 @@ describe("tavelknappen", () => {
 });
 
 describe("texter och tider", () => {
-  it("avdelningar", () => {
-    expect(legsText([6, 8])).toBe("Avd 6 och 8");
-    expect(legsText([1, 2, 3])).toBe("Avd 1–3");
-    expect(legsText([2, 4, 7], true)).toBe("avd 2, 4 och 7");
-    expect(legsText([1, 2, 3, 5])).toBe("Avd 1–3 och 5");
-    expect(legsText([1, 2])).toBe("Avd 1 och 2");
+  it("lopp", () => {
+    expect(legsText([6, 8], "V85")).toBe("V85-6 och V85-8");
+    expect(legsText([1, 2, 3], "V85")).toBe("V85-1–3");
+    expect(legsText([2, 4, 7], "V85")).toBe("V85-2, V85-4 och V85-7");
+    expect(legsText([1, 2, 3, 5], "V85")).toBe("V85-1–3 och V85-5");
+    expect(legsText([1, 2], "V85")).toBe("V85-1 och V85-2");
   });
   it("nedräkningen", () => {
     expect(countdownClock(102)).toBe("1:42");

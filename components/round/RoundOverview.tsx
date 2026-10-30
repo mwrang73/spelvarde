@@ -24,6 +24,7 @@ import { OddsFetchCard, RefreshBanner, RefreshBoardButton } from "./StreckOdds";
 import { needsOddsFetch } from "@/lib/streck-odds";
 import { FEATURES } from "@/lib/features";
 import { tipsLine } from "@/lib/tips-ui";
+import { legName } from "@/lib/game-type";
 
 export function roundSub(data: RoundResponse | null): string {
   if (!data) return "";
@@ -150,13 +151,13 @@ export function RoundOverview() {
         {FEATURES.tips && <TipsLineRow data={data} done={done} now={now} />}
         <RoundLinks roundId={data.round.id} analysis={data.phase === "KLART"} />
         <div className="sl">
-          <h2 className="sl-h">Avdelningar</h2>
+          <h2 className="sl-h">Lopp</h2>
           {resume && <span className="todo">Hämtning ej klar</span>}
         </div>
-        <ul className="olist" aria-label="Avdelningar">
+        <ul className="olist" aria-label="Lopp">
           {data.races.map((r) => (
             <li key={r.id}>
-              <LegLink race={r} href={`${base}/avd/${r.leg}`} row={legRow(r, now.getTime())} />
+              <LegLink gameType={data.round.gameType} race={r} href={`${base}/avd/${r.leg}`} row={legRow(r, now.getTime())} />
             </li>
           ))}
         </ul>
@@ -164,12 +165,12 @@ export function RoundOverview() {
           <ul className="plain">
             {data.fetch.lastChanges?.scratched.map((s) => (
               <li key={`s-${s.startId}`}>
-                <b className="num">Avd {s.leg} · {s.number}</b> {s.horseName} struken
+                <b className="num">{legName(data.round.gameType, s.leg)} · {s.number}</b> {s.horseName} struken
               </li>
             ))}
             {data.fetch.lastChanges?.driverChanges.map((d) => (
               <li key={`d-${d.startId}`}>
-                <b className="num">Avd {d.leg} · {d.number}</b> Kuskbyte: {d.horseName} – {d.newDriver}
+                <b className="num">{legName(data.round.gameType, d.leg)} · {d.number}</b> Kuskbyte: {d.horseName} – {d.newDriver}
                 {d.oldDriver && ` (förut ${d.oldDriver})`}
               </li>
             ))}
@@ -206,7 +207,7 @@ function TipsLineRow({ data, done, now }: { data: RoundResponse; done: boolean; 
 // En avdelning i S1: som i dag före start, och med resultatstatus efter
 // (E4a: "Pågår", vinnaren och dina Bet, "Inställt"). Raden leder till S2,
 // som visar Resultat när loppet har startat.
-function LegLink({ race: r, href, row }: { race: RaceDto; href: string; row: LegRow }) {
+function LegLink({ race: r, gameType, href, row }: { race: RaceDto; gameType: string; href: string; row: LegRow }) {
   const counts = <Counts interesting={r.counts.interesting} spelbar={r.counts.spelbar} bet={r.counts.bet} />;
   const line1 = row.kind === "result" ? row.title : shortRaceName(r.name);
   const line2 =
@@ -242,7 +243,7 @@ function LegLink({ race: r, href, row }: { race: RaceDto; href: string; row: Leg
       <FlapNumber n={r.leg} size="sm" />
       <span className="o-mid">
         <span className="on">
-          <span className="sr">Avd {r.leg}: </span>
+          <span className="sr">{legName(gameType, r.leg)}: </span>
           {line1}
         </span>
         <span className={`om${row.kind === "before" ? " num" : ""}`}>{line2}</span>

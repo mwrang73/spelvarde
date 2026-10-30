@@ -72,6 +72,18 @@ export function unmarkedItems(races: RaceDto[], now: number, tolerance: number):
   return [...inTroll, ...rest];
 }
 
+// Filtret Visa spelbara i Unibets odds: Spelbar och Bet, och för en häst utan
+// Intressant grön eller röd ring med minst 1,75 i odds. "Spelbar" kräver
+// Intressant och kan inte säga något om de omarkerade.
+export function showWhenPlayable(start: Pick<StartDto, "riktodds" | "mark">, tolerance: number): boolean {
+  const m = start.mark;
+  if (!m) return false;
+  if (m.bet || m.spelbar) return true;
+  if (m.interesting) return false;
+  const c = classOf(start, tolerance);
+  return (c === "over" || c === "near") && (m.unibetOdds ?? 0) >= MIN_SPELBAR_ODDS;
+}
+
 // Hjälptexten under rubriken "Inte markerade (n)".
 export const UNMARKED_HELP_TEXT = "Hästar du inte har markerat som är med i Trollspöt eller har spelbara odds. Tänd Intressant så kommer de med.";
 

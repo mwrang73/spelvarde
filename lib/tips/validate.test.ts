@@ -28,15 +28,15 @@ describe("validateTips (6.11)", () => {
     const fly = byName(r.tips, "Fly Express");
     expect(fly).toMatchObject({ match: "UNSURE", flags: ["ROLE_WORD_UNKNOWN"], role: "SKRALL" });
     const flagIn = { ...fly, start: { leg: 1, number: 10, name: "Fly Express" }, suggestion: null };
-    expect(flagText(flagIn)).toBe('Osäker roll: texten säger "fynd", som tolkades som Skräll.');
+    expect(flagText(flagIn, "V85")).toBe('Osäker roll: texten säger "fynd", som tolkades som Skräll.');
     expect(flagShort(flagIn)).toBe('Osäker roll: "fynd"');
     // "lås" ger Spik och "starkast" Favorit utan flagga.
     expect(byName(r.tips, "Peggy Boko")).toMatchObject({ role: "SPIK", flags: [] });
     expect(byName(r.tips, "Baron Tilly")).toMatchObject({ role: "FAVORIT", flags: [] });
-    // Mellby Harly i avd 3 utan nummer: ej kopplad med förslag.
+    // Mellby Harly i V85-3 utan nummer: ej kopplad med förslag.
     const mh = byName(r.tips, "Mellby Harly");
     expect(mh).toMatchObject({ match: "NONE", startId: null, suggestedStartId: "s3_5", flags: ["NO_MATCH"] });
-    expect(flagText({ ...mh, start: null, suggestion: { leg: 3, number: 5, name: "Mellby Harley" } })).toBe("Kunde inte kopplas till en häst i avd 3. Närmast är 5 Mellby Harley.");
+    expect(flagText({ ...mh, start: null, suggestion: { leg: 3, number: 5, name: "Mellby Harley" } }, "V85")).toBe("Kunde inte kopplas till en häst i V85-3. Närmast är 5 Mellby Harley.");
   });
   it("citat som inte finns ordagrant kastas, typografiska citattecken godtas", () => {
     const text = 'Hon är "vårt lås" i sexan, Peggy Boko.';
@@ -101,7 +101,7 @@ describe("validateTips (6.11)", () => {
     expect(r.tips).toHaveLength(60);
     expect(r.discarded.overflow).toBe(1);
   });
-  it("tips i en avdelning som har startat sparas inte", () => {
+  it("tips i ett lopp som har startat sparas inte", () => {
     const raw = JSON.parse(read("tips-ai/99f554a8abbe.json"));
     const r = validateTips(raw, SYNT, BJERKE, [1, 2]);
     expect(r.skippedStarted).toBe(2);
@@ -130,14 +130,14 @@ describe("flagText och flagShort", () => {
   const base = { rawHorseName: "Mellby Harly", role: "SKRALL" as const, roleWord: "favorit", leg: 2, number: 7, start: { leg: 3, number: 5, name: "Mellby Harley" }, suggestion: null };
   it.each([
     [["NAME_SPELLING"], 'Namnet stavas "Mellby Harly" i artikeln. Kopplat till 5 Mellby Harley.', 'Stavas "Mellby Harly"'],
-    [["NUMBER_MISMATCH"], "Artikeln säger nr 7, men Mellby Harley har nr 5 i avd 3.", "Annat nummer"],
-    [["LEG_MISMATCH"], "Artikeln säger avd 2, men Mellby Harley går i avd 3.", "Annan avd"],
-    [["NAME_MISMATCH"], 'Artikeln säger "Mellby Harly", men nr 5 i avd 3 heter Mellby Harley.', "Annat namn"],
+    [["NUMBER_MISMATCH"], "Artikeln säger nr 7, men Mellby Harley har nr 5 i V85-3.", "Annat nummer"],
+    [["LEG_MISMATCH"], "Artikeln säger V85-2, men Mellby Harley går i V85-3.", "Annat lopp"],
+    [["NAME_MISMATCH"], 'Artikeln säger "Mellby Harly", men nr 5 i V85-3 heter Mellby Harley.', "Annat namn"],
     [["SCRATCHED", "ROLE_CONFLICT"], 'Osäker roll: "favorit" tolkades som Skräll.', "Osäker roll"],
     [["NO_MATCH"], "Kunde inte kopplas till en häst i omgången.", "Ej kopplad"],
     [[], null, null],
   ])("%j", (flags, text, short) => {
-    expect(flagText({ ...base, flags })).toBe(text);
+    expect(flagText({ ...base, flags }, "V85")).toBe(text);
     expect(flagShort({ ...base, flags })).toBe(short);
   });
 });

@@ -10,6 +10,7 @@ import { sameNumbers } from "@/lib/coupon";
 import { relTime } from "@/lib/format";
 import type { AllgMode, ReasonCode } from "@/lib/types";
 import type { LegKind, TippaHorse, TippaLegResult, TippaResult, TippaSuggestion } from "@/lib/tippa";
+import { legName, legNames } from "@/lib/game-type";
 
 // ---- Format ------------------------------------------------------------------------------------
 
@@ -85,11 +86,11 @@ export function spikHelp(r: TippaResult): string {
   let t: string;
   if (r.spikEffective === 0) t = "Inga spikar. Alla lopp får minst 3 hästar.";
   else if (r.appSpikes === 0) t = r.ownSpikes === 1 ? "Spiken är din egen." : `Alla ${r.ownSpikes} är dina egna.`;
-  else if (r.appSpikes === 1) t = `Appen väljer 1, i loppet där modellen är säkrast: avd ${r.spikLegs[0]}.`;
-  else t = `Appen väljer ${r.appSpikes}, i de lopp där modellen är säkrast: avd ${joinSv(r.spikLegs)}.`;
+  else if (r.appSpikes === 1) t = `Appen väljer 1, i loppet där modellen är säkrast: ${legName(r.gameType, r.spikLegs[0])}.`;
+  else t = `Appen väljer ${r.appSpikes}, i de lopp där modellen är säkrast: ${legNames(r.gameType, r.spikLegs)}.`;
   if (r.skippedSpik.length) {
     const many = r.skippedSpik.length > 1;
-    t += ` Avd ${joinSv(r.skippedSpik)} hoppades över: ${many ? "spikarna där vore favoriten" : "spiken där vore favoriten"}, och favoritspärren är full.`;
+    t += ` ${legNames(r.gameType, r.skippedSpik)} hoppades över: ${many ? "spikarna där vore favoriten" : "spiken där vore favoriten"}, och favoritspärren är full.`;
   }
   if (r.spikMax < r.spikCap) t += ` Högst ${r.spikMax} ${r.spikMax === 1 ? "spik" : "spikar"} nu: övriga lopp är dina egna val, det prioriterade loppet, inställda eller saknar riktodds.`;
   return t;
@@ -119,7 +120,7 @@ export function capHelp(r: TippaResult): { text: string; over: string | null } {
   let text: string;
   if (n === null) {
     const p = legOf(r, r.allgLeg);
-    text = p ? `Inget tak. Avd ${p.leg} får **alla ${p.selection.length}**, som en allgardering.` : "Inget tak. Det prioriterade loppet får alla sina hästar om budgeten räcker.";
+    text = p ? `Inget tak. ${legName(r.gameType, p.leg)} får **alla ${p.selection.length}**, som en allgardering.` : "Inget tak. Det prioriterade loppet får alla sina hästar om budgeten räcker.";
   } else if (n <= 3) {
     text = `Inget lopp får fler än **${n} hästar**. Lägre går inte: varje öppet lopp behöver topp 3, mellan och skräll.`;
   } else {
@@ -129,9 +130,9 @@ export function capHelp(r: TippaResult): { text: string; over: string | null } {
   let over: string | null = null;
   if (legs.length === 1) {
     const own = legOf(r, legs[0]);
-    over = `Ditt eget val i avd ${legs[0]} har ${own?.selection.length ?? 0}. Ditt val går först, och inget blockeras.`;
+    over = `Ditt eget val i ${legName(r.gameType, legs[0])} har ${own?.selection.length ?? 0}. Ditt val går först, och inget blockeras.`;
   } else if (legs.length > 1) {
-    over = `Dina egna val i avd ${joinSv(legs)} har fler än ${r.maxPerLeg}. Ditt val går först, och inget blockeras.`;
+    over = `Dina egna val i ${legNames(r.gameType, legs)} har fler än ${r.maxPerLeg}. Ditt val går först, och inget blockeras.`;
   }
   return { text, over };
 }
@@ -145,15 +146,15 @@ const prioAmount = (l: TippaLegResult) => (l.kind === "ALLG" ? `alla ${l.selecti
 export function prioHelp(r: TippaResult): string {
   const l = legOf(r, r.prioLeg);
   if (!l) return "Inget lopp kan prioriteras: alla är dina egna val eller inställda.";
-  const amount = `Avd ${l.leg} får **${prioAmount(l)}**`;
+  const amount = `${legName(r.gameType, l.leg)} får **${prioAmount(l)}**`;
   if (r.prioFallback && r.prioRequested !== null) {
     const why = r.prioFallback === "LOCKED" ? "är ditt eget val och låst" : r.prioFallback === "CANCELLED" ? "är inställd" : "kan inte prioriteras";
-    return `Din valda avd ${r.prioRequested} ${why}, så appen prioriterar avd ${l.leg}. ${amount}.`;
+    return `Din valda ${legName(r.gameType, r.prioRequested)} ${why}, så appen prioriterar ${legName(r.gameType, l.leg)}. ${amount}.`;
   }
   const who = r.prioAuto ? `mest öppna loppet${l.prelim ? " enligt modellen" : ""}` : "ditt val";
   const v = favPct(l);
   const fav = v === null ? "" : ` Favoriten har **${pctText(v)}**${l.prelim ? " enligt modellen" : ""}.`;
-  if (r.status === "RULES_DONT_FIT") return `Avd ${l.leg}, ${who}.${fav}`;
+  if (r.status === "RULES_DONT_FIT") return `${legName(r.gameType, l.leg)}, ${who}.${fav}`;
   const n = l.field.length;
   const k = l.selection.length;
   const cap = shownCap(r);
@@ -169,10 +170,10 @@ export function prioHelp(r: TippaResult): string {
 }
 
 // Efter spelstopp, ur den sparade raden (legRoles och kupongens allgMode).
-export function prioHelpStarted(p: { leg: number; kind: "ALLG" | "PRIO"; count: number; field: number } | null, mode: AllgMode | null): string {
+export function prioHelpStarted(p: { leg: number; kind: "ALLG" | "PRIO"; count: number; field: number } | null, mode: AllgMode | null, gameType: string): string {
   if (!p) return "Inget lopp prioriterades.";
-  if (p.kind === "ALLG") return `Avd ${p.leg} allgarderades.`;
-  return `Avd ${p.leg} fick **${p.count} av ${p.field}** hästar (${mode === "CHOSEN" ? "ditt val" : "Auto"}).`;
+  if (p.kind === "ALLG") return `${legName(gameType, p.leg)} allgarderades.`;
+  return `${legName(gameType, p.leg)} fick **${p.count} av ${p.field}** hästar (${mode === "CHOSEN" ? "ditt val" : "Auto"}).`;
 }
 
 // Underraden i arket Välj lopp att prioritera.
@@ -201,7 +202,7 @@ export function favHelp(r: TippaResult): string {
   if (r.favOver === "OWN") return `Dina egna val har favoriten i ${n} lopp, över spärren på ${r.favLimit}. Inget blockeras.`;
   const base = `Favoriten (mest streckad) får vara med i högst **${r.favLimit} lopp på ${r.gameType}**.`;
   if (!r.favBanned.length) return base;
-  return `${base} Bortvald i avd ${joinSv(r.favBanned)}, där modellen tror minst på den.`;
+  return `${base} Bortvald i ${legNames(r.gameType, r.favBanned)}, där modellen tror minst på den.`;
 }
 
 export type FavCell = { leg: number; state: "on" | "out" | "none" | "cancelled"; small: string };
@@ -221,8 +222,8 @@ export function favStripLabel(r: TippaResult): string {
   const on = cells.filter((c) => c.state === "on").map((c) => c.leg);
   const out = cells.filter((c) => c.state === "out").map((c) => c.leg);
   const parts: string[] = [];
-  parts.push(on.length ? `Favoriten är med i avdelning ${joinSv(on)}.` : "Favoriten är inte med i någon avdelning.");
-  if (out.length) parts.push(`Bortvald av spärren i avdelning ${joinSv(out)}.`);
+  parts.push(on.length ? `Favoriten är med i ${legNames(r.gameType, on)}.` : "Favoriten är inte med i någon lopp.");
+  if (out.length) parts.push(`Bortvald av spärren i ${legNames(r.gameType, out)}.`);
   parts.push(`Högst ${r.favLimit} på ${r.gameType}.`);
   return parts.join(" ");
 }
@@ -272,9 +273,9 @@ export function legWhy(r: TippaResult, leg: number): string | null {
       return t;
     }
     case "OWN_SPIK":
-      return "Din spik. Avdelningen är låst och räknas inte om.";
+      return "Din spik. Loppet är låst och räknas inte om.";
     case "OWN":
-      return "Ditt val. Avdelningen är låst och räknas inte om.";
+      return "Ditt val. Loppet är låst och räknas inte om.";
     case "PRIO":
     case "ALLG":
       return prioWhy(r, l);
@@ -342,10 +343,10 @@ export const listSummary = (r: TippaResult) => `${r.horses} ${r.horses === 1 ? "
 export function desktopSummary(r: TippaResult): string {
   const parts = [`${r.horses} ${r.horses === 1 ? "häst" : "hästar"}`];
   const spikes = [...r.spikLegs, ...r.ownSpikLegs].sort((a, b) => a - b);
-  if (spikes.length) parts.push(`${spikes.length === 1 ? "spik" : "spikar"} i avd ${joinSv(spikes)}`);
+  if (spikes.length) parts.push(`${spikes.length === 1 ? "spik" : "spikar"} i ${legNames(r.gameType, spikes)}`);
   const p = legOf(r, r.prioLeg);
-  if (p && (p.kind === "PRIO" || p.kind === "ALLG")) parts.push(`avd ${p.leg} prioriterad, ${prioAmount(p)}`);
-  if (r.favBanned.length) parts.push(`favoriten bortvald i avd ${joinSv(r.favBanned)}`);
+  if (p && (p.kind === "PRIO" || p.kind === "ALLG")) parts.push(`${legName(r.gameType, p.leg)} prioriterad, ${prioAmount(p)}`);
+  if (r.favBanned.length) parts.push(`favoriten bortvald i ${legNames(r.gameType, r.favBanned)}`);
   return parts.join(" · ");
 }
 
@@ -355,8 +356,8 @@ export function rulesDontFitText(r: TippaResult): string {
   const spik = r.spikEffective === 0 ? "Inga spikar" : r.spikEffective === 1 ? "1 spik" : `${r.spikEffective} spikar`;
   const parts = [spik];
   const prio = legOf(r, r.prioLeg);
-  if (prio) parts.push(`prioriterat lopp avd ${prio.leg} (minst ${prio.lo} ${prio.lo === 1 ? "häst" : "hästar"})`);
-  for (const l of r.legs.filter((x) => x.kind === "OWN")) parts.push(`ditt eget val i avd ${l.leg} (${l.selection.length} hästar)`);
+  if (prio) parts.push(`prioriterat lopp ${legName(r.gameType, prio.leg)} (minst ${prio.lo} ${prio.lo === 1 ? "häst" : "hästar"})`);
+  for (const l of r.legs.filter((x) => x.kind === "OWN")) parts.push(`ditt eget val i ${legName(r.gameType, l.leg)} (${l.selection.length} hästar)`);
   const open = r.legs.filter((l) => l.kind === "OPEN");
   let head: string;
   if (open.length) {
@@ -374,8 +375,8 @@ export function ownOverText(r: TippaResult): string {
   const own = r.legs.filter((l) => l.kind === "OWN").sort((a, b) => b.selection.length - a.selection.length || a.leg - b.leg);
   const head =
     own.length === 1
-      ? `**Avd ${own[0].leg} med ${own[0].selection.length} hästar ryms inte.**`
-      : `**Dina egna val i avd ${joinSv(own.map((l) => l.leg).sort((a, b) => a - b))} ryms inte.**`;
+      ? `**${legName(r.gameType, own[0].leg)} med ${own[0].selection.length} hästar ryms inte.**`
+      : `**Dina egna val i ${legNames(r.gameType, own.map((l) => l.leg).sort((a, b) => a - b))} ryms inte.**`;
   return `${head} Även när de andra loppen har minsta antal blir raden ${rowsText(r.rows)} · ${krText(r.cost)}. Ingenting blockeras, men raden är över budget.`;
 }
 
@@ -388,10 +389,10 @@ export const allFitText = (r: Pick<TippaResult, "capLimited" | "maxPerLeg">) =>
 // Kvar (positivt) eller över budget (negativt), i kronor med två decimaler.
 export const leftOf = (r: Pick<TippaResult, "budget" | "cost">) => Math.round((r.budget - r.cost) * 100) / 100;
 
-export function suggestionLabel(s: TippaSuggestion): string {
+export function suggestionLabel(s: TippaSuggestion, gameType: string): string {
   if (s.kind === "BUDGET") return `Höj till ${wholeKr(s.budget)}`;
   if (s.kind === "SPIKES") return `${s.spikCount} spikar · minst ${krText(s.minCost)}`;
-  return `Ändra avd ${s.leg}`;
+  return `Ändra ${legName(gameType, s.leg)}`;
 }
 
 export function suggestionToast(s: TippaSuggestion): string | null {
@@ -417,7 +418,7 @@ const MAX_LEG_SENTENCES = 3;
 // before = raden innan arket öppnades, after = med den tänkta låsningen av leg.
 // picked = valda hästar i arket (tom = ingen häst vald).
 export function previewChangeText(before: TippaResult, after: TippaResult, leg: number, picked?: number[]): string {
-  if (picked && picked.length === 0) return "Ingen häst vald. Stänger du arket väljer appen avdelningen igen.";
+  if (picked && picked.length === 0) return "Ingen häst vald. Stänger du arket väljer appen loppet igen.";
   const sentences: string[] = [];
   const legSentences: string[] = [];
   for (const a of after.legs) {
@@ -432,24 +433,24 @@ export function previewChangeText(before: TippaResult, after: TippaResult, leg: 
     const added = a.selection.filter((n) => !b.selection.includes(n)).map(name);
     const removed = b.selection.filter((n) => !a.selection.includes(n)).map(name);
     const what = [added.length ? `${joinSv(added)} kommer med` : "", removed.length ? `${joinSv(removed)} tas bort` : ""].filter(Boolean).join(", ");
-    if (a.selection.length === b.selection.length) legSentences.push(`Avd ${a.leg} byter häst (${what}).`);
-    else if (a.selection.length < b.selection.length) legSentences.push(`Avd ${a.leg} går från ${b.selection.length} till ${a.selection.length} hästar (${what}) för att raden ska komma nära **${wholeKr(after.budget)}**.`);
-    else legSentences.push(`Avd ${a.leg} går från ${b.selection.length} till ${a.selection.length} hästar (${what}).`);
+    if (a.selection.length === b.selection.length) legSentences.push(`${legName(after.gameType, a.leg)} byter häst (${what}).`);
+    else if (a.selection.length < b.selection.length) legSentences.push(`${legName(after.gameType, a.leg)} går från ${b.selection.length} till ${a.selection.length} hästar (${what}) för att raden ska komma nära **${wholeKr(after.budget)}**.`);
+    else legSentences.push(`${legName(after.gameType, a.leg)} går från ${b.selection.length} till ${a.selection.length} hästar (${what}).`);
   }
   sentences.push(...legSentences.slice(0, MAX_LEG_SENTENCES));
   if (legSentences.length > MAX_LEG_SENTENCES) {
     const rest = legSentences.length - MAX_LEG_SENTENCES;
-    sentences.push(`… och ${rest} ${rest === 1 ? "avdelning" : "avdelningar"} till.`);
+    sentences.push(`… och ${rest} ${rest === 1 ? "lopp" : "lopp"} till.`);
   }
   const removedSpik = before.spikLegs.filter((x) => !after.spikLegs.includes(x));
   const addedSpik = after.spikLegs.filter((x) => !before.spikLegs.includes(x));
   const pairs = Math.min(removedSpik.length, addedSpik.length);
-  for (let i = 0; i < pairs; i++) sentences.push(`Spiken flyttar från avd ${removedSpik[i]} till avd ${addedSpik[i]}.`);
-  for (const x of addedSpik.slice(pairs)) sentences.push(`Avd ${x} blir spik.`);
-  for (const x of removedSpik.slice(pairs)) if (x !== leg) sentences.push(`Avd ${x} är inte längre spik.`);
-  if (after.prioLeg !== before.prioLeg && after.prioLeg !== null) sentences.push(`Det prioriterade loppet flyttar till avd ${after.prioLeg}.`);
+  for (let i = 0; i < pairs; i++) sentences.push(`Spiken flyttar från ${legName(after.gameType, removedSpik[i])} till ${legName(after.gameType, addedSpik[i])}.`);
+  for (const x of addedSpik.slice(pairs)) sentences.push(`${legName(after.gameType, x)} blir spik.`);
+  for (const x of removedSpik.slice(pairs)) if (x !== leg) sentences.push(`${legName(after.gameType, x)} är inte längre spik.`);
+  if (after.prioLeg !== before.prioLeg && after.prioLeg !== null) sentences.push(`Det prioriterade loppet flyttar till ${legName(after.gameType, after.prioLeg)}.`);
   if (after.spikEffective !== before.spikEffective) sentences.push(`Antal spikar blir ${after.spikEffective}.`);
-  sentences.push("Övriga avdelningar ändras inte.");
+  sentences.push("Övriga lopp ändras inte.");
   const left = leftOf(after);
   if (after.status !== "RULES_DONT_FIT" && left < 0) sentences.push(`Raden blir ${rowsText(after.rows)} · ${krText(after.cost)}, över budget med ${krText(-left)}.`);
   return sentences.join(" ");
@@ -486,7 +487,7 @@ export function scratchNotice(saved: SavedRow, after: TippaResult, leg: number, 
   }
   const same = saved.rows === after.rows && Math.abs(saved.cost - after.cost) < 1e-9;
   const tail = same ? `Raden är fortfarande ${rowsText(after.rows)} · ${krText(after.cost)}.` : `Raden är nu ${rowsText(after.rows)} · ${krText(after.cost)}.`;
-  return `**${who} i avd ${leg} är struken.** ${mid} ${tail}`;
+  return `**${who} i ${legName(after.gameType, leg)} är struken.** ${mid} ${tail}`;
 }
 
 export type ScratchNoticeKind = "SCRATCHED" | "OWN_SPIK" | "OWN_REMOVED" | "OWN_ALL" | "NO_STARTERS";
@@ -502,21 +503,21 @@ export function scratchNotices(saved: SavedRow | null, after: TippaResult): Scra
       return s ? horseName(s) : String(n);
     };
     if (l.struckOwnSpik) {
-      out.push({ kind: "OWN_SPIK", leg: l.leg, numbers: l.selection, tone: "err", role: "alert", text: `**Din spik ${name(l.selection[0])} i avd ${l.leg} är struken.** Hos ATG ersätts den med reservhästen. Välj en ny spik, eller låt appen välja.` });
+      out.push({ kind: "OWN_SPIK", leg: l.leg, numbers: l.selection, tone: "err", role: "alert", text: `**Din spik ${name(l.selection[0])} i ${legName(after.gameType, l.leg)} är struken.** Hos ATG ersätts den med reservhästen. Välj en ny spik, eller låt appen välja.` });
       continue;
     }
     if (l.kind === "NO_STARTERS") {
-      out.push({ kind: "NO_STARTERS", leg: l.leg, numbers: [], tone: "err", role: "alert", text: `**Avd ${l.leg} har inga startande hästar.** Raden kan inte kopieras förrän loppet är inställt hos ATG. Hämta omgången igen.` });
+      out.push({ kind: "NO_STARTERS", leg: l.leg, numbers: [], tone: "err", role: "alert", text: `**${legName(after.gameType, l.leg)} har inga startande hästar.** Raden kan inte kopieras förrän loppet är inställt hos ATG. Hämta omgången igen.` });
       continue;
     }
     if (l.struckRemoved.length) {
       const n = l.struckRemoved;
       const verb = n.length === 1 ? "är struken" : "är strukna";
-      out.push({ kind: "OWN_REMOVED", leg: l.leg, numbers: n, tone: "warn", role: "status", text: `**${joinSv(n.map(name))} i avd ${l.leg} ${verb}** och togs bort ur ditt val.` });
+      out.push({ kind: "OWN_REMOVED", leg: l.leg, numbers: n, tone: "warn", role: "status", text: `**${joinSv(n.map(name))} i ${legName(after.gameType, l.leg)} ${verb}** och togs bort ur ditt val.` });
       continue;
     }
     if (l.unlocked) {
-      out.push({ kind: "OWN_ALL", leg: l.leg, numbers: l.scratched.map((s) => s.number), tone: "warn", role: "status", text: `**Alla dina hästar i avd ${l.leg} är strukna.** Appen väljer avdelningen igen.` });
+      out.push({ kind: "OWN_ALL", leg: l.leg, numbers: l.scratched.map((s) => s.number), tone: "warn", role: "status", text: `**Alla dina hästar i ${legName(after.gameType, l.leg)} är strukna.** Appen väljer loppet igen.` });
       continue;
     }
     if (!saved || (l.kind !== "OPEN" && l.kind !== "SPIK" && l.kind !== "PRIO" && l.kind !== "ALLG")) continue;
@@ -542,7 +543,7 @@ export function copyChangedText(copiedAt: string | null | undefined, copied: Rec
   if (!copiedAt || !copied) return null;
   const legs = changedSinceCopy(copied, r);
   if (!legs.length) return null;
-  const which = legs.length === 1 ? `Avd ${legs[0]} är ändrad.` : `Avd ${joinSv(legs)} är ändrade.`;
+  const which = legs.length === 1 ? `${legName(r.gameType, legs[0])} är ändrad.` : `${legNames(r.gameType, legs)} är ändrade.`;
   return `**Raden har ändrats sedan du kopierade den** ${relTime(copiedAt, now)}. ${which} Kopiera igen om du vill spela den nya raden.`;
 }
 
@@ -579,14 +580,14 @@ export function spikPreviewTexts(before: TippaResult, after: TippaResult, leg: n
           const m = marksText(b.favorite!);
           return `${horseName(b.favorite!)}${m ? `, ${m}` : ""}`;
         });
-        out.push(`**Favoriten blir med i ${before.favCount + 1} av ${before.legCount}.** Appen tar då bort favoriten i avd ${joinSv(lost.map((b) => b.leg))} i stället (${who.join("; ")}), eftersom ditt val går först.`);
+        out.push(`**Favoriten blir med i ${before.favCount + 1} av ${before.legCount}.** Appen tar då bort favoriten i ${legNames(after.gameType, lost.map((b) => b.leg))} i stället (${who.join("; ")}), eftersom ditt val går först.`);
       }
     }
   }
   if (before.prioLeg === leg) {
-    if (!before.prioAuto) out.push(`Avd ${leg} är ditt prioriterade lopp. Väljer du spik här blir prioriterat lopp Auto.`);
-    else if (after.prioLeg !== null) out.push(`Avd ${leg} är prioriterat lopp nu. Prioriteringen flyttar till avd ${after.prioLeg}, näst mest öppna loppet.`);
-    else out.push(`Avd ${leg} är prioriterat lopp nu. Inget annat lopp kan prioriteras.`);
+    if (!before.prioAuto) out.push(`${legName(after.gameType, leg)} är ditt prioriterade lopp. Väljer du spik här blir prioriterat lopp Auto.`);
+    else if (after.prioLeg !== null) out.push(`${legName(after.gameType, leg)} är prioriterat lopp nu. Prioriteringen flyttar till ${legName(after.gameType, after.prioLeg)}, näst mest öppna loppet.`);
+    else out.push(`${legName(after.gameType, leg)} är prioriterat lopp nu. Inget annat lopp kan prioriteras.`);
   }
   if (after.spikEffective > before.spikEffective) {
     const own = before.ownSpikes === 1 ? "1 egen spik" : `${before.ownSpikes} egna spikar`;
@@ -619,13 +620,14 @@ export const startedText = (gameType: string) => `${gameType} har startat – ra
 export function copyBlockedReason(r: TippaResult): string | null {
   if (r.noData) return "Raden kan inte räknas än.";
   if (r.status === "RULES_DONT_FIT") return "Raden ryms inte i budgeten.";
-  if (r.struckOwnSpik.length) return `Välj en ny spik i avd ${r.struckOwnSpik[0]} först.`;
-  if (r.noStarters.length) return `Avd ${r.noStarters[0]} har inga startande.`;
+  if (r.struckOwnSpik.length) return `Välj en ny spik i ${legName(r.gameType, r.struckOwnSpik[0])} först.`;
+  if (r.noStarters.length) return `${legName(r.gameType, r.noStarters[0])} har inga startande.`;
   return null;
 }
 
 // Avvikelser från mallen för att nå budgeten (Mikael 2026-10-28, E6b 6.6).
 export function templateDeviationText(r: {
+  gameType: string;
   prioShort: number;
   prioTarget: number;
   maxPerLeg: number | null;
@@ -637,10 +639,10 @@ export function templateDeviationText(r: {
   if (r.prioShort > 0 && r.prioLeg) {
     const n = r.legs.find((l) => l.leg === r.prioLeg)?.field.length ?? 0;
     const capped = r.maxPerLeg !== null && r.prioTarget < n;
-    parts.push(`Avd ${r.prioLeg} har ${r.prioTarget - r.prioShort} av ${n} hästar${capped ? ` (taket är ${r.prioTarget})` : ""}`);
+    parts.push(`${legName(r.gameType, r.prioLeg)} har ${r.prioTarget - r.prioShort} av ${n} hästar${capped ? ` (taket är ${r.prioTarget})` : ""}`);
   }
   if (r.relaxedLegs.length) {
-    const list = r.relaxedLegs.length === 1 ? `Avd ${r.relaxedLegs[0]} har` : `Avd ${r.relaxedLegs.slice(0, -1).join(", ")} och ${r.relaxedLegs[r.relaxedLegs.length - 1]} har`;
+    const list = r.relaxedLegs.length === 1 ? `${legName(r.gameType, r.relaxedLegs[0])} har` : `${legName(r.gameType, r.relaxedLegs.slice(0, -1).join(", "))} och ${r.relaxedLegs[r.relaxedLegs.length - 1]} har`;
     parts.push(`${list} 2 hästar (bästa Topp 3 och högst rankade av övriga)`);
   }
   return parts.length ? `För att komma nära din budget avviker raden från mallen. ${parts.join(". ")}.` : null;

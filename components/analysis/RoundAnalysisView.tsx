@@ -75,13 +75,13 @@ export function RoundAnalysisView({ roundId }: { roundId: string }) {
             <h2 className="sl">
               <span>Dina spel ({a.plays.length})</span>
             </h2>
-            <Plays plays={a.plays} href={(p) => `/omgang/${roundId}/avd/${p.leg}/hast/${p.startId}`} />
+            <Plays plays={a.plays} gameType={data.round.gameType} href={(p) => `/omgang/${roundId}/avd/${p.leg}/hast/${p.startId}`} />
             {a.missed.length > 0 && (
               <>
                 <h2 className="sl">
                   <span>Spelbara du inte spelade ({a.missed.length})</span>
                 </h2>
-                <MissedList list={a.missed} total={a.missedUnits} />
+                <MissedList list={a.missed} total={a.missedUnits} gameType={data.round.gameType} />
               </>
             )}
           </div>

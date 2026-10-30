@@ -89,7 +89,7 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
   const fetchDeps = (now: Date): FetchDeps => ({ db, atg, ts, now: () => now });
   const startIdOf = async (leg: number, number: number) => (await db.start.findFirstOrThrow({ where: { number, race: { roundId, leg } }, select: { id: true } })).id;
 
-  // Hela kedjan som klienten kör den: start, alla avdelningar, finish.
+  // Hela kedjan som klienten kör den: start, alla lopp, finish.
   async function chain(now: Date) {
     const s = await startOddsFetch(deps(now), { roundId, userId });
     if (s.status !== 200) return { start: s, legs: [], finish: null };
@@ -162,7 +162,7 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
   let firstFetch = "";
   const t1 = new Date("2026-10-22T19:10:00Z");
 
-  it("med odds: spärren, en avdelning som inte svarar, struken och saknad hos Unibet, egna odds ersätts, Bet-oddset står still", async () => {
+  it("med odds: spärren, ett lopp som inte svarar, struken och saknad hos Unibet, egna odds ersätts, Bet-oddset står still", async () => {
     state.open = true;
     state.fail = new Set([6]);
     const s = await startOddsFetch(deps(t1), { roundId, userId });
@@ -179,7 +179,7 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
       legs.push(r.body as UnibetLegResponse);
       expect(r.status).toBe(l.leg === 2 ? 502 : 200);
     }
-    expect(legs[1]).toMatchObject({ leg: 2, ok: false, error: "Unibet svarade inte för avd 2." });
+    expect(legs[1]).toMatchObject({ leg: 2, ok: false, error: "Unibet svarade inte för V85-2." });
     const leg1 = legs[0];
     expect(leg1).toMatchObject({ ok: true, noPrices: false, missing: [6], scratchedAtUnibet: [5] });
     expect(leg1.withOdds).toBe(10);
@@ -210,7 +210,7 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
     expect(m12).toMatchObject({ interesting: false, unibetOddsSource: "UNIBET" });
     expect(Number(m12.unibetOdds)).toBe(5.5);
 
-    // Avd 2 körs om när Unibet svarar igen: räknas inte mot spärren.
+    // V85-2 körs om när Unibet svarar igen: räknas inte mot spärren.
     state.fail = new Set();
     const again = await fetchOddsLeg(deps(new Date(t1.getTime() + 30_000)), { roundId, fetchId: firstFetch, leg: 2, userId });
     expect(again.status).toBe(200);
@@ -321,10 +321,10 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
     const third = (r.start.body as { fetchId: string }).fetchId;
     expect(await fetchOddsLeg(deps(saturday), { roundId, fetchId: third, leg: 1, userId })).toEqual({ status: 409, body: { error: RACE_STARTED } });
     expect(r.finish!.body).toMatchObject({ saved: true, legsSkipped: [1], legsOk: [2, 3, 4, 5, 6, 7, 8] });
-    // Avd 1 rördes inte: Nilla Lane står kvar på ditt 2,60.
+    // V85-1 rördes inte: Nilla Lane står kvar på ditt 2,60.
     const m = await db.mark.findUniqueOrThrow({ where: { userId_startId: { userId, startId: await startIdOf(1, 3) } } });
     expect(Number(m.unibetOdds)).toBe(2.6);
-    // En häst i avd 2 ersattes och avd 2 startar 13:22; efter start går Ångra inte.
+    // En häst i V85-2 ersattes och V85-2 startar 13:22; efter start går Ångra inte.
     const polly = await startIdOf(2, 2);
     await saveMark(db, userId, polly, { unibetOdds: 9.99 }, saturday);
     const r4 = await chain(new Date("2026-10-24T13:15:00Z"));
@@ -344,7 +344,7 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
     expect((await buildRoundResponse(db, roundId, userId, now))!.lastOddsAttempt?.outcome).toBe("failed");
   });
 
-  it("fel lopp (hästarna heter något annat hos Unibet): avdelningen misslyckas och inget skrivs", async () => {
+  it("fel lopp (hästarna heter något annat hos Unibet): loppet misslyckas och inget skrivs", async () => {
     const now = new Date("2026-10-24T13:40:00Z");
     const before = await db.unibetPrice.count();
     const wrongNames: UnibetDeps = {
@@ -359,7 +359,7 @@ describe.skipIf(skip)("E2.2 Unibets odds mot Postgres", () => {
     };
     const s = (await startOddsFetch(wrongNames, { roundId, userId })).body as { fetchId: string };
     const leg = await fetchOddsLeg(wrongNames, { roundId, fetchId: s.fetchId, leg: 8, userId });
-    expect(leg).toMatchObject({ status: 502, body: { ok: false, error: "Hästarna hos Unibet stämmer inte med avd 8." } });
+    expect(leg).toMatchObject({ status: 502, body: { ok: false, error: "Hästarna hos Unibet stämmer inte med V85-8." } });
     expect(await db.unibetPrice.count()).toBe(before);
     expect((await finishOddsFetch(wrongNames, { roundId, fetchId: s.fetchId, userId })).body).toEqual({ saved: false });
   });

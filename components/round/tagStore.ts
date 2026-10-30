@@ -13,7 +13,7 @@ import { newClientId } from "./HorseCard";
 
 export type RaceTag = { clientId: string; tags: string[]; text: string };
 export type RaceTags = { byStart: Record<string, RaceTag>; loading: boolean; error: string | null; loaded: boolean };
-export type TagCtx = { roundId: string; roundDate: string; trackName: string; race: RaceDto };
+export type TagCtx = { roundId: string; roundDate: string; trackName: string; gameType: string; race: RaceDto };
 
 const cache = new Map<string, RaceTags>();
 const listeners = new Set<() => void>();
@@ -78,7 +78,7 @@ export function saveRaceTag(ctx: TagCtx, start: StartDto, next: { tags: string[]
     method: "PUT",
     url: `/api/comments/${clientId}`,
     body,
-    meta: { kind: "comment", horseId: start.horse.id, horseName: start.horse.name, clientId, round: { id: ctx.roundId, date: ctx.roundDate, trackName: ctx.trackName }, leg: ctx.race.leg },
+    meta: { kind: "comment", horseId: start.horse.id, horseName: start.horse.name, clientId, round: { id: ctx.roundId, date: ctx.roundDate, trackName: ctx.trackName, gameType: ctx.gameType }, leg: ctx.race.leg },
   });
 }
 

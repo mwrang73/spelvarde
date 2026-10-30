@@ -14,7 +14,7 @@ function fakePost(fail: (url: string) => number | "throw" | null): { post: Chain
 }
 
 describe("runFetchChain", () => {
-  it("kör spelet, alla 8 avdelningar, statistiken och riktoddsen i ordning", async () => {
+  it("kör spelet, alla 8 lopp, statistiken och riktoddsen i ordning", async () => {
     const { post, calls } = fakePost(() => null);
     const steps: string[] = [];
     const res = await runFetchChain(post, { from: { step: "GAME" }, gameId: null, roundId: null }, (p) => steps.push(`${p.step}${p.leg ?? ""}`));
@@ -25,7 +25,7 @@ describe("runFetchChain", () => {
     expect(steps).toContain("RACE5");
   });
 
-  it("stannar vid avd 5 och fortsätter därifrån", async () => {
+  it("stannar vid V85-5 och fortsätter därifrån", async () => {
     const first = fakePost((u) => (u.endsWith("/races/5") ? 502 : null));
     const res = await runFetchChain(first.post, { from: { step: "GAME" }, gameId: "V85_2026-10-24_7_5", roundId: null });
     expect(res).toMatchObject({ ok: false, kind: "PARTIAL", message: stoppedAtRace(5), resumeFrom: { step: "RACE", leg: 5 } });

@@ -106,7 +106,7 @@ describe("Bjerke (fixturen)", () => {
     expect(x.suggestions).toEqual([{ kind: "BUDGET", budget: 40 }, { kind: "SPIKES", spikCount: 5, minCost: 20 }]);
     expect(x.canCopy).toBe(false);
     expect(rulesDontFitText(x)).toBe(
-      "**Reglerna ryms inte i 30 kr.** 4 spikar, prioriterat lopp avd 5 (minst 10 hästar) och minst 2 hästar i de 3 andra loppen ger minst 80 rader, alltså 40,00 kr. Ingen ny rad föreslås förrän det ryms.",
+      "**Reglerna ryms inte i 30 kr.** 4 spikar, prioriterat lopp V85-5 (minst 10 hästar) och minst 2 hästar i de 3 andra loppen ger minst 80 rader, alltså 40,00 kr. Ingen ny rad föreslås förrän det ryms.",
     );
   });
 
@@ -126,7 +126,7 @@ describe("Bjerke (fixturen)", () => {
     expect(x.minRows).toBe(40);
   });
 
-  it("7. eget val i avd 7 (A4) och förhandsvisningen", () => {
+  it("7. eget val i V85-7 (A4) och förhandsvisningen", () => {
     const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 7: [3, 4, 8, 11, 14] } }));
     // Inom bandet (259–302 kr) vinner mallen utan avvikelser: 540 rader · 270 kr.
     expect(x.rows).toBe(540);
@@ -134,10 +134,10 @@ describe("Bjerke (fixturen)", () => {
     expect(x.selections[3]).toEqual([5, 9, 13]);
     expect(x.relaxedLegs).toEqual([]);
     expect(x.legs[6].kind).toBe("OWN");
-    expect(previewChangeText(r, x, 7)).toContain("Avd 3 går från 4 till 3 hästar (1 Järvsö Elina tas bort) för att raden ska komma nära **288 kr**.");
+    expect(previewChangeText(r, x, 7)).toContain("V85-3 går från 4 till 3 hästar (1 Järvsö Elina tas bort) för att raden ska komma nära **288 kr**.");
   });
 
-  it("8. eget val i avd 7 med 9 hästar ryms inte", () => {
+  it("8. eget val i V85-7 med 9 hästar ryms inte", () => {
     const x = buildRad(legs, bjerkeRules({ budget: 100, locked: { 4: [1], 7: [2, 3, 4, 5, 7, 8, 9, 11, 14] } }));
     expect(x.status).toBe("OWN_OVER_BUDGET");
     expect(x.rows).toBe(360);
@@ -146,7 +146,7 @@ describe("Bjerke (fixturen)", () => {
     expect(x.canCopy).toBe(true);
   });
 
-  it("9. egen spik 7 Dreamliner Sund i avd 6 (A5)", () => {
+  it("9. egen spik 7 Dreamliner Sund i V85-6 (A5)", () => {
     const x = buildRad(legs, bjerkeRules({ locked: { 4: [1], 6: [7] } }));
     expect(x.spikEffective).toBe(4);
     expect(x.spikLegs).toEqual([2, 8]);
@@ -161,7 +161,7 @@ describe("Bjerke (fixturen)", () => {
     expect(x.favCount).toBe(5);
     expect(x.favOver).toBe("OWN");
     expect(x.status).toBe("OK");
-    // Spec: "spärrad i 1 och 7". Avd 4 (Baron Tilly) är också öppen här och får favoriten spärrad.
+    // Spec: "spärrad i 1 och 7". V85-4 (Baron Tilly) är också öppen här och får favoriten spärrad.
     expect(x.favBanned).toEqual(expect.arrayContaining([1, 7]));
     expect(x.favBanned).toEqual([1, 4, 7]);
   });
@@ -211,7 +211,7 @@ describe("strykningar", () => {
     expect(l7.horses.find((h) => h.number === 5)!.reasons[0]).toBe("MEL");
     expect(x.rows).toBe(576);
     expect(scratchNotice({ selections: base.selections, rows: base.rows, cost: base.cost }, x, 7, 11)).toBe(
-      "**11 Tangen Haap i avd 7 är struken.** Den togs bort, och 5 Odd Herakles kom med i stället som Mellan. Raden är fortfarande 576 rader · 288,00 kr.",
+      "**11 Tangen Haap i V85-7 är struken.** Den togs bort, och 5 Odd Herakles kom med i stället som Mellan. Raden är fortfarande 576 rader · 288,00 kr.",
     );
   });
 
@@ -256,7 +256,7 @@ describe("minsta val och lägen", () => {
     expect([...m.picks].sort((a, b) => a - b)).toEqual([2, 6, 8]);
     expect(m.sub).toEqual({ 8: "LOW" });
     const rules = { gameType: "V85", budget: 1, rowPrice: 0.5, spikCount: 0, allgMode: "AUTO" as const, allgLeg: null, maxPerLeg: null, locked: {} };
-    // I en hel rad: avd 1 är öppen (allgarderingen hamnar i ett annat lopp).
+    // I en hel rad: V85-1 är öppen (allgarderingen hamnar i ett annat lopp).
     const other = (n: number): TippaLeg => ({ leg: n, startAt: "", cancelled: false, starts: [st(1, 50, 1.5), st(2, 30, 2), st(3, 20, 3)] });
     const allg: TippaLeg = { leg: 8, startAt: "", cancelled: false, starts: [st(1, 10, 3), st(2, 10, 3)] };
     const x = buildRad([leg, ...[2, 3, 4, 5, 6, 7].map(other), allg], { ...rules, budget: 1000 });
@@ -441,9 +441,9 @@ const S14 = [26, 14, 11, 8, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2];
 const S15 = [25, 14, 11, 8, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1];
 const S8 = [30, 20, 15, 10, 8, 7, 6, 4];
 
-// Exempel 1 – mockupens omgång: spikar i avd 2 (rikt 1,20) och 6 (1,30), P =
-// avd 5 med 13 löpande (lägst favoritstreck 16,4), öppna lopp 12, 15, 12, 14, 12.
-// Avd 8 har näst lägsta spikhästen (1,80) för exempel 4.
+// Exempel 1 – mockupens omgång: spikar i V85-2 (rikt 1,20) och 6 (1,30), P =
+// V85-5 med 13 löpande (lägst favoritstreck 16,4), öppna lopp 12, 15, 12, 14, 12.
+// V85-8 har näst lägsta spikhästen (1,80) för exempel 4.
 const ex1Legs = (): TippaLeg[] => [mkLeg(1, S12), mkLeg(2, S10, { spik: 1.2 }), mkLeg(3, S15), mkLeg(4, S12), mkLeg(5, S13, { floor: 2.5 }), mkLeg(6, S10, { spik: 1.3 }), mkLeg(7, S14), mkLeg(8, S12, { spik: 1.8 })];
 const ex1Rules = (over: Partial<TippaRules> = {}): TippaRules => ({ gameType: "V85", budget: 400, rowPrice: 0.5, spikCount: 2, allgMode: "AUTO", allgLeg: null, maxPerLeg: 7, locked: {}, ...over });
 const openCounts = (r: ReturnType<typeof buildRad>) => r.legs.filter((l) => l.kind === "OPEN").map((l) => l.selection.length).sort((a, b) => a - b);
@@ -576,7 +576,7 @@ describe("E6b: taket och det prioriterade loppet", () => {
 
   it("10. fieldMax: högsta antalet löpande utom inställda, strukna räknas inte", () => {
     const legs = ex1Legs().map((l) => (l.leg === 3 ? { ...l, cancelled: true } : l.leg === 7 ? { ...l, starts: l.starts.map((s) => (s.number <= 2 ? s : { ...s, scratched: s.number > 12 })) } : l));
-    // Avd 3 (15) är inställd, avd 7 har 14 − 2 strukna = 12, avd 5 har 13.
+    // V85-3 (15) är inställd, V85-7 har 14 − 2 strukna = 12, V85-5 har 13.
     expect(buildRad(legs, ex1Rules()).fieldMax).toBe(13);
     expect(buildRad(ex1Legs(), ex1Rules()).fieldMax).toBe(15);
     const empty = ex1Legs().map((l) => ({ ...l, starts: l.starts.map((s) => ({ ...s, scratched: true })) }));

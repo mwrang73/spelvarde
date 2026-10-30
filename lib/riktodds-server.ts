@@ -149,7 +149,7 @@ export async function riktoddsStep(db: Db, input: { roundId: string; userId: str
         startedAt,
         finishedAt: new Date(),
         ok: true,
-        message: `${res.computed} starter med ${res.modelKey}${res.skippedLegs.length ? `, inget riktodds i avd ${res.skippedLegs.join(", ")} (färre än 4 startande)` : ""}`,
+        message: `${res.computed} starter med ${res.modelKey}${res.skippedLegs.length ? `, inget riktodds i lopp ${res.skippedLegs.join(", ")} (färre än 4 startande)` : ""}`,
       },
     });
     return res;

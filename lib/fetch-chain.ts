@@ -36,7 +36,7 @@ const codeOf = (data: unknown): string | null =>
 export const ATG_UNREACHABLE = "Kunde inte nå ATG. Kontrollera uppkopplingen och försök igen.";
 
 export function stoppedAtRace(leg: number): string {
-  return `Hämtningen stannade vid avd ${leg}: ATG svarade inte. Det som redan hämtats är sparat.`;
+  return `Hämtningen stannade vid lopp ${leg}: ATG svarade inte. Det som redan hämtats är sparat.`;
 }
 export const STOPPED_AT_STATS = "Hämtningen stannade vid statistiken: travstatistik.se svarade inte. Det som redan hämtats är sparat.";
 export const STOPPED_AT_RIKTODDS = "Hämtningen stannade vid riktoddsen: de kunde inte räknas. Det som redan hämtats är sparat.";

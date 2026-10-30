@@ -19,7 +19,7 @@ const out = (p: Partial<StartOutcomeDto> = {}): StartOutcomeDto => ({
 });
 const res = (place: number | null, p: Partial<NonNullable<StartDto["result"]>> = {}) => ({ place, finishOrder: place, disqualified: false, galloped: false, kmTime: null, finalOdds: null, ...p });
 
-// Avd 7 i mockupen: 5 Kentucky River vann (Bet), 10 Barack Face 4:a (Bet),
+// V85-7 i mockupen: 5 Kentucky River vann (Bet), 10 Barack Face 4:a (Bet),
 // dött lopp om andraplatsen, en diskad Bet, en struken och övriga.
 const starts = [
   mkStart("a", 1, { horse: { id: "h1", name: "Laredo Boko", sex: null, age: null, record: null, earnings: null }, result: res(6) }),
@@ -68,20 +68,20 @@ describe("Nästa-kortet", () => {
   it("nästa avdelning har inte startat: dina hästar, annars loppnamnet", () => {
     const mine = [mkStart("x", 3, { horse: { id: "hx", name: "Blixt Lane", sex: null, age: null, record: null, earnings: null }, mark: mkMark("x", { bet: true }) }), mkStart("y", 4, { horse: { id: "hy", name: "Django Silver", sex: null, age: null, record: null, earnings: null }, mark: mkMark("y", { interesting: true }) })];
     const races = [r(7, { started: true }), r(8, {}, mine)];
-    expect(nextCard(races[0], races, "R", now, null)).toEqual({ title: "Avd 8 startar 18:00", text: "Blixt Lane är Bet. Django Silver är Intressant.", label: "Till avd 8", href: "/omgang/R/avd/8" });
-    expect(nextCard(races[0], [races[0], r(8)], "R", now, null).text).toBe("Lopp 8");
+    expect(nextCard("V85", races[0], races, "R", now, null)).toEqual({ title: "V85-8 startar 18:00", text: "Blixt Lane är Bet. Django Silver är Intressant.", label: "Till V85-8", href: "/omgang/R/avd/8" });
+    expect(nextCard("V85", races[0], [races[0], r(8)], "R", now, null).text).toBe("Lopp 8");
   });
   it("nästa avdelning har startat: resultat eller pågår", () => {
     const sum = { bet: { hits: 1, total: 1 }, spelbar: { hits: 0, total: 0 }, interesting: { hits: 1, total: 1 }, trollspot: { hits: 0, total: 0 } };
     const races = [r(6, { started: true }), r(7, { started: true, resultAt: "x", summary: sum })];
-    expect(nextCard(races[0], races, "R", now, null)).toMatchObject({ title: "Avd 7 · resultat", text: "Träff 1/1." });
-    expect(nextCard(races[0], [races[0], r(7, { started: true })], "R", now, null)).toMatchObject({ title: "Avd 7 pågår", text: "Väntar på resultat." });
+    expect(nextCard("V85", races[0], races, "R", now, null)).toMatchObject({ title: "V85-7 · resultat", text: "Träff 1/1." });
+    expect(nextCard("V85", races[0], [races[0], r(7, { started: true })], "R", now, null)).toMatchObject({ title: "V85-7 pågår", text: "Väntar på resultat." });
   });
-  it("sista avdelningen: klar med summeringen, eller vilka som väntar", () => {
+  it("sista loppet: klar med summeringen, eller vilka som väntar", () => {
     const sum = { bet: { hits: 2, total: 4 }, spelbar: { hits: 3, total: 6 }, interesting: { hits: 6, total: 13 }, trollspot: { hits: 0, total: 0 } };
     const done = [r(7, { started: true, resultAt: "x" }), r(8, { started: true, resultAt: "x" })];
-    expect(nextCard(done[1], done, "R", now, sum)).toEqual({ title: "Omgången är klar", text: "Bet 2/4 träff · Spelbar 3/6 topp 3 · Intressant 6/13 topp 3.", label: "Till omgången", href: "/omgang/R" });
+    expect(nextCard("V85", done[1], done, "R", now, sum)).toEqual({ title: "Omgången är klar", text: "Bet 2/4 träff · Spelbar 3/6 topp 3 · Intressant 6/13 topp 3.", label: "Till omgången", href: "/omgang/R" });
     const waiting = [r(5, { started: true }), r(6, { started: true }), r(7, { cancelled: true }), r(8, { started: true, resultAt: "x" })];
-    expect(nextCard(waiting[3], waiting, "R", now, sum)).toMatchObject({ title: "Väntar på avd 5", text: "Avd 5 och 6 saknar resultat." });
+    expect(nextCard("V85", waiting[3], waiting, "R", now, sum)).toMatchObject({ title: "Väntar på V85-5", text: "V85-5 och V85-6 saknar resultat." });
   });
 });

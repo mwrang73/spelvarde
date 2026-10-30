@@ -113,7 +113,7 @@ describe.skipIf(skip)("hämtningskedjan mot Postgres", () => {
     expect(noRls[0].n).toBe(0);
   });
 
-  it("steg 1 hittar nästa V85 i kalendern och sparar 8 avdelningar och 102 starter", async () => {
+  it("steg 1 hittar nästa V85 i kalendern och sparar 8 lopp och 102 starter", async () => {
     const atg = makeAtg("upcoming");
     const res = (await fetchGameStep(deps(atg), { userId }))!;
     expect(res.atgGameId).toBe("V85_2026-10-24_7_5");
@@ -130,7 +130,7 @@ describe.skipIf(skip)("hämtningskedjan mot Postgres", () => {
     expect(round).toMatchObject({ trackName: "Jägersro", fetchStatus: "PARTIAL" });
   });
 
-  it("steg 2–9: ett fel stoppar avdelningen, Försök igen tar bara om det som saknas", async () => {
+  it("steg 2–9: ett fel stoppar loppet, Försök igen tar bara om det som saknas", async () => {
     const failing = makeAtg("upcoming", { failStarts: new Set(["2026-10-24_7_11/2"]) });
     const first = await fetchRaceStep(deps(failing), { roundId, leg: 7, userId });
     expect(first.ok).toBe(false);
@@ -189,7 +189,7 @@ describe.skipIf(skip)("hämtningskedjan mot Postgres", () => {
     const changed = await db.start.findFirstOrThrow({ where: { race: { roundId, leg: 8 }, number: 11 }, include: { driver: true, prevDriver: true } });
     expect(changed.driver!.lastName).toBe("Östre");
     expect(changed.prevDriver!.lastName).toBe("Uhrberg");
-    // Ändrade avdelningar ska hämtas om; resten är färska.
+    // Ändrade lopp ska hämtas om; resten är färska.
     expect((await db.race.findFirstOrThrow({ where: { roundId, leg: 8 } })).recordsFetchedAt).toBeNull();
     expect((await db.race.findFirstOrThrow({ where: { roundId, leg: 1 } })).recordsFetchedAt).not.toBeNull();
   });
@@ -302,7 +302,7 @@ describe.skipIf(skip)("hämtningskedjan mot Postgres", () => {
     const broken = structuredClone(full) as { races: { starts: { horse: { name?: string } }[] }[] };
     delete broken.races[1].starts[0].horse.name;
     games.foreignBroken = broken;
-    await expect(fetchGameStep(deps(makeAtg("foreignBroken" as never), now), { gameId, userId })).rejects.toThrow("ATG:s startlista gick inte att läsa helt (avd 2: 10 av 11 hästar). Inget sparades.");
+    await expect(fetchGameStep(deps(makeAtg("foreignBroken" as never), now), { gameId, userId })).rejects.toThrow("ATG:s startlista gick inte att läsa helt (lopp 2: 10 av 11 hästar). Inget sparades.");
     expect(await db.start.count({ where: { race: { roundId: first.roundId } } })).toBe(97);
     // Steg 2–9 klarar starter där ATG inte har något häst-id.
     expect((await fetchRaceStep(deps(makeAtg("foreign"), now), { roundId: first.roundId, leg: 2, userId })).ok).toBe(true);

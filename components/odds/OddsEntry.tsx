@@ -33,6 +33,7 @@ import { nextXFactor, X_LABEL, type XFactorSettings } from "@/lib/xfactor";
 import { riktX, xOf } from "@/lib/xfactor-ui";
 import { RefreshBanner, RefreshBoardButton } from "@/components/round/StreckOdds";
 import { OddsList } from "./OddsList";
+import { legName } from "@/lib/game-type";
 
 type Item = { race: RaceDto; start: StartDto };
 
@@ -110,7 +111,7 @@ function OddsQueue({ data, onList }: { data: RoundResponse; onList: () => void }
               </Link>
             </EmptyState>
           ) : (
-            <EmptyState icon={<IconFlag />} title="Inga intressanta hästar än" text="Markera Intressant i avdelningarna först.">
+            <EmptyState icon={<IconFlag />} title="Inga intressanta hästar än" text="Markera Intressant i loppen först.">
               <Link className="btn primary" href={`${base}/avd/1`}>
                 Till avd 1
               </Link>
@@ -287,7 +288,7 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
               <FlapNumber n={cur.start.number} size="lg" />
               <div>
                 <div className="km">
-                  Avd {cur.race.leg} · {hhmm(cur.race.startAt)}
+                  {legName(data.round.gameType, cur.race.leg)} · {hhmm(cur.race.startAt)}
                 </div>
                 <h2 className="kn">{cur.start.horse.name}</h2>
                 <div className="km">{cur.start.driver?.name ?? "Kusk saknas"}</div>
@@ -391,6 +392,7 @@ function Keypad({ data, items, onList }: { data: RoundResponse; items: Item[]; o
         )}
       </main>
       <Summary
+        gameType={data.round.gameType}
         open={sheetOpen}
         items={items}
         guideline={guideline}
@@ -430,6 +432,7 @@ function diffText(d: number | null): string {
 
 // Sammanfattningsarket (ersätter 4C): ingen bekräftelse, förslagen gäller redan.
 function Summary({
+  gameType,
   open,
   items,
   guideline,
@@ -439,6 +442,7 @@ function Summary({
   onDone,
   onSpelbar,
 }: {
+  gameType: string;
   open: boolean;
   items: Item[];
   guideline: number;
@@ -469,7 +473,7 @@ function Summary({
             {m?.belowGuideline && <span className="tag gl">{guidelineTag(guideline)}</span>}
           </div>
           <div className="pm">
-            Avd {it.race.leg} · Unibet <b>{odds(m?.unibetOdds ?? null)}</b> · <RiktShort riktodds={it.start.riktodds} x={x} rx={rx} /> · <span className={`diff ${d !== null && d > 0 ? "up" : "dn"}`}>{diffText(d)}</span>
+            {legName(gameType, it.race.leg)} · Unibet <b>{odds(m?.unibetOdds ?? null)}</b> · <RiktShort riktodds={it.start.riktodds} x={x} rx={rx} /> · <span className={`diff ${d !== null && d > 0 ? "up" : "dn"}`}>{diffText(d)}</span>
           </div>
         </div>
         {!locked &&

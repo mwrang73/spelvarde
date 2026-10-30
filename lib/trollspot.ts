@@ -12,8 +12,9 @@
 // (Harville), K = medianen av platspoolens slutodds × marknadens chans i
 // backtestet (0,59).
 //
-// Minst X = det högsta av 2,00, riktoddset (utan X-faktor) minus toleransen
-// och marknadens uppskattade odds: Unibet ska nå Mikaels regel, modellen och
+// Minst X = det högsta av 2,00, riktoddset (med X-faktor när hästen har en,
+// samma riktodds som ringen räknas mot) minus toleransen och marknadens
+// uppskattade odds: Unibet ska nå Mikaels regel, modellen och
 // marknaden. Från E2.2 (e2.2 6.1, beslut 8) dras toleransen av från
 // riktoddsdelen men inte från 2,00, så att Trollspöt och Spelbar säger samma
 // sak, och oddset räcker när det är lika med gränsen (som Spelbar).
@@ -25,7 +26,7 @@ import type { RaceDto, StartDto } from "@/lib/types";
 // Det som Trollspöt läser av ett lopp och en start. RaceDto och StartDto
 // uppfyller typerna; servern (frysningen i lib/outcomes-server.ts) skickar in
 // lättare objekt byggda direkt från databasen.
-export type TrollStart = Pick<StartDto, "id" | "number" | "scratched" | "streck" | "probTop3" | "riktodds"> & { mark?: { unibetOdds: number | null } | null };
+export type TrollStart = Pick<StartDto, "id" | "number" | "scratched" | "streck" | "probTop3" | "riktodds"> & { mark?: { unibetOdds: number | null; xFactor?: string; riktoddsX?: number | null } | null };
 export type TrollRace<S extends TrollStart = TrollStart> = Pick<RaceDto, "id" | "leg" | "startAt" | "cancelled"> & { starts: S[] };
 
 export const TROLL_COUNT = 10;
@@ -67,12 +68,24 @@ export function minOddsOf(riktodds: number | null, estOdds: number, tolerance: n
   return round2(Math.max(TROLL_MIN_ODDS, rikt, estOdds));
 }
 
+// Riktoddset som Minst X räknas mot: med X-faktor när hästen har en.
+const riktForMin = (s: TrollStart): number | null => (s.mark?.xFactor && s.mark.xFactor !== "NONE" ? s.mark.riktoddsX ?? s.riktodds : s.riktodds);
+
 // Minst X för en enskild häst (Platsspel och listan i Unibets odds). Utan
 // streck eller riktodds: det som finns av 2,00 och riktoddset.
 export function minOddsFor(race: TrollRace, start: TrollStart, tolerance: number = DEFAULT_TOLERANCE): number {
   const pm = marketChances(race).get(start.id);
   const est = pm && pm > 0 ? TROLL_K / pm : 0;
-  return minOddsOf(start.riktodds, est, tolerance);
+  return minOddsOf(riktForMin(start), est, tolerance);
+}
+
+// Chans, uppskattat odds och Minst X för en häst, i Trollspöt och Platsspel.
+export type OddsFacts = { chance: number | null; estOdds: number | null; minOdds: number };
+
+export function oddsFacts(race: TrollRace, start: TrollStart, tolerance: number = DEFAULT_TOLERANCE): OddsFacts {
+  const pm = marketChances(race).get(start.id);
+  const estOdds = pm && pm > 0 ? round2(TROLL_K / pm) : null;
+  return { chance: start.probTop3, estOdds, minOdds: minOddsOf(riktForMin(start), estOdds ?? 0, tolerance) };
 }
 
 export function trollspot<R extends TrollRace = RaceDto>(races: R[], now: number, tolerance: number = DEFAULT_TOLERANCE): TrollResult<R> {
@@ -87,7 +100,7 @@ export function trollspot<R extends TrollRace = RaceDto>(races: R[], now: number
       if (pm === undefined || !(pm > 0)) continue;
       const estOdds = round2(TROLL_K / pm);
       if (estOdds < TROLL_MIN_EST) continue;
-      const minOdds = minOddsOf(start.riktodds, estOdds, tolerance);
+      const minOdds = minOddsOf(riktForMin(start), estOdds, tolerance);
       const unibet = start.mark?.unibetOdds ?? null;
       cands.push({ race, start, chance: start.probTop3, estOdds, minOdds, unibet, over: unibet === null ? null : unibet >= minOdds - 1e-9 });
     }

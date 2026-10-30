@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxVerdict, classOf, movementOf, movementShort, movementSr, parseTolerance, replacedNote, scratchedAtUnibet, signedOdds, sparkPoints, svSr, unmarkedItems, crossedUnderMax, overMaxRikt } from "@/lib/odds-ui";
+import { boxVerdict, classOf, movementOf, movementShort, movementSr, parseTolerance, replacedNote, scratchedAtUnibet, signedOdds, sparkPoints, svSr, unmarkedItems, crossedUnderMax, overMaxRikt, showWhenPlayable } from "@/lib/odds-ui";
 import { historyChart, historyRows } from "@/lib/odds-history";
 import { mkMark, mkRace, mkStart } from "@/lib/test-round";
 import type { UnibetHistoryPoint } from "@/lib/types";
@@ -53,7 +53,7 @@ describe("Inte markerade men spelbara odds", () => {
     expect(items.every((i) => i.troll === null)).toBe(true);
   });
   it("e4a 18: Trollspöt-hästar först efter plats, utan dubbletter, även utan odds", () => {
-    // Avd 3: ett fält med streck och modell (som i lib/trollspot.test.ts), så att Trollspöt har hästar.
+    // V85-3: ett fält med streck och modell (som i lib/trollspot.test.ts), så att Trollspöt har hästar.
     const st = (n: number, streck: number, p: number, o: Parameters<typeof mkStart>[2] = {}) => mkStart(`t${n}`, n, { streck, probTop3: p, riktodds: Math.round(100 / p) / 100, ...o });
     const field = [
       st(1, 40, 0.8),
@@ -161,5 +161,29 @@ describe("Unibets odds över tid", () => {
     expect(rows[2].tags).toEqual(["Bet 2,25"]);
     const scr = historyRows([...hist, { fetchId: "s", at: "2026-10-24T10:00:00.000Z", place: null, win: null, status: "Scratched" }], 2.1, 0.1, null);
     expect(scr[0].place).toBeNull();
+  });
+});
+
+describe("filtret Visa spelbara", () => {
+  const show = (m: Record<string, unknown> | null, riktodds = 2.0) => showWhenPlayable({ riktodds, mark: m } as never, 0.1);
+
+  it("Spelbar visas, även grön och röd ring, och Bet visas alltid", () => {
+    expect(show({ spelbar: true, interesting: true, unibetOdds: 2.2 })).toBe(true);
+    expect(show({ spelbar: true, interesting: true, unibetOdds: 1.95 })).toBe(true);
+    expect(show({ bet: true, spelbar: false, interesting: true, unibetOdds: 1.2 })).toBe(true);
+  });
+
+  it("Intressant som inte är Spelbar döljs, också när du tagit bort Spelbar", () => {
+    expect(show({ spelbar: false, interesting: true, unibetOdds: 1.5 })).toBe(false);
+    expect(show({ spelbar: false, spelbarOverride: "OFF", interesting: true, unibetOdds: 2.5 })).toBe(false);
+  });
+
+  it("utan Intressant räknas ringen, med minst 1,75 i odds", () => {
+    expect(show({ spelbar: false, interesting: false, unibetOdds: 2.5 })).toBe(true);
+    expect(show({ spelbar: false, interesting: false, unibetOdds: 1.95 })).toBe(true);
+    expect(show({ spelbar: false, interesting: false, unibetOdds: 1.5 }, 1.2)).toBe(false);
+    expect(show({ spelbar: false, interesting: false, unibetOdds: 1.5 })).toBe(false);
+    expect(show({ spelbar: false, interesting: false, unibetOdds: null })).toBe(false);
+    expect(show(null)).toBe(false);
   });
 });
