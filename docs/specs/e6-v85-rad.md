@@ -89,7 +89,7 @@ Allt gäller både **V85** (8 avdelningar, spärr 4) och **V75** (7 avdelningar,
    - 4f. **Ändra en avdelning** (pennan, ark A4): tryck på hästar. Avdelningen låses och förhandsrutan visar vad omräkningen ger. **Klar · räkna om resten**, Esc eller × sparar. **Släpp eget val** lämnar tillbaka avdelningen till appen.
 5. Ryms reglerna inte i budgeten: ingen ny rad. Banderollen visar vad som behövs och knapparna **Höj till 162 kr** och **5 spikar · minst 54,00 kr**. Ett tryck ändrar regeln och raden räknas.
    - 5a. Är det hans eget val som inte ryms: raden visas över budget, med **Ändra avd 7** och **Höj till 486 kr**. Inget blockeras.
-6. Han trycker **Kopiera till ATG**. Arket Spela hos ATG visar kupongbilden. **Kopiera texten** lägger texten i urklipp (toast "Raden är kopierad. Klistra in hos ATG.") och sparar raden som kopierad. **Öppna ATG ↗** öppnar ATG i ny flik.
+6. Han trycker **Spela hos ATG**. Arket visar kupongbilden, ATG-filen och texten att kopiera, se `docs/specs/e7-atg-fil.md`. **Öppna ATG ↗** öppnar ATG i ny flik.
    - 6a. Urklipp fungerar inte: reservarket med texten.
    - 6b. Struken egen spik eller lopp utan startande: knappen är avstängd med orsaken.
 7. Ändras raden efter kopieringen (nytt streck, struken häst, ny markering) visar banderollen "Raden har ändrats sedan du kopierade den …". Han kopierar igen om han vill.
@@ -292,11 +292,11 @@ Titel "Spela hos ATG", underraden "V85 Bjerke lör 31 okt · 576 rader · 288,00
 1. **Kupongbilden** (`Kupong`, `.kup.brd.mini`, `role="group"`, `aria-label` "Kupongen"): raden `.kst` "**576** rader · **288,00 kr**" och "kvar 12,00 kr · favoriten **4 av 8**". Rutnätet `.kg` med en kolumn per avdelning: rubriken `.kh` (siffran och `small` "3 st", "Spik", "Egen", "Alla", "Eget", "Inst."), därefter en ruta `.kc` per startnummer 1 till det högsta startnumret i omgången. Vald: `.on`. Favorit: `.fv` (ring). Struken: `.kc.scr` (siffran dämpad med snedstreck). Nummer som inte finns i loppet: `.kc.nil`. Rubrikerna är `span`, inte knappar. Rutnätet är `aria-hidden`, och en `.sr`-text upprepar innehållet: "Avd 1: 7, 10, 12. Avd 2: 2. … Avd 5: alla, 1 till 12." Förklaringen `.kleg`: "med i raden" och "ring = favoriten".
 2. **Hjälptext:** "Avd 5 är allgarderad. Hos ATG trycker du på **Alla** i avd 5. Texten som kopieras har avdelningarna i ordning, och sist rader och kostnad." Utan allgardering bara sista meningen.
 3. **Knappar:** primär **Kopiera texten** (kopieringsikon) och sekundär länk **Öppna ATG** med ikonen ↗ (`https://www.atg.se/spel/{gameType}`, `target="_blank"`, `rel="noopener noreferrer"`, `aria-label` "Öppna ATG (öppnas i ny flik)").
-- Kopiera texten: `copyText(couponText(...))`. Lyckas: toast "Raden är kopierad. Klistra in hos ATG.", arket står kvar, och raden sparas med `copiedAt` och `copiedSelections` (9.3). Misslyckas: reservarket som i dag, och raden sparas ändå som kopierad.
+- Kopiera texten: `copyText(couponText(...))`. Lyckas: statusraden "Raden är kopierad." (`docs/specs/e7-atg-fil.md`), arket står kvar, och raden sparas med `copiedAt` och `copiedSelections` (9.3). Misslyckas: reservarket som i dag, och raden sparas ändå som kopierad.
 
 ### Desktop (≥ 1024 px)
 `.drad`: två kolumner, `380px minmax(0,1fr)`, mellanrum 24 px, utfyllnad 16 × 20 px.
-- **Vänster** (`aside`, `position: sticky; top: 12px`, `max-height: calc(100dvh - 24px)`, `overflow: auto`): budgetrutan (`.budget.flat`), budgetbanderollen, Regler för raden och `.dact` med primärknappen **Kopiera till ATG** i full bredd och `.help` (centrerad) "Visar kupongbilden och texten att kopiera". Handlingsraden visas inte (summan står i budgetrutan).
+- **Vänster** (`aside`, `position: sticky; top: 12px`, `max-height: calc(100dvh - 24px)`, `overflow: auto`): budgetrutan (`.budget.flat`), `.dact` med primärknappen **Spela hos ATG** i full bredd och `.help` (centrerad) "Visar kupongen, ATG-filen och texten att kopiera", budgetbanderollen och Regler för raden (`docs/specs/e7-atg-fil.md`). Handlingsraden visas inte (summan står i budgetrutan).
 - **Höger** (`section`): `h2.dsec` "Raden per avdelning" med `small` "27 hästar · spikar i avd 2, 4, 6 och 8 · allgardering i avd 5 · favoriten bortvald i avd 1 och 7" (delar som saknas utelämnas), strykningsbanderollerna och `.lgg` med korten i två kolumner (412 px vid 1280), ordning 1–8 radvis.
 - Vyns banderoller ligger över båda kolumnerna.
 - Arken är dialoger (520 px, centrerade).
@@ -310,7 +310,7 @@ Titel "Spela hos ATG", underraden "V85 Bjerke lör 31 okt · 576 rader · 288,00
 | Riktodds saknas, streck finns | vyns banderoll | info | "Riktodds saknas. Raden bygger på strecket och dina markeringar, och appen väljer inga spikar." | – |
 | Preliminär | vyns banderoll | info | "**Strecket kommer måndag.** Raden är preliminär: topp 3, mellan och skräll räknas på modellens ordning, och favoriten är hästen med lägst riktodds. Raden räknas om när strecket finns." (måndag och senare: "**Strecket saknas än.** …") | – |
 | Gammal rad (`spikCount = null`) | vyns banderoll | info | "Raden sparades före de nya reglerna och visas som den är." | sekundär **Räkna om med reglerna** |
-| Ändrad sedan kopiering | vyns banderoll | info | "**Raden har ändrats sedan du kopierade den** i dag 14:05. Avd 3 och 7 är ändrade. Kopiera igen om du vill spela den nya raden." | sekundär **Kopiera till ATG** |
+| Ändrad sedan kopiering | vyns banderoll | info | "**Raden har ändrats sedan du laddade ner eller kopierade den** i dag 14:05. V85-3 och V85-7 är ändrade. Ladda ner en ny fil eller kopiera igen om du vill spela den nya raden." | sekundär **Spela hos ATG** (`docs/specs/e7-atg-fil.md`) |
 | Offline | vyns banderoll | warn | "Ingen uppkoppling. Raden räknas om här och sparas när du är online igen. Kopiera fungerar ändå." | – |
 | Spelstopp passerat | vyns banderoll | info | "V85 har startat – raden kan inte längre spelas. Den finns kvar för statistiken." | – |
 | Reglerna ryms inte | budgetbanderoll, `role="alert"` | err | "**Reglerna ryms inte i 100 kr.** 4 spikar, allgardering av avd 5 (12 hästar) och minst 3 hästar i de 3 andra loppen ger minst 324 rader, alltså 162,00 kr. Ingen ny rad föreslås förrän det ryms." | se 6.5.10 |
@@ -658,7 +658,7 @@ copiedSelections: Record<string, number[]> | null;
 | Kortrubrik | "Regler för raden" · "Raden räknas om direkt" |
 | Listrubrik | "Raden per avdelning" · "27 hästar · 576 rader" |
 | Handlingsknapp | "Kopiera till ATG" |
-| Toast efter kopiering | "Raden är kopierad. Klistra in hos ATG." |
+| Statusrad efter kopiering | "Raden är kopierad." (`docs/specs/e7-atg-fil.md`) |
 | Reservark | titeln "Kopiera raden", underraden "Kopieringen fungerade inte i den här webbläsaren. Markera texten och kopiera den själv." (som i dag) |
 | Toast: egen spik tillagd | "Egen spik 7 Dreamliner Sund i avd 6 · Ångra" |
 | Toast: egen spik borttagen | "Egen spik 1 Baron Tilly i avd 4 är borttagen · Ångra" |
@@ -800,7 +800,7 @@ Egen frögenerator (mulberry32, fröet `20261028`, inget nytt beroende). 1 000 o
 - Efteranalysen av raden ("Skrällarna gav 1 av 3"). Datan (`legRoles`, `copiedSelections`) sparas för den.
 - Att stänga av allgarderingen (`NONE`).
 - Spärren och spiktaket som inställningar.
-- Att ladda upp raden till ATG. Texten klistras in eller fylls i för hand.
+- Att ladda upp raden till ATG. Se `docs/specs/e7-atg-fil.md`: appen skapar en ATG-fil och Mikael laddar upp den själv.
 - B som huvudvy (kupongtavlan med utfällbar förklaring).
 
 ## 17. Beslut (Claudes, Mikael kan ändra)

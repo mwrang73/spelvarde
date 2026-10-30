@@ -240,7 +240,7 @@ export function nextStep(input: NextStepInput): NextStep {
       return {
         kind: "BUILD_COUPON",
         title: `Gör ${roundGame}-raden`,
-        text: "Appen föreslår raden inom din budget. Kopiera den till ATG.",
+        text: "Appen föreslår raden inom din budget. Sedan spelar du den hos ATG.",
         action: { type: "link", label: "Till raden", href: `${base}/spel?flik=rad` },
       };
     }

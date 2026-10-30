@@ -1,16 +1,16 @@
 // Handlingsraden längst ned i mobilen (E6 S6b): rader och kostnad till
-// vänster, Kopiera till ATG till höger. Ingen aria-live (vyns live-region
+// vänster, Spela hos ATG till höger. Ingen aria-live (vyns live-region
 // läser upp summan).
 
 import { forwardRef, useId } from "react";
-import { IconCopy } from "@/components/ui/icons";
+import { IconTicket } from "@/components/ui/icons";
 import { thousands } from "@/lib/format";
 import { BUDGET_OVER_MAX } from "@/lib/tippa";
 import { krText, wholeKr } from "@/lib/tippa-text";
 
-type Props = { rows: number; cost: number; budget: number; dontFit: boolean; blocked: string | null; onCopy: () => void };
+type Props = { rows: number; cost: number; budget: number; dontFit: boolean; blocked: string | null; onOpen: () => void };
 
-export const RadActionBar = forwardRef<HTMLButtonElement, Props>(function RadActionBar({ rows, cost, budget, dontFit, blocked, onCopy }, ref) {
+export const RadActionBar = forwardRef<HTMLButtonElement, Props>(function RadActionBar({ rows, cost, budget, dontFit, blocked, onOpen }, ref) {
   const id = useId();
   const left = Math.round((budget - cost) * 100) / 100;
   return (
@@ -32,9 +32,9 @@ export const RadActionBar = forwardRef<HTMLButtonElement, Props>(function RadAct
           </>
         )}
       </div>
-      <button ref={ref} type="button" className="btn primary" aria-haspopup="dialog" disabled={!!blocked} aria-describedby={blocked ? `${id}b` : undefined} onClick={onCopy}>
-        <IconCopy />
-        Kopiera till ATG
+      <button ref={ref} type="button" className="btn primary" aria-haspopup="dialog" disabled={!!blocked} aria-describedby={blocked ? `${id}b` : undefined} onClick={onOpen}>
+        <IconTicket />
+        Spela hos ATG
       </button>
       {blocked && (
         <span className="sr" id={`${id}b`}>

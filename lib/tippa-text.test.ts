@@ -197,7 +197,7 @@ describe("Strykningar och kopiering", () => {
       legs.map((l) => (l.leg === 3 ? { ...l, starts: l.starts.map((s) => ({ ...s, scratched: true })) } : l)),
       bjerkeRules(),
     );
-    expect(scratchNotices(null, none)[0].text).toBe("**V85-3 har inga startande hästar.** Raden kan inte kopieras förrän loppet är inställt hos ATG. Hämta omgången igen.");
+    expect(scratchNotices(null, none)[0].text).toBe("**V85-3 har inga startande hästar.** Raden kan inte laddas ner eller kopieras förrän loppet är inställt hos ATG. Hämta omgången igen.");
     expect(scratchNotices(saved, r)).toEqual([]);
   });
 
@@ -205,7 +205,7 @@ describe("Strykningar och kopiering", () => {
     const now = new Date("2026-10-31T15:00:00Z");
     const t = buildRad(withStart(legs, 7, 11, { scratched: true }), bjerkeRules());
     expect(copyChangedText("2026-10-31T13:05:00.000Z", saved.selections, t, now)).toBe(
-      "**Raden har ändrats sedan du kopierade den** i dag 14:05. V85-7 är ändrad. Kopiera igen om du vill spela den nya raden.",
+      "**Raden har ändrats sedan du laddade ner eller kopierade den** i dag 14:05. V85-7 är ändrad. Ladda ner en ny fil eller kopiera igen om du vill spela den nya raden.",
     );
     expect(copyChangedText("2026-10-31T13:05:00.000Z", saved.selections, r, now)).toBeNull();
     expect(copyChangedText(null, null, r, now)).toBeNull();

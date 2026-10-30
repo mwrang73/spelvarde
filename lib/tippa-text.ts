@@ -507,7 +507,7 @@ export function scratchNotices(saved: SavedRow | null, after: TippaResult): Scra
       continue;
     }
     if (l.kind === "NO_STARTERS") {
-      out.push({ kind: "NO_STARTERS", leg: l.leg, numbers: [], tone: "err", role: "alert", text: `**${legName(after.gameType, l.leg)} har inga startande hästar.** Raden kan inte kopieras förrän loppet är inställt hos ATG. Hämta omgången igen.` });
+      out.push({ kind: "NO_STARTERS", leg: l.leg, numbers: [], tone: "err", role: "alert", text: `**${legName(after.gameType, l.leg)} har inga startande hästar.** Raden kan inte laddas ner eller kopieras förrän loppet är inställt hos ATG. Hämta omgången igen.` });
       continue;
     }
     if (l.struckRemoved.length) {
@@ -544,7 +544,7 @@ export function copyChangedText(copiedAt: string | null | undefined, copied: Rec
   const legs = changedSinceCopy(copied, r);
   if (!legs.length) return null;
   const which = legs.length === 1 ? `${legName(r.gameType, legs[0])} är ändrad.` : `${legNames(r.gameType, legs)} är ändrade.`;
-  return `**Raden har ändrats sedan du kopierade den** ${relTime(copiedAt, now)}. ${which} Kopiera igen om du vill spela den nya raden.`;
+  return `**Raden har ändrats sedan du laddade ner eller kopierade den** ${relTime(copiedAt, now)}. ${which} Ladda ner en ny fil eller kopiera igen om du vill spela den nya raden.`;
 }
 
 // ---- Arket Välj egen spik (A5) ------------------------------------------------------------------
@@ -613,10 +613,10 @@ export function prelimText(roundDate: string, now: Date): string {
 export const NO_DATA_TEXT = "**Raden kan inte räknas än.** Den behöver riktodds eller streck. Hämta omgången igen när riktoddsen är räknade.";
 export const NO_RIKT_TEXT = "Riktodds saknas. Raden bygger på strecket och dina markeringar, och appen väljer inga spikar.";
 export const LEGACY_TEXT = "Raden sparades före de nya reglerna och visas som den är.";
-export const OFFLINE_TEXT = "Ingen uppkoppling. Raden räknas om här och sparas när du är online igen. Kopiera fungerar ändå.";
+export const OFFLINE_TEXT = "Ingen uppkoppling. Raden räknas om här och sparas när du är online igen. ATG-filen och kopieringen fungerar ändå.";
 export const startedText = (gameType: string) => `${gameType} har startat – raden kan inte längre spelas. Den finns kvar för statistiken.`;
 
-// Orsaken till att Kopiera till ATG är avstängd (aria-describedby). null = aktiv.
+// Orsaken till att Spela hos ATG är avstängd (synlig, aria-describedby). null = aktiv.
 export function copyBlockedReason(r: TippaResult): string | null {
   if (r.noData) return "Raden kan inte räknas än.";
   if (r.status === "RULES_DONT_FIT") return "Raden ryms inte i budgeten.";

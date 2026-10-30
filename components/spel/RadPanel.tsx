@@ -3,7 +3,7 @@
 // S6b V85-raden, E6 "Tippa V85" (docs/specs/e6-v85-rad.md): budgetrutan på
 // tavlan, Regler för raden, ett kort per avdelning med skälen, arken Ändra
 // avd, Välj egen spik, Välj lopp att prioritera (E6b) och Spela hos ATG, samt
-// handlingsraden med Kopiera till ATG.
+// handlingsraden med Spela hos ATG.
 //
 // Raden räknas i klienten med buildRad (lib/tippa.ts) ur omgångens cache och
 // reglerna. Reglerna (draft) sparas med den räknade raden som hela kupongen i
@@ -18,9 +18,10 @@ import { useOnline } from "@/components/hooks";
 import { raceStarted, useRound } from "@/components/round/RoundProvider";
 import { patchRound } from "@/components/round/roundStore";
 import { Banner } from "@/components/ui/board";
-import { IconCopy, IconPen, IconWarn } from "@/components/ui/icons";
+import { IconPen, IconTicket, IconWarn } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
+import { buildAtgFile, type AtgFileLeg } from "@/lib/atg-file";
 import { BUDGET_SLIDER, couponDateLabel, couponText, DEFAULT_BUDGET, DEFAULT_MAX_PER_LEG, DEFAULT_ROW_PRICE, sameNumbers, type Selections } from "@/lib/coupon";
 import { BUDGET_ERROR, couponBody, parseBudget, parseRowPrice, ROW_PRICE_ERROR, selectionsOf, tippaLegs, toggleNumber } from "@/lib/coupon-ui";
 import { hhmm, odds, thousands } from "@/lib/format";
@@ -396,15 +397,26 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
     if (mode === "legacy" && saved) return couponText(roundInfo, selectionsOf(saved), saved.rowPrice);
     return couponText(roundInfo, view.selections, view.rowPrice, { allgLeg: allgLegView, numbersByLeg });
   };
-  const copyNow = async () => {
-    const text = copyString();
-    const ok = await copyText(text);
+  // Raden är uttagen (kopierad eller nedladdad), E7 6.4.
+  const markTaken = () => {
     const at = new Date().toISOString();
     if (mode === "live") change((d) => ({ ...d, copiedAt: at, copiedSelections: result.selections }));
     else if (mode === "legacy" && saved) saveCoupon(legacyBody(saved, at));
-    if (ok) toast({ text: "Raden är kopierad. Klistra in hos ATG." });
-    else setSheet({ kind: "copy-fallback", text });
   };
+  // true = texten ligger i urklipp. Annars öppnas reservarket.
+  const copyNow = async () => {
+    const text = copyString();
+    const ok = await copyText(text);
+    markTaken();
+    if (!ok) setSheet({ kind: "copy-fallback", text });
+    return ok;
+  };
+  // ATG-filen (E7 6.5): gammal rad från den sparade raden, som copyString.
+  const fileLegs = useMemo<AtgFileLeg[]>(() => {
+    const sel = mode === "legacy" && saved ? selectionsOf(saved) : null;
+    return view.legs.map((l) => ({ leg: l.leg, selection: sel ? (sel[l.leg] ?? []) : l.selection, scratched: l.scratched, cancelled: l.kind === "CANCELLED" }));
+  }, [mode, saved, view.legs]);
+  const atgFileAt = (at: Date) => buildAtgFile({ gameType: gt, atgGameId: data.round.atgGameId, now: at, legs: fileLegs });
   const blocked = mode === "live" ? copyBlockedReason(result) : !saved ? "Ingen rad sparades." : null;
 
   const kupong: KupongLeg[] = view.legs.map((l) => {
@@ -473,8 +485,8 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         className="m10"
         actions={
           <button type="button" className="btn secondary sm" aria-haspopup="dialog" onClick={() => setSheet({ kind: "atg" })} disabled={!!blocked}>
-            <IconCopy />
-            Kopiera till ATG
+            <IconTicket />
+            Spela hos ATG
           </button>
         }
       >
@@ -561,6 +573,9 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
               }
             }}
           />
+          <div className="dact d-only">
+            <AtgButton blocked={blocked} onClick={() => setSheet({ kind: "atg" })} />
+          </div>
           {budgetBanner}
           <RadRules
             ref={rulesRef}
@@ -573,10 +588,6 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
             onPrioAuto={() => change((d) => ({ ...d, allgMode: "AUTO", allgLeg: null }))}
             onPrioChoose={() => setSheet({ kind: "prio" })}
           />
-          <div className="dact d-only">
-            <CopyButton blocked={blocked} onClick={() => setSheet({ kind: "atg" })} />
-            <p className="help">Visar kupongbilden och texten att kopiera</p>
-          </div>
         </aside>
         <section className="drad-r" aria-labelledby="h-radlist">
           {scratchBanners}
@@ -616,7 +627,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
           )}
         </section>
       </div>
-      <RadActionBar rows={view.rows} cost={view.cost} budget={view.budget} dontFit={dontFit} blocked={blocked} onCopy={() => setSheet({ kind: "atg" })} />
+      <RadActionBar rows={view.rows} cost={view.cost} budget={view.budget} dontFit={dontFit} blocked={blocked} onOpen={() => setSheet({ kind: "atg" })} />
       <span className="sr" role="status" aria-live="polite">
         {announce}
       </span>
@@ -667,7 +678,14 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
             favText={mode === "live" ? `${result.favCount} av ${result.legCount}` : null}
             allgLeg={allgLegView}
             gameType={gt}
-            onCopy={() => void copyNow()}
+            started={mode === "started"}
+            blocked={blocked}
+            rowPrice={view.rowPrice}
+            fileAt={atgFileAt}
+            nowDate={nowDate}
+            hasStartedAt={(t) => data.races.some((r) => raceStarted(r, t))}
+            onDownloaded={markTaken}
+            onCopy={copyNow}
           />
         )}
       </Sheet>
@@ -696,18 +714,20 @@ function Suggestions({ gameType, items, onUse }: { gameType: string; items: Tipp
   );
 }
 
-function CopyButton({ blocked, onClick }: { blocked: string | null; onClick: () => void }) {
+function AtgButton({ blocked, onClick }: { blocked: string | null; onClick: () => void }) {
   const id = useId();
   return (
     <>
-      <button type="button" className="btn primary full" aria-haspopup="dialog" disabled={!!blocked} aria-describedby={blocked ? `${id}b` : undefined} onClick={onClick}>
-        <IconCopy />
-        Kopiera till ATG
+      <button type="button" className="btn primary full" aria-haspopup="dialog" disabled={!!blocked} aria-describedby={blocked ? id : undefined} onClick={onClick}>
+        <IconTicket />
+        Spela hos ATG
       </button>
-      {blocked && (
-        <span className="sr" id={`${id}b`}>
+      {blocked ? (
+        <p className="help" id={id}>
           {blocked}
-        </span>
+        </p>
+      ) : (
+        <p className="help">Visar kupongen, ATG-filen och texten att kopiera</p>
       )}
     </>
   );

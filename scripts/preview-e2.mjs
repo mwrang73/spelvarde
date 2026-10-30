@@ -262,10 +262,12 @@ try {
       await page.locator(".vrow").nth(4).getByRole("button", { name: /En häst till/ }).click();
       await shot(page, "e2-s6b-over", "m", theme);
       if (first) {
-        await page.getByRole("button", { name: "Kopiera rad" }).click();
-        await page.getByText("Raden är kopierad. Klistra in hos ATG.").waitFor({ timeout: 5000 });
+        await page.getByRole("button", { name: "Spela hos ATG" }).click();
+        await page.getByRole("button", { name: "Kopiera texten" }).click();
+        await page.getByText("Raden är kopierad.").waitFor({ timeout: 5000 });
         const text = await page.evaluate(() => navigator.clipboard.readText()).catch(() => null);
-        log(`Kopiera rad: ${text ? JSON.stringify(text) : "toasten visades (urklippet gick inte att läsa)"}`);
+        log(`Kopiera texten: ${text ? JSON.stringify(text) : "statusraden visades (urklippet gick inte att läsa)"}`);
+        await page.getByRole("button", { name: "Stäng" }).click();
         await settled(page);
         const c = await api(ctx, "GET", `/api/rounds/${roundId}/coupon`);
         log(`Kupongen sparad på servern: budget ${c.coupon.budget}, ${c.coupon.rows} rader, ${c.coupon.cost} kr, låsta avd ${JSON.stringify(c.coupon.lockedLegs)}.`);

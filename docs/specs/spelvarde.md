@@ -288,7 +288,7 @@ Segmentkontroll: **Platsspel | V85-rad** (`?flik=plats|rad`).
 - **Budgetruta på tavlan:** budget i kr (reglage 20–1 000 i steg om 10 och ett fält för exakt belopp), rader, kostnad och "Kvar" eller "Över budget". Radpriset 0,50 kr står under rutan med **Ändra** (sparas i inställningar).
 - **Per avdelning:** valda startnummer som fällbladsrutor, namnen under och `Stepper` för antal hästar (1 till antal startande). Med 1 häst står taggen "Spik". Ett tryck på avdelningsraden öppnar ett ark där Mikael väljer exakt vilka hästar som ska vara med (chips per häst med S, I och streck). Väljer han själv låses avdelningen mot automatiska förslag, vilket visas med ett hänglås och "Eget val".
 - **Föreslå inom budget** fyller avdelningar som inte är låsta enligt 6.5.
-- **Kopiera rad** kopierar texten enligt 6.5 och visar toasten "Raden är kopierad. Klistra in hos ATG."
+- **Kopiera rad** kopierar texten enligt 6.5 och bekräftar med "Raden är kopierad." Raden spelas med ATG-filen eller fylls i för hand, se `docs/specs/e7-atg-fil.md`.
 - **Lägen:**
   - Budgeten överskrids: summan blir röd med "Över budget med 32,00 kr". Ingenting blockeras.
   - Avdelning har startat: avdelningen låses med "Startat".
@@ -970,7 +970,7 @@ Utan `Mark` (häst som aldrig har markerats) räknar klienten med `xFactor = NON
 2. **Vercels plan:** Hobby tillåter två dagliga cron-jobb, vilket räcker. Behövs fler (t.ex. en reserv för utgångsläget) krävs Pro.
 3. **travstatistik.se:** får sidorna läsas automatiskt (villkor, robots), och hur ofta? Specen läser dem bara vid Hämta omgång och Hämta igen.
 4. **Kuskform:** räcker "vinst % i år" från ATG i v1, eller ska formen vara de senaste 30 dagarna (kräver kuskens starter, vilket ger fler ATG-anrop)?
-5. **Kopiering till ATG:** räcker textformatet i 6.5, eller ska raden följa ATG:s inklistringsformat om ett sådant finns?
+5. **Raden till ATG:** löst i `docs/specs/e7-atg-fil.md` (ATG-fil). Texten i 6.5 är ett stöd när raden fylls i för hand.
 6. **Tidigare omgångar:** hur långt bak ska S1 visa omgångar, och ska de gå att öppna med full detalj (finns i datan)?
 7. **Bet utan Unibet-odds:** ska Bet få sättas utan odds? I specen går det, och då saknas oddset i statistiken.
 8. **Inställda lopp och omstarter:** hur ska de visas utöver att de inte räknas? ATG:s fält verifieras i E1.

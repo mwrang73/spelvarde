@@ -96,6 +96,7 @@ h1, h2, h3 { margin: 0; }
 /* Tryckytan för små knappar är minst 44 px hög utan att raden växer. */
 .btn.sm::after, .chip-btn::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%); }
 .btn:disabled, .btn[aria-disabled="true"] { background: var(--surface-3); color: var(--ink-2); border-color: transparent; cursor: not-allowed; box-shadow: none; filter: none; transform: none; }
+.btn.primary:disabled:hover, .btn.primary:disabled:active { box-shadow: none; filter: none; transform: none; }
 .btn.ghost:disabled { background: transparent; opacity: .6; }
 .brd .btn.ghost { color: var(--head-ink); }
 .brd .btn.ghost:hover { background: rgba(255, 178, 46, .12); }
@@ -1957,6 +1958,19 @@ section.lg { margin-bottom: 14px; }
 .kleg i.f { background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1.5px var(--head-text); }
 .dact { margin-top: 12px; display: grid; gap: 6px; }
 .dact .help { text-align: center; }
+/* Arket Spela hos ATG (E7 6.2). Flex i stället för grid: en klistrad del i ett
+   grid får inte lämna sin egen rad. */
+.radsh.atg { display: flex; flex-direction: column; }
+.atg-how { display: grid; gap: 6px; }
+.radsh.atg .atg-how .sl { padding: 0; }
+.atg-steps { margin: 0; padding-left: 22px; display: grid; gap: 4px; font: 400 14px/1.4 var(--f-body); color: var(--ink); }
+.sheet-in:has(.atg-foot) { padding-bottom: 0; }
+.atg-foot { position: sticky; bottom: 0; z-index: 1; margin: 0 -14px; padding: 8px 14px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
+.atg-status { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.atg-status:not(:empty) { margin-bottom: 8px; }
+.shbtns.atg { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+.shbtns.atg .btn.primary { grid-column: 1 / -1; }
+@media (max-height: 559.98px) { .atg-foot { position: static; } }
 /* Desktop: två kolumner, budget och regler till vänster */
 @media (min-width: 1024px) {
   .spel-p.rad > .ban.m10 { margin: 12px 20px 0; }
@@ -1975,6 +1989,14 @@ section.lg { margin-bottom: 14px; }
   .spel .rad-h { padding: 0; margin: 4px 0 10px; font: 700 20px/1 var(--f-name); text-transform: uppercase; letter-spacing: .02em; color: var(--ink); justify-content: flex-start; align-items: baseline; flex-wrap: wrap; gap: 10px; }
   .rad-h small { font: 600 13px/1.3 var(--f-body); text-transform: none; letter-spacing: 0; color: var(--ink-2); }
   dialog.sheet.rad-sh { max-width: 520px; }
+}
+/* Lågt desktopfönster: Spela hos ATG ska synas utan skrollning (E7 6.1). Reglaget
+   och Exakt belopp delar rad, DOM-ordningen är densamma. */
+@media (min-width: 1024px) and (max-height: 680px) {
+  .drad { padding-top: 8px; }
+  .spel .drad .budget { padding: 8px 12px; gap: 6px; grid-template-columns: minmax(0, 1fr) auto; }
+  .drad .budget > * { grid-column: 1 / -1; }
+  .drad .budget > input[type="range"], .drad .budget > .exact { grid-column: auto; }
 }
 /* Lägg på hemskärmen (Inställningar), som i Tabellgissningen. */
 .set-sec .btn svg { width: 18px; height: 18px; }

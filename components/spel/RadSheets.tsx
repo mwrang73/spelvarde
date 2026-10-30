@@ -6,10 +6,30 @@
 // förhandsvisning med buildRad på den tänkta ändringen; inget sparas förrän
 // handlingen är gjord.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { downloadTextFile } from "@/components/download";
 import { Banner, FlapNumber } from "@/components/ui/board";
-import { IconCopy, IconExt } from "@/components/ui/icons";
+import { IconCopy, IconDownload, IconExt } from "@/components/ui/icons";
+import {
+  ATG_COPIED_TEXT,
+  ATG_COPY_HELP_TEXT,
+  ATG_DOWNLOAD_FAILED_TEXT,
+  ATG_FILE_CHANGED_TEXT,
+  ATG_NO_SUBMIT_TEXT,
+  ATG_NOT_TRIED_TEXT,
+  ATG_SAFARI_TEXT,
+  atgAllgHelp,
+  atgCompareStep,
+  atgRemovedText,
+  atgRowPriceText,
+  atgStartedError,
+  atgStartedHelp,
+  type AtgFileResult,
+} from "@/lib/atg-file";
+import { couponCost, DEFAULT_ROW_PRICE } from "@/lib/coupon";
 import { hhmm, thousands } from "@/lib/format";
+import { detectPlatform } from "@/lib/home-screen";
+import { formatStockholm } from "@/lib/stockholm-time";
 import { buildRad, type TippaHorse, type TippaLeg, type TippaLegResult, type TippaResult, type TippaRules } from "@/lib/tippa";
 import { krText, legSubline, pctText, previewChangeText, previewPickedLabel, prioSheetValue, spikPreviewTexts } from "@/lib/tippa-text";
 import { Kupong, type KupongLeg } from "./Kupong";
@@ -396,7 +416,19 @@ export function RadPrioSheet({ r, legs, rules, onConfirm, onCancel }: { r: Tippa
   );
 }
 
-// ---- A6: Spela hos ATG ------------------------------------------------------------------------
+// ---- A6: Spela hos ATG (E7, docs/specs/e7-atg-fil.md 6.2) ---------------------------------------
+
+type AtgStatus = { kind: "copied" } | { kind: "file"; filename: string; at: string; sig: string };
+
+// Filens innehåll utan tid: säger om raden har ändrats sedan nedladdningen.
+const fileSig = (f: AtgFileResult) => (f.ok ? JSON.stringify(f.markedByLeg) : null);
+
+// Appen på hemskärmen i iPhone/iPad, där nedladdningen inte är provad.
+function isIosHomeScreen(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const standalone = (navigator as Navigator & { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  return standalone && detectPlatform(navigator.userAgent, navigator.maxTouchPoints).startsWith("ios");
+}
 
 export function RadAtgSheet({
   kupong,
@@ -406,6 +438,13 @@ export function RadAtgSheet({
   favText,
   allgLeg,
   gameType,
+  started,
+  blocked,
+  rowPrice,
+  fileAt,
+  nowDate,
+  hasStartedAt,
+  onDownloaded,
   onCopy,
 }: {
   kupong: KupongLeg[];
@@ -415,30 +454,148 @@ export function RadAtgSheet({
   favText: string | null;
   allgLeg: number | null;
   gameType: string;
-  onCopy: () => void;
+  started: boolean;
+  blocked: string | null;
+  rowPrice: number;
+  fileAt: (at: Date) => AtgFileResult;
+  nowDate: Date;
+  hasStartedAt: (t: number) => boolean;
+  onDownloaded: () => void;
+  onCopy: () => Promise<boolean>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  useFocusOnOpen(ref, ".btn.primary");
+  const errId = useId();
+  useFocusOnOpen(ref, ".shbtns .btn:not(:disabled)");
+  const [status, setStatus] = useState<AtgStatus | null>(null);
+  const [clickErr, setClickErr] = useState<string | null>(null);
+
+  // Felen avgörs när arket renderas, så att knappen är avstängd med synlig orsak från början.
+  const file = fileAt(nowDate);
+  const fileErrors = !file.ok && !blocked && !started ? file.errors : [];
+  const canDownload = file.ok && !blocked;
+  const fileRows = file.ok ? file.rows : rows;
+  const fileCost = file.ok ? couponCost(file.rows, rowPrice) : cost;
+
+  const download = () => {
+    setClickErr(null);
+    const at = new Date();
+    if (hasStartedAt(at.getTime())) return setClickErr(atgStartedError(gameType));
+    const f = fileAt(at);
+    if (!f.ok) return;
+    try {
+      downloadTextFile(f.filename, f.xml, "application/xml");
+    } catch {
+      return setClickErr(ATG_DOWNLOAD_FAILED_TEXT);
+    }
+    onDownloaded();
+    setStatus({ kind: "file", filename: f.filename, at: formatStockholm(at, "time"), sig: fileSig(f) ?? "" });
+  };
+  const copy = async () => {
+    if (await onCopy()) setStatus({ kind: "copied" });
+  };
+
+  const copyBtn = (primary: boolean) => (
+    <button type="button" className={`btn ${primary ? "primary" : "ghost"}`} onClick={() => void copy()}>
+      <IconCopy />
+      Kopiera texten
+    </button>
+  );
+
   return (
-    <div ref={ref} className="radsh">
+    <div ref={ref} className="radsh atg">
+      {blocked && (
+        <div id={errId}>
+          <Banner tone="err" role="alert">
+            {blocked}
+          </Banner>
+        </div>
+      )}
+      {fileErrors.length > 0 && (
+        <div id={errId} className="radsh">
+          {fileErrors.map((e) => (
+            <Banner key={`${e.code}-${e.leg}`} tone="err" role="alert">
+              {e.text}
+            </Banner>
+          ))}
+        </div>
+      )}
+      {clickErr && (
+        <Banner tone="err" role="alert">
+          {clickErr}
+        </Banner>
+      )}
+      {!started && file.ok && rowPrice !== DEFAULT_ROW_PRICE && (
+        <Banner tone="warn">
+          <Bold text={atgRowPriceText(rowPrice, fileCost)} />
+        </Banner>
+      )}
+      {!started &&
+        file.ok &&
+        file.removed.map((r) => (
+          <Banner key={`${r.leg}-${r.number}`} tone="warn">
+            <Bold text={atgRemovedText(gameType, r)} />
+          </Banner>
+        ))}
       <Kupong gameType={gameType} legs={kupong} rows={rows} cost={cost} left={left} favText={favText} className="mini flat" />
-      <p className="help">
-        {allgLeg !== null && (
-          <>
-            {legName(gameType, allgLeg)} är allgarderad. Hos ATG trycker du på <b>Alla</b> i {legName(gameType, allgLeg)}.{" "}
-          </>
-        )}
-        Texten som kopieras har loppen i ordning, och sist rader och kostnad.
-      </p>
-      <div className="shbtns">
-        <button type="button" className="btn primary" onClick={onCopy}>
-          <IconCopy />
-          Kopiera texten
-        </button>
-        <a className="btn secondary" href={`https://www.atg.se/spel/${gameType}`} target="_blank" rel="noopener noreferrer" aria-label="Öppna ATG (öppnas i ny flik)">
-          Öppna ATG
-          <IconExt />
-        </a>
+      {started ? (
+        <p className="help">{atgStartedHelp(gameType)}</p>
+      ) : (
+        <>
+          <div className="atg-how">
+            <h3 className="sl tight">Så spelar du raden</h3>
+            <ol className="atg-steps">
+              <li>Ladda ner ATG-filen.</li>
+              <li>Öppna ATG och gå till Spela reducerat och sedan Filinlämning.</li>
+              <li>Ladda upp filen.</li>
+              <li>
+                <Bold text={atgCompareStep(fileRows, fileCost)} />
+              </li>
+            </ol>
+            <p className="help">{ATG_NO_SUBMIT_TEXT}</p>
+          </div>
+          <Banner tone="warn">
+            <Bold text={ATG_NOT_TRIED_TEXT} />
+          </Banner>
+          <p className="help">
+            {allgLeg !== null && (
+              <>
+                <Bold text={atgAllgHelp(gameType, allgLeg)} />{" "}
+              </>
+            )}
+            {ATG_COPY_HELP_TEXT}
+            {isIosHomeScreen() && ` ${ATG_SAFARI_TEXT}`}
+          </p>
+        </>
+      )}
+      <div className="atg-foot">
+        <p className="atg-status" role="status">
+          {status?.kind === "copied" && ATG_COPIED_TEXT}
+          {status?.kind === "file" &&
+            (status.sig === fileSig(file) ? (
+              <>
+                Filen <span className="num">{status.filename}</span> är skapad {status.at}. Du hittar den bland nedladdade filer.
+              </>
+            ) : (
+              ATG_FILE_CHANGED_TEXT
+            ))}
+        </p>
+        <div className="shbtns atg">
+          {started ? (
+            copyBtn(true)
+          ) : (
+            <>
+              <button type="button" className="btn primary" disabled={!canDownload} aria-describedby={!canDownload ? errId : undefined} onClick={download}>
+                <IconDownload />
+                Ladda ner ATG-fil
+              </button>
+              <a className="btn secondary" href="https://www.atg.se/spel/reducerat" target="_blank" rel="noopener noreferrer" aria-label="Öppna ATG (öppnas i ny flik)">
+                Öppna ATG
+                <IconExt />
+              </a>
+              {copyBtn(false)}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
