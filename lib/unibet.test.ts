@@ -50,10 +50,20 @@ describe("Unibet: banor och lopp (meetings 2026-10-24)", () => {
     expect(events.get(5)).toEqual({ eventKey: "202610241300.H.SWE.jagersro.5", sequence: 5, startUtc: "2026-10-24T13:00:00Z", status: "Open" });
     expect([...events.keys()].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   });
-  it("en bana som inte finns (eller bara utomlands) ger null", () => {
+  it("en bana som inte finns ger null", () => {
     expect(pickTrackEvents(meetings, "Solvalla")).toBeNull();
-    expect(pickTrackEvents(meetings, "Harstad")).toBeNull();
     expect(pickTrackEvents(meetings, "")).toBeNull();
+  });
+  it("utländska banor hittas (V85 på Bjerke 2026-10-31), även med ø", () => {
+    expect(pickTrackEvents(meetings, "Harstad")!.size).toBeGreaterThan(0);
+    expect(pickTrackEvents(meetings, "Sørlandet")!.size).toBeGreaterThan(0);
+    const bjerke = parseMeetings({ data: { viewer: { meetings: [{ meetingKey: "202610311200.H.NOR.bjerke", name: "Bjerke", events: [{ eventKey: "202610311400.H.NOR.bjerke.5", sequence: 5, eventDateTimeUtc: "2026-10-31T14:00:00Z", status: "Open" }] }] } } });
+    expect(pickTrackEvents(bjerke, "Bjerke")!.get(5)!.eventKey).toBe("202610311400.H.NOR.bjerke.5");
+  });
+  it("heter en svensk och en utländsk bana likadant gäller den svenska", () => {
+    const ev = (key: string) => ({ meetingKey: key, name: "X", events: [{ eventKey: `${key}.1`, sequence: 1, eventDateTimeUtc: "2026-10-31T14:00:00Z", status: "Open" }] });
+    const both = parseMeetings({ data: { viewer: { meetings: [ev("202610311200.H.NOR.bana"), ev("202610311200.H.SWE.bana")] } } });
+    expect(pickTrackEvents(both, "Bana")!.get(1)!.eventKey).toBe("202610311200.H.SWE.bana.1");
   });
   it("dagens möten (2026-10-21): Solvalla och Åby", () => {
     const today = parseMeetings(fx("meetings-2026-10-21.json"));

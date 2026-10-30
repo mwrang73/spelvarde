@@ -9,7 +9,8 @@
 //
 // Banor och lopp (viewer.meetings)
 // - countryCodes:["SE"] ger ett tomt svar, så alla länder hämtas och
-//   filtreras på meetingKey ".H.SWE.<bana>", t.ex. "202610241100.H.SWE.jagersro".
+//   filtreras på banan i meetingKey, t.ex. "202610241100.H.SWE.jagersro". V85
+//   kan köras utomlands ("202610311200.H.NOR.bjerke"), så landet är inget krav.
 // - Banan i nyckeln är gemener utan å/ä/ö, och blanksteg skrivs som "_"
 //   ("globe_derby", "albion_park"). Båda sidor normaliseras därför med
 //   normalizeTrack, som tar bort allt utom a–z och 0–9.
@@ -66,13 +67,14 @@ export const round2 = (x: number) => Math.round(x * 100) / 100;
 // ---- Banans namn ------------------------------------------------------------
 
 // "Jägersro" → "jagersro", "Åby" → "aby", "Östersund" → "ostersund",
-// "Globe Derby" / "globe_derby" → "globederby". Gemener, å och ä blir a, ö
-// blir o, övriga accenter tas bort, och allt utom a–z och 0–9 försvinner.
+// "Sørlandet" → "sorlandet", "Globe Derby" / "globe_derby" → "globederby".
+// Gemener, å, ä och æ blir a, ö och ø blir o, övriga accenter tas bort, och
+// allt utom a–z och 0–9 försvinner.
 export function normalizeTrack(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[åä]/g, "a")
-    .replace(/ö/g, "o")
+    .replace(/[åäæ]/g, "a")
+    .replace(/[öø]/g, "o")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]/g, "");
@@ -161,14 +163,18 @@ export function parseMeetings(json: unknown, warn: Warn = () => {}): UnibetMeeti
   return out;
 }
 
-// Loppen på omgångens bana per loppnummer. Svenska travmöten vars bana i
-// nyckeln motsvarar trackName. Finns banan i flera möten slås de ihop. null
-// när banan inte finns hos Unibet ("Unibet har inga odds än").
+// Loppen på omgångens bana per loppnummer. Travmöten vars bana i nyckeln
+// motsvarar trackName, i alla länder eftersom Round inte sparar land. Heter en
+// svensk och en utländsk bana likadant gäller den svenska. Finns banan i flera
+// möten slås de ihop. null när banan inte finns hos Unibet ("Unibet har inga
+// odds än").
 export function pickTrackEvents(meetings: UnibetMeeting[], trackName: string): Map<number, UnibetEvent> | null {
   const want = normalizeTrack(trackName);
   if (!want) return null;
-  const hits = meetings.filter((m) => m.country === "SWE" && m.track !== null && normalizeTrack(m.track) === want);
-  if (!hits.length) return null;
+  const named = meetings.filter((m) => m.track !== null && normalizeTrack(m.track) === want);
+  if (!named.length) return null;
+  const swedish = named.filter((m) => m.country === "SWE");
+  const hits = swedish.length ? swedish : named;
   const out = new Map<number, UnibetEvent>();
   for (const m of hits) for (const e of m.events) if (!out.has(e.sequence)) out.set(e.sequence, e);
   return out;
