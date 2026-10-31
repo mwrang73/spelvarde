@@ -113,17 +113,17 @@ export function TipReview({ roundId, desktop }: { roundId: string; desktop: bool
     async (t: TipDto, from: "button" | "key") => {
       keep([t.id]);
       const next = from === "key" ? nextPendingEl(t.id) : null;
+      // Tangentbordet går vidare direkt. Tipset är redan markerat som godkänt, och ett fel visas i toasten.
+      if (next) {
+        setSel(next.dataset.tip ?? null);
+        focusLater(() => next);
+      }
       try {
         const res = t.startId ? await tipActions.approve(roundId, t) : t.suggestion ? await tipActions.edit(roundId, t, { startId: t.suggestion.startId }) : null;
         if (!res) return;
         undoStack.current.push({ ids: [t.id] });
         if (res.message) toast({ text: res.message });
-        if (from === "key") {
-          if (next) {
-            setSel(next.dataset.tip ?? null);
-            focusLater(() => next);
-          }
-        } else focusLater(() => document.getElementById(`undo-${t.id}`));
+        if (from === "button") focusLater(() => document.getElementById(`undo-${t.id}`));
       } catch (e) {
         toast({ text: errText(e, "Kunde inte godkänna tipset.") });
       }
