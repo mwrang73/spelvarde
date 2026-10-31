@@ -6,14 +6,12 @@
 
 import { useEffect, useMemo } from "react";
 import { getRaceTags, loadRaceTags, useTagVersion } from "@/components/round/tagStore";
-import { runnersOf, taggedCount, type LegTagState, type TabTags } from "@/lib/live-view";
+import { liveOpen, runnersOf, taggedCount, type LegTagState, type TabTags } from "@/lib/live-view";
 import type { RaceDto } from "@/lib/types";
-
-const startedAt = (r: RaceDto, now: number) => !r.cancelled && (r.started || Date.parse(r.startAt) <= now);
 
 export function useLiveTags(roundId: string, races: RaceDto[], now: number) {
   const version = useTagVersion();
-  const legs = useMemo(() => races.filter((r) => startedAt(r, now)).map((r) => r.leg), [races, now]);
+  const legs = useMemo(() => races.filter((r) => liveOpen(r, now)).map((r) => r.leg), [races, now]);
   const legKey = legs.join(",");
 
   useEffect(() => {

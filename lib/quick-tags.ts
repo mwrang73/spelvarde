@@ -9,11 +9,13 @@ export const QUICK_TAGS = [
   { tag: "Satt fast i rygg", key: "F" },
   { tag: "Utvändigt utan rygg", key: "U" },
   { tag: "Dödens", key: "D" },
+  { tag: "Andra ytter", key: "Y" },
   { tag: "Dåligt läge", key: "A" },
   { tag: "Stark avslutning", key: "S" },
   { tag: "Spurtade i tredjespår", key: "T" },
   { tag: "Tröttnade", key: "M" },
   { tag: "Defensivt körd", key: "E" },
+  { tag: "Bevaka!", key: "B" },
   { tag: "Diskad", key: "X" },
 ] as const;
 

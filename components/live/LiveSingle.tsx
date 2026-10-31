@@ -33,7 +33,7 @@ export function LiveStrip({ legLabel, runners, byStart, rowNumbers, currentId, o
             }}
             type="button"
             role="tab"
-            className={`tgb${bet ? " is-b" : ""}`}
+            className={`tgb${bet ? " is-b" : ""}${inRow ? " rr" : ""}`}
             aria-selected={s.id === currentId}
             tabIndex={s.id === currentId ? 0 : -1}
             aria-label={`${s.number} ${s.horse.name}${bet ? ", Bet" : ""}${inRow ? ", med i din rad" : ""}, ${n ? `${n} taggar` : "inga taggar"}`}
@@ -45,7 +45,7 @@ export function LiveStrip({ legLabel, runners, byStart, rowNumbers, currentId, o
                 BET
               </span>
             )}
-            <span className={`rdl${inRow ? "" : " none"}`} aria-hidden="true">
+            <span className="rdl" aria-hidden="true">
               {inRow ? "RAD" : " "}
             </span>
             {n > 0 && (
@@ -103,10 +103,14 @@ export const LiveSingle = forwardRef<HTMLHeadingElement, Props>(function LiveSin
             {start.driver?.name ?? "Kusk saknas"}
             {!bet && mark?.interesting && <Badge kind="i" />}
             {!bet && mark?.spelbar && <Badge kind="s" />}
-            {inRow && <RadPill />}
           </p>
         </div>
-        {bet && <BetTicket odds={mark?.betOdds} />}
+        {(inRow || bet) && (
+          <div className="tright">
+            {inRow && <RadPill />}
+            {bet && <BetTicket odds={mark?.betOdds} />}
+          </div>
+        )}
       </div>
       <div className="qc" role="group" aria-label={`Snabbval för ${start.horse.name}`}>
         {QUICK_TAGS.map((q, i) => (

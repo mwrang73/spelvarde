@@ -2012,8 +2012,7 @@ section.lg { margin-bottom: 14px; }
 .is-b > .hh .tk, .thead.is-b .tk { background: var(--bet-ink); color: var(--bet); }
 .thead .tk { height: 30px; padding: 0 11px; font-size: 13px; }
 .thead .tk b { font-size: 16px; }
-.lv .rad, .lres .rad { display: inline-flex; align-items: center; justify-content: center; height: 17px; padding: 0 6px; border-radius: 9px; background: var(--head); color: var(--head-ink); box-shadow: inset 0 0 0 1px var(--head-ink); font: 700 10.5px/1 var(--f-label); letter-spacing: .03em; white-space: nowrap; flex: none; }
-.lv .rad.hit { background: var(--head-ink); color: var(--head); box-shadow: none; }
+.lv .rad, .lres .rad { display: inline-flex; align-items: center; justify-content: center; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--rad); color: var(--rad-ink); font: 700 13px/1 var(--f-label); letter-spacing: .06em; white-space: nowrap; flex: none; }
 .tk svg { width: 12px; height: 12px; }
 .tk.y { background: var(--up); color: var(--surface); }
 .tk.n { background: var(--down); color: var(--surface); }
@@ -2122,8 +2121,18 @@ section.lg { margin-bottom: 14px; }
 .lv .hc.is-b.on .hh { box-shadow: inset 0 6px 0 var(--fill); }
 .lv .hc.is-b .hnm { color: var(--bet-ink); }
 .lv .hc.is-b .nr { box-shadow: 0 0 0 1.5px rgba(128, 128, 128, .7); }
-.lv .hc.is-r .hh::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: repeating-linear-gradient(90deg, var(--ink) 0 7px, transparent 7px 12px); }
-.lv .hc.is-b.is-r .hh::after { background: repeating-linear-gradient(90deg, var(--bet-ink) 0 7px, transparent 7px 12px); left: 3px; right: 3px; }
+/* Med i raden: hela huvudet blått. Med Bet också: sifferdelen blå, resten Bet. */
+.lv .hc { container-type: inline-size; }
+.lv .hc .hh .rad { height: 26px; padding: 0 8px; font-size: 17px; letter-spacing: .09em; }
+.lv .hc.is-r .hh { background: var(--rad); box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, .35); }
+.lv .hc.is-r .hnm, .lv .hc.is-r.is-i .hnm { color: var(--rad-ink); }
+.lv .hc.is-r .hh .rad { background: var(--rad-ink); color: var(--rad); }
+.lv .hc.is-r .hh .bdg.i, .lv .thead.is-r .bdg.i { background: var(--rad-ink); color: #A65300; box-shadow: inset 0 0 0 1.5px #A65300; }
+.lv .hc.is-r.on .hh { box-shadow: inset 0 4px 0 var(--fill), inset 0 5px 0 rgba(0, 0, 0, .55), inset 0 -1.5px 0 rgba(0, 0, 0, .35); }
+.lv .hc.is-b.is-r .hh { background: linear-gradient(var(--rad) 46px, var(--bet) 46px); box-shadow: none; }
+.lv .hc.is-b.is-r.on .hh { box-shadow: inset 0 6px 0 var(--fill), inset 0 7px 0 rgba(0, 0, 0, .55); }
+.lv .hc.is-b.is-r .hnm { color: var(--bet-ink); }
+@container (max-width: 96px) { .lv .hc .hh .rad { height: 18px; padding: 0 3px; font-size: 11px; letter-spacing: 0; } }
 .lv .hc.xc { background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--surface-3) 6px 7px); }
 .xh { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0; }
 .xh .nr { opacity: .5; }
@@ -2135,14 +2144,14 @@ section.lg { margin-bottom: 14px; }
 .ftpop textarea { display: block; width: 100%; padding: 7px 8px; border: 1.5px solid var(--line-strong); border-radius: 6px; background: var(--bg); color: var(--ink); font: 400 14px/1.35 var(--f-body); resize: vertical; }
 .ftpop .fa { display: flex; justify-content: flex-end; margin-top: 6px; }
 .lv-cols .empty { margin: 24px auto; }
-@media (min-width: 1800px) and (min-height: 1000px) { .lv { --tbh: 52px; --tbf: 14.5px; --hnf: 18px; } }
-@media (max-height: 800px) and (pointer: fine) { .lv { --tbh: 40px; } }
+@media (min-width: 1800px) and (min-height: 1000px) { .lv { --tbh: 46px; --tbf: 14.5px; --hnf: 18px; } }
+@media (max-height: 999px) and (pointer: fine) { .lv { --tbh: 38px; } }
 
 /* En häst i taget */
 .lv .tgb { min-height: 58px; }
 .lv .tstrip { padding: 6px 8px 8px; border-top: 1px solid var(--head-line); }
-.lv .tgb .rdl { display: block; height: 13px; min-width: 30px; padding: 0 3px; border-radius: 7px; box-shadow: inset 0 0 0 1px var(--head-ink); color: var(--head-ink); font: 700 9.5px/13px var(--f-label); letter-spacing: .03em; text-align: center; white-space: nowrap; }
-.lv .tgb .rdl.none { box-shadow: none; }
+.lv .tgb .rdl { display: block; height: 15px; color: var(--rad-ink); font: 700 13px/15px var(--f-label); letter-spacing: .06em; text-align: center; white-space: nowrap; }
+.lv .tgb.rr { background: var(--rad); border-radius: 4px; }
 .lv .tgb.is-b .nr { box-shadow: 0 0 0 2.5px var(--bet-board); }
 .lv .tgb .tbet { top: 31px; height: 13px; background: var(--bet-board); color: var(--bet-board-ink); font: 700 10px/13px var(--f-label); }
 .lv .tgb .tdot { background: var(--surface); color: var(--ink); }
@@ -2151,8 +2160,16 @@ section.lg { margin-bottom: 14px; }
 .lv .thead.is-b { background: var(--bet); color: var(--bet-ink); }
 .lv .thead.is-b .tname, .lv .thead.is-b .tmeta, .lv .thead.is-b .tmeta b { color: var(--bet-ink); }
 .lv .thead.is-b .nr { box-shadow: 0 0 0 1.5px rgba(128, 128, 128, .7); }
-.lv .thead.is-r::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: repeating-linear-gradient(90deg, var(--ink) 0 7px, transparent 7px 12px); }
-.lv .thead.is-b.is-r::after { background: repeating-linear-gradient(90deg, var(--bet-ink) 0 7px, transparent 7px 12px); }
+.lv .thead .rad { height: 30px; padding: 0 10px; font-size: 20px; letter-spacing: .09em; }
+.tright { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.lv .thead.is-r { background: var(--rad); color: var(--rad-ink); }
+.lv .thead.is-r .tname, .lv .thead.is-r .tmeta, .lv .thead.is-r .tmeta b { color: var(--rad-ink); }
+.lv .thead.is-r .rad { background: var(--rad-ink); color: var(--rad); }
+.lv .thead.is-b.is-r { background: linear-gradient(90deg, var(--rad) 64px, var(--bet) 64px); color: var(--bet-ink); }
+.lv .thead.is-b.is-r .tname, .lv .thead.is-b.is-r .tmeta, .lv .thead.is-b.is-r .tmeta b { color: var(--bet-ink); }
+.lv .thead.is-b.is-r .rad { height: 26px; font-size: 18px; background: var(--rad); color: var(--rad-ink); }
+.lv .thead.is-b.is-r .tk { height: 26px; }
+.lv .thead.is-b.is-r .thd { padding-left: 6px; }
 .lv .qc button { padding: 0 8px; }
 .lv .qc button > span { flex: 1; min-width: 0; }
 .lv .qc kbd { display: none; }

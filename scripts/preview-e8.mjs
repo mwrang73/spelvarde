@@ -454,7 +454,7 @@ try {
     await liveScenario();
     const mo = await newPage(390, 844, "dark", { touch: true });
     await openLive(mo.page, "?avd=5");
-    await mo.page.waitForFunction(() => document.querySelectorAll(".qc button:not(:disabled)").length === 13);
+    await mo.page.waitForFunction(() => document.querySelectorAll(".qc button:not(:disabled)").length === 15);
     await mo.page.evaluate(() => {
       const b = [...document.querySelectorAll(".qc button")];
       b[0].click();
@@ -465,7 +465,7 @@ try {
     await shot(mo.page, "mobil-taggad", "dark");
     await settled(mo.page);
     await mo.page.reload({ waitUntil: "networkidle" });
-    await mo.page.waitForFunction(() => document.querySelectorAll(".qc button:not(:disabled)").length === 13);
+    await mo.page.waitForFunction(() => document.querySelectorAll(".qc button:not(:disabled)").length === 15);
     check((await mo.page.locator('.qc button[aria-pressed="true"]').count()) === 3, "Mobil: tre snabba tryck läses tillbaka efter omladdning");
     await mo.ctx.close();
   }
@@ -662,6 +662,61 @@ try {
   }
 
   // ---- V85-raden ---------------------------------------------------------------------------
+  // Taggarna öppnas 5 minuter före start: V85-6 om 3 min är öppet, V85-8 om 8 min inte.
+  if (want("fem")) {
+    for (const [w, h, touch] of [[1400, 900, false], [390, 844, true]]) {
+      await liveScenario({ legTimes: { ...LIVE_TIMES, 6: 3, 8: 8 } });
+      const { ctx, page } = await newPage(w, h, "light", { touch });
+      await openLive(page, "?avd=6");
+      await page.locator(".tbn, .qc button").first().waitFor();
+      await page.waitForFunction(() => !document.querySelector(".tbn:disabled, .qc button:disabled"));
+      const open = await page.locator("main").textContent();
+      check(!open.includes("Taggarna öppnas"), `Fem min ${w}: V85-6 om 3 min har taggar`);
+      check(!(await page.locator("body").textContent()).includes("Väntar på resultat"), `Fem min ${w}: säger inte Väntar på resultat före start`);
+      await page.locator(".tbn, .qc button").filter({ hasText: "Bevaka!" }).first().click();
+      await page.waitForTimeout(300);
+      check((await page.locator('.tbn[aria-pressed="true"], .qc button[aria-pressed="true"]').filter({ hasText: "Bevaka!" }).count()) === 1, `Fem min ${w}: Bevaka! går att tagga före start`);
+      await shot(page, "fem-oppet", "light");
+      await openLive(page, "?avd=8");
+      await page.waitForTimeout(400);
+      check((await page.locator("main").textContent()).includes("Taggarna öppnas 5 minuter före start"), `Fem min ${w}: V85-8 om 8 min är stängt`);
+      await ctx.close();
+    }
+    await liveScenario();
+  }
+
+  // Blått radhuvud: smalt fönster med 15 hästar, och Bet + Rad i mobilen.
+  if (want("radhuvud")) {
+    const racesWithBoth = await db.submittedRow.findFirst({ where: { roundId, userId: user.id } });
+    console.log("Raden:", JSON.stringify(racesWithBoth?.selections));
+    for (const theme of THEMES) {
+      const narrow = await newPage(1100, 800, theme);
+      await openLive(narrow.page, "?avd=5");
+      await narrow.page.locator(".tbn").first().waitFor();
+      await shot(narrow.page, "radhuvud-smal", theme);
+      const over = await narrow.page.evaluate(() => [...document.querySelectorAll(".hc .hh1")].filter((e) => e.scrollWidth > e.clientWidth).length);
+      check(over === 0, `1100 ${theme}: inget huvud spiller över (${over})`);
+      await narrow.ctx.close();
+      for (const [w, h, touch] of [[1400, 900, false], [390, 844, true]]) {
+        const { ctx, page } = await newPage(w, h, theme, { touch });
+        for (let leg = 1; leg <= 6; leg++) {
+          if (leg === 4) continue;
+          await openLive(page, `?avd=${leg}`);
+          await page.waitForTimeout(500);
+          const both = page.locator(touch ? ".tgb.rr.is-b" : ".hc.is-r.is-b");
+          if (await both.count()) {
+            if (touch) await both.first().click();
+            await page.waitForTimeout(300);
+            await shot(page, "radhuvud-bet-rad", theme);
+            console.log(`Bet + Rad i V85-${leg} (${w} ${theme})`);
+            break;
+          }
+        }
+        await ctx.close();
+      }
+    }
+  }
+
   if (want("rad")) {
     const RAD = `${BASE}/omgang/${roundId}/spel?flik=rad`;
     const api = async (ctx, method, url, data) => {

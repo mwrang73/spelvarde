@@ -11,7 +11,7 @@ import { DeskHeader } from "@/components/shell/AppHeader";
 import { isShown, concealLeg, revealLeg, useShownLegs } from "@/components/round/revealStore";
 import { syncResults, useResultSync } from "@/components/round/resultsStore";
 import { PhaseRail, RaceTabs } from "@/components/round/parts";
-import { raceStarted, useRound } from "@/components/round/RoundProvider";
+import { useRound } from "@/components/round/RoundProvider";
 import { loadRaceTags, toggleRaceTag, undoRaceTag, useRaceTags, type TagCtx } from "@/components/round/tagStore";
 import { Banner, EmptyState, Skeleton } from "@/components/ui/board";
 import { IconBack, IconClock, IconFlag } from "@/components/ui/icons";
@@ -28,6 +28,7 @@ import {
   LIVE_DIGIT_WAIT_MS,
   LIVE_READ_WAIT_MS,
   liveResultList,
+  liveOpen,
   newlyStartedLeg,
   parseLegParam,
   raceFacts,
@@ -203,11 +204,11 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
   const shownLegs = useShownLegs(roundId, races);
   const shown = isShown(race, shownLegs);
   const mode: ResultMode = resultMode(race, now);
-  const started = !race.cancelled && raceStarted(race, now);
+  const open = liveOpen(race, now);
   const running = runningLeg(races, now) === leg;
   const line = raceLine(race, mode, shown, running);
   const read: "loaded" | "loading" | "failed" = tags.loaded ? "loaded" : tags.error ? "failed" : "loading";
-  const ready = tags.loaded && started;
+  const ready = tags.loaded && open;
   const submitted = data.submittedRow ?? null;
   const inRow = useMemo(() => rowNumbers(submitted, leg), [submitted, leg]);
   const starts = useMemo(() => startsInOrder(race), [race]);
@@ -376,7 +377,7 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
         legStep(k === "PageDown" ? 1 : -1);
         return;
       }
-      if (listOpen || !started) return;
+      if (listOpen || !open) return;
       if (/^[0-9]$/.test(k)) {
         if (e.repeat) return;
         e.preventDefault();
@@ -486,7 +487,7 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
       onReveal={reveal}
       startedLeg={startedLeg}
       onLeg={changeLeg}
-      readFailed={started && read === "failed"}
+      readFailed={open && read === "failed"}
       onRetryRead={() => loadRaceTags(roundId, leg, true)}
     />
   );
@@ -560,9 +561,9 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
           </div>
           <div className="rc">{control(false)}</div>
           {score && <span className="score">{score}</span>}
-          {started && !shown ? <LiveStatus roundId={roundId} read={read} /> : <span className="lv-sp" />}
-          {started && !shown && !submitted && <span className="rh">{SUBMITTED_ROW_NONE}</span>}
-          {started && !shown && (
+          {open && !shown ? <LiveStatus roundId={roundId} read={read} /> : <span className="lv-sp" />}
+          {open && !shown && !submitted && <span className="rh">{SUBMITTED_ROW_NONE}</span>}
+          {open && !shown && (
             <span className="tcnt">
               <b className="num">{count}</b> av {runners.length} taggade
             </span>
@@ -572,9 +573,9 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
         <main className="dmain" id="live-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
           {banners}
           {showGrid && (
-            <LiveColumns race={race} starts={starts} byStart={tags.byStart} rowNumbers={inRow} activeId={cur?.id ?? null} focusIndex={focusIndex} ready={ready} showTags={started} fritextFor={fritextFor} ctx={ctx} onActivate={onActivate} onToggle={onToggle} onFritext={setFritextFor} />
+            <LiveColumns race={race} starts={starts} byStart={tags.byStart} rowNumbers={inRow} activeId={cur?.id ?? null} focusIndex={focusIndex} ready={ready} showTags={open} fritextFor={fritextFor} ctx={ctx} onActivate={onActivate} onToggle={onToggle} onFritext={setFritextFor} />
           )}
-          {mode === "before" && before}
+          {mode === "before" && !open && before}
           {mode === "cancelled" && cancelled}
           {shown && list}
         </main>
@@ -585,7 +586,7 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
   }
 
   // ---- En häst i taget, under 1100 px ----
-  const showSingle = started && !shown && !!cur;
+  const showSingle = open && !shown && !!cur;
   return (
     <Shell
       columns={false}
@@ -627,7 +628,7 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
           </div>
         )}
         {banners}
-        {mode === "before" && before}
+        {mode === "before" && !open && before}
         {mode === "cancelled" && cancelled}
         {shown && list}
         {showSingle && (

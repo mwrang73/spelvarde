@@ -21,6 +21,9 @@ type RaceLike = Pick<RaceDto, "leg" | "startAt" | "resultAt" | "cancelled"> & { 
 
 const startMs = (r: Pick<RaceDto, "startAt">) => Date.parse(r.startAt);
 const hasStarted = (r: RaceLike, now: number) => !!r.started || startMs(r) <= now;
+// Taggarna i Live öppnas 5 minuter före start. Bet, odds och resultat följer fortfarande starttiden.
+export const LIVE_OPEN_BEFORE_MS = 5 * 60_000;
+export const liveOpen = (r: RaceLike, now: number) => !r.cancelled && (hasStarted(r, now) || startMs(r) - now <= LIVE_OPEN_BEFORE_MS);
 const toRunning = <R extends RaceLike>(r: R) => ({ race: r, startAt: r.startAt, hasResult: !!r.resultAt, cancelled: r.cancelled });
 
 // ---- Val av lopp (3.2) ------------------------------------------------------------------
@@ -42,6 +45,8 @@ export type LegTagState = number | "failed" | null;
 
 // Väljs en gång när sidan öppnas. null = vänta på taggarna (skelett, högst 3 s).
 export function defaultLiveLeg(races: readonly RaceLike[], taggedOf: (leg: number) => LegTagState, now: number, waited: boolean): number | null {
+  const opening = races.find((r) => !hasStarted(r, now) && liveOpen(r, now));
+  if (opening) return opening.leg;
   const running = runningLeg(races, now);
   if (running !== null) return running;
   const started = races.filter((r) => !r.cancelled && hasStarted(r, now));
@@ -65,7 +70,7 @@ export function liveTabs(gameType: string, races: readonly RaceDto[], tagged: Re
   const running = runningLeg(races, now);
   return races.map((r) => {
     const name = legName(gameType, r.leg);
-    const t = hasStarted(r, now) && !r.cancelled ? tagged[r.leg] ?? null : null;
+    const t = liveOpen(r, now) ? tagged[r.leg] ?? null : null;
     const bet = r.starts.some((s) => !s.scratched && (s.outcome?.bet ?? s.mark?.bet));
     const isRunning = running === r.leg;
     const parts = [name, r.cancelled ? "inställt" : hhmm(r.startAt), t ? `${t.tagged} av ${t.total} taggade` : null, isRunning ? "pågår" : null, bet ? "med Bet" : null];
@@ -96,7 +101,7 @@ export function raceLine(race: RaceDto, mode: ResultMode, shown: boolean, runnin
 export const WAITING_TEXT = "Väntar på resultat. Du kan tagga under tiden. Placeringen hämtas automatiskt från ATG.";
 export const RESULT_LIST_HELP = "Vill du ändra taggar? Tryck Dölj resultat.";
 export const beforeTitle = (gameType: string, race: Pick<RaceDto, "leg" | "startAt">) => `${legName(gameType, race.leg)} startar ${hhmm(race.startAt)}`;
-export const BEFORE_TEXT = "Taggarna öppnas vid start. Förberedelserna gör du i Analys.";
+export const BEFORE_TEXT = "Taggarna öppnas 5 minuter före start. Förberedelserna gör du i Analys.";
 export const CANCELLED_TITLE = "Loppet är inställt";
 export const CANCELLED_TEXT = "ATG har ställt in loppet. Det räknas inte i statistiken.";
 export const READ_FAILED_TITLE = "Kunde inte läsa taggarna.";

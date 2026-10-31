@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultLiveLeg, digitStep, flushDigit, horseAria, liveResultList, liveTabs, newlyStartedLeg, parseLegParam, raceLine, rowSr, statusSaved } from "@/lib/live-view";
+import { defaultLiveLeg, digitStep, flushDigit, horseAria, liveOpen, liveResultList, liveTabs, newlyStartedLeg, parseLegParam, raceLine, rowSr, statusSaved } from "@/lib/live-view";
 import { mkMark, mkRace, mkStart } from "@/lib/test-round";
 import type { StartDto, StartResultDto, SubmittedRowDto } from "@/lib/types";
 
@@ -53,6 +53,26 @@ describe("liveResultList (17.4)", () => {
     expect(r.sr).toBe("1:a, nummer 7, Nordic Sunset, A. Lindqvist. Bet, spelad till 2,40, träff. Med i din inlämnade rad, vann loppet. Taggar: Tog spets, Ledde hela vägen.");
     expect(rowSr({ start: mkStart("a", 3), kind: "unplaced", place: null, bet: null, rad: null, tags: [] })).toMatch(/^Oplacerad, nummer 3,/);
     expect(rowSr({ start: mkStart("a", 5), kind: "disqualified", place: null, bet: null, rad: null, tags: [] })).toMatch(/^Diskad, nummer 5,/);
+  });
+});
+
+describe("liveOpen", () => {
+  const start = (min: number, p = {}) => mkRace(1, [], { startAt: new Date(T0 + min * 60_000).toISOString(), ...p });
+  it("öppnar exakt 5 minuter före start, och är kvar öppet efter start", () => {
+    expect(liveOpen(start(6), T0)).toBe(false);
+    expect(liveOpen(start(5), T0)).toBe(true);
+    expect(liveOpen(start(0), T0)).toBe(true);
+    expect(liveOpen(start(-60), T0)).toBe(true);
+  });
+  it("inställt lopp öppnas aldrig", () => {
+    expect(liveOpen(start(2, { cancelled: true }), T0)).toBe(false);
+  });
+  it("loppet som snart startar väljs när sidan öppnas, före det som pågår", () => {
+    const running = mkRace(1, [], { startAt: new Date(T0 - 10 * 60_000).toISOString() });
+    const soon = mkRace(2, [], { startAt: new Date(T0 + 3 * 60_000).toISOString() });
+    const later = mkRace(3, [], { startAt: new Date(T0 + 30 * 60_000).toISOString() });
+    expect(defaultLiveLeg([running, soon, later], () => 0, T0, false)).toBe(2);
+    expect(defaultLiveLeg([running, later], () => 0, T0, false)).toBe(1);
   });
 });
 

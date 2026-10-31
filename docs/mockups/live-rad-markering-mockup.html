@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<title>Spelvärde · Live: så syns din rad i hästhuvudet</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens: kopia av styles/tokens.css. Ligger på [data-theme] så att varje ram har eget tema. ===== */
+:root,[data-theme="light"]{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;--glow:rgba(242,154,0,.40);
+--sig-fill:#17853F;--sig-fill-ink:#FFFFFF;--down:#C42B1F;--bet:#0D1014;--bet-ink:#FFFFFF;--bet-board:#F3EFE4;--bet-board-ink:#0C0E11;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--flap-glow:rgba(255,178,46,.5);--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--btn-fill:linear-gradient(#FFC85C,#F4A51F);--btn-edge:#9A5A00;--btn-line:#C47A00;--board-btn-line:#4A5058;
+--rblue:#2468B8;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill:#FFB22E;--fill-ink:#1A1000;--focus:#7CC4FF;
+--head:#050607;--head-ink:#FFB22E;--head-ink-2:#B9C0C8;--head-text:#ECE8DD;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--glow:rgba(255,178,46,.55);
+--sig-fill:#2FBF6B;--sig-fill-ink:#04210F;--down:#FF6B5A;--bet:#F3EFE4;--bet-ink:#0C0E11;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5);
+--rblue:#2F75C6}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:var(--f-body);font-size:15px;-webkit-font-smoothing:antialiased}
+table{font:inherit;color:inherit}
+.mk{padding:0 24px 72px;max-width:1700px;margin:0 auto}
+.mt{margin:24px 0 4px;font:700 28px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.lead{max-width:980px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.ctl{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;padding:8px 0;background:var(--page);border-bottom:1px solid var(--line-strong);margin:14px 0 0}
+.ctl .g{display:flex;align-items:center;gap:8px}
+.ctl .g>span{font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.ctl nav{display:flex;gap:4px 14px;flex-wrap:wrap;margin-left:auto}
+.ctl nav a{display:inline-flex;align-items:center;min-height:44px;font:700 13.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.mseg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.mseg button{min-height:44px;padding:0 14px;border:0;background:transparent;font:700 14px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
+.mseg button+button{border-left:1px solid var(--line)}
+.mseg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+h2.sec{margin:52px 0 6px;font:700 25px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em;scroll-margin-top:70px}
+h3.part{margin:26px 0 8px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.sub{margin:0 0 12px;max-width:980px;font-size:14.5px;line-height:1.5}
+.rk2{display:inline-block;margin-left:8px;padding:3px 7px;border-radius:4px;background:var(--fill);color:var(--fill-ink);font:700 13px/1.2 var(--f-label);letter-spacing:.07em;vertical-align:3px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;max-width:1400px;margin:12px 0}
+.cards>div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.45}
+.cards>div.q{border-left-color:var(--line-strong)}
+.cards>div.bad{border-left-color:var(--down)}
+.cards>div.blue{border-left-color:var(--rblue)}
+.cards h3,.cards h4{margin:0 0 4px;font:700 13.5px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.cards ul{margin:0;padding-left:18px}
+.cards li+li{margin-top:3px}
+.cards p{margin:0}
+.wtab{border-collapse:collapse;background:var(--surface);font-size:13.5px;margin:10px 0;max-width:1100px;width:100%}
+.wtab caption{caption-side:top;text-align:left;font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;padding:0 0 6px}
+.wtab th,.wtab td{padding:7px 10px;border:1px solid var(--line);text-align:left;vertical-align:top}
+.wtab th{background:var(--surface-3);font:700 12px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.wtab .n{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.swatch{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px;box-shadow:inset 0 0 0 1px rgba(128,128,128,.6)}
+.tscroll{overflow-x:auto}
+.frm{margin:14px 0 0;min-width:0}
+.frm figcaption{margin-bottom:8px;font:700 14px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.fit{width:100%;overflow:hidden}
+.bf{width:1600px;border:1px solid #000;border-radius:10px;overflow:hidden;background:#2a2d31;transform-origin:0 0}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:620px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.phwrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.ph{width:410px;max-width:100%;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;background:#0b0c0e;flex:none}
+.ph-in{width:390px;height:790px;overflow:hidden}
+:root[data-view="light"] .t-dark{display:none}
+:root[data-view="dark"] .t-light{display:none}
+.frm.fphone{width:410px;max-width:100%}
+
+/* Lägesark */
+.sheet{padding:14px;border-radius:10px;border:1px solid var(--line-strong);overflow-x:auto}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px 12px}
+.slab{min-height:36px;margin-bottom:5px;font:700 13.5px/1.2 var(--f-label);letter-spacing:.03em;color:var(--ink)}
+.slab b{font-family:var(--f-num);font-size:12px;margin-right:3px}
+.scell .hc{border:1px solid var(--line)}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,600px),1fr));gap:14px;margin-top:10px}
+.cmpt{margin:0 0 8px;font:700 14px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.cmpg{display:grid;grid-template-columns:repeat(4,minmax(128px,1fr));gap:8px}
+.mh{padding:14px 0 12px;border-radius:10px;border:1px solid var(--line-strong);width:410px;max-width:100%;overflow:hidden}
+.mh .slab{min-height:0;margin:10px 12px 4px}
+.mh .slab:first-child{margin-top:0}
+
+/* ===== Från styles/app.css (avsnitt Live och delade komponenter) ===== */
+.fr{background:var(--bg);color:var(--ink);font-family:var(--f-body);--tbh:44px;--tbf:13px;--hnf:15px}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+.ah-brand{font:800 26px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:56px;display:flex;align-items:center;gap:16px;padding:0 16px}
+.dnav{display:flex;gap:2px;margin-left:12px;flex:1}
+.dnav span{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);border-radius:6px}
+.dnav .cur{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2)}
+.ah{height:54px;display:flex;align-items:center;gap:4px;padding:0 4px 0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;color:var(--head-ink-2);flex:none;font-size:26px;line-height:1}
+.btn{min-height:44px;padding:0 16px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;font:700 15.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase}
+.btn.secondary{background:linear-gradient(var(--surface),var(--surface-2));border:1px solid var(--line-strong);color:var(--ink);box-shadow:0 3px 0 var(--line-strong)}
+.linkish{color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);font-variant-numeric:tabular-nums;text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr b{font-weight:700}
+.nr.sm{width:24px;height:28px;font-size:15px}
+.nr.lg{width:46px;height:56px;font-size:28px}
+.nr .spb{position:absolute;left:-6px;top:-5px;z-index:1;min-width:15px;height:15px;padding:0 3px;border-radius:3px;display:grid;place-items:center;font:700 10px/1 var(--f-label);font-style:normal;text-shadow:none;background:var(--sig-fill);color:var(--sig-fill-ink);box-shadow:0 0 0 1.5px var(--surface)}
+.bdg{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:3px;font:700 11px/1 var(--f-label);letter-spacing:.03em;flex:none}
+.bdg.i{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.bdg.s{background:var(--fill);color:var(--fill-ink)}
+.tk{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:3px;background:var(--bet-ink);color:var(--bet);font:700 11.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;flex:none;
+-webkit-mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat;
+mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat}
+.tk b{font:700 12px/1 var(--f-num);letter-spacing:0}
+.thead .tk{height:30px;padding:0 11px;font-size:13px}
+.thead .tk b{font-size:16px}
+.lband{display:flex;gap:16px;padding:8px 16px;height:68px}
+.seg{display:flex;width:300px;flex:none;height:52px;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg>span{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 4px;color:var(--ink-2);white-space:nowrap}
+.seg>span+span{border-left:1px solid var(--line)}
+.seg>.cur{background:var(--fill);color:var(--fill-ink)}
+.seg b{font:700 13.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.seg small{font:500 10.5px/1 var(--f-num)}
+.ltabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));height:52px;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.lt{min-width:0;display:flex;align-items:center;gap:6px;padding:0 6px;color:var(--ink)}
+.lt+.lt{border-left:1px solid var(--line)}
+.lt .lx{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.lt .lx b{display:flex;align-items:center;gap:4px;font:700 14px/1 var(--f-label);letter-spacing:.03em;white-space:nowrap}
+.lt .lx small{font:500 10.5px/1 var(--f-num);color:var(--ink-2);white-space:nowrap;overflow:hidden}
+.lt.cur{background:var(--fill);color:var(--fill-ink)}
+.lt.cur .nr{background:var(--fill-ink);color:var(--fill);text-shadow:none}
+.lt.cur small{color:var(--fill-ink)!important}
+.ltb{display:inline-grid;place-items:center;height:16px;min-width:16px;padding:0 3px;border-radius:3px;background:var(--bet);color:var(--bet-ink);font:700 10.5px/1 var(--f-label);flex:none}
+.cur .ltb{background:var(--fill-ink);color:var(--fill)}
+.mavs .ltb{background:var(--bet-board);color:var(--bet-board-ink)}
+.mavs .cur .ltb{background:var(--fill-ink);color:var(--fill)}
+.rbar{height:50px;display:flex;align-items:center;gap:10px;padding:0 16px;border-top:1px solid var(--head-line)}
+.rbar .rt{min-width:0;flex:0 1 340px;display:flex;flex-direction:column;gap:2px}
+.rbar .h{font:700 19px/1.05 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar .rbs{font:600 12px/1.1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap}
+.rbar .sp{flex:1}
+.rbar .rh{font:600 12.5px/1.1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap}
+.rbar .score{font:700 13px/1.15 var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--head-ink);white-space:nowrap}
+.dmain{padding:0 16px 12px}
+.ga{display:grid;justify-content:start;width:100%}
+.hc{position:relative;display:flex;flex-direction:column;min-width:0;background:var(--surface);border-left:1px solid var(--line)}
+.ga>.hc:last-child{border-right:1px solid var(--line)}
+.hh{position:relative;padding:7px 5px 4px 8px;background:var(--surface-3);display:flex;flex-direction:column;gap:3px;box-shadow:inset 0 -1.5px 0 var(--line-strong)}
+.hc.on .hh{box-shadow:inset 0 3px 0 var(--fill),inset 0 -1.5px 0 var(--line-strong)}
+.hh1{display:flex;align-items:center;justify-content:space-between;gap:2px;height:36px}
+.hhs{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
+.hnm{margin:0;font:700 var(--hnf)/1.1 var(--f-name);letter-spacing:.01em;height:calc(var(--hnf)*2.2);overflow:hidden;overflow-wrap:anywhere;color:var(--ink)}
+.hc.is-i .hnm{color:var(--accent)}
+.hh4{display:flex;align-items:center;gap:3px;height:20px;min-width:0}
+.tbn{display:flex;align-items:center;gap:3px;width:100%;height:var(--tbh);padding:0 4px 0 7px;border-top:1px solid var(--line);background:var(--surface);color:var(--ink);overflow:hidden}
+.tbn>span{flex:1;min-width:0;font:600 var(--tbf)/1.1 var(--f-label);letter-spacing:.01em;overflow-wrap:anywhere}
+.tbn.z{background:var(--surface-2)}
+.tbn.p{background:var(--btn-fill);color:var(--fill-ink);box-shadow:inset 0 0 0 1px var(--btn-line)}
+.tbn.p>span{font-weight:700}
+.tbn i{font-style:normal}
+.tbn kbd{flex:none;font:700 10.5px/1 var(--f-num);padding:2px 3px;border-radius:3px;background:var(--surface-3);color:var(--ink-2)}
+.tbn.p kbd{background:rgba(0,0,0,.14);color:var(--fill-ink)}
+.hc.is-b::after{content:"";position:absolute;inset:0;border:3px solid var(--bet);pointer-events:none;z-index:4}
+.hc.is-b .hh{background:var(--bet);box-shadow:none}
+.hc.is-b.on .hh{box-shadow:inset 0 6px 0 var(--fill)}
+.hc.is-b .hnm{color:var(--bet-ink)}
+.hc.is-b .nr{box-shadow:0 0 0 1.5px rgba(128,128,128,.7)}
+.hc.xc{background-image:repeating-linear-gradient(135deg,transparent 0 6px,var(--surface-3) 6px 7px)}
+.xh{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 0}
+.xh .nr{opacity:.5}
+.xn{writing-mode:vertical-rl;font:600 14px/1 var(--f-name);color:var(--ink-2);white-space:nowrap}
+.xn s{text-decoration:line-through}
+
+/* Mobil */
+.pw{display:flex;flex-direction:column;height:100%}
+.pm{flex:1;min-height:0;overflow:hidden}
+.mavs{display:flex;gap:6px;padding:2px 10px 10px;overflow:hidden}
+.mavs>span{flex:none;height:44px;display:flex;align-items:center;gap:7px;padding:0 9px 0 7px;border:1px solid var(--board-btn-line);border-radius:7px;color:var(--head-text)}
+.mavs-t{display:flex;flex-direction:column;gap:2px}
+.mavs-n{display:flex;align-items:center;gap:4px;font:600 13px/1.1 var(--f-body)}
+.mavs-t small{font:500 11px/1.2 var(--f-num);color:var(--head-ink-2);white-space:nowrap}
+.mavs>.cur{background:var(--fill);border-color:var(--fill);color:var(--fill-ink)}
+.mavs>.cur .nr{background:var(--fill-ink);color:var(--fill);text-shadow:none}
+.mavs>.cur small{color:var(--fill-ink)}
+.tstrip{display:flex;gap:4px;overflow:hidden;padding:6px 8px 8px;border-top:1px solid var(--head-line)}
+.tgb{position:relative;flex:none;width:44px;padding:2px 0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--head-ink-2);border-radius:6px}
+.tgb .nr{width:40px;height:40px;font-size:19px}
+.tgb .rdl{display:block;height:15px;font:700 13px/15px var(--f-label);letter-spacing:.06em;text-align:center;white-space:nowrap}
+.tgb.cur .nr{background:var(--flap-on);color:var(--flap-on-ink);text-shadow:none;box-shadow:0 0 14px var(--flap-glow)}
+.tgb.is-b .nr{box-shadow:0 0 0 2.5px var(--bet-board)}
+.tgb .tbet{position:absolute;top:33px;left:50%;transform:translateX(-50%);height:13px;padding:0 4px;border-radius:2px;background:var(--bet-board);color:var(--bet-board-ink);font:700 10px/13px var(--f-label);letter-spacing:.05em;z-index:2}
+.tgb .tdot{position:absolute;top:-4px;right:-2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--surface);color:var(--ink);font:700 10.5px/17px var(--f-num);font-style:normal;text-align:center;box-shadow:0 0 0 2px var(--head);z-index:2}
+.thead{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:10px 12px 8px}
+.thd{min-width:0}
+.tname{font:700 26px/1 var(--f-name);text-transform:uppercase;letter-spacing:.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tmeta{margin:3px 0 0;font-size:13px;color:var(--ink-2);display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.tright{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.thead.is-b{background:var(--bet);color:var(--bet-ink)}
+.thead.is-b .tname,.thead.is-b .tmeta{color:var(--bet-ink)}
+.thead.is-b .nr{box-shadow:0 0 0 1.5px rgba(128,128,128,.7)}
+.qc{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 12px}
+.qc>div{min-height:46px;padding:0 10px;border-radius:7px;border:1.5px solid var(--line-strong);background:var(--surface);font:700 14px/1.1 var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);display:flex;align-items:center;gap:6px}
+.qc>div.p{background:var(--btn-fill);color:var(--fill-ink);border-color:var(--btn-line);box-shadow:0 0 12px var(--glow)}
+.qc>div.p::before{content:"✓"}
+.ftx{margin:2px 12px 0;min-height:44px;display:inline-flex;align-items:center;font-size:14px}
+.tnav{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 12px 20px;background:var(--surface);border-top:1px solid var(--line)}
+.tnav .btn{min-height:54px;justify-content:flex-start;padding:0 10px;font-size:14px;min-width:0}
+.tnav .btn.nx{justify-content:flex-end}
+
+/* ===== NYTT I MOCKUPEN: rad-huvudet, per alternativ ===== */
+.opt-a{--r-bg:var(--fill);--r-tx:var(--fill-ink);--r-sub:var(--fill-ink);--pl-bg:var(--fill-ink);--pl-tx:var(--fill);--pb-bg:var(--fill);--pb-tx:var(--fill-ink);--t-bg:var(--fill);--t-tx:var(--fill-ink);--t-ring:none}
+.opt-b{--r-bg:var(--head);--r-tx:var(--head-ink);--r-sub:var(--head-ink-2);--pl-bg:var(--fill);--pl-tx:var(--fill-ink);--pb-bg:var(--fill);--pb-tx:var(--fill-ink);--t-bg:transparent;--t-tx:var(--head-ink);--t-ring:inset 0 0 0 2px var(--fill)}
+.opt-c{--r-bg:var(--rblue);--r-tx:#FFFFFF;--r-sub:#FFFFFF;--pl-bg:#FFFFFF;--pl-tx:var(--rblue);--pb-bg:var(--rblue);--pb-tx:#FFFFFF;--t-bg:var(--rblue);--t-tx:#FFFFFF;--t-ring:none}
+
+.rplate{display:inline-flex;align-items:center;justify-content:center;height:26px;padding:0 8px;border-radius:4px;background:var(--pl-bg);color:var(--pl-tx);font:700 17px/1 var(--f-label);letter-spacing:.09em;flex:none}
+
+/* Kolumn: i raden */
+.hc.is-r .hh{background:var(--r-bg);box-shadow:none}
+.hc.is-r .hnm,.hc.is-r.is-i .hnm{color:var(--r-tx)}
+.opt-a .hc.is-r .hh{box-shadow:inset 0 -2px 0 var(--fill-ink)}
+.opt-b .hc.is-r .hh{background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);box-shadow:inset 0 0 0 2px var(--fill)}
+.opt-c .hc.is-r .hh{box-shadow:inset 0 -1.5px 0 rgba(0,0,0,.35)}
+/* Kolumn: i raden + aktiv */
+.opt-a .hc.is-r.on .hh{box-shadow:inset 0 5px 0 var(--fill-ink),inset 0 -2px 0 var(--fill-ink)}
+.opt-b .hc.is-r.on .hh{box-shadow:inset 0 5px 0 var(--fill),inset 0 0 0 2px var(--fill)}
+.opt-c .hc.is-r.on .hh{box-shadow:inset 0 4px 0 var(--fill),inset 0 5px 0 rgba(0,0,0,.55),inset 0 -1.5px 0 rgba(0,0,0,.35)}
+/* Kolumn: Bet + Rad. Sifferzonen är rad, resten är Bet. Samma höjd som alla andra huvuden. */
+.hc.is-b.is-r .hh{background:linear-gradient(var(--r-bg) 46px,var(--bet) 46px);box-shadow:none}
+.hc.is-b.is-r .hnm{color:var(--bet-ink)}
+.opt-a .hc.is-b.is-r.on .hh{box-shadow:inset 0 6px 0 var(--fill-ink)}
+.opt-b .hc.is-b.is-r .hh::before{content:"";position:absolute;left:3px;right:3px;top:3px;height:43px;border:2px solid var(--fill);pointer-events:none}
+.opt-b .hc.is-b.is-r.on .hh{box-shadow:inset 0 6px 0 var(--fill)}
+.opt-c .hc.is-b.is-r.on .hh{box-shadow:inset 0 6px 0 var(--fill),inset 0 7px 0 rgba(0,0,0,.55)}
+
+/* Märken på rad-ytan */
+.opt-a .rz .bdg.i{box-shadow:inset 0 0 0 1.5px var(--fill-ink);color:var(--fill-ink)}
+.opt-a .rz .bdg.s{background:var(--fill-ink);color:var(--fill)}
+.opt-b .rz .bdg.i{box-shadow:inset 0 0 0 1.5px var(--head-ink);color:var(--head-ink)}
+.opt-c .rz .bdg.i{background:#FFFFFF;box-shadow:inset 0 0 0 1.5px #A65300;color:#A65300}
+
+/* Mobilhuvud */
+.thead .rplate{height:30px;padding:0 10px;font-size:20px}
+.thead.rz{background:var(--r-bg);color:var(--r-tx)}
+.thead.rz .tname{color:var(--r-tx)}
+.thead.rz .tmeta{color:var(--r-sub)}
+.opt-a .thead.rz{box-shadow:inset 0 -2px 0 var(--fill-ink)}
+.opt-b .thead.rz{background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);box-shadow:inset 0 0 0 2px var(--fill)}
+.thead.is-b.is-r{background:linear-gradient(90deg,var(--r-bg) 70px,var(--bet) 70px)}
+.thead.is-b.is-r .rplate{height:26px;font-size:18px;background:var(--pb-bg);color:var(--pb-tx)}
+.thead.is-b.is-r .tk{height:26px}
+.opt-a .thead.is-b.is-r .rplate{box-shadow:inset 0 0 0 1.5px var(--fill-ink)}
+.opt-b .thead.is-b.is-r::before{content:"";position:absolute;left:3px;top:3px;bottom:3px;width:64px;border:2px solid var(--fill);pointer-events:none}
+
+/* Flikraden */
+.tgb.rr{background:var(--t-bg);box-shadow:var(--t-ring)}
+.tgb.rr .rdl{color:var(--t-tx)}
+.opt-a .tgb.rr.cur:not(.is-b) .nr{box-shadow:0 0 0 2px var(--fill-ink)}
+
+/* Resultatlistans pill, i dag */
+.oldpill{display:inline-flex;align-items:center;justify-content:center;height:17px;padding:0 6px;border-radius:9px;background:var(--head);color:var(--head-ink);box-shadow:inset 0 0 0 1px var(--head-ink);font:700 10.5px/1 var(--f-label);letter-spacing:.03em}
+.pillrow{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px 12px;border-radius:8px;border:1px solid var(--line);font-size:13.5px;margin-top:8px}
+.pillrow .rplate{height:20px;font-size:13px;padding:0 6px}
+.q-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px;max-width:980px}
+.q-list li{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:10px 14px;font-size:14.5px;line-height:1.45}
+.q-list b{display:block}
+.fine{margin-top:32px;font-size:13px;line-height:1.5;max-width:980px;color:var(--ink-2)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:600px){.mk{padding:0 12px 56px}.ctl nav{margin-left:0}}
+</style>
+
+<main class="mk">
+  <h1 class="mt">Live: så syns din rad i hästhuvudet</h1>
+  <p class="lead">I dag visas raden med en liten rund etikett och en tunn streckad list, och det går inte att se över startfältet. Här får hela huvudet ett eget utseende, precis som Bet redan har. Listan tas bort och ordet RAD blir större. Tre vägar att ta ställning till:</p>
+
+  <div class="cards">
+    <div>
+      <h3>A · Bärnsten</h3>
+      <p>Fylld bärnsten. Syns väldigt tydligt och kräver ingen ny färg, men krockar med vald tagg, aktivt lopp och aktiv kolumn, som redan är bärnsten.</p>
+    </div>
+    <div class="q">
+      <h3>B · Mörk tavla</h3>
+      <p>Mörk yta med bärnstensfärgad text. Känns mest som Totalisatorn, men i ljust tema är ytan samma svarta som Bet, och i mörkt tema ligger den nära ett vanligt huvud.</p>
+    </div>
+    <div class="blue">
+      <h3>C · Blå <span class="rk2">Rekommenderas</span></h3>
+      <p>En ny blå färg som bara betyder "i raden". Krockar inte med Bet, taggar eller aktiv kolumn i något av temana. Kostar en ny färg i paletten och att namnet på en Intressant häst inte kan vara bärnsten i blått huvud.</p>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <div class="g"><span id="tl">Tema i ramarna</span>
+      <div class="mseg" role="group" aria-labelledby="tl">
+        <button type="button" data-view="light" aria-pressed="true">Ljust</button>
+        <button type="button" data-view="dark" aria-pressed="false">Mörkt</button>
+        <button type="button" data-view="both" aria-pressed="false">Båda</button>
+      </div>
+    </div>
+    <nav aria-label="Avsnitt">
+      <a href="#jmf">Jämför</a><a href="#alt-a">A</a><a href="#alt-b">B</a><a href="#alt-c">C</a><a href="#res">Resultatlistan</a><a href="#fragor">Frågor</a>
+    </nav>
+  </div>
+
+  <h2 class="sec" id="jmf">Jämförelse: de fyra viktigaste lägena</h2>
+  <p class="sub">Vanlig häst, häst i raden, Bet och både Bet och Rad, i båda teman. Kolla särskilt om "I raden" går att skilja från "Bet" på en blick.</p>
+  <div data-r="compare"></div>
+
+  <section>
+    <h2 class="sec" id="alt-a">A · Bärnsten som fylld yta</h2>
+    <div class="cards">
+      <div><h4>Ger</h4><ul><li>Starkast signal av de tre i mörkt tema.</li><li>Ingen ny färg i appen.</li></ul></div>
+      <div class="bad"><h4>Kostar</h4><ul><li>Vald tagg direkt under huvudet smälter ihop med det (se Tangen Nils). En mörk kant under huvudet lindrar men löser inte.</li><li>Samma färg som aktivt lopp strax ovanför. Bärnsten betyder då både "det du står på", "det du valt" och "i raden".</li><li>Intressant-namnet kan inte vara bärnsten: i ljust tema blir kontrasten 3,0:1, i mörkt 1,0:1 (osynligt). Märket I får bära det.</li><li>Aktiv kolumn kan inte längre vara bärnsten på en rad-häst och får en mörk list i stället.</li></ul></div>
+      <div class="q"><h4>Bet + Rad</h4><p>Sifferdelen blir bärnsten med RAD, resten är Bet med ram och biljett. I mörkt tema möts bärnsten och den ljusa Bet-ytan, och skillnaden blir svagare än i ljust.</p></div>
+    </div>
+    <h3 class="part">Alla lägen</h3><div data-r="states" data-opt="a"></div>
+    <h3 class="part">Dator</h3><div data-r="desk" data-opt="a"></div>
+    <h3 class="part">Mobil 390 px</h3><div data-r="mob" data-opt="a"></div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="alt-b">B · Mörk tavla med bärnstensfärgad text</h2>
+    <div class="cards">
+      <div><h4>Ger</h4><ul><li>Samma språk som tavlan överst, ingen ny färg.</li><li>Ingen krock med valda taggar: de är ljusa mot mörkt.</li><li>Aktiv kolumn kan behålla bärnsten.</li></ul></div>
+      <div class="bad"><h4>Kostar</h4><ul><li>I ljust tema är ytan i praktiken identisk med Bet (1,02:1). Bara texten och ramen skiljer dem.</li><li>I mörkt tema ligger ytan nära ett vanligt huvud (1,35:1).</li><li>Alla namn i raden blir bärnsten, så namnfärgen säger inte längre något om Intressant. Märket I får bära det.</li></ul></div>
+      <div class="q"><h4>Min förbättring och Bet + Rad</h4><p>Jag lade till en tunn bärnstensram runt huvudet, annars går B knappt att skilja från Bet eller från vanligt huvud. Vid Bet + Rad ramas sifferdelen in. I ljust tema är det ändå bara ramen och RAD som visar raden.</p></div>
+    </div>
+    <h3 class="part">Alla lägen</h3><div data-r="states" data-opt="b"></div>
+    <h3 class="part">Dator</h3><div data-r="desk" data-opt="b"></div>
+    <h3 class="part">Mobil 390 px</h3><div data-r="mob" data-opt="b"></div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="alt-c">C · Ny färg: blå <span class="rk2">Rekommenderas</span></h2>
+    <div class="cards">
+      <div><h4>Ger</h4><ul><li>Raden syns direkt över startfältet, i båda teman.</li><li>Bärnsten behåller sin betydelse: valda taggar och aktivt lopp står kvar för sig.</li><li>Aktiv kolumn kan behålla bärnsten, med en tunn mörk kant så att den syns mot blått.</li></ul></div>
+      <div class="bad"><h4>Kostar</h4><ul><li>En ny färg i paletten, med ljusare nyans i mörkt tema.</li><li>Bärnstensfärgat namn går inte att läsa på blått (1,0:1 i ljust tema, 2,6:1 i mörkt). Namnet blir vitt, och märket I blir tydligare: vit bricka med bärnstensfärgat I.</li><li>Fokusringen och Autostart-märket är också blå. Fokusringen hamnar aldrig på huvudet, och Autostart-märket visas inte i huvudet, men blått är inte helt oanvänt i appen.</li></ul></div>
+      <div class="q"><h4>Bet + Rad</h4><p>Sifferdelen är blå med RAD, och namn och biljett ligger på Bet-ytan. Bet-ramen går runt hela kolumnen. Man ser båda på en gång: blå rad längs samma linje som övriga rad-hästar, Bet som ram och biljett.</p></div>
+    </div>
+    <h3 class="part">Alla lägen</h3><div data-r="states" data-opt="c"></div>
+    <h3 class="part">Dator</h3><div data-r="desk" data-opt="c"></div>
+    <h3 class="part">Mobil 390 px</h3><div data-r="mob" data-opt="c"></div>
+
+    <h3 class="part">Färgvärden och kontrast</h3>
+    <div class="tscroll">
+    <table class="wtab">
+      <caption>Blå för "i raden"</caption>
+      <thead><tr><th>Vad</th><th>Ljust tema</th><th>Mörkt tema</th><th>Krav</th></tr></thead>
+      <tbody>
+        <tr><td>Nyans</td><td class="n"><span class="swatch" style="background:#2468B8"></span>#2468B8</td><td class="n"><span class="swatch" style="background:#2F75C6"></span>#2F75C6</td><td></td></tr>
+        <tr><td>Vit text på blått (namn, kusk)</td><td class="n">5,60:1</td><td class="n">4,69:1</td><td class="n">4,5:1</td></tr>
+        <tr><td>Blått RAD på vit skylt</td><td class="n">5,60:1</td><td class="n">4,69:1</td><td class="n">4,5:1</td></tr>
+        <tr><td>Blått mot vanligt huvud</td><td class="n">4,30:1</td><td class="n">3,20:1</td><td class="n">3:1</td></tr>
+        <tr><td>Blått mot Bet-ytan (Bet + Rad)</td><td class="n">3,40:1</td><td class="n">4,08:1</td><td class="n">3:1</td></tr>
+        <tr><td>Bärnstenslist för aktiv kolumn mot blått</td><td class="n">3,11:1</td><td class="n">2,60:1, plus mörk kant under listen</td><td class="n">3:1</td></tr>
+        <tr><td>Bärnstensfärgat I på vit bricka</td><td class="n">5,44:1</td><td class="n">5,44:1</td><td class="n">4,5:1</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="res">Resultatlistan</h2>
+    <p class="sub">Listan ändras inte i den här omgången. Men om C väljs bör etiketten där följa med, så att blått betyder "i raden" överallt: samma form och färg, och "✓ RAD" när hästen vann. Annars möts man av två olika RAD-märken på samma sida. Det är en liten ändring och kan följa med i samma bygge om du vill.</p>
+    <div data-r="pills"></div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="fragor">Öppna frågor</h2>
+    <ul class="q-list">
+      <li><b>1. Vilket alternativ?</b>Mitt förslag: C, blå.</li>
+      <li><b>2. Är delat huvud rätt vid Bet + Rad?</b>Sifferdelen visar raden, resten är Bet. Alternativet är helt Bet-huvud med bara skylten RAD, men då försvinner hästen ur raden när du skannar startfältet. Mitt förslag: delat huvud.</li>
+      <li><b>3. Duger vitt namn och tydligare I-märke för Intressant i blått huvud?</b>Så fungerar det redan i Bet-huvudet, där namnet inte är bärnsten. Mitt förslag: ja. Vill du behålla färg på namnet krävs en ljusare bärnsten och en mörkare blå, som då syns sämre i mörkt tema.</li>
+      <li><b>4. Ska etiketten i resultatlistan följa med?</b>Mitt förslag: ja, i samma bygge.</li>
+    </ul>
+    <p class="fine">Antaganden: Rad-hästar får ingen ram runt kolumnen, det förblir Bets kännetecken. Vid många hästar i ett smalt fönster (15 hästar vid 1100 px) krymper skylten RAD så att den får plats bredvid numret, ordet tas aldrig bort. Kuskarna är exempel, och Galopp på Tangen Nils är tillagt för att visa krocken med vald tagg. Typsnitten hämtas från Google Fonts; utan nät visas reservtypsnitt, och allt annat fungerar som vanligt.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var TAGS = [['Galopp','G'],['Tog spets','P'],['Ledde hela vägen','L'],['Satt i rygg ledaren','R'],['Satt fast i rygg','F'],['Utvändigt utan rygg','U'],['Dödens','D'],['Dåligt läge','A'],['Stark avslutning','S'],['Spurtade i tredjespår','T'],['Tröttnade','M'],['Defensivt körd','E'],['Diskad','X']];
+  var FIELD = [
+    {n:1,name:'Baias',d:'Magnus Teien Gundersen',t:['Stark avslutning']},
+    {n:2,name:'Gigant Tider',d:'Tom Erik Solberg',r:1,i:1,on:1,t:['Tog spets','Tröttnade']},
+    {n:3,name:'Tordenskjold',d:'Gunnar Austevoll',r:1,b:'3,50',t:['Defensivt körd']},
+    {n:4,name:'Voje Lotta',d:'Øystein Tjomsland',i:1,edge:'V+P',t:['Stark avslutning','Spurtade i tredjespår']},
+    {n:5,name:'Bare Mattis',x:1},
+    {n:6,name:'Grisle Tore G.L.',d:'Vidar Hop',i:1,t:['Dödens']},
+    {n:7,name:'Holter Odin',d:'Geir Mikkelsplass',t:[]},
+    {n:8,name:'Tangen Nils',d:'Kristian Malmin',r:1,i:1,s:1,t:['Galopp','Tog spets']},
+    {n:9,name:'Prinsesse Ness Tjo',d:'Lars Anvar Kolle',i:1,t:[]},
+    {n:10,name:'Tripsson O.K.',x:1},
+    {n:11,name:'Alm Kevin',d:'Frode Hamre',t:[]}
+  ];
+  var THEMES = [['light','Ljust tema'],['dark','Mörkt tema']];
+  var OPTS = {a:'A · Bärnsten',b:'B · Mörk tavla',c:'C · Blå'};
+
+  function get(n) { return FIELD.filter(function (h) { return h.n === n; })[0]; }
+  function mix(base, extra) { var o = {}, k; for (k in base) o[k] = base[k]; for (k in extra) o[k] = extra[k]; return o; }
+
+  function flap(n, size, edge) {
+    return '<span class="nr ' + (size || '') + '">' + (edge ? '<i class="spb">' + edge + '</i>' : '') + '<b>' + n + '</b></span>';
+  }
+  function marks(h) {
+    return (h.i ? '<span class="bdg i">I</span>' : '') + (h.s ? '<span class="bdg s">S</span>' : '');
+  }
+  function ticket(h) { return '<span class="tk">BET<b>' + h.b + '</b></span>'; }
+
+  function headCol(h) {
+    return '<div class="hh' + (h.r && !h.b ? ' rz' : '') + '">' +
+      '<div class="hh1">' + flap(h.n, '', h.edge) + '<span class="hhs">' + (h.r ? '<span class="rplate">RAD</span>' : '') + '</span></div>' +
+      '<div class="hnm">' + h.name + '</div>' +
+      '<div class="hh4">' + (h.b ? ticket(h) : marks(h)) + '</div>' +
+    '</div>';
+  }
+  function column(h, rows) {
+    var cls = 'hc' + (h.on ? ' on' : '') + (h.b ? ' is-b' : '') + (h.r ? ' is-r' : '') + (h.i ? ' is-i' : '');
+    var out = '<div class="' + cls + '">' + headCol(h);
+    var sel = h.t || [];
+    for (var i = 0; i < rows; i++) {
+      var tag = TAGS[i][0], key = TAGS[i][1], p = sel.indexOf(tag) >= 0;
+      out += '<div class="tbn' + (i % 2 ? ' z' : '') + (p ? ' p' : '') + '">' + (p ? '<i>✓</i>' : '') + '<span>' + tag + '</span>' + (h.on ? '<kbd>' + key + '</kbd>' : '') + '</div>';
+    }
+    return out + '</div>';
+  }
+  function struck(h) {
+    return '<div class="hc xc"><div class="xh">' + flap(h.n, 'sm') + '<span class="xn"><s>' + h.name + '</s> · Struken</span></div></div>';
+  }
+
+  /* Jämförelsen */
+  function compare() {
+    var cases = [
+      ['Vanlig', get(7)],
+      ['I raden', mix(get(2), {i:0,on:0,t:[]})],
+      ['Bet', mix(get(11), {b:'4,20'})],
+      ['Bet + Rad', get(3)]
+    ];
+    var html = '<div class="cmp">';
+    ['a','b','c'].forEach(function (o) {
+      THEMES.forEach(function (t) {
+        html += '<div class="fr sheet opt-' + o + '" data-theme="' + t[0] + '">' +
+          '<p class="cmpt">' + OPTS[o] + ' · ' + t[1] + '</p><div class="cmpg">';
+        cases.forEach(function (c) {
+          html += '<div class="scell"><div class="slab" style="min-height:0">' + c[0] + '</div>' + column(mix(c[1], {t:[]}), 0) + '</div>';
+        });
+        html += '</div></div>';
+      });
+    });
+    return html + '</div>';
+  }
+
+  /* Lägesarket */
+  function states(o) {
+    var cells = [
+      ['1','Vanlig häst', get(7), 3],
+      ['2','I raden', mix(get(2), {i:0,on:0,t:[]}), 3],
+      ['3','Bet, som i dag', mix(get(11), {b:'4,20'}), 3],
+      ['4','Bet + Rad', mix(get(3), {t:[]}), 3],
+      ['5','I raden + Intressant', mix(get(2), {on:0,t:[]}), 3],
+      ['5','I raden + Intressant + Spelbar', mix(get(8), {t:[]}), 3],
+      ['6','I raden + aktiv kolumn', mix(get(2), {t:['Tog spets']}), 3],
+      ['6','Bet + Rad + aktiv kolumn', mix(get(3), {on:1,t:[]}), 3],
+      ['7','I raden, vald tagg direkt under', get(8), 3]
+    ];
+    return THEMES.map(function (t) {
+      return '<div class="t-' + t[0] + '" style="margin-top:12px"><div class="fr sheet opt-' + o + '" data-theme="' + t[0] + '">' +
+        '<p class="cmpt">' + t[1] + '</p><div class="sgrid">' +
+        cells.map(function (c) {
+          return '<div class="scell"><div class="slab"><b>' + c[0] + '</b> ' + c[1] + '</div>' + column(c[2], c[3]) + '</div>';
+        }).join('') + '</div></div></div>';
+    }).join('');
+  }
+
+  /* Dator */
+  function desk(o) {
+    var phases = [['Analys','sön-tors'],['Odds','tors 18:00'],['Live','lör 15:00'],['Klart','lör']];
+    var races = [['15:00','6/10',1],['15:22','5/9',1],['15:44','',1],['16:06','',0],['16:28','',1],['16:50','',1],['17:16','',1],['17:38','',1]];
+    var tpl = FIELD.map(function (h) { return h.x ? '44px' : 'minmax(0,200px)'; }).join(' ');
+    return THEMES.map(function (t) {
+      var html = '<figure class="frm t-' + t[0] + '"><figcaption>Dator · ' + t[1] + '</figcaption><div class="fit"><div class="bf">' +
+        '<div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.app/live</span></div>' +
+        '<div class="fr opt-' + o + '" data-theme="' + t[0] + '">' +
+        '<div class="brd dhead"><div class="ah-brand">Spelvärde</div><div class="dnav"><span class="cur">Omgång</span><span>Källor</span><span>Statistik</span></div><div class="dmeta">V85 · Bjerke · lör 31 okt</div></div>' +
+        '<div class="lband"><div class="seg">' + phases.map(function (p, i) { return '<span' + (i === 2 ? ' class="cur"' : '') + '><b>' + p[0] + '</b><small>' + p[1] + '</small></span>'; }).join('') + '</div>' +
+        '<div class="ltabs">' + races.map(function (r, i) {
+          return '<div class="lt' + (i === 1 ? ' cur' : '') + '">' + flap(i + 1, 'sm') + '<div class="lx"><b>V85-' + (i + 1) + (r[2] ? '<span class="ltb">B</span>' : '') + '</b><small>' + r[0] + (r[1] ? ' ' + r[1] : '') + '</small></div></div>';
+        }).join('') + '</div></div>' +
+        '<div class="brd rbar"><div class="rt"><div class="h">V85-2 · STL Kallblodsdivisionen</div><div class="rbs">1609 m auto · startade lör 15:22 · resultat dolt</div></div><div class="sp"></div><span class="rh">Sparas direkt · följer hästen</span><span class="score">5 av 9 taggade</span></div>' +
+        '<div class="dmain"><div class="ga" style="grid-template-columns:' + tpl + '">' +
+        FIELD.map(function (h) { return h.x ? struck(h) : column(h, 12); }).join('') +
+        '</div></div></div></div></div></figure>';
+      return html;
+    }).join('');
+  }
+
+  /* Mobil */
+  function strip(cur) {
+    return '<div class="brd tstrip">' + FIELD.filter(function (h) { return !h.x; }).map(function (h) {
+      var n = (h.t || []).length;
+      return '<div class="tgb' + (h.b ? ' is-b' : '') + (h.r ? ' rr' : '') + (h.n === cur ? ' cur' : '') + '">' + flap(h.n) +
+        (h.b ? '<span class="tbet">BET</span>' : '') +
+        '<span class="rdl">' + (h.r ? 'RAD' : '&nbsp;') + '</span>' +
+        (n ? '<i class="tdot">' + n + '</i>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function thead(h) {
+    var cls = 'thead' + (h.b ? ' is-b' : '') + (h.r ? ' is-r' : '') + (h.r && !h.b ? ' rz' : '');
+    return '<div class="' + cls + '">' + flap(h.n, 'lg', h.edge) +
+      '<div class="thd"><div class="tname">' + h.name + '</div><p class="tmeta">' + h.d + (h.b ? '' : marks(h)) + '</p></div>' +
+      '<div class="tright">' + (h.r ? '<span class="rplate">RAD</span>' : '') + (h.b ? ticket(h) : '') + '</div></div>';
+  }
+  function phone(o, t, h, note) {
+    var legs = [['15:00',1],['15:22',1],['15:44',1],['16:06',0]];
+    var run = FIELD.filter(function (x) { return !x.x; });
+    var i = run.map(function (x) { return x.n; }).indexOf(h.n);
+    var prev = run[Math.max(0, i - 1)], next = run[Math.min(run.length - 1, i + 1)];
+    return '<figure class="frm fphone t-' + t[0] + '"><figcaption>Mobil · ' + t[1] + ' · ' + note + '</figcaption><div class="ph"><div class="ph-in"><div class="fr pw opt-' + o + '" data-theme="' + t[0] + '">' +
+      '<div class="brd"><div class="ah"><span class="ibtn">‹</span><div class="ah-t"><div class="ah-title">Live · Bjerke</div><div class="ah-sub">V85-2 · startade 15:22</div></div></div>' +
+      '<div class="mavs">' + legs.map(function (l, k) {
+        return '<span' + (k === 1 ? ' class="cur"' : '') + '>' + flap(k + 1, 'sm') + '<span class="mavs-t"><span class="mavs-n">V85-' + (k + 1) + (l[1] ? '<span class="ltb">B</span>' : '') + '</span><small>' + l[0] + '</small></span></span>';
+      }).join('') + '</div></div>' +
+      strip(h.n) +
+      '<div class="pm">' + thead(h) +
+      '<div class="qc">' + TAGS.map(function (q) { return '<div' + ((h.t || []).indexOf(q[0]) >= 0 ? ' class="p"' : '') + '><span>' + q[0] + '</span></div>'; }).join('') + '</div>' +
+      '<span class="ftx linkish">+ Fritext</span></div>' +
+      '<div class="tnav"><span class="btn secondary">‹ ' + prev.n + ' ' + prev.name + '</span><span class="btn secondary nx">' + next.n + ' ' + next.name + ' ›</span></div>' +
+      '</div></div></div></figure>';
+  }
+  function heads(o, t) {
+    var list = [
+      ['Vanlig häst', get(7)],
+      ['I raden', mix(get(2), {i:0})],
+      ['I raden + Intressant + Spelbar', get(8)],
+      ['Långt namn i raden', mix(get(9), {r:1})],
+      ['Bet, som i dag', mix(get(11), {b:'4,20'})],
+      ['Bet + Rad', get(3)],
+      ['Bet + Rad, långt namn', mix(get(9), {r:1,b:'12,40',i:0})]
+    ];
+    return '<figure class="frm t-' + t[0] + '" style="width:410px;max-width:100%"><figcaption>Mobil · ' + t[1] + ' · alla huvuden</figcaption><div class="fr mh opt-' + o + '" data-theme="' + t[0] + '">' +
+      list.map(function (c) { return '<div class="slab">' + c[0] + '</div>' + thead(c[1]); }).join('') +
+      '</div></figure>';
+  }
+  function mob(o) {
+    var html = '<div class="phwrap">';
+    THEMES.forEach(function (t) {
+      html += phone(o, t, get(2), 'i raden + Intressant');
+      html += phone(o, t, get(3), 'Bet + Rad');
+      html += heads(o, t);
+    });
+    return html + '</div>';
+  }
+
+  function pills() {
+    return THEMES.map(function (t) {
+      return '<div class="t-' + t[0] + ' fr opt-c" data-theme="' + t[0] + '" style="background:var(--surface);border-radius:8px;margin-top:8px"><div class="pillrow"><b>' + t[1] + '</b><span>I dag: <span class="oldpill">RAD</span></span>' +
+        '<span>Förslag: <span class="rplate" style="background:var(--rblue);color:#FFFFFF">RAD</span></span>' +
+        '<span>Förslag, hästen vann: <span class="rplate" style="background:var(--rblue);color:#FFFFFF">✓ RAD</span></span></div></div>';
+    }).join('');
+  }
+
+  var R = {compare: compare, states: states, desk: desk, mob: mob, pills: pills};
+  document.querySelectorAll('[data-r]').forEach(function (el) {
+    el.innerHTML = R[el.getAttribute('data-r')](el.getAttribute('data-opt'));
+  });
+
+  /* Skala datorramarna så att de får plats i bredden */
+  function fit() {
+    document.querySelectorAll('.fit').forEach(function (w) {
+      var W = w.clientWidth, c = w.firstElementChild;
+      if (!W || !c) return;
+      var s = Math.min(1, W / c.offsetWidth);
+      c.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+      w.style.height = (c.offsetHeight * s) + 'px';
+    });
+  }
+
+  /* Temaväxling */
+  var root = document.documentElement;
+  root.setAttribute('lang', 'sv');
+  function setView(v) {
+    root.setAttribute('data-view', v);
+    root.setAttribute('data-theme', v === 'dark' ? 'dark' : 'light');
+    document.querySelectorAll('.mseg button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-view') === v ? 'true' : 'false');
+    });
+    fit();
+  }
+  document.querySelectorAll('.mseg button').forEach(function (b) {
+    b.addEventListener('click', function () { setView(b.getAttribute('data-view')); });
+  });
+  window.addEventListener('resize', fit);
+  setView('light');
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>
