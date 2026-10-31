@@ -224,7 +224,7 @@ const allText = (page) =>
     const labels = [...clone.querySelectorAll("[aria-label], [title]")].map((e) => `${e.getAttribute("aria-label") ?? ""} ${e.getAttribute("title") ?? ""}`);
     return `${clone.textContent} ${labels.join(" ")}`;
   });
-const LEAK = /\b[1-9]:[ae]\b|Vinnare \d|\bTräff\b|\bMiss\b|\d+\s*\/\s*\d+ topp 3|rätt av|diskad|oplacerad|\bvann\b|5 eller sämre|Placering\b/i;
+const LEAK = /\b[1-9]:[ae]\b|Vinnare \d|\bTräff\b|\bMiss\b|\d+\s*\/\s*\d+ topp 3|\d+ av \d+ rätt|diskad|oplacerad|\bvann\b|5 eller sämre|Placering\b/i;
 const leakCheck = async (page, label, extra = []) => {
   const text = await allText(page);
   const m = LEAK.exec(text.replace(/Chans till topp 3|kom topp 3 i \d+ %|\d+:[ae] i fältet/g, ""));
@@ -236,12 +236,62 @@ const dbTags = async () => {
   const rows = await db.horseComment.findMany({ where: { roundId, kind: "RACE", deletedAt: null }, select: { startId: true, tags: true, text: true, clientId: true } });
   return Object.fromEntries(rows.map((r) => [r.startId, r]));
 };
+const innerHeightOf = (h) => h;
 const col = (page, n, name) => page.getByRole("button", { name: `${name}, ${n} `, exact: false });
 
 try {
   console.log(`Omgång ${round.atgGameId}, ${round.races.map((r) => r.starts.length).join("/")} starter.`);
   await liveScenario();
   const THEMES = ["light", "dark"];
+
+  // ---- Rutan Omgången bredvid resultatlistan ----------------------------------------------
+  if (want("omgang")) {
+    for (const theme of THEMES) {
+      for (const [w, h, touch] of [[1100, 800, false], [1280, 720, false], [1920, 1000, false], [390, 844, true]]) {
+        const { ctx, page } = await newPage(w, h, theme, { touch });
+        await page.evaluate(() => localStorage.removeItem("sv-reveal")).catch(() => {});
+        await openLive(page, "?avd=1");
+        check((await page.locator(".omg").count()) === 0, `Omgången ${w} ${theme}: ingen ruta före Visa resultat`);
+        await page.getByRole("button", { name: "Visa resultat" }).first().click();
+        const panel = page.locator(".omg");
+        await panel.waitFor();
+        await page.waitForFunction(() => document.querySelector(".omg-n b")?.textContent !== "–", null, { timeout: 15_000 }).catch(() => {});
+        const text = await panel.textContent();
+        check(text.includes("Resultat dolt") && !text.includes(nameOf(2, 3)), `Omgången ${w} ${theme}: dolt lopp visar inte vinnaren`);
+        check(text.includes("efter V85-1"), `Omgången ${w} ${theme}: värdet efter det visade loppet (${await page.locator(".omg-n").textContent()})`);
+        check(text.includes("1 av 1 rätt"), `Omgången ${w} ${theme}: summan`);
+        await shot(page, "omgang-1", theme);
+        // Klick på dolt lopp: rutan försvinner och resultatet förblir dolt.
+        await panel.getByRole("button", { name: /^V85-2,/ }).click();
+        await page.getByRole("button", { name: "Visa resultat" }).first().waitFor();
+        check((await page.locator(".omg").count()) === 0, `Omgången ${w} ${theme}: rutan försvinner vid dolt lopp`);
+        await page.getByRole("button", { name: "Visa resultat" }).first().click();
+        await panel.waitFor();
+        const two = await panel.textContent();
+        check(two.includes(nameOf(2, 3)) && two.includes(nameOf(2, 6)), `Omgången ${w} ${theme}: dött lopp visar båda`);
+        await shot(page, "omgang-2", theme);
+        const overflow = await panel.evaluate((e) => e.scrollWidth - e.clientWidth);
+        check(overflow <= 0, `Omgången ${w} ${theme}: rutan får plats (${overflow})`);
+        if (touch) {
+          await page.getByRole("button", { name: "Omgången ↓" }).click();
+          await page.waitForTimeout(300);
+          const top = await panel.evaluate((e) => e.getBoundingClientRect().top);
+          check(top < innerHeightOf(h), `Omgången ${w} ${theme}: hoppknappen visar rutan (${Math.round(top)})`);
+          await shot(page, "omgang-rutan", theme);
+        }
+        await ctx.close();
+      }
+    }
+    await liveScenario({ row: false });
+    const { ctx, page } = await newPage(1280, 720, "light");
+    await openLive(page, "?avd=1");
+    await page.getByRole("button", { name: "Visa resultat" }).first().click();
+    await page.locator(".omg").waitFor();
+    check((await page.locator(".omg").textContent()).includes("Ingen inlämnad rad") && (await page.locator(".omg-v").count()) === 0, "Omgången utan rad: inga ✓ eller ✗");
+    await shot(page, "omgang-utan-rad", "light");
+    await ctx.close();
+    await liveScenario();
+  }
 
   // ---- Skärmbilder av Live -----------------------------------------------------------------
   if (want("live")) {

@@ -170,6 +170,6 @@ export function winnersInRow(row: { selections: Selections } | null | undefined,
     shown: shownRaces.length,
     total: counted.length,
     allShown,
-    text: allShown ? `Raden: ${hits} rätt av ${counted.length}` : `Raden: ${hits} rätt av ${shownRaces.length} visade`,
+    text: `${hits} av ${allShown ? counted.length : shownRaces.length} rätt`,
   };
 }

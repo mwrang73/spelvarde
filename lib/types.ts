@@ -627,6 +627,10 @@ export type SubmittedRowDto = {
 };
 export type SubmittedRowResponse = { submittedRow: SubmittedRowDto };
 
+// GET /api/rounds/[id]/values: värdet på alla rätt (kr) och system kvar efter loppet.
+export type LegValue = { leg: number; value: number; systems: number };
+export type LegValuesResponse = { values: LegValue[] };
+
 // E6: prioriterat lopp, Auto eller valt (hette allgardering före E6b). Ingen NONE (spec 8.5).
 export type AllgMode = "AUTO" | "CHOSEN";
 

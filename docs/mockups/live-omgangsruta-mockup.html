@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<title>Spelvärde · Live: så ligger du till i omgången</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap");
+
+/* ===== Tokens: kopia av styles/tokens.css ===== */
+:root{color-scheme:light;
+--page:#BFC6CD;--bg:#E4E8EC;--surface:#F9FAFB;--surface-2:#EEF1F4;--surface-3:#DDE2E8;--ink:#0D1014;--ink-2:#48505A;--line:#D0D6DD;--line-strong:#8E98A3;--accent:#A65300;--accent-soft:#FCEBD0;--fill:#FFB22E;--fill-ink:#1A1000;--focus:#0B62D6;
+--head:#101317;--head-ink:#FFB22E;--head-ink-2:#C2C8CF;--head-text:#ECE8DD;--head-line:#2E343B;--flap-top:#252A31;--flap-bot:#1A1E23;--glow:rgba(242,154,0,.40);
+--up:#0E7A3B;--up-soft:#DDF3E5;--down:#C42B1F;--down-soft:#FBE1DD;--bet:#0D1014;--bet-ink:#FFFFFF;--bet-board:#F3EFE4;--bet-board-ink:#0C0E11;--rad:#2468B8;--rad-ink:#FFFFFF;
+--shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.08);
+--flap-on:linear-gradient(#FFC85C 50%,#F4A51F 50%);--flap-on-ink:#1A1000;--matrix:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.3px);--matrix-size:4px;--head-title:#FFFFFF;
+--board-btn-line:#4A5058;--head-down:#FF8A7A;--head-up:#46D37E;
+--f-display:"Doto","Courier New",ui-monospace,monospace;--f-name:"Barlow Condensed","Arial Narrow","Roboto Condensed",sans-serif;--f-label:"Barlow Condensed","Arial Narrow",sans-serif;--f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;--f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace}
+:root[data-theme="dark"]{color-scheme:dark;
+--page:#030405;--bg:#0C0E11;--surface:#13161A;--surface-2:#181C21;--surface-3:#222730;--ink:#F3EFE4;--ink-2:#A9B0BA;--line:#262B33;--line-strong:#3D444E;--accent:#FFB22E;--accent-soft:rgba(255,178,46,.14);--fill:#FFB22E;--fill-ink:#1A1000;--focus:#7CC4FF;
+--head:#050607;--head-ink:#FFB22E;--head-ink-2:#B9C0C8;--head-text:#ECE8DD;--head-line:#262B33;--flap-top:#20242A;--flap-bot:#16191D;--glow:rgba(255,178,46,.55);
+--up:#46D37E;--up-soft:rgba(70,211,126,.14);--down:#FF6B5A;--down-soft:rgba(255,107,90,.15);--bet:#F3EFE4;--bet-ink:#0C0E11;--rad:#2F75C6;--rad-ink:#FFFFFF;
+--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 30px rgba(0,0,0,.5)}
+
+/* ===== Mockup-sidan ===== */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:var(--f-body);font-size:15px;-webkit-font-smoothing:antialiased}
+button,table{font:inherit;color:inherit}
+.mk{padding:0 24px 72px;max-width:2000px;margin:0 auto}
+.mt{margin:24px 0 4px;font:700 28px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.lead{max-width:980px;font-size:15px;line-height:1.5;margin:6px 0 0}
+.ctl{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;padding:8px 0;background:var(--page);border-bottom:1px solid var(--line-strong);margin:14px 0 0}
+.ctl .g{display:flex;align-items:center;gap:8px}
+.ctl .g>span{font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.ctl nav{display:flex;gap:4px 14px;flex-wrap:wrap;margin-left:auto}
+.ctl nav a{display:inline-flex;align-items:center;min-height:44px;font:700 13.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.mseg{display:inline-flex;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.mseg button{min-height:44px;padding:0 12px;border:0;background:transparent;font:700 14px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);cursor:pointer}
+.mseg button+button{border-left:1px solid var(--line)}
+.mseg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+h2.sec{margin:52px 0 6px;font:700 25px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.04em;scroll-margin-top:70px}
+h3.part{margin:26px 0 8px;font:700 15px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.sub{margin:0 0 12px;max-width:980px;font-size:14.5px;line-height:1.5}
+.rk2{display:inline-block;margin-left:8px;padding:3px 7px;border-radius:4px;background:var(--fill);color:var(--fill-ink);font:700 13px/1.2 var(--f-label);letter-spacing:.07em;vertical-align:3px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;max-width:1400px;margin:12px 0}
+.cards>div{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--fill);border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.45}
+.cards>div.q{border-left-color:var(--line-strong)}
+.cards>div.bad{border-left-color:var(--down)}
+.cards h3,.cards h4{margin:0 0 4px;font:700 13.5px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.cards ul{margin:0;padding-left:18px}
+.cards li+li{margin-top:3px}
+.cards p{margin:0}
+.tscroll{overflow-x:auto}
+.wtab{border-collapse:collapse;background:var(--surface);font-size:13.5px;margin:10px 0;max-width:1100px;width:100%}
+.wtab caption{caption-side:top;text-align:left;font:700 12px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;padding:0 0 6px}
+.wtab th,.wtab td{padding:7px 10px;border:1px solid var(--line);text-align:left;vertical-align:top}
+.wtab th{background:var(--surface-3);font:700 12px/1.2 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.wtab .n{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.frm{margin:14px 0 0;min-width:0}
+.frm figcaption{margin-bottom:8px;font:700 14px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.fit{width:100%;overflow:hidden}
+.fit.real{overflow-x:auto}
+.bf{border:1px solid #000;border-radius:10px;overflow:hidden;background:#2a2d31;transform-origin:0 0}
+.bf-bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#2a2d31;color:#c9ced4;font:500 12.5px/1 var(--f-body)}
+.bf-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bf-bar i:nth-child(2){background:#febc2e}.bf-bar i:nth-child(3){background:#28c840}
+.bf-bar .url{margin-left:14px;flex:1;max-width:620px;background:#1b1d20;border-radius:6px;padding:5px 10px}
+.phwrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.fphone{width:410px;max-width:100%}
+.ph{width:410px;max-width:100%;border:10px solid #0b0c0e;border-radius:42px;overflow:hidden;background:#0b0c0e}
+.ph-in{width:390px;max-width:100%;height:790px;overflow:hidden}
+.sheet{padding:14px;border-radius:10px;border:1px solid var(--line-strong);background:var(--bg);overflow-x:auto}
+.sgr{display:grid;gap:20px 16px;justify-content:start}
+.slab{min-height:38px;margin-bottom:6px;font:700 13.5px/1.2 var(--f-label);letter-spacing:.03em;color:var(--ink)}
+.slab b{font-family:var(--f-num);font-size:12px;margin-right:3px}
+.q-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px;max-width:980px}
+.q-list li{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:10px 14px;font-size:14.5px;line-height:1.45}
+.q-list b{display:block}
+.fine{margin-top:32px;font-size:13px;line-height:1.5;max-width:980px;color:var(--ink-2)}
+
+/* ===== Från styles/app.css: skal och Live ===== */
+.fr{background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+.brd{background-color:var(--head);background-image:var(--matrix);background-size:var(--matrix-size) var(--matrix-size);color:var(--head-text)}
+.ah-brand{font:800 26px/1 var(--f-display);color:var(--head-ink);letter-spacing:.06em;text-shadow:0 0 10px var(--glow);text-transform:uppercase;margin:0}
+.dhead{height:56px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px}
+.dnav{display:flex;gap:2px;margin-left:12px;flex:1}
+.dnav span{min-height:44px;display:inline-flex;align-items:center;padding:0 14px;font:700 15px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--head-ink-2);border-radius:6px}
+.dnav .cur{color:var(--head-ink);box-shadow:inset 0 -3px 0 var(--fill)}
+.dmeta{font-size:13px;color:var(--head-ink-2)}
+.ah{height:54px;flex:none;display:flex;align-items:center;gap:4px;padding:0 6px}
+.ah-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.ah-title{font:700 19px/1.1 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ah-sub{font:600 12.5px/1.25 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:44px;height:44px;display:inline-grid;place-items:center;color:var(--head-ink-2);flex:none;font-size:26px;line-height:1}
+.btn{min-height:44px;padding:0 16px;border-radius:7px;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;font:700 15.5px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;cursor:pointer;flex:none}
+.btn.secondary{background:linear-gradient(var(--surface),var(--surface-2));border:1px solid var(--line-strong);color:var(--ink);box-shadow:0 3px 0 var(--line-strong)}
+.btn.ghost{background:transparent;color:var(--head-ink);padding:0 8px}
+.nr{display:inline-grid;place-items:center;width:30px;height:36px;position:relative;border-radius:4px;background:linear-gradient(var(--flap-top) 50%,var(--flap-bot) 50%);color:var(--head-ink);font:700 17px/1 var(--f-num);font-variant-numeric:tabular-nums;text-shadow:0 0 8px var(--glow);box-shadow:0 1px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);flex:none}
+.nr::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.nr b{font-weight:700}
+.nr.sm{width:24px;height:28px;font-size:15px}
+.nr.placed{background:var(--flap-on);color:var(--flap-on-ink);text-shadow:none}
+.lband{flex:none;display:flex;gap:16px;padding:8px 16px;height:68px}
+.seg{display:flex;width:300px;flex:none;height:52px;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg>span{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 4px;color:var(--ink-2);white-space:nowrap}
+.seg>span+span{border-left:1px solid var(--line)}
+.seg>.cur{background:var(--fill);color:var(--fill-ink)}
+.seg b{font:700 13.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase}
+.seg small{font:500 10.5px/1 var(--f-num)}
+.ltabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));height:52px;border:1.5px solid var(--line-strong);border-radius:7px;overflow:hidden;background:var(--surface)}
+.lt{min-width:0;display:flex;align-items:center;gap:6px;padding:0 6px;border:0;background:transparent;text-align:left;color:var(--ink);cursor:pointer}
+.lt+.lt{border-left:1px solid var(--line)}
+.lt .lx{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.lt .lx b{display:flex;align-items:center;gap:4px;font:700 14px/1 var(--f-label);letter-spacing:.03em;white-space:nowrap}
+.lt .lx small{font:500 10.5px/1 var(--f-num);color:var(--ink-2);white-space:nowrap;overflow:hidden}
+.lt.cur{background:var(--fill);color:var(--fill-ink)}
+.lt.cur .nr{background:var(--fill-ink);color:var(--fill);text-shadow:none}
+.lt.cur small{color:var(--fill-ink)!important}
+.lt:focus-visible{outline-offset:-3px}
+.w1100 .lt .nr,.w1280 .lt .nr{display:none}
+.w1100 .lt,.w1280 .lt{padding:0 8px}
+.rbar{height:50px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-top:1px solid var(--head-line)}
+.rbar .rt{min-width:0;flex:0 1 340px;display:flex;flex-direction:column;gap:2px}
+.rbar .h{font:700 19px/1.05 var(--f-name);text-transform:uppercase;letter-spacing:.03em;color:var(--head-title);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rbar .rbs{font:600 12px/1.1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--head-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rview{display:flex;flex-direction:column;overflow:hidden}
+.dmain{flex:1;min-height:0;overflow:auto;padding:0 16px 12px}
+
+/* Biljett, RAD, taggar */
+.tk{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:3px;background:var(--bet);color:var(--bet-ink);font:700 11.5px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;flex:none;
+-webkit-mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat;
+mask:radial-gradient(circle 3px at 0 50%,transparent 97%,#000) left/51% 100% no-repeat,radial-gradient(circle 3px at 100% 50%,transparent 97%,#000) right/51% 100% no-repeat}
+.tk b{font:700 12px/1 var(--f-num);letter-spacing:0}
+.tk.y{background:var(--up);color:var(--surface)}
+.tk.n{background:var(--down);color:var(--surface)}
+.rad{display:inline-flex;align-items:center;justify-content:center;height:20px;padding:0 6px;border-radius:4px;background:var(--rad);color:var(--rad-ink);font:700 13px/1 var(--f-label);letter-spacing:.06em;white-space:nowrap;flex:none}
+.tag{display:inline-flex;align-items:center;min-height:18px;padding:1px 7px;border-radius:4px;font:700 10.5px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;background:var(--surface-3);color:var(--ink);flex:none}
+.tag.bad{background:var(--down-soft);color:var(--down)}
+.help{font-size:12.5px;color:var(--ink-2);margin:0}
+
+/* Resultatlistan: mobil (app.css rad 2182–2199) */
+.lres h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.lrl{list-style:none;margin:0;padding:0}
+.lrw{position:relative;display:grid;grid-template-columns:32px 28px minmax(0,1fr) auto;grid-template-areas:"p n h b" "p n d q" "p n t q";column-gap:8px;row-gap:2px;align-items:center;min-height:60px;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.lrw:nth-child(even){background:var(--surface-2)}
+.lrw.top,.lrw.top:nth-child(even){background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--fill)}
+.lrw .lp{grid-area:p;display:grid;place-items:center}
+.lrw .ln{grid-area:n}
+.lrw .lh2{grid-area:h;display:flex;align-items:center;gap:6px;min-width:0}
+.lrw .pn{font:700 17px/1.1 var(--f-name);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lrw .ld{grid-area:d;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.lrw .lb{grid-area:b;display:flex;align-items:center;justify-content:flex-end;gap:4px}
+.lrw .lq{grid-area:q;justify-self:end}
+.lrw .lt2{grid-area:t;display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden}
+.lrw .lt2:empty{display:none}
+.lrw .plc{display:inline-grid;place-items:center;width:28px;height:28px;font:700 14px/1 var(--f-num);color:var(--ink-2)}
+.lmore{font:700 11px/1 var(--f-num);color:var(--ink-2);flex:none}
+.lres-help{margin:10px 12px}
+.lrh{display:none}
+
+/* Resultatlistan: dator. Samma rader, kolumnerna styrs per fönsterbredd. */
+.bf .lrw,.bf .lrh{column-gap:8px;grid-template-areas:none}
+.bf .lrw{min-height:0;height:56px;padding:0 12px}
+.bf .lrw .lp,.bf .lrw .ln,.bf .lrw .lh2,.bf .lrw .ld,.bf .lrw .lb,.bf .lrw .lq,.bf .lrw .lt2{grid-area:auto}
+.bf .lrw .lb{justify-content:flex-start}
+.bf .lrw .lq{justify-self:start}
+.bf .lrh{display:grid;padding:8px 12px 6px;font:700 11.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.w1100 .lrw,.w1100 .lrh{grid-template-columns:40px 36px minmax(140px,1.5fr) minmax(96px,1fr) 130px 62px minmax(110px,1.2fr)}
+.w1280 .lrw,.w1280 .lrh{grid-template-columns:48px 40px minmax(180px,1.5fr) minmax(120px,1fr) 150px 70px minmax(140px,1.2fr)}
+.w1920 .lrw,.w1920 .lrh{grid-template-columns:48px 40px minmax(180px,420px) minmax(120px,300px) 150px 70px minmax(140px,1fr)}
+
+/* Mobilens skal */
+.pw{display:flex;flex-direction:column;height:100%}
+.mavs{display:flex;gap:6px;padding:2px 10px 10px;overflow-x:auto;scrollbar-width:none}
+.mavs button{flex:none;height:44px;display:flex;align-items:center;gap:7px;padding:0 9px 0 7px;border:1px solid var(--board-btn-line);border-radius:7px;background:transparent;color:var(--head-text);cursor:pointer}
+.mavs-t{display:flex;flex-direction:column;gap:2px;text-align:left}
+.mavs-n{font:600 13px/1.1 var(--f-body)}
+.mavs-t small{font:500 11px/1.2 var(--f-num);color:var(--head-ink-2);white-space:nowrap}
+.mavs .cur{background:var(--fill);border-color:var(--fill);color:var(--fill-ink)}
+.mavs .cur .nr{background:var(--fill-ink);color:var(--fill);text-shadow:none}
+.mavs .cur small{color:var(--fill-ink)}
+.tstrip-h{flex:none;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 12px;border-top:1px solid var(--head-line)}
+.score{font:700 13px/1.15 var(--f-label);letter-spacing:.04em;text-transform:uppercase;color:var(--head-ink);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.score.dim{color:var(--head-ink-2)}
+.jump{margin-left:auto;min-height:44px;padding:0 0 0 12px;border:0;background:transparent;color:var(--head-text);font:700 13px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.pb{flex:1;min-height:0;overflow-y:auto;position:relative;background:var(--bg)}
+
+/* Platshållare för lopp utan visat resultat */
+.nores{margin:16px 0;padding:20px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:8px;max-width:620px}
+.nores h3{margin:0 0 4px;font:700 18px/1.15 var(--f-name);text-transform:uppercase;letter-spacing:.03em}
+.nores p{margin:0;font-size:13.5px;line-height:1.45;color:var(--ink-2)}
+.ph .nores{margin:12px}
+
+/* ===== NYTT: delningen ===== */
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;column-gap:16px;align-items:start}
+.opt-c .dgrid{grid-template-columns:minmax(0,1fr) 360px}
+.opt-c .seg{width:360px}
+.dside{position:sticky;top:8px;margin-top:8px}
+.ph .mside{margin:12px}
+
+/* ===== NYTT: rutan, gemensamt ===== */
+.omg{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.ol,.otl{list-style:none;margin:0;padding:0}
+.ob-v{padding:9px 12px 8px}
+.ob-l{display:flex;justify-content:space-between;gap:8px;font:600 12px/1 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--head-ink-2)}
+.ob-l b{font-weight:700;color:var(--head-text)}
+.ob-n{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:5px}
+.ob-n b{font:700 30px/1 var(--f-num);font-variant-numeric:tabular-nums;color:var(--head-ink);text-shadow:0 0 10px var(--glow);white-space:nowrap}
+.ob-n span{font:500 12.5px/1 var(--f-num);font-variant-numeric:tabular-nums;color:var(--head-text);white-space:nowrap}
+.ob-miss{margin:5px 0 0;font-size:12.5px;line-height:1.3;color:var(--head-text)}
+.ob-r{display:flex;align-items:center;gap:7px;min-height:32px;padding:0 12px;border-top:1px solid var(--head-line)}
+.ob-thin .ob-r{border-top:0}
+.ob-r>b{font:700 15px/1 var(--f-label);letter-spacing:.03em;color:var(--head-title);white-space:nowrap}
+.ob-x{margin-left:auto;font:700 12.5px/1 var(--f-label);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;color:var(--head-ink-2)}
+.ob-x.dn{color:var(--head-down)}
+.ob-x.up{color:var(--head-up)}
+.o-none{font:600 13px/1 var(--f-label);letter-spacing:.05em;text-transform:uppercase;color:var(--head-ink-2)}
+.o-leg{font:700 14px/1 var(--f-label);letter-spacing:.03em;white-space:nowrap}
+.o-nm{font:700 16px/1.1 var(--f-name);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.o-tx{font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.o-tx.struck{text-decoration:line-through}
+.o-v{width:22px;height:22px;display:grid;place-items:center;border-radius:4px;font:700 14px/1 var(--f-body);flex:none}
+.o-v.y{background:var(--up);color:var(--surface)}
+.o-v.n{background:var(--down);color:var(--surface)}
+.nr.off{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-strong);opacity:.65}
+.nr.off::after{background:var(--line-strong)}
+.pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--down);margin-right:5px;animation:sv-pulse 1.4s infinite}
+@keyframes sv-pulse{50%{opacity:.35}}
+
+/* Rad per lopp (A och C) */
+.ol>li{border-bottom:1px solid var(--line);min-width:0}
+.ol>li:last-child{border-bottom:0}
+.orow{display:grid;grid-template-columns:52px 24px minmax(0,1fr) 22px;column-gap:8px;align-items:center;width:100%;min-height:44px;padding:0 10px 0 0;border:0;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer}
+div.orow{cursor:default}
+.ol>li:nth-child(even) .orow{background:var(--surface-2)}
+.orow .o-leg{align-self:stretch;display:grid;place-items:center;background:var(--surface-3)}
+.ol>li .orow.cur{background:var(--surface-3)}
+.orow.cur .o-leg{background:var(--fill);color:var(--fill-ink)}
+.orow:focus-visible,.ot:focus-visible{outline-offset:-3px}
+@media (hover:hover){button.orow:hover,.ol>li:nth-child(even) button.orow:hover{background:var(--surface-3)}button.ot:hover{box-shadow:inset 0 0 0 1px var(--line-strong)}}
+.norow .orow{grid-template-columns:52px 24px minmax(0,1fr)}
+.norow .o-v{display:none}
+
+/* Alternativ C: kolumn med värde */
+.och{display:grid;grid-template-columns:52px minmax(0,1fr) auto;column-gap:8px;padding:7px 10px 5px 0;background:var(--surface-2);border-bottom:1px solid var(--line-strong);font:700 11.5px/1 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.och span:first-child{text-align:center}
+.ol-c .orow{grid-template-columns:52px 24px minmax(0,1fr) 22px 72px}
+.norow .ol-c .orow{grid-template-columns:52px 24px minmax(0,1fr) 72px}
+.o-val{grid-column:-2;display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.o-val b{font-weight:500;font-size:13px;line-height:1;color:var(--ink-2)}
+.o-val small{font-weight:500;font-size:10.5px;line-height:1;color:var(--ink-2)}
+.o-val.now b{font-weight:700;font-size:15px;color:var(--ink)}
+
+/* Alternativ B: rutor */
+.otl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line)}
+.otl>li{min-width:0}
+.ot{display:flex;flex-direction:column;gap:4px;width:100%;height:100%;min-height:64px;padding:6px 8px;border:0;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer}
+div.ot{cursor:default}
+.ot.y{background:var(--up-soft)}
+.ot.n{background:var(--down-soft)}
+.ot-t{display:flex;align-items:center;justify-content:space-between;height:22px}
+.ot-t .o-leg{padding:3px 5px;margin-left:-5px;border-radius:3px}
+.ot-b{display:flex;align-items:center;gap:6px;min-width:0;height:28px}
+.ot.cur{box-shadow:inset 0 0 0 3px var(--fill)}
+.ot.cur .o-leg{background:var(--fill);color:var(--fill-ink)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:600px){.mk{padding:0 12px 56px}.ctl{position:static}.ctl nav{margin-left:0}}
+</style>
+
+<main class="mk">
+  <h1 class="mt">Live: så ligger du till i omgången</h1>
+  <p class="lead">En yta bredvid resultatlistan med alla lopp i V85-omgången, vinnaren i varje lopp, om du hade rätt och värdet på 8 rätt. Rutan fylls på när du själv trycker Visa resultat. Datan är V85 på Bjerke 31 oktober, från ATG. Din rad och övriga hästar i listan är påhittade.</p>
+
+  <div class="cards">
+    <div>
+      <h3>A · En rad per lopp <span class="rk2">Rekommenderas</span></h3>
+      <p>Värdet överst på tavlan, sedan en tät rad per lopp. Bredden är exakt fasradens 300 px, så rutan står rakt under den. Lättast att läsa av.</p>
+    </div>
+    <div class="q">
+      <h3>B · Rutor per lopp</h3>
+      <p>Två spalter med fyra rutor och värdet längst ned. Kortast i höjd, särskilt i mobilen, men läses i sicksack, har kortare namn och blir mer färgfläckigt.</p>
+    </div>
+    <div class="q">
+      <h3>C · Värdetrappan</h3>
+      <p>En rad per lopp med värde och system för varje lopp, som en tabell. Visar hur värdet växer, men är bredare (360 px), har inget stort värde och ger fler siffror att läsa.</p>
+    </div>
+  </div>
+
+  <div class="ctl">
+    <div class="g"><span id="tl">Tema</span>
+      <div class="mseg" role="group" aria-labelledby="tl">
+        <button type="button" data-view="light" aria-pressed="true">Ljust</button>
+        <button type="button" data-view="dark" aria-pressed="false">Mörkt</button>
+      </div>
+    </div>
+    <div class="g"><span id="ll">Läge i ramarna</span>
+      <div class="mseg" role="group" aria-labelledby="ll">
+        <button type="button" data-preset="a" aria-pressed="false">Mitt i</button>
+        <button type="button" data-preset="b" aria-pressed="false">Ingen rad</button>
+        <button type="button" data-preset="c" aria-pressed="true">Spräckt</button>
+        <button type="button" data-preset="d" aria-pressed="false">Alla klara</button>
+      </div>
+    </div>
+    <div class="g"><span id="sl">Skala</span>
+      <div class="mseg" role="group" aria-labelledby="sl">
+        <button type="button" data-scale="fit" aria-pressed="true">Anpassa</button>
+        <button type="button" data-scale="real" aria-pressed="false">100 %</button>
+      </div>
+    </div>
+    <nav aria-label="Avsnitt">
+      <a href="#gem">Gemensamt</a><a href="#alt-a">A</a><a href="#alt-b">B</a><a href="#alt-c">C</a><a href="#fragor">Frågor</a>
+    </nav>
+  </div>
+
+  <h2 class="sec" id="gem">Gemensamt för alla alternativ</h2>
+  <div class="cards">
+    <div>
+      <h4>Loppet du tittar på</h4>
+      <p>Lopp-etiketten fylls med bärnsten, precis som den valda fliken i lopp-raden ovanför, och raden tonas. Bärnsten betyder redan "vald navigering" i appen, så ingen ny regel behövs. Skärmläsaren får "Visas nu".</p>
+    </div>
+    <div>
+      <h4>Klicka på ett lopp: ja</h4>
+      <p>Hela raden byter till loppet, samma sak som fliken. Praktiskt i mobilen där flikarna är bortsvepta. Ett klick visar aldrig ett dolt resultat. Går du till ett dolt lopp visas kolumnerna som vanligt, och rutan kommer tillbaka när du trycker Visa resultat. Pröva i ramarna: klicka på en rad.</p>
+    </div>
+    <div>
+      <h4>Mobil: rutan ligger under listan</h4>
+      <p>Med 10–15 hästar hamnar den under skärmkanten. Därför får raden över listan knappen "Omgången ↓", som hoppar ned till rutan. Ett klick på ett lopp i rutan går tillbaka upp till listan.</p>
+    </div>
+    <div>
+      <h4>Datorn: rutan står kvar</h4>
+      <p>Listan skrollar, rutan står kvar. Med rutan på skärmen tas "Raden: 5 rätt av 6 visade" bort ur rubrikraden, eftersom samma sak står i rutan. I mobilen ligger den kvar över listan.</p>
+    </div>
+  </div>
+
+  <div class="tscroll">
+  <table class="wtab">
+    <caption>Så delas bredden (innehållsbredd är fönstret minus 32 px, mellanrummet är 16 px)</caption>
+    <thead><tr><th>Fönster</th><th>Lista + ruta</th><th>Häst</th><th>Kusk</th><th>Taggar</th><th>Så här</th></tr></thead>
+    <tbody>
+      <tr><td>I dag, 1280 och 1920</td><td class="n">1200</td><td class="n">332</td><td class="n">222</td><td class="n">266</td><td>Ingen ruta. Listan tar högst 1200 px.</td></tr>
+      <tr><td>1100, A och B</td><td class="n">752 + 300</td><td class="n">167</td><td class="n">111</td><td class="n">134</td><td>Plac 40, Nr 36, Bet 130 och Rad 62 krymper. Annars får listan inte plats.</td></tr>
+      <tr><td>1280, A och B</td><td class="n">932 + 300</td><td class="n">224</td><td class="n">149</td><td class="n">179</td><td>Listans kolumner är oförändrade. Häst rymmer ett namn i 17 px med god marginal.</td></tr>
+      <tr><td>1920, A och B</td><td class="n">1572 + 300</td><td class="n">420</td><td class="n">300</td><td class="n">472</td><td>Listan går ända fram till rutan, så att ytorna linjerar med lopp-raden. Häst och Kusk får ett tak, resten går till Taggar. Kusken hamnar inte långt från namnet.</td></tr>
+      <tr><td>1100, C</td><td class="n">692 + 360</td><td class="n">143</td><td class="n">96</td><td class="n">114</td><td>Går, men Kusk och Häst blir korta.</td></tr>
+      <tr><td>1280, C</td><td class="n">872 + 360</td><td class="n">199</td><td class="n">133</td><td class="n">160</td><td>Fasraden görs 360 px bred på Live, annars linjerar inte rutan.</td></tr>
+      <tr><td>1920, C</td><td class="n">1512 + 360</td><td class="n">420</td><td class="n">300</td><td class="n">412</td><td>Som A, med fasraden 360 px.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <section>
+    <h2 class="sec" id="alt-a">A · En rad per lopp <span class="rk2">Rekommenderas</span></h2>
+    <div class="cards">
+      <div><h4>Ger</h4><ul><li>Svaret på "hur går det?" syns först: värdet, sedan antal rätt, sedan loppen uppifrån och ned.</li><li>Kolumner som linjerar. Lopp, nummer, namn och ✓/✗ står på samma lodräta linjer.</li><li>Rutan står exakt under fasraden, så att högerkanten och vänsterkanten stämmer med lopp-raden.</li><li>Värdet överst syns direkt när man hoppar till rutan i mobilen.</li></ul></div>
+      <div class="bad"><h4>Kostar</h4><ul><li>Bara senaste värdet visas, inte hur det har växt.</li><li>Högst av de tre i mobil: tavlan plus 8 × 44 px.</li><li>Fönster på 1100–1279 px kräver lite smalare fasta kolumner i listan.</li></ul></div>
+    </div>
+    <h3 class="part">Dator 1280 × 720: lista 932 px, ruta 300 px</h3><div data-frames="desk" data-opt="a" data-w="1280" data-h="720"></div>
+    <h3 class="part">Dator 1920 × 1000: lista 1572 px, ruta 300 px</h3><div data-frames="desk" data-opt="a" data-w="1920" data-h="1000"></div>
+    <h3 class="part">Dator 1100 × 720: minsta fönster med kolumner</h3><div data-frames="desk" data-opt="a" data-w="1100" data-h="720"></div>
+    <h3 class="part">Mobil 390 px</h3><div data-frames="phones" data-opt="a"></div>
+    <h3 class="part">Alla lägen</h3><div data-frames="states" data-opt="a"></div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="alt-b">B · Rutor per lopp</h2>
+    <div class="cards">
+      <div><h4>Ger</h4><ul><li>Lägsta höjd: fyra rader rutor. I mobilen ryms alla lopp och värdet på en skärm utan skrollning.</li><li>Tonade rutor ger en snabb bild av rätt och fel på avstånd.</li><li>Värdet sist fungerar som en summa.</li></ul></div>
+      <div class="bad"><h4>Kostar</h4><ul><li>Läses i sicksack: V85-1, V85-2, sedan ned en rad.</li><li>Rutorna är smala, så namnet får ca 100 px. Långa namn kortas oftare.</li><li>Grönt, rött och tomt i rutnät ser stökigare ut än rader.</li><li>Med värdet längst ned hamnar det sist i blicken.</li></ul></div>
+    </div>
+    <h3 class="part">Dator 1280 × 720: lista 932 px, ruta 300 px</h3><div data-frames="desk" data-opt="b" data-w="1280" data-h="720"></div>
+    <h3 class="part">Dator 1920 × 1000: lista 1572 px, ruta 300 px</h3><div data-frames="desk" data-opt="b" data-w="1920" data-h="1000"></div>
+    <h3 class="part">Mobil 390 px</h3><div data-frames="phones" data-opt="b"></div>
+    <h3 class="part">Alla lägen</h3><div data-frames="states" data-opt="b"></div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="alt-c">C · Värdetrappan</h2>
+    <div class="cards">
+      <div><h4>Ger</h4><ul><li>Du ser hur värdet växer lopp för lopp: 37, 99, 347, 609, 1 335, 1 466 kr. Det visar också vilket lopp som gav skrällen.</li><li>Ren tabell utan separat värdeyta. Senaste värdet är starkast.</li><li>ATG lämnar redan värde och system per lopp, så inget behöver sparas.</li></ul></div>
+      <div class="bad"><h4>Kostar</h4><ul><li>Fler siffror, och det aktuella värdet är inte det första man ser. I "ingen rad"-läget är siffrorna huvudsaken.</li><li>Rutan behöver 360 px, så listan tappar 60 px, och fasraden måste breddas för att linjera.</li><li>Antal system står utan enhet i små siffror.</li></ul></div>
+    </div>
+    <h3 class="part">Dator 1280 × 720: lista 872 px, ruta 360 px</h3><div data-frames="desk" data-opt="c" data-w="1280" data-h="720"></div>
+    <h3 class="part">Dator 1920 × 1000: lista 1512 px, ruta 360 px</h3><div data-frames="desk" data-opt="c" data-w="1920" data-h="1000"></div>
+    <h3 class="part">Mobil 390 px</h3><div data-frames="phones" data-opt="c"></div>
+    <h3 class="part">Alla lägen</h3><div data-frames="states" data-opt="c"></div>
+  </section>
+
+  <section>
+    <h2 class="sec" id="fragor">Öppna frågor</h2>
+    <ul class="q-list">
+      <li><b>1. Vilket alternativ?</b>Mitt förslag: A. Vill du se trappan senare kan värdet per lopp läggas till i A som en utfällning, men jag skulle börja utan.</li>
+      <li><b>2. Vilket lopp avgör värdet när du hoppar över ett lopp?</b>Har du visat V85-1, V85-2 och V85-4 men inte V85-3. Mitt förslag: det högsta visade loppet, här värdet efter V85-4, så att det aldrig går baklänges om du öppnar V85-3 efteråt. Texten "efter V85-4" säger vilket det är, och V85-3 står som Resultat dolt.</li>
+      <li><b>3. Är det rätt att rutan försvinner när du klickar dig till ett dolt eller kommande lopp?</b>Då visas kolumnerna för taggning, och de behöver bredden. Mitt förslag: ja, rutan hör till resultatlistan. Du kommer tillbaka med Visa resultat eller genom att välja ett visat lopp i lopp-raden.</li>
+      <li><b>4. Samma ordalydelse överallt?</b>Appen säger i dag "Raden: 5 rätt av 6 visade", du sa "5 av 6 rätt". Mitt förslag: "5 av 6 rätt" både i rutan och över listan i mobilen. På datorn tas raden i rubriken bort när rutan finns.</li>
+      <li><b>5. Vad heter värdet när alla åtta är klara?</b>Mitt förslag: "Utdelning 8 rätt" i stället för "Värde 8 rätt". Det måste kontrolleras mot ATG i kväll att värdet efter V85-8 verkligen är slututdelningen, och vad ATG visar om ingen har 8 rätt. Stämmer det inte behålls "Värde 8 rätt".</li>
+    </ul>
+    <p class="fine">Antaganden: "Kommande lopp står tomma" har jag tolkat som tom bricka och inget vinnarnamn, men med starttiden i rutan, eftersom den redan är känd och inte säger något om utfallet. ✓ och ✗ står alltid som tecken på grön eller röd bakgrund, så att färgen inte är ensam. Starttiderna för V85-1 till V85-6, loppnamnen och hela läget "Alla klara" är påhittade: vinnare och värden i V85-7 och V85-8 finns inte än (3 940 kr / 2 912 system och 12 480 kr / 904 system). Appen läser inte <code>pools.V85.result</code> i dag, så värdet kräver en ny hämtning. Typsnitten hämtas från Google Fonts; utan nät visas reservtypsnitt.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var NB = ' ';
+  var LEGS = [
+    {n:1,t:'15:02',nr:4,name:'J.C.',v:37,s:386931,race:'Bjerkes Stoløp',m:'2100 m auto'},
+    {n:2,t:'15:23',nr:4,name:'Voje Lotta',v:99,s:145479,race:'STL Kallblodsdivisionen',m:'1609 m auto'},
+    {n:3,t:'15:45',nr:11,name:'Urban Tile',v:347,s:41763,race:'STL Bronsdivisionen',m:'2100 m auto'},
+    {n:4,t:'16:07',nr:2,name:'Daim Brodda',v:609,s:23801,race:'Kuskarnas pokal',m:'2100 m volt'},
+    {n:5,t:'16:29',nr:6,name:'Neil Jung',v:1335,s:10870,race:'STL Silverdivisionen',m:'1609 m auto'},
+    {n:6,t:'16:51',nr:3,name:'Peggy Boko',v:1466,s:9898,race:'Stoeliten',m:'2100 m auto'},
+    {n:7,t:'17:16',nr:5,name:'Tangen Nils',v:3940,s:2912,race:'STL Gulddivisionen',m:'2100 m auto'},
+    {n:8,t:'17:38',nr:8,name:'Grisle Tore G.L.',v:12480,s:904,race:'Bjerkes höstpokal',m:'2100 m auto'}
+  ];
+  var POOL = ['Baias','Gigant Tider','Tordenskjold','Bare Mattis','Holter Odin','Prinsesse Ness Tjo','Tripsson O.K.','Alm Kevin','Lome Elden','Stjerne Tjo','Norheim Svarten','Moe Odin','Bork Rapp','Rigel','Sjø Tinden','Ingbest','Ulv Tore','Tekno Eld','Vestar','Hovin Jerven','Ness Tora','Bokli Odin','Lykke Lotta','Solbris','Kleiva Ole','Dag Rapp','Tuva Lykke','Elding','Hjort Stjerne','Fram Tor','Glimt','Bjørke Rask','Odd Mattis','Storm Nils','Nordsjø','Rauland Tor','Fjell Kevin','Aasa Lotta','Kongen Tider','Kvikk Ola','Rask Tjo'];
+  var DRIVERS = ['Magnus Teien Gundersen','Tom Erik Solberg','Gunnar Austevoll','Øystein Tjomsland','Vidar Hop','Geir Mikkelsplass','Kristian Malmin','Lars Anvar Kolle','Frode Hamre'];
+  var PHASES = [['Analys','sön-tors'],['Odds','tors 18:00'],['Live','lör 15:00'],['Klart','lör']];
+  var SIX = [1,2,3,4,5,6], ALL = [1,2,3,4,5,6,7,8];
+
+  var PRE = {
+    a: {rev:[1,2],leg:2,row:true},
+    b: {rev:SIX,leg:6,row:false},
+    c: {rev:SIX,leg:6,row:true},
+    d: {rev:ALL,leg:8,row:true,eight:true},
+    e: {rev:[1,2,4],leg:4,row:true},
+    f: {rev:ALL,leg:8,row:true,eight:true,miss:[]},
+    g: {rev:[1,2,3,4],leg:4,row:true,run:5,over:{2:{dead:'7 Holter Odin'},4:{name:'Prinsesse Ness Tjo af Bjerke'},6:{off:1}}},
+    h: {rev:SIX,leg:6,row:true,noValue:true}
+  };
+  var SHEET = [
+    ['a','Mitt i omgången. Två visade, raden lever. V85-3 till V85-6 är körda men dolda.','a'],
+    ['b','Ingen inlämnad rad. Bara vinnare och värde, ingen ✓/✗.','b'],
+    ['c','Spräckt rad, 5 av 6. Nuläget. Värdet visas ändå.','c'],
+    ['d','Alla åtta klara. V85-7 och V85-8 är påhittade.','d'],
+    ['e','Lucka. V85-3 är inte visat, så missen syns inte.','e'],
+    ['f','Alla rätt.','f'],
+    ['g','Dött lopp, långt namn, pågående och inställt lopp.','g'],
+    ['h','Värdet gick inte att hämta. Allt annat fungerar.','h']
+  ];
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function num(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, NB); }
+  function kr(n) { return num(n) + NB + 'kr'; }
+  function legName(n) { return 'V85-' + n; }
+  function over(st, n) { return (st.over && st.over[n]) || {}; }
+  function isOff(st, n) { return !!over(st, n).off; }
+  function isRev(st, n) { return st.rev.indexOf(n) >= 0 && !isOff(st, n); }
+  function isDone(st, n) { return n <= 6 || !!st.eight; }
+  function misses(st) { return st.miss || [3]; }
+  function isHit(st, n) { return misses(st).indexOf(n) < 0; }
+
+  function summary(st) {
+    var shown = ALL.filter(function (n) { return isRev(st, n); });
+    var total = ALL.filter(function (n) { return !isOff(st, n); }).length;
+    var hits = shown.filter(function (n) { return isHit(st, n); });
+    var miss = shown.filter(function (n) { return !isHit(st, n); });
+    return {shown: shown, hits: hits.length, firstMiss: miss[0], last: shown[shown.length - 1], all: shown.length === total};
+  }
+
+  function flap(n, size, cls) {
+    return '<span class="nr ' + (size || '') + ' ' + (cls || '') + '"><b>' + n + '</b></span>';
+  }
+  var EMPTY = '<span class="nr sm off"></span>';
+
+  /* Radens läge i rutan */
+  function cell(st, n) {
+    var d = LEGS[n - 1], o = over(st, n);
+    if (o.off) return {k:'off', text:'Inställt', sr:'inställt'};
+    if (isRev(st, n)) {
+      var name = o.name || d.name;
+      if (o.dead) name += ' · ' + o.dead;
+      return {k:'win', nr:d.nr, name:name, hit:isHit(st, n), val:d};
+    }
+    if (st.run === n) return {k:'run', text:'<i class="pulse" aria-hidden="true"></i>Pågår', sr:'pågår'};
+    if (isDone(st, n)) return {k:'hid', text:'Resultat dolt', sr:'resultatet är dolt'};
+    return {k:'fut', text:'Start ' + d.t, sr:'startar ' + d.t};
+  }
+  function ariaRow(st, n, c) {
+    var s = legName(n) + ', ';
+    if (c.k === 'win') s += 'vinnare ' + c.nr + ' ' + c.name + (st.row ? (c.hit ? ', rätt' : ', fel') : '');
+    else s += c.sr;
+    if (st.leg === n) s += '. Visas nu';
+    return s;
+  }
+  function verdict(st, c) {
+    if (!st.row || c.k !== 'win') return '<span class="o-v"></span>';
+    return c.hit ? '<span class="o-v y" aria-hidden="true">✓</span>' : '<span class="o-v n" aria-hidden="true">✗</span>';
+  }
+  function wrapOpen(live, cls, st, n, c) {
+    var attrs = ' class="' + cls + (st.leg === n ? ' cur' : '') + '"' + (st.leg === n ? ' aria-current="true"' : '') + ' aria-label="' + ariaRow(st, n, c) + '"';
+    return live ? '<button type="button" data-leg="' + n + '"' + attrs + '>' : '<div' + attrs + '>';
+  }
+  function wrapClose(live) { return live ? '</button>' : '</div>'; }
+  function nameCell(c) {
+    if (c.k === 'win') return '<span class="o-nm" title="' + c.name + '">' + c.name + '</span>';
+    return '<span class="o-tx' + (c.k === 'off' ? ' struck' : '') + '">' + c.text + '</span>';
+  }
+  function flapCell(c) { return c.k === 'win' ? flap(c.nr, 'sm') : EMPTY; }
+
+  /* Tavlans två delar */
+  function valueBlock(st) {
+    var s = summary(st);
+    var final = s.all && st.eight;
+    var label = final ? 'Utdelning 8 rätt' : 'Värde 8 rätt';
+    if (st.noValue) {
+      return '<div class="ob-v"><div class="ob-l"><span>' + label + '</span></div><div class="ob-n"><b>–</b></div><p class="ob-miss">Värdet kunde inte hämtas. Det försöks igen när nästa lopp är klart.</p></div>';
+    }
+    var d = LEGS[s.last - 1];
+    return '<div class="ob-v"><div class="ob-l"><span>' + label + '</span><span>efter ' + legName(s.last) + '</span></div>' +
+      '<div class="ob-n"><b>' + kr(d.v) + '</b><span>' + num(d.s) + NB + 'system</span></div></div>';
+  }
+  function radLine(st) {
+    if (!st.row) return '<div class="ob-r"><span class="o-none">Ingen inlämnad rad</span></div>';
+    var s = summary(st), x;
+    if (s.firstMiss) x = '<span class="ob-x dn">✗ Spräckt i ' + legName(s.firstMiss) + '</span>';
+    else if (s.all) x = '<span class="ob-x up">✓ Alla rätt</span>';
+    else x = '<span class="ob-x">Alla rätt hittills</span>';
+    return '<div class="ob-r"><span class="rad">RAD</span><b>' + s.hits + ' av ' + s.shown.length + ' rätt</b>' + x + '</div>';
+  }
+
+  /* A */
+  function panelA(st, live) {
+    var rows = ALL.map(function (n) {
+      var c = cell(st, n);
+      return '<li>' + wrapOpen(live, 'orow', st, n, c) + '<span class="o-leg">' + legName(n) + '</span>' + flapCell(c) + nameCell(c) + verdict(st, c) + wrapClose(live) + '</li>';
+    }).join('');
+    return '<section class="omg' + (st.row ? '' : ' norow') + '" aria-label="Omgången"><div class="brd ob">' + valueBlock(st) + radLine(st) + '</div><ol class="ol">' + rows + '</ol></section>';
+  }
+  /* B */
+  function panelB(st, live) {
+    var rows = ALL.map(function (n) {
+      var c = cell(st, n), tone = (st.row && c.k === 'win') ? (c.hit ? ' y' : ' n') : '';
+      return '<li>' + wrapOpen(live, 'ot' + tone, st, n, c) +
+        '<span class="ot-t"><span class="o-leg">' + legName(n) + '</span>' + ((st.row && c.k === 'win') ? verdict(st, c) : '') + '</span>' +
+        '<span class="ot-b">' + flapCell(c) + nameCell(c) + '</span>' + wrapClose(live) + '</li>';
+    }).join('');
+    return '<section class="omg' + (st.row ? '' : ' norow') + '" aria-label="Omgången"><div class="brd ob ob-thin">' + radLine(st) + '</div><ol class="otl">' + rows + '</ol><div class="brd ob">' + valueBlock(st) + '</div></section>';
+  }
+  /* C */
+  function panelC(st, live) {
+    var s = summary(st);
+    var rows = ALL.map(function (n) {
+      var c = cell(st, n), val = '';
+      if (c.k === 'win') {
+        var now = n === s.last;
+        val = st.noValue ? '<span class="o-val"><b>–</b></span>' :
+          '<span class="o-val' + (now ? ' now' : '') + '"><b>' + kr(c.val.v) + '</b><small>' + num(c.val.s) + '</small></span>';
+      }
+      return '<li>' + wrapOpen(live, 'orow', st, n, c) + '<span class="o-leg">' + legName(n) + '</span>' + flapCell(c) + nameCell(c) + verdict(st, c) + val + wrapClose(live) + '</li>';
+    }).join('');
+    var label = (s.all && st.eight) ? 'Utdelning · system' : 'Värde 8 rätt · system';
+    return '<section class="omg' + (st.row ? '' : ' norow') + '" aria-label="Omgången"><div class="brd ob ob-thin">' + radLine(st) + '</div>' +
+      '<div class="och"><span>Lopp</span><span>Vinnare</span><span>' + label + '</span></div><ol class="ol ol-c">' + rows + '</ol></section>';
+  }
+  var PANEL = {a: panelA, b: panelB, c: panelC};
+
+  /* Resultatlistan, påhittat fält utom vinnaren */
+  function listRows(st, n) {
+    var d = LEGS[n - 1];
+    var count = Math.max(10 + n % 3, d.nr);
+    var others = [], i;
+    for (i = 1; i <= count; i++) if (i !== d.nr) others.push(i);
+    var rot = (n * 3) % others.length;
+    others = others.slice(rot).concat(others.slice(0, rot));
+    var order = [d.nr].concat(others);
+    var hit = isHit(st, n);
+    var mine = hit ? [0, 3, 6] : [3, 5];
+    return order.map(function (no, idx) {
+      var dq = n % 2 === 0 && idx === order.length - 1;
+      var horse = POOL[(n * 5 + no * 3) % POOL.length];
+      if (idx === 0) horse = d.name;
+      var driver = DRIVERS[(n + no) % DRIVERS.length];
+      var top = idx < 3;
+      var place = top ? flap(idx + 1, '', 'placed') : '<span class="plc">' + (dq ? 'd' : (idx < 5 ? idx + 1 : '–')) + '</span>';
+      var bet = '';
+      if (n % 2 === 0 && idx === 1) bet = '<span class="tk y">✓ BET<b>3,50</b></span>';
+      if (n % 3 === 0 && idx === 6) bet = '<span class="tk n">✗ BET<b>8,20</b></span>';
+      var rad = '';
+      if (st.row && mine.indexOf(idx) >= 0) rad = '<span class="rad">' + (idx === 0 ? '✓ RAD' : 'RAD') + '</span>';
+      var tags = '';
+      if (idx === 0) tags = '<span class="tag">Stark avslutning</span>';
+      if (idx === 1) tags = '<span class="tag">Dödens</span><span class="tag">Defensivt körd</span><span class="lmore">+1</span>';
+      if (idx === 4) tags = '<span class="tag bad">Galopp</span>';
+      return '<li class="lrw' + (top ? ' top' : '') + '"><span class="lp">' + place + '</span><span class="ln">' + flap(no, 'sm') + '</span>' +
+        '<span class="lh2"><span class="pn" title="' + horse + '">' + horse + '</span>' + (dq ? '<span class="tag bad">Diskad</span>' : '') + '</span>' +
+        '<span class="ld">' + driver + '</span><span class="lb">' + bet + '</span><span class="lq">' + rad + '</span><span class="lt2">' + tags + '</span></li>';
+    }).join('');
+  }
+  function list(st, n) {
+    return '<section class="lres"><h2>Resultat ' + legName(n) + '</h2>' +
+      '<div class="lrh" aria-hidden="true"><span>Plac</span><span>Nr</span><span>Häst</span><span>Kusk</span><span>Bet</span><span>Rad</span><span>Taggar</span></div>' +
+      '<ul class="lrl">' + listRows(st, n) + '</ul><p class="help lres-help">Vill du ändra taggar? Tryck Dölj resultat.</p></section>';
+  }
+  function noResult(st, n) {
+    var d = LEGS[n - 1];
+    if (isDone(st, n)) {
+      return '<div class="nores"><h3>' + legName(n) + ': resultatet är dolt</h3><p>Här står kolumnerna och taggningen, som i dag. Rutan visas inte förrän du trycker Visa resultat, och inget om utfallet syns. Tryck på knappen i ramen för att se rutan fyllas på.</p></div>';
+    }
+    return '<div class="nores"><h3>' + legName(n) + ' startar ' + d.t + '</h3><p>Här står kolumnerna före start, som i dag. Rutan kommer tillbaka när du visar ett resultat.</p></div>';
+  }
+
+  /* Dator */
+  function deskHTML(f) {
+    var st = f.st, n = st.leg, d = LEGS[n - 1], shown = isRev(st, n), done = isDone(st, n);
+    var tabs = ALL.map(function (k) {
+      var bet = (k % 2 === 0 || k % 3 === 0);
+      return '<button type="button" data-leg="' + k + '" class="lt' + (k === n ? ' cur' : '') + '">' + flap(k, 'sm') + '<span class="lx"><b>' + legName(k) + '</b><small>' + LEGS[k - 1].t + (bet ? ' · B' : '') + '</small></span></button>';
+    }).join('');
+    var rail = PHASES.map(function (p, i) { return '<span' + (i === 2 ? ' class="cur"' : '') + '><b>' + p[0] + '</b><small>' + p[1] + '</small></span>'; }).join('');
+    var line, ctrl = '';
+    if (shown) { line = 'startade lör ' + d.t + ' · resultat visas'; ctrl = '<button type="button" class="btn secondary" data-act="hide">Dölj resultat</button>'; }
+    else if (done) { line = 'startade lör ' + d.t + ' · resultat dolt'; ctrl = '<button type="button" class="btn secondary" data-act="reveal">Visa resultat</button>'; }
+    else { line = 'startar lör ' + d.t; }
+    var body = shown
+      ? '<div class="dgrid">' + list(st, n) + '<div class="dside">' + PANEL[f.opt](st, true) + '</div></div>'
+      : noResult(st, n);
+    return '<div class="bf-bar"><i></i><i></i><i></i><span class="url">spelvarde.app/omgang/…/live?avd=' + n + '</span></div>' +
+      '<div class="fr rview opt-' + f.opt + '" style="height:' + f.h + 'px">' +
+      '<div class="brd dhead"><div class="ah-brand">Spelvärde</div><div class="dnav"><span class="cur">Omgång</span><span>Källor</span><span>Statistik</span></div><div class="dmeta">V85 · Bjerke · lör 31 okt</div></div>' +
+      '<div class="brd lband"><div class="ltabs">' + tabs + '</div><div class="seg">' + rail + '</div></div>' +
+      '<div class="brd rbar"><div class="rt"><div class="h">' + legName(n) + ' · ' + d.race + '</div><div class="rbs">' + d.m + ' · ' + line + '</div></div>' + ctrl + '</div>' +
+      '<div class="dmain">' + body + '</div></div>';
+  }
+
+  /* Mobil */
+  function phoneHTML(f) {
+    var st = f.st, n = st.leg, d = LEGS[n - 1], shown = isRev(st, n), done = isDone(st, n);
+    var tabs = ALL.map(function (k) {
+      return '<button type="button" data-leg="' + k + '"' + (k === n ? ' class="cur"' : '') + '>' + flap(k, 'sm') + '<span class="mavs-t"><span class="mavs-n">' + legName(k) + '</span><small>' + LEGS[k - 1].t + '</small></span></button>';
+    }).join('');
+    var ctrl = shown ? '<button type="button" class="btn ghost" data-act="hide">Dölj resultat</button>' : (done ? '<button type="button" class="btn ghost" data-act="reveal">Visa resultat</button>' : '');
+    var sub = shown ? 'startade ' + d.t + ' · visas' : (done ? 'startade ' + d.t + ' · dolt' : 'startar ' + d.t);
+    var s = summary(st);
+    var strip = '';
+    if (shown) {
+      strip = '<div class="brd tstrip-h">' + (st.row ? '<span class="score"><span class="rad">RAD</span>' + s.hits + ' av ' + s.shown.length + ' rätt</span>' : '<span class="score dim">Ingen inlämnad rad</span>') +
+        '<button type="button" class="jump" data-act="jump">Omgången ↓</button></div>';
+    }
+    var body = shown
+      ? list(st, n) + '<div class="mside">' + PANEL[f.opt](st, true) + '</div>'
+      : noResult(st, n);
+    return '<div class="fr pw opt-' + f.opt + '"><div class="brd"><div class="ah"><span class="ibtn" aria-hidden="true">‹</span><div class="ah-t"><div class="ah-title">Live · ' + legName(n) + '</div><div class="ah-sub">' + sub + '</div></div>' + ctrl + '</div>' +
+      '<div class="mavs">' + tabs + '</div></div>' + strip + '<div class="pb">' + body + '</div></div>';
+  }
+
+  /* Ramarna */
+  var FR = [];
+  var currentPreset = 'c';
+  function afterDraw(f) {
+    if (f.kind !== 'phone') return;
+    var m = f.el.querySelector('.mavs'), c = m && m.querySelector('.cur');
+    if (c) m.scrollLeft = c.offsetLeft - m.offsetLeft - 120;
+    if (f.scroll) scrollToPanel(f);
+  }
+  function scrollToPanel(f) {
+    var b = f.el.querySelector('.pb'), p = f.el.querySelector('.mside');
+    if (b && p) b.scrollTop = p.offsetTop - 12;
+  }
+  function draw(f) {
+    f.el.innerHTML = f.kind === 'desk' ? deskHTML(f) : phoneHTML(f);
+    afterDraw(f);
+  }
+  function addDesk(host, opt, w, h) {
+    var fig = document.createElement('figure');
+    fig.className = 'frm';
+    fig.innerHTML = '<div class="fit"><div class="bf w' + w + '" style="width:' + w + 'px"></div></div>';
+    host.appendChild(fig);
+    var f = {id: FR.length, kind: 'desk', opt: opt, w: w, h: h, st: clone(PRE[currentPreset]), el: fig.querySelector('.bf')};
+    f.el.setAttribute('data-fid', f.id);
+    FR.push(f);
+    draw(f);
+  }
+  function addPhone(host, opt, caption, scroll) {
+    var fig = document.createElement('figure');
+    fig.className = 'frm fphone';
+    fig.innerHTML = '<figcaption>' + caption + '</figcaption><div class="ph"><div class="ph-in"></div></div>';
+    host.appendChild(fig);
+    var f = {id: FR.length, kind: 'phone', opt: opt, scroll: scroll, st: clone(PRE[currentPreset]), el: fig.querySelector('.ph-in')};
+    f.el.setAttribute('data-fid', f.id);
+    FR.push(f);
+    draw(f);
+  }
+  function addStates(host, opt) {
+    var w = opt === 'c' ? 360 : 300;
+    var html = '<div class="fr sheet"><div class="sgr" style="grid-template-columns:repeat(auto-fill,' + w + 'px)">';
+    SHEET.forEach(function (s) {
+      html += '<div><div class="slab"><b>' + s[0] + '</b> ' + s[1] + '</div>' + PANEL[opt](PRE[s[2]], false) + '</div>';
+    });
+    host.innerHTML = html + '</div></div>';
+  }
+
+  var hosts = document.querySelectorAll('[data-frames]');
+  Array.prototype.forEach.call(hosts, function (host) {
+    var kind = host.getAttribute('data-frames'), opt = host.getAttribute('data-opt');
+    if (kind === 'desk') addDesk(host, opt, +host.getAttribute('data-w'), +host.getAttribute('data-h'));
+    if (kind === 'phones') {
+      var wrap = document.createElement('div');
+      wrap.className = 'phwrap';
+      host.appendChild(wrap);
+      addPhone(wrap, opt, 'Öppnat: resultatlistan överst', false);
+      addPhone(wrap, opt, 'Efter Omgången ↓: rutan', true);
+    }
+    if (kind === 'states') addStates(host, opt);
+  });
+
+  /* Klick i ramarna */
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-act],[data-leg]') : null;
+    if (!t) return;
+    var host = t.closest('[data-fid]');
+    if (!host) return;
+    var f = FR[+host.getAttribute('data-fid')];
+    var act = t.getAttribute('data-act');
+    if (act === 'jump') { scrollToPanel(f); return; }
+    f.scroll = false;
+    if (act === 'reveal') { f.st.rev.push(f.st.leg); f.st.rev.sort(function (a, b) { return a - b; }); }
+    else if (act === 'hide') { f.st.rev = f.st.rev.filter(function (n) { return n !== f.st.leg; }); }
+    else { f.st.leg = +t.getAttribute('data-leg'); }
+    var fromPanel = !!t.closest('.omg');
+    draw(f);
+    if (f.kind === 'desk') {
+      var back = fromPanel ? f.el.querySelector('.omg [data-leg="' + f.st.leg + '"]') : null;
+      if (back) back.focus({preventScroll: true});
+    }
+    fit();
+  });
+
+  /* Skala */
+  var scaleMode = 'fit';
+  function fit() {
+    document.querySelectorAll('.fit').forEach(function (w) {
+      var c = w.firstElementChild;
+      if (!c) return;
+      if (scaleMode === 'real') {
+        w.classList.add('real');
+        c.style.transform = '';
+        w.style.height = '';
+        return;
+      }
+      w.classList.remove('real');
+      var W = w.clientWidth;
+      if (!W) return;
+      var s = Math.min(1, W / c.offsetWidth);
+      c.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+      w.style.height = (c.offsetHeight * s) + 'px';
+    });
+  }
+  function press(attr, value) {
+    document.querySelectorAll('.mseg button[' + attr + ']').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute(attr) === value ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-view]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var v = b.getAttribute('data-view');
+      document.documentElement.setAttribute('data-theme', v);
+      press('data-view', v);
+    });
+  });
+  document.querySelectorAll('[data-preset]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      currentPreset = b.getAttribute('data-preset');
+      press('data-preset', currentPreset);
+      FR.forEach(function (f) {
+        f.st = clone(PRE[currentPreset]);
+        f.scroll = f.kind === 'phone' && f.el.closest('.fphone').querySelector('figcaption').textContent.indexOf('rutan') >= 0;
+        draw(f);
+      });
+      fit();
+    });
+  });
+  document.querySelectorAll('[data-scale]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      scaleMode = b.getAttribute('data-scale');
+      press('data-scale', scaleMode);
+      fit();
+    });
+  });
+
+  document.documentElement.setAttribute('lang', 'sv');
+  document.documentElement.setAttribute('data-theme', 'light');
+  window.addEventListener('resize', fit);
+  fit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () {
+    fit();
+    FR.forEach(function (f) { if (f.kind === 'phone' && f.scroll) scrollToPanel(f); });
+  });
+})();
+</script>

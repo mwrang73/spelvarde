@@ -124,25 +124,25 @@ describe("winnersInRow (7.4, 10)", () => {
   it("4 visade, 3 rätt", () => {
     const races = legs.map((l) => race(l, l === 4 ? 2 : 1));
     const s = winnersInRow(row, races, [1, 2, 3, 4]);
-    expect(s.text).toBe("Raden: 3 rätt av 4 visade");
+    expect(s.text).toBe("3 av 4 rätt");
     expect(s).toMatchObject({ hits: 3, shown: 4, total: 8, allShown: false });
   });
   it("alla visade", () => {
     const races = legs.map((l) => race(l, l <= 2 ? 2 : 1));
-    expect(winnersInRow(row, races, legs).text).toBe("Raden: 6 rätt av 8");
+    expect(winnersInRow(row, races, legs).text).toBe("6 av 8 rätt");
   });
   it("dolt lopp som vanns räknas inte", () => {
     const races = legs.map((l) => race(l, 1));
-    expect(winnersInRow(row, races, [1]).text).toBe("Raden: 1 rätt av 1 visade");
+    expect(winnersInRow(row, races, [1]).text).toBe("1 av 1 rätt");
   });
   it("visat lopp utan resultat räknas inte", () => {
     const races = [race(1, 1), race(2, 1, { resultAt: null })];
-    expect(winnersInRow(row, races, [1, 2]).text).toBe("Raden: 1 rätt av 1 visade");
+    expect(winnersInRow(row, races, [1, 2]).text).toBe("1 av 1 rätt");
   });
   it("inställt lopp finns inte i nämnaren", () => {
     const races = [race(1, 1), race(2, 1, { cancelled: true })];
     const s = winnersInRow(row, races, [1, 2]);
-    expect(s.text).toBe("Raden: 1 rätt av 1");
+    expect(s.text).toBe("1 av 1 rätt");
     expect(s.allShown).toBe(true);
   });
   it("dött lopp: en vinnare i raden är rätt", () => {

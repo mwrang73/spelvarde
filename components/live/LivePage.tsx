@@ -46,14 +46,17 @@ import {
   WAITING_TEXT,
 } from "@/lib/live-view";
 import { QUICK_TAGS, quickTagForKey } from "@/lib/quick-tags";
+import { roundPanel } from "@/lib/round-panel";
 import { resultMode, type ResultMode } from "@/lib/results-ui";
 import { SUBMITTED_ROW_NONE, winnersInRow } from "@/lib/submitted-row";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { LiveBanners } from "./LiveBanners";
 import { fritextIndex, LiveColumns, tagButtonId } from "./LiveColumns";
 import { LiveResultList } from "./LiveResultList";
+import { LiveRoundPanel } from "./LiveRoundPanel";
 import { LiveSingle, LiveStrip } from "./LiveSingle";
 import { LiveStatus } from "./LiveStatus";
+import { useLegValues } from "./useLegValues";
 import { useLiveTags } from "./useLiveTags";
 
 const COLUMNS_QUERY = "(min-width: 1100px)";
@@ -445,6 +448,21 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
   const rows = useMemo(() => (shown ? liveResultList(race, submitted, (id) => tags.byStart[id]?.tags ?? []) : []), [shown, race, submitted, tags.byStart]);
   const score = shown ? winnersInRow(submitted, races, shownLegs).text : null;
   const count = taggedCount(runners, tags.byStart);
+  const panelInput = { gameType, races, row: submitted, shownLegs, selectedLeg: leg, runningLeg: runningLeg(races, now), now };
+  const lastShownLeg = roundPanel({ ...panelInput, values: [] }).lastShownLeg;
+  const legValues = useLegValues(roundId, shown ? lastShownLeg : null, races.filter((r) => r.resultAt).length);
+  const panel = roundPanel({ ...panelInput, values: legValues.values });
+  const panelRef = useRef<HTMLElement>(null);
+  // Hela raden i rutan byter lopp, som fliken. Ett klick visar aldrig ett dolt resultat.
+  const pickFromPanel = (to: number) => {
+    const target = races.find((r) => r.leg === to);
+    if (!target) return;
+    const stays = isShown(target, shownLegs);
+    if (!stays) pendingFocus.current = "button";
+    else if (!columns) pendingFocus.current = "list";
+    changeLeg(to);
+    document.getElementById("live-panel")?.scrollTo({ top: 0 });
+  };
   const fetchBusy = sync.running;
   const fetchResult = () => void syncResults(roundId, true);
 
@@ -499,7 +517,12 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
     </EmptyState>
   );
   const cancelled = <EmptyState icon={<IconFlag />} title={CANCELLED_TITLE} text={CANCELLED_TEXT} />;
-  const list = <LiveResultList ref={listHeadRef} gameType={gameType} leg={leg} rows={rows} />;
+  const results = (
+    <div className="lres-wrap">
+      <LiveResultList ref={listHeadRef} gameType={gameType} leg={leg} rows={rows} />
+      <LiveRoundPanel ref={panelRef} panel={panel} pending={legValues.pending} onSelect={pickFromPanel} />
+    </div>
+  );
   const earlier = !data.isCurrent && data.currentRoundId;
   const help = helpOpen && (
     <aside className="kbh" aria-label="Tangenter">
@@ -560,7 +583,6 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
             </span>
           </div>
           <div className="rc">{control(false)}</div>
-          {score && <span className="score">{score}</span>}
           {open && !shown ? <LiveStatus roundId={roundId} read={read} /> : <span className="lv-sp" />}
           {open && !shown && !submitted && <span className="rh">{SUBMITTED_ROW_NONE}</span>}
           {open && !shown && (
@@ -577,7 +599,7 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
           )}
           {mode === "before" && !open && before}
           {mode === "cancelled" && cancelled}
-          {shown && list}
+          {shown && results}
         </main>
         {help}
         {live}
@@ -615,7 +637,11 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
         {showSingle && <LiveStrip legLabel={name} runners={runners} byStart={tags.byStart} rowNumbers={inRow} currentId={cur.id} onSelect={(id) => selectHorse(id, true)} />}
         {shown && score && (
           <div className="tstrip-h brd">
+            {submitted && <span className="rad">RAD</span>}
             <span className="score">{score}</span>
+            <button type="button" className="omg-jump" onClick={() => panelRef.current?.scrollIntoView({ block: "start" })}>
+              Omgången ↓
+            </button>
           </div>
         )}
       </div>
@@ -630,7 +656,7 @@ function LiveRace({ data, race, columns, now, tagged, initialHast, onLeg }: Race
         {banners}
         {mode === "before" && !open && before}
         {mode === "cancelled" && cancelled}
-        {shown && list}
+        {shown && results}
         {showSingle && (
           <LiveSingle key={cur.id} ref={headRef} race={race} ctx={ctx} start={cur} mine={tags.byStart[cur.id]} inRow={inRow.includes(cur.number)} ready={ready} scratched={scratched} focusIndex={focusIndex} onToggle={onToggle} fritextSignal={fritextSignal}>
             <LiveStatus roundId={roundId} read={read} />

@@ -455,6 +455,21 @@ function parseStart(x: unknown, raceDate: string, warn: Warn, where: string, gam
   };
 }
 
+// Värdet på alla rätt efter varje klart lopp: pools.<spelform>.result på loppet,
+// { value: { amount } (öre), systems (sträng) }, dvs. potten delat på system kvar.
+// Efter sista loppet är värdet utdelningen. systems kan då ha decimaler ("2,21").
+export function parseLegValues(json: unknown, gameType: string): { leg: number; value: number; systems: number }[] {
+  const out: { leg: number; value: number; systems: number }[] = [];
+  arr(obj(json)?.races).forEach((x, index) => {
+    const result = obj(obj(obj(x)?.pools)?.[gameType])?.result;
+    const res = obj(result);
+    const amount = Number(obj(res?.value)?.amount);
+    const systems = res?.systems === null || res?.systems === undefined ? NaN : Math.round(Number(String(res.systems).replace(",", ".")));
+    if (Number.isFinite(amount) && amount > 0 && Number.isFinite(systems)) out.push({ leg: index + 1, value: Math.round(amount / 100), systems });
+  });
+  return out;
+}
+
 export function parseGame(json: unknown, warn: Warn = () => {}): ParsedGame | null {
   const g = obj(json);
   const id = str(g?.id);

@@ -251,7 +251,7 @@ describe.skipIf(skip)("E8 Inlämnad rad mot Postgres", () => {
     expect(res!.submittedRow).toMatchObject({ roundId, rows: 1, cost: 0.5, rowPrice: 0.5, markedLate: false });
     expect(Object.keys(res!.submittedRow!).sort()).toEqual(["cost", "markedAt", "markedLate", "roundId", "rowPrice", "rows", "selections", "updatedAt"]);
     // RaceDto och SubmittedRowDto passar winnersInRow. Inget är visat än.
-    expect(winnersInRow(res!.submittedRow, res!.races, []).text).toBe("Raden: 0 rätt av 0 visade");
+    expect(winnersInRow(res!.submittedRow, res!.races, []).text).toBe("0 av 0 rätt");
     await deleteSubmittedRow(db, userA, roundId);
   });
 
