@@ -286,7 +286,7 @@ try {
         const d = p.locator("dialog.sheet[open]");
         check((await d.getByRole("button", { name: "Ladda ner ATG-fil" }).count()) === 0 && (await d.getByRole("link", { name: /Öppna ATG/ }).count()) === 0 && (await d.getByText("Så spelar du raden").count()) === 0 && (await d.getByText("inte provad").count()) === 0, `${tag}: efter start finns varken Ladda ner, Öppna ATG, stegen eller banderollen`);
         check(await d.getByText("V85 har startat, så ATG-filen går inte längre att ladda ner.").isVisible(), `${tag}: efter start visas meningen`);
-        check((await d.locator(".btn.primary").textContent()) === "Kopiera texten", `${tag}: efter start är Kopiera texten primär`);
+        check((await d.locator(".shbtns .btn").first().textContent()) === "Kopiera texten", `${tag}: efter start finns Kopiera texten kvar`);
         await shot(p, "e7-ark-efter-start", size, theme);
         await c.close();
       }
@@ -383,7 +383,7 @@ try {
     await page.locator(".budget").first().waitFor();
     await openSheet(page);
     const t = await page.locator("dialog.sheet[open] .ban.warn").first().textContent();
-    const step = await page.locator("dialog.sheet[open] .atg-steps li").last().textContent();
+    const step = await page.locator("dialog.sheet[open] .atg-steps li").nth(3).textContent();
     check(/^2 .* i V85-7 är struken och är inte med i ATG-filen\.$/.test(t), `Gammal rad: "${t}"`);
     check(step.includes(`${2 ** 7 * 2} rader · ${(2 ** 7 * 2 * 0.5).toFixed(2).replace(".", ",")} kr`), `Gammal rad: steg 4 räknas från filen: "${step}"`);
     const [dl] = await Promise.all([page.waitForEvent("download"), dialogButton(page, "Ladda ner ATG-fil").click()]);

@@ -50,6 +50,8 @@
   --gal-ink: #FFFFFF;
   --bet: #0D1014;
   --bet-ink: #FFFFFF;
+  --bet-board: #F3EFE4;
+  --bet-board-ink: #0C0E11;
   --chip-auto-bg: #DCE7F3;
   --chip-auto-ink: #0D2A4A;
   --chip-volte-bg: #FBDCD6;
@@ -154,6 +156,8 @@
   --gal-ink: #1A0400;
   --bet: #F3EFE4;
   --bet-ink: #0C0E11;
+  --bet-board: #F3EFE4;
+  --bet-board-ink: #0C0E11;
   --chip-auto-bg: #13263A;
   --chip-auto-ink: #A8D4FF;
   --chip-volte-bg: #3A1610;

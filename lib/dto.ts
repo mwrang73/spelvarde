@@ -1,12 +1,12 @@
 // Omvandling från Prisma-rader till API-typerna i lib/types.ts.
-import type { Coupon, HorseComment, Mark, ModelVersion, Person, Prisma, Riktodds, Round, Source, UserSettings } from "@prisma/client";
+import type { Coupon, HorseComment, Mark, ModelVersion, Person, Prisma, Riktodds, Round, Source, SubmittedRow, UserSettings } from "@prisma/client";
 import type { HorseStats, PersonStats, YearStats } from "@/lib/atg";
 import { asLegRoles, asSelections, couponCost, rowCount } from "@/lib/coupon";
 import { DEFAULT_GAME_TYPE, isGameType } from "@/lib/game-type";
 import { explain, parseParams, parseWeights, type InputKey, type StoredInputs } from "@/lib/riktodds";
 import { belowGuideline, DEFAULT_GUIDELINE, DEFAULT_TOLERANCE, forslag, oddsClass, spelbar } from "@/lib/spelbar";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
-import type { CommentDto, CouponDto, MarkDto, ModelDto, OddsSource, PersonDto, RiktoddsDetailDto, RoundDto, SettingsDto, SourceDto, ThemeSetting, YearStatsDto } from "@/lib/types";
+import type { CommentDto, CouponDto, MarkDto, ModelDto, OddsSource, PersonDto, RiktoddsDetailDto, RoundDto, SettingsDto, SourceDto, SubmittedRowDto, ThemeSetting, YearStatsDto } from "@/lib/types";
 
 export const dec = (d: Prisma.Decimal | null | undefined): number | null => (d === null || d === undefined ? null : Number(d));
 export const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -99,6 +99,20 @@ export function couponDto(c: Coupon, legs = 8): CouponDto {
     legRoles: asLegRoles(c.legRoles),
     copiedAt: c.copiedAt ? c.copiedAt.toISOString() : null,
     copiedSelections: c.copiedSelections === null ? null : Object.fromEntries(Object.entries(asSelections(c.copiedSelections)).map(([k, v]) => [k, v])),
+  };
+}
+
+// E8: kopian som den sparades. Rader och kostnad räknas inte om.
+export function submittedRowDto(r: SubmittedRow): SubmittedRowDto {
+  return {
+    roundId: r.roundId,
+    selections: Object.fromEntries(Object.entries(asSelections(r.selections)).map(([k, v]) => [k, v])),
+    rows: r.rows,
+    cost: Number(r.cost),
+    rowPrice: Number(r.rowPrice),
+    markedAt: r.markedAt.toISOString(),
+    markedLate: r.markedLate,
+    updatedAt: r.updatedAt.toISOString(),
   };
 }
 

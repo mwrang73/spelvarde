@@ -3,7 +3,8 @@
 // Statistik · Över tid (mockupen efteranalys-tips, del 1 A): 4 eller 8
 // omgångar eller säsongen. Visas från 4 klara omgångar eller 20 Bet.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getCurrent, loadCurrent, subscribeRounds } from "@/components/round/roundStore";
 import { apiGet } from "@/components/api";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Banner, EmptyState, Skeleton } from "@/components/ui/board";
@@ -16,6 +17,11 @@ type Period = "4" | "8" | "alla";
 const KEY = "sv-period";
 
 export function OverTimeView() {
+  // E8 8.2 rad 21: under pågående omgång varnar en rad, men inget spärras.
+  const current = useSyncExternalStore(subscribeRounds, getCurrent, () => null);
+  useEffect(() => {
+    loadCurrent().catch(() => {});
+  }, []);
   const [period, setPeriod] = useState<Period>("8");
   const [data, setData] = useState<Record<string, OverTimeResponse>>({});
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +64,7 @@ export function OverTimeView() {
     <>
       <AppHeader brand title="Statistik" sub="Över tid" />
       <main className="page an" id="main">
+        {current?.phase === "LIVE" && <p className="help pad">Statistiken räknar med alla lopp som har resultat, också de du inte har visat.</p>}
         {seg}
         {error ? (
           <Banner tone="err" className="m10">

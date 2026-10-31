@@ -3,7 +3,7 @@
 import { FEATURES, type Features } from "@/lib/features";
 import { addDaysToDateString, stockholmDateString, stockholmLocalToUtc, stockholmParts } from "@/lib/stockholm-time";
 import { DEFAULT_GAME_TYPE, gameTypeOfId, legName } from "@/lib/game-type";
-import { summaryText } from "@/lib/outcomes";
+import { pollingRaces, summaryText } from "@/lib/outcomes";
 import type { OutcomeSummary } from "@/lib/types";
 
 export type Phase = "ANALYS" | "ODDS" | "LIVE" | "KLART";
@@ -18,12 +18,29 @@ export type PhaseRace = {
   cancelled: boolean;
 };
 
-// D−2 18:00 och D 12:00 för omgångens datum D ("2026-10-24").
+// D−2 18:00 och D 12:00 för omgångens datum D ("2026-10-24"). D 12:00 är bara
+// reserv för Live när omgången saknar lopp (E8 3.4).
 export function phaseBounds(date: string) {
   return {
     oddsFrom: stockholmLocalToUtc(`${addDaysToDateString(date, -2)}T18:00`),
     liveFrom: stockholmLocalToUtc(`${date}T12:00`),
   };
+}
+
+const ms = (d: Date | string) => (typeof d === "string" ? Date.parse(d) : d.getTime());
+
+// Första start (E8 3.4): tidigaste startAt bland ALLA lopp, också inställda.
+// Samma regel som spelstoppet, så att fas och spelstopp aldrig säger olika.
+// null = omgången saknar lopp.
+export function firstStartOf(races: readonly { startAt: Date | string }[]): Date | null {
+  if (!races.length) return null;
+  return new Date(Math.min(...races.map((r) => ms(r.startAt))));
+}
+
+// Loppet som pågår (E8 3.2 punkt 2): senast startade, inte inställt, utan
+// resultat, högst 30 min efter start. null = inget pågår.
+export function runningRace<R extends { startAt: Date | string; hasResult: boolean; cancelled: boolean }>(races: R[], now: Date): R | null {
+  return pollingRaces(races, now).reduce<R | null>((best, r) => (!best || ms(r.startAt) >= ms(best.startAt) ? r : best), null);
 }
 
 export function isRoundFinished(races: PhaseRace[]): boolean {
@@ -40,28 +57,32 @@ export function roundDayPassed(date: string, now: Date): boolean {
 export function computePhase(date: string, races: PhaseRace[], now: Date): Phase {
   if (isRoundFinished(races)) return "KLART";
   const { oddsFrom, liveFrom } = phaseBounds(date);
-  const anyStarted = races.some((r) => r.startAt.getTime() <= now.getTime());
-  if (now.getTime() >= liveFrom.getTime() || anyStarted) return "LIVE";
+  if (now.getTime() >= (firstStartOf(races) ?? liveFrom).getTime()) return "LIVE";
   if (now.getTime() >= oddsFrom.getTime()) return "ODDS";
   return "ANALYS";
 }
 
 export type PhaseStep = { phase: Phase; label: string; state: "done" | "current" | "upcoming"; from: string | null; dayLabel: string };
 
+// "lör 16:20".
+const dayTime = (d: Date) => {
+  const p = stockholmParts(d);
+  return `${p.weekdayShort} ${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+};
+
 // Rutorna i PhaseRail. Analys gäller från hämtningen, därför from = null.
-export function phaseRail(date: string, current: Phase): PhaseStep[] {
+// firstStart = omgångens första start (firstStartOf). null = omgång utan lopp, D 12:00.
+export function phaseRail(date: string, current: Phase, firstStart: Date | null = null): PhaseStep[] {
   const { oddsFrom, liveFrom } = phaseBounds(date);
+  const liveAt = firstStart ?? liveFrom;
   const idx = PHASES.indexOf(current);
-  const day = (d: Date, withTime: boolean) => {
-    const p = stockholmParts(d);
-    return withTime ? `${p.weekdayShort} ${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}` : p.weekdayShort;
-  };
+  const day = (d: Date, withTime: boolean) => (withTime ? dayTime(d) : stockholmParts(d).weekdayShort);
   return PHASES.map((phase, i) => ({
     phase,
     label: PHASE_LABELS[phase],
     state: i < idx ? "done" : i === idx ? "current" : "upcoming",
-    from: phase === "ODDS" ? oddsFrom.toISOString() : phase === "LIVE" ? liveFrom.toISOString() : null,
-    dayLabel: phase === "ANALYS" ? "sön–tors" : phase === "ODDS" ? day(oddsFrom, true) : phase === "LIVE" ? day(liveFrom, true) : day(liveFrom, false),
+    from: phase === "ODDS" ? oddsFrom.toISOString() : phase === "LIVE" ? liveAt.toISOString() : null,
+    dayLabel: phase === "ANALYS" ? "sön–tors" : phase === "ODDS" ? day(oddsFrom, true) : phase === "LIVE" ? day(liveAt, true) : day(liveAt, false),
   }));
 }
 
@@ -82,6 +103,7 @@ export type NextStepKind =
   | "FETCH_ROUND"
   | "RESUME_FETCH"
   | "ALARM"
+  | "LIVE_RUNNING"
   | "LIVE_NEXT_RACE"
   | "LIVE_WAITING"
   | "ODDS_FILL"
@@ -193,26 +215,33 @@ export function nextStep(input: NextStepInput): NextStep {
         action: { type: "link", label: "Visa larmet", href: `${base}/live?avd=${alarm.leg}` },
       };
     }
-    // 4. Nästa lopp som inte har startat.
-    const next = races.find((r) => !r.cancelled && r.startAt.getTime() > now.getTime());
+    // E8 3.5: knapparna leder till Live. Utan flaggan som i E4a.
+    const liveView = f.raceView;
     // E4a: knappen leder till avdelningen (S2), som visar Resultat när loppet har startat.
     const legLink = (leg: number): NextStepAction =>
-      f.raceView ? { type: "link", label: "Till loppet", href: `${base}/lopp/${leg}` } : { type: "link", label: `Till ${legName(roundGame, leg)}`, href: `${base}/avd/${leg}` };
+      liveView ? { type: "link", label: "Till Live", href: `${base}/live?avd=${leg}` } : { type: "link", label: `Till ${legName(roundGame, leg)}`, href: `${base}/avd/${leg}` };
+    // 4a. Ett lopp pågår.
+    const running = liveView ? runningRace(races, now) : null;
+    if (running) {
+      return { kind: "LIVE_RUNNING", title: `${legName(roundGame, running.leg)} pågår`, text: mineSentence(running), action: legLink(running.leg) };
+    }
+    // 4b. Nästa lopp som inte har startat.
+    const next = races.find((r) => !r.cancelled && r.startAt.getTime() > now.getTime());
     if (next) {
       return {
         kind: "LIVE_NEXT_RACE",
         title: `${legName(roundGame, next.leg)} startar ${hhmm(next.startAt)}`,
-        text: f.results ? mineSentence(next) : next.name,
-        action: f.results || f.raceView ? legLink(next.leg) : null,
+        text: f.results || liveView ? mineSentence(next) : next.name,
+        action: f.results || liveView ? legLink(next.leg) : null,
       };
     }
-    // 4b. Alla lopp har startat och något saknar resultat.
+    // 4c. Alla lopp har startat och något saknar resultat.
     const waiting = races.find((r) => !r.cancelled && !r.hasResult);
     return {
       kind: "LIVE_WAITING",
       title: waiting ? `Väntar på resultat i ${legName(roundGame, waiting.leg)}` : "Väntar på resultat",
-      text: f.results ? "Placeringen hämtas automatiskt från ATG." : "Placeringen hämtas när ATG har den.",
-      action: f.results && waiting ? legLink(waiting.leg) : null,
+      text: f.results || liveView ? "Placeringen hämtas automatiskt från ATG." : "Placeringen hämtas när ATG har den.",
+      action: (f.results || liveView) && waiting ? legLink(waiting.leg) : null,
     };
   }
 
@@ -257,6 +286,16 @@ export function nextStep(input: NextStepInput): NextStep {
         action: { type: "link", label: `Till ${legName(roundGame, todo.leg)}`, href: `${base}/avd/${todo.leg}` },
       };
     }
+    // E8 3.5: "odds fylls i torsdag kväll" stämmer bara i fas Analys.
+    if (f.raceView && phase === "ODDS") {
+      const first = firstStartOf(races);
+      return {
+        kind: "ALL_REVIEWED",
+        title: first ? `Allt klart – första start ${dayTime(first)}` : "Allt klart",
+        text: `Alla ${LEG_WORDS[races.length] ?? races.length} lopp är genomgångna. Live börjar när första loppet startar.`,
+        action: null,
+      };
+    }
     return { kind: "ALL_REVIEWED", title: "Allt genomgånget – odds fylls i torsdag kväll", text: `Alla ${LEG_WORDS[races.length] ?? races.length} lopp är genomgångna.`, action: null };
   }
 
@@ -264,10 +303,13 @@ export function nextStep(input: NextStepInput): NextStep {
   if (f.stats) {
     return { kind: "SEE_STATS", title: "Se statistik", text: "Omgången är klar.", action: { type: "link", label: "Se statistik", href: "/statistik" } };
   }
-  const sum = f.results && input.summary ? summaryText(input.summary) : null;
+  // E8 3.5: servern känner inte vilka lopp som är visade på enheten, så med Live
+  // skrivs summeringen inte i kortet. Den skulle avslöja dolda resultat.
+  const sum = f.results && !f.raceView && input.summary ? summaryText(input.summary) : null;
   // Efteranalysen (mockupen efteranalys-tips, del 1 A).
   if (f.results) {
-    return { kind: "SEE_ANALYSIS", title: "Efteranalysen är klar", text: sum ?? "Vad omgången gav och vad du kan lära dig.", action: { type: "link", label: "Se efteranalysen", href: `${base}/analys` } };
+    const text = f.raceView ? "Efteranalysen visar resultatet för alla lopp." : (sum ?? "Vad omgången gav och vad du kan lära dig.");
+    return { kind: "SEE_ANALYSIS", title: "Efteranalysen är klar", text, action: { type: "link", label: "Se efteranalysen", href: `${base}/analys` } };
   }
   return { kind: "ROUND_DONE", title: "Omgången är klar", text: sum ?? `Nästa ${gameType} kan hämtas när ATG har publicerat den.`, action: null };
 }

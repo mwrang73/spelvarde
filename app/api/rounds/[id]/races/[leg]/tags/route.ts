@@ -6,7 +6,7 @@ import { withUser } from "@/lib/route";
 
 export const dynamic = "force-dynamic";
 
-// Tagga loppet: användarens kommentarer av typen RACE för loppets starter
+// Taggningen i Live: användarens kommentarer av typen RACE för loppets starter
 // (högst en per start). Sparas med PUT /api/comments/[clientId].
 export const GET = withUser<{ id: string; leg: string }>("rounds/races/tags", async ({ params, user }) => {
   const leg = Number(params.leg);

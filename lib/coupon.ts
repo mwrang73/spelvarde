@@ -20,7 +20,7 @@ export const BUDGET_SLIDER = { min: 20, max: 1000, step: 10 } as const;
 // Valda startnummer per avdelning, { 1: [3, 10], 2: [5], … }.
 export type Selections = Record<number, number[]>;
 
-const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
+export const r2 = (x: number) => Math.round((x + Number.EPSILON) * 100) / 100;
 
 // Rader över spelets avdelningar 1..legs (8 för V85, 7 för V75).
 export function rowCount(selections: Selections, legs = 8): number {
@@ -112,7 +112,7 @@ export const COPIED_AT_ERROR = "Ogiltig kopieringstid.";
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
-function parseSelections(sel: unknown, what: string): Result<Selections> {
+export function parseSelections(sel: unknown, what: string): Result<Selections> {
   if (!sel || typeof sel !== "object" || Array.isArray(sel)) return fail(`${what} ska vara ett objekt med lopp som nyckel.`);
   const selections: Selections = {};
   for (const [k, v] of Object.entries(sel as Record<string, unknown>)) {

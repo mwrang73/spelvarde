@@ -3,7 +3,8 @@ import type { OutboxItem } from "@/lib/outbox";
 import type { Mark } from "@prisma/client";
 import { markDto } from "@/lib/dto";
 import { applyMarkChange, EMPTY_MARK, type MarkChange, type MarkState } from "@/lib/marks";
-import { applyCommentDone, applyDone, applyPending, applyPendingComments, applySettings, conflictText, markDtoOf, retryText, toleranceOf, xFactorsOf } from "@/lib/round-overlay";
+import { applyCommentDone, applyDone, applyPending, applyPendingComments, applySettings, conflictText, markDtoOf, rejectedText, retryText, toleranceOf, xFactorsOf } from "@/lib/round-overlay";
+import { mkRace, mkRound } from "@/lib/test-round";
 import type { CommentDto, RaceDto, RoundResponse, StartDto } from "@/lib/types";
 
 const NOW = new Date("2026-10-19T12:00:00Z");
@@ -311,5 +312,54 @@ describe("E6: couponDtoOf", () => {
     expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [] }, 0.5, 0, 8, withCap).maxPerLeg).toBe(7);
     // Äldre cachat svar utan fältet.
     expect(couponDtoOf("r1", { budget: 200, rowPrice: 0.5, selections: {}, lockedLegs: [] }, 0.5, 0, 8, prev).maxPerLeg).toBeNull();
+  });
+});
+
+describe("inlämnad rad i utkorgen (E8 9.5, 17.6)", () => {
+  const legsSel = (n: number): Record<string, number[]> => Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), [1]]));
+  const base = (): RoundResponse => {
+    const { submittedRow: _drop, ...rest } = mkRound([mkRace(1, [], { startAt: "2026-10-24T15:00:00.000Z" })], { round: { ...mkRound([]).round, id: "r1", gameType: "V85" } });
+    return rest as RoundResponse;
+  };
+  const put = (markedAt: string): OutboxItem => ({ id: "p", method: "PUT", url: "/api/rounds/r1/submitted-row", body: { selections: { ...legsSel(8), 2: [1, 2] }, rowPrice: 0.5, markedAt }, meta: { kind: "submitted-row", roundId: "r1" }, createdAt: 5, tries: 0 });
+  const del: OutboxItem = { id: "d", method: "DELETE", url: "/api/rounds/r1/submitted-row", meta: { kind: "submitted-row-delete", roundId: "r1" }, createdAt: 6, tries: 0 };
+
+  it("PUT ger överlägg med pending, räknat som på servern", () => {
+    const row = applyPending(base(), [put("2026-10-24T14:00:00.000Z")]).submittedRow;
+    expect(row).toMatchObject({ pending: true, rows: 2, cost: 1, markedLate: false, roundId: "r1" });
+  });
+  it("köad markering trycktes före start: markedAt avgör", () => {
+    expect(applyPending(base(), [put("2026-10-24T15:00:00.000Z")]).submittedRow?.markedLate).toBe(true);
+  });
+  it("DELETE ger null, och PUT, DELETE, PUT: sista gäller", () => {
+    const data = { ...base(), submittedRow: applyPending(base(), [put("2026-10-24T14:00:00.000Z")]).submittedRow };
+    expect(applyPending(data, [del]).submittedRow).toBeNull();
+    expect(applyPending(base(), [put("2026-10-24T14:00:00.000Z"), del]).submittedRow).toBeNull();
+    expect(applyPending(base(), [put("2026-10-24T14:00:00.000Z"), del, put("2026-10-24T14:01:00.000Z")]).submittedRow?.markedAt).toBe("2026-10-24T14:01:00.000Z");
+  });
+  it("annan omgångs post rörs inte, och cachat svar utan fält fungerar", () => {
+    const other: OutboxItem = { ...del, meta: { kind: "submitted-row-delete", roundId: "r2" } };
+    const b = base();
+    expect(applyPending(b, [other])).toBe(b);
+    expect(b.submittedRow ?? null).toBeNull();
+  });
+  it("applyDone för båda", () => {
+    const row = { roundId: "r1", selections: legsSel(8), rows: 1, cost: 0.5, rowPrice: 0.5, markedAt: "x", markedLate: false, updatedAt: "y" };
+    expect(applyDone(base(), put("x"), { submittedRow: row }).submittedRow).toEqual(row);
+    expect(applyDone({ ...base(), submittedRow: row }, del, { ok: true }).submittedRow).toBeNull();
+  });
+  it("retryText för båda typerna: inte kommentarstexten", () => {
+    expect(retryText(put("x"))).toBe("Kunde inte spara markeringen. Försöker igen.");
+    expect(retryText(del)).toBe("Kunde inte spara markeringen. Försöker igen.");
+    expect(rejectedText(del, "Nej.")).toBe("Kunde inte spara markeringen: Nej.");
+  });
+});
+
+describe("Nästa steg räknas med omgångens spelform (E8 3.5)", () => {
+  it("V75 säger V75-n", () => {
+    const race1 = mkRace(1, [], { reviewed: false });
+    const data = mkRound([race1], { nextStep: { kind: "ANALYZE_LEG", title: "", text: "", action: null }, phase: "ANALYS", round: { ...mkRound([]).round, gameType: "V75", date: "2030-01-05" } });
+    const next = applySettings(data, { spelbarGuideline: 2, rowPrice: 0.5, xFactorTror: 0.9, xFactorStark: 0.8 }, new Date("2029-12-30T12:00:00Z")).nextStep;
+    expect(next.title).toContain("V75-1");
   });
 });

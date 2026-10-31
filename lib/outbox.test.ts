@@ -184,3 +184,16 @@ describe("OutboxRunner", () => {
     expect(calls).toEqual(["/api/marks/s9"]);
   });
 });
+
+describe("inlämnad rad i kön (E8 17.6)", () => {
+  const item = (id: string, method: "PUT" | "DELETE", body?: unknown) => ({ id, method, url: "/api/rounds/r1/submitted-row", body, createdAt: 1, tries: 0 });
+  it("PUT mot submitted-row slås ihop, senaste kroppen vinner", () => {
+    const q = enqueue([item("a", "PUT", { rowPrice: 0.5, markedAt: "1" })], item("b", "PUT", { rowPrice: 1, markedAt: "2" }));
+    expect(q).toHaveLength(1);
+    expect(q[0].body).toEqual({ rowPrice: 1, markedAt: "2" });
+  });
+  it("DELETE bryter ihopslagning", () => {
+    const q = enqueue([item("a", "PUT", {}), item("b", "DELETE")], item("c", "PUT", {}));
+    expect(q.map((x) => x.method)).toEqual(["PUT", "DELETE", "PUT"]);
+  });
+});

@@ -32,7 +32,9 @@ import type { CommentDto, RaceDto, RecordDto, RoundResponse, StartDetailResponse
 import { modelLabel, RiktDetail, RiktKeys, useRiktView, type RiktView } from "./Riktodds";
 import { raceStarted, useRound } from "./RoundProvider";
 import { getDetail, loadDetail, subscribeDetails } from "./roundStore";
-import { openTagging } from "./tagStore";
+import { newClientId } from "@/lib/race-tags";
+import { hidesCommentResult } from "@/lib/reveal";
+import { useShownLegs } from "./revealStore";
 import { SourceSupport, XCycleButton, XFactorSeg, xLockReason } from "./XFactor";
 import { currentTips, TipsCompact, tipsHref } from "./TipsSection";
 import { FEATURES } from "@/lib/features";
@@ -46,17 +48,6 @@ export function useDetail(startId: string) {
     () => getDetail(startId),
     () => getDetail(""),
   );
-}
-
-export function newClientId(): string {
-  const c = globalThis.crypto;
-  if (c?.randomUUID) return c.randomUUID();
-  const b = new Uint8Array(16);
-  c.getRandomValues(b);
-  b[6] = (b[6] & 0x0f) | 0x40;
-  b[8] = (b[8] & 0x3f) | 0x80;
-  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 // Mobilens sektioner i ordning, med hoppknapparnas text (5.2 B och D).
@@ -183,10 +174,10 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
               <XFactorSeg key={start.id} race={race} start={start} factors={factors} tolerance={tolerance} layout="row" onTouch={touch} />
               <span className="vsep" aria-hidden="true" />
               <SourceSupport race={race} start={start} sourcesEnabled={data.sourcesEnabled ?? 0} layout="row" onTouch={touch} />
-              {started && !start.scratched && (
-                <button type="button" className="btn secondary vr-tag" onClick={() => openTagging(race.id, start.id)}>
-                  Tagga i loppet
-                </button>
+              {started && !race.cancelled && !start.scratched && (
+                <Link className="linkish vr-live" href={`/omgang/${data.round.id}/live?avd=${race.leg}&hast=${start.id}`}>
+                  Tagga i Live ›
+                </Link>
               )}
             </>
           )}
@@ -252,9 +243,9 @@ export const HorseCard = forwardRef<HTMLHeadingElement, Props>(function HorseCar
             <>
               <p className="help">Loppet har startat. Intressant, Spelbar, Bet, X-faktor och källstöd är låsta.</p>
               {!race.cancelled && !start.scratched && (
-                <button type="button" className="btn secondary" onClick={() => openTagging(race.id, start.id)}>
-                  Tagga i loppet
-                </button>
+                <Link className="linkish vr-live" href={`/omgang/${data.round.id}/live?avd=${race.leg}&hast=${start.id}`}>
+                  Tagga i Live ›
+                </Link>
               )}
             </>
           )}
@@ -1001,7 +992,13 @@ function useComments({ data, race, start, detail, onTouch }: { data: RoundRespon
   const { queue } = useOutbox();
   const [draftId, setDraftId] = useState(() => newClientId());
   const horseId = start.horse.id;
-  const list = useMemo(() => (detail ? applyPendingComments(detail.comments, queue, horseId).filter((c) => c.clientId !== draftId) : []), [detail, queue, horseId, draftId]);
+  const roundId = data.round.id;
+  const shownLegs = useShownLegs(roundId, data.races);
+  // E8 8.2 rad 16: kommentar från samma omgång med dolt lopp visar ingen placering.
+  const list = useMemo(
+    () => (detail ? applyPendingComments(detail.comments, queue, horseId).filter((c) => c.clientId !== draftId).map((c) => (c.result && hidesCommentResult(c, roundId, shownLegs) ? { ...c, result: null } : c)) : []),
+    [detail, queue, horseId, draftId, roundId, shownLegs],
+  );
   const ctx = { round: { id: data.round.id, date: data.round.date, trackName: data.round.trackName, gameType: data.round.gameType }, leg: race.leg };
   const save = (clientId: string, body: CommentBody) => {
     onTouch();

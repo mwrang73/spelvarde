@@ -102,7 +102,9 @@ function resultSentence(summary: OutcomeSummary | null | undefined): string {
 const startedAt = (r: RaceDto, now: number) => r.started || Date.parse(r.startAt) <= now;
 
 // roundSummary = RoundResponse.results.summary (hela omgången).
-export function nextCard(gameType: string, race: RaceDto, races: RaceDto[], roundId: string, now: number, roundSummary: OutcomeSummary | null): NextCard {
+// shownLegs = lopp som är visade på enheten (E8 8.2 rad 10). Utan listan räknas alla som visade.
+export function nextCard(gameType: string, race: RaceDto, races: RaceDto[], roundId: string, now: number, roundSummary: OutcomeSummary | null, shownLegs?: readonly number[]): NextCard {
+  const shown = (r: RaceDto) => !shownLegs || shownLegs.includes(r.leg);
   const sorted = [...races].sort((a, b) => a.leg - b.leg);
   const next = sorted.find((r) => r.leg === race.leg + 1);
   const base = `/omgang/${roundId}`;
@@ -116,11 +118,13 @@ export function nextCard(gameType: string, race: RaceDto, races: RaceDto[], roun
       });
       return { title: `${legName(gameType, next.leg)} startar ${hhmm(next.startAt)}`, text: mine.length ? mine.join(" ") : next.name, ...link };
     }
+    if (next.resultAt && !shown(next)) return { title: `${legName(gameType, next.leg)} · resultat dolt`, text: "Tryck Visa resultat i loppet.", ...link };
     if (next.resultAt) return { title: `${legName(gameType, next.leg)} · resultat`, text: resultSentence(next.summary), ...link };
     return { title: `${legName(gameType, next.leg)} pågår`, text: "Väntar på resultat.", ...link };
   }
   const missing = sorted.filter((r) => !r.cancelled && !r.resultAt);
   const link = { label: "Till omgången", href: base };
+  if (!missing.length && sorted.some((r) => !r.cancelled && !shown(r))) return { title: "Omgången är klar", text: "Alla lopp har resultat.", ...link };
   if (!missing.length) return { title: "Omgången är klar", text: (roundSummary && summaryText(roundSummary)) ?? "Inga markeringar i omgången.", ...link };
   const legs = missing.map((r) => r.leg);
   const list = legNames(gameType, legs);

@@ -8,6 +8,7 @@ import { useEffect, useRef } from "react";
 import { Badge, BetBadge, TrollBadge, XBadge } from "@/components/ui/board";
 import { IconChev, IconList, IconOdds } from "@/components/ui/icons";
 import { hhmm, odds, shortRaceName } from "@/lib/format";
+import { liveTabs, type TabTags } from "@/lib/live-view";
 import type { PhaseStep } from "@/lib/phase";
 import type { RaceDto, StartDto, StartOutcomeDto } from "@/lib/types";
 import type { XFactor } from "@/lib/xfactor";
@@ -17,41 +18,40 @@ import { legName } from "@/lib/game-type";
 
 // ---- PhaseRail --------------------------------------------------------------------------
 
-// Rutorna är länkar till fasens vy. Live och Klart byggs i E3–E4 och är
-// därför vanlig text tills vyerna finns.
+// Rutorna är länkar till fasens vy. Klart är vanlig text.
 // variant "seg" (analysvyn 3.2): segmentkontroll i zonraden, aktiv fas i bärnsten.
-export function PhaseRail({ steps, analysHref, oddsHref, className, variant = "rail" }: { steps: PhaseStep[]; analysHref: string; oddsHref?: string; className?: string; variant?: "rail" | "seg" }) {
+// activePage (E8 3.4): sidan du står på lyser med aria-current="page", och
+// automatikens ruta är inte tänd. Utan activePage gäller automatiken ("step").
+export type PhasePage = "ANALYS" | "ODDS" | "LIVE";
+
+export function PhaseRail({ steps, analysHref, oddsHref, liveHref, activePage, className, variant = "rail" }: { steps: PhaseStep[]; analysHref: string; oddsHref?: string; liveHref?: string; activePage?: PhasePage; className?: string; variant?: "rail" | "seg" }) {
+  const hrefOf = (s: PhaseStep) => (s.phase === "ANALYS" ? analysHref : s.phase === "ODDS" ? oddsHref : s.phase === "LIVE" ? liveHref : undefined);
+  const currentOf = (s: PhaseStep): "page" | "step" | undefined => (activePage ? (s.phase === activePage ? "page" : undefined) : s.state === "current" ? "step" : undefined);
+  const inner = (s: PhaseStep) => (
+    <>
+      <b>
+        {s.state === "done" && <span aria-hidden="true">✓ </span>}
+        {s.label}
+      </b>
+      <small>{s.dayLabel}</small>
+      {s.state === "done" && <span className="sr">, klar</span>}
+    </>
+  );
   if (variant === "seg")
     return (
       <nav className={`seg nav phseg${className ? ` ${className}` : ""}`} aria-label="Veckans faser">
         {steps.map((s) => {
-          const inner = (
-            <>
-              <b>
-                {s.state === "done" && <span aria-hidden="true">✓ </span>}
-                {s.label}
-              </b>
-              <small>{s.dayLabel}</small>
-              {s.state === "done" && <span className="sr">, klar</span>}
-            </>
-          );
-          const current = s.state === "current" ? ("step" as const) : undefined;
+          const href = hrefOf(s);
           const cls = s.state === "done" ? "done" : undefined;
-          if (s.phase === "ANALYS")
+          if (href)
             return (
-              <Link key={s.phase} href={analysHref} aria-current={current} className={cls}>
-                {inner}
-              </Link>
-            );
-          if (s.phase === "ODDS" && oddsHref)
-            return (
-              <Link key={s.phase} href={oddsHref} aria-current={current} className={cls}>
-                {inner}
+              <Link key={s.phase} href={href} aria-current={currentOf(s)} className={cls}>
+                {inner(s)}
               </Link>
             );
           return (
-            <span key={s.phase} aria-current={current} className={cls}>
-              {inner}
+            <span key={s.phase} aria-current={currentOf(s)} className={cls}>
+              {inner(s)}
             </span>
           );
         })}
@@ -60,19 +60,10 @@ export function PhaseRail({ steps, analysHref, oddsHref, className, variant = "r
   return (
     <ol className={`phase brd${className ? ` ${className}` : ""}`} aria-label="Veckans faser">
       {steps.map((s) => {
-        const inner = (
-          <>
-            <b>
-              {s.state === "done" && <span aria-hidden="true">✓ </span>}
-              {s.label}
-            </b>
-            <small>{s.dayLabel}</small>
-            {s.state === "done" && <span className="sr">, klar</span>}
-          </>
-        );
+        const href = hrefOf(s);
         return (
-          <li key={s.phase} className={s.state === "done" ? "done" : undefined} aria-current={s.state === "current" ? "step" : undefined}>
-            {s.phase === "ANALYS" ? <Link href={analysHref}>{inner}</Link> : s.phase === "ODDS" && oddsHref ? <Link href={oddsHref}>{inner}</Link> : <span>{inner}</span>}
+          <li key={s.phase} className={s.state === "done" ? "done" : undefined} aria-current={currentOf(s)}>
+            {href ? <Link href={href}>{inner(s)}</Link> : <span>{inner(s)}</span>}
           </li>
         );
       })}
@@ -101,8 +92,9 @@ function tabLabel(r: RaceDto, gameType: string): string {
 }
 
 // variant: "flaps" = dagens fällbladsrutor, "band" = zonraden på desktop
-// (analysvyn 3.2), "scroll" = mobilens svepbara rad med namn (5.1).
-export function RaceTabs({ gameType, races, selected, onSelect, panelId, variant = "flaps" }: { gameType: string; races: RaceDto[]; selected: number; onSelect: (leg: number) => void; panelId: string; variant?: "flaps" | "band" | "scroll" }) {
+// (analysvyn 3.2), "scroll" = mobilens svepbara rad med namn (5.1), "live" =
+// Live (E8 5.2). I "live" säger raden aldrig något om resultatet. compact = svepbar rad.
+export function RaceTabs({ gameType, races, selected, onSelect, panelId, variant = "flaps", tagged, now, compact }: { gameType: string; races: RaceDto[]; selected: number; onSelect: (leg: number) => void; panelId: string; variant?: "flaps" | "band" | "scroll" | "live"; tagged?: Record<number, TabTags>; now?: number; compact?: boolean }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const move = (to: number) => {
     const leg = Math.max(1, Math.min(races.length, to));
@@ -111,15 +103,17 @@ export function RaceTabs({ gameType, races, selected, onSelect, panelId, variant
   };
   // Mobilen: vald knapp scrollas in i raden när avdelningen byts.
   useEffect(() => {
-    if (variant !== "scroll") return;
+    if (variant !== "scroll" && !(variant === "live" && compact)) return;
     refs.current[selected - 1]?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [variant, selected]);
-  const cls = variant === "band" ? "seg nav avt" : variant === "scroll" ? "mavs brd" : "avd brd";
+  }, [variant, compact, selected]);
+  const cls = variant === "live" ? (compact ? "mavs brd" : "ltabs") : variant === "band" ? "seg nav avt" : variant === "scroll" ? "mavs brd" : "avd brd";
+  const live = variant === "live" ? liveTabs(gameType, races, tagged ?? {}, now ?? Date.now()) : null;
   return (
     <div
       className={cls}
       role="tablist"
       aria-label="Lopp"
+      style={live && !compact ? ({ "--n": races.length } as React.CSSProperties) : undefined}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight") move(selected + 1);
         else if (e.key === "ArrowLeft") move(selected - 1);
@@ -144,6 +138,26 @@ export function RaceTabs({ gameType, races, selected, onSelect, panelId, variant
           tabIndex: on ? 0 : -1,
           onClick: () => onSelect(r.leg),
         };
+        const lt = live?.[i];
+        if (lt)
+          return (
+            <button key={r.id} {...common} className={`${compact ? "" : "lt"}${r.cancelled ? " off" : ""}`.trim() || undefined} aria-label={lt.label}>
+              <span className="nr sm" aria-hidden="true">
+                <b>{r.leg}</b>
+              </span>
+              <span className={compact ? "mavs-t" : "lx"} aria-hidden="true">
+                <b className={compact ? "mavs-n" : undefined}>
+                  {lt.name}
+                  {lt.running && <i className="pulse" />}
+                  {lt.bet && <span className="ltb">B</span>}
+                </b>
+                <small className="num">
+                  {lt.cancelled ? "Inställt" : lt.time}
+                  {lt.count && ` ${lt.count}`}
+                </small>
+              </span>
+            </button>
+          );
         if (variant === "band")
           return (
             <button key={r.id} {...common} className={r.cancelled ? "off" : undefined} aria-label={tabLabel(r, gameType)} title={r.cancelled ? `${shortRaceName(r.name)} inställd` : undefined}>

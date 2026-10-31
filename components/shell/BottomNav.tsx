@@ -14,6 +14,8 @@ const ICONS = { "/": IconFlag, "/kallor": IconLink, "/statistik": IconStat } as 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   const stale = useOutboxStale();
+  // E8 3.3: Live behöver platsen till Föregående och Nästa.
+  if (/^\/omgang\/[^/]+\/live(\/|$)/.test(pathname)) return null;
   return (
     <nav className="tabbar m-only" aria-label="Huvudmeny">
       {NAV.map((n) => {

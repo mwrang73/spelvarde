@@ -23,6 +23,13 @@ let snapshot: OutboxSnapshot = { queue: [], status: { kind: "saved", count: 0, t
 const listeners = new Set<() => void>();
 let notifier: OutboxNotifier | null = null;
 const retried = new Set<string>();
+// Avvisade poster (E8 12.4): taggarna läses om, så att lagret visar serverns läge.
+const rejectedListeners = new Set<(item: OutboxItem) => void>();
+
+export function onOutboxRejected(fn: (item: OutboxItem) => void): () => void {
+  rejectedListeners.add(fn);
+  return () => rejectedListeners.delete(fn);
+}
 
 export function setOutboxNotifier(n: OutboxNotifier | null) {
   notifier = n;
@@ -43,7 +50,7 @@ function onChange(status: OutboxStatus, queue: OutboxItem[]) {
 function onDone(item: OutboxItem, response: unknown) {
   const m = metaOf(item);
   if (!m) return;
-  if (m.kind === "mark" || m.kind === "review" || m.kind === "coupon") patchRound(m.roundId, (data) => applyDone(data, item, response));
+  if (m.kind === "mark" || m.kind === "review" || m.kind === "coupon" || m.kind === "submitted-row" || m.kind === "submitted-row-delete") patchRound(m.roundId, (data) => applyDone(data, item, response));
   if (m.kind === "comment" || m.kind === "comment-delete") patchHorseComments(m.horseId, (comments) => applyCommentDone(comments, item, response));
 }
 
@@ -67,7 +74,10 @@ function getRunner(): OutboxRunner | null {
       onChange,
       onDone,
       onConflict: (item) => notifier?.conflict(conflictText(item)),
-      onRejected: (item, error) => notifier?.rejected(rejectedText(item, error)),
+      onRejected: (item, error) => {
+        notifier?.rejected(rejectedText(item, error));
+        rejectedListeners.forEach((fn) => fn(item));
+      },
       onAuthRequired: () => notifier?.auth(),
     },
   );

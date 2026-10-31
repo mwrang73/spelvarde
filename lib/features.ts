@@ -8,7 +8,7 @@ export type Features = {
   coupon: boolean;
   // E3: S5 Lördag live och larm.
   live: boolean;
-  // E4: S7 Under loppet och S9 Statistik.
+  // E8: Live (S7), och resultatet visas per lopp. stats: S9 Statistik.
   raceView: boolean;
   stats: boolean;
   // E4a: resultatet i S2 och S1, automatisk hämtning och Nästa steg med länkar.
@@ -17,4 +17,4 @@ export type Features = {
   tips: boolean;
 };
 
-export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: false, stats: false, results: true, tips: true };
+export const FEATURES: Features = { odds: true, coupon: true, live: false, raceView: true, stats: false, results: true, tips: true };

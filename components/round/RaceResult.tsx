@@ -16,6 +16,8 @@ import { nextCard, raceResultView, type BetVerdict, type OtherItem } from "@/lib
 import { checkedLine, hasAnyMarks, latestIso, placedRowSr, marksSr, resultAnnouncement, resultMode, summaryBoxes, summarySr } from "@/lib/results-ui";
 import type { OutcomeSummary, RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import { OutcomeBadges } from "./parts";
+import { ResultGate } from "./ResultGate";
+import { concealLeg, isShown, revealLeg, useShownLegs } from "./revealStore";
 import { syncResults, useResultSync } from "./resultsStore";
 import { legName } from "@/lib/game-type";
 
@@ -28,26 +30,37 @@ type Props = {
   onOpen: (s: StartDto) => void;
   // Nästa-kortets knapp inom S2 (byter avdelning utan omladdning).
   onLeg: (leg: number) => void;
+  // E8 8.3: Dölj resultat växlar till Startlista i arbetsvyn.
+  onHidden: () => void;
 };
 
-export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg }: Props) {
+export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg, onHidden }: Props) {
   const roundId = data.round.id;
   const mode = resultMode(race, now);
   const view = raceResultView(race);
+  const shownLegs = useShownLegs(roundId, data.races);
+  const shown = isShown(race, shownLegs);
+  const hidden = mode === "result" && !shown;
+  const placedHead = useRef<HTMLHeadingElement>(null);
+  const focusPlaced = useRef(false);
+  useEffect(() => {
+    if (shown && focusPlaced.current) placedHead.current?.focus({ preventScroll: true });
+    focusPlaced.current = false;
+  }, [shown]);
 
-  // Uppläsningen en gång när resultatet kommer medan vyn är öppen.
+  // Uppläsningen en gång när resultatet kommer medan vyn är öppen. Dolt: utan namn.
   const [announce, setAnnounce] = useState("");
   const prev = useRef<{ leg: number; resultAt: string | null }>({ leg: race.leg, resultAt: race.resultAt });
   useEffect(() => {
     const p = prev.current;
-    if (p.leg === race.leg && !p.resultAt && race.resultAt) setAnnounce(resultAnnouncement(data.round.gameType, race.leg, view.placed, race.summary));
+    if (p.leg === race.leg && !p.resultAt && race.resultAt) setAnnounce(resultAnnouncement(data.round.gameType, race.leg, view.placed, race.summary, shown));
     else if (p.leg !== race.leg) setAnnounce("");
     prev.current = { leg: race.leg, resultAt: race.resultAt };
     // view härleds ur race.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [race.leg, race.resultAt]);
 
-  const next = nextCard(data.round.gameType, race, data.races, roundId, now, data.results?.summary ?? null);
+  const next = nextCard(data.round.gameType, race, data.races, roundId, now, data.results?.summary ?? null, shownLegs);
   const nextLeg = data.races.find((r) => r.leg === race.leg + 1) ? race.leg + 1 : null;
 
   return (
@@ -59,10 +72,33 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
         <Pending roundId={roundId} race={race} late={mode === "late"} syncedAt={data.results?.syncedAt ?? null} />
       ) : mode === "cancelled" ? (
         <EmptyState icon={<IconFlag />} title="Loppet är inställt" text="ATG har ställt in loppet. Det räknas inte i statistiken." />
+      ) : hidden ? (
+        <ResultGate
+          gameType={data.round.gameType}
+          leg={race.leg}
+          onReveal={() => {
+            focusPlaced.current = true;
+            revealLeg(roundId, race.leg);
+          }}
+        />
       ) : mode === "result" ? (
         <>
           <Summary summary={race.summary ?? null} leg={race.leg} label={`Summering ${legName(data.round.gameType, race.leg)}`} />
-          <h2 className="sl rsl">Placering</h2>
+          <div className="sl rsl rsl-h">
+            <h2 className="sl-h" ref={placedHead} tabIndex={-1}>
+              Placering
+            </h2>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => {
+                concealLeg(roundId, race.leg);
+                onHidden();
+              }}
+            >
+              Dölj resultat
+            </button>
+          </div>
           <ul className="rlist" aria-label={`Placering ${legName(data.round.gameType, race.leg)}`}>
             {view.placed.map((p, i) => (
               <li key={p.start.id}>
@@ -132,7 +168,7 @@ export function RaceResult({ data, race, now, selectedId, hrefFor, onOpen, onLeg
           {view.others.length > 0 && <Others items={view.others} />}
         </>
       ) : null}
-      {mode !== "before" && (
+      {mode !== "before" && !hidden && (
         <section className="next" aria-labelledby="rnext-h">
           <span className="lbl">Nästa</span>
           <h2 id="rnext-h">{next.title}</h2>

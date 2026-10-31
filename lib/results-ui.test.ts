@@ -12,6 +12,7 @@ import {
   pollActive,
   resultAnnouncement,
   resultMode,
+  revealedSummary,
   retryDelay,
   showsResultToggle,
   summaryBoxes,
@@ -170,5 +171,37 @@ describe("S1: avdelningsraderna", () => {
     expect(allLegsDone([{ resultAt: START, cancelled: false }, { resultAt: null, cancelled: true }])).toBe(true);
     expect(allLegsDone([{ resultAt: START, cancelled: false }, { resultAt: null, cancelled: false }])).toBe(false);
     expect(allLegsDone([])).toBe(false);
+  });
+});
+
+describe("resultatskyddet (E8 8.2)", () => {
+  const T = Date.parse("2026-10-24T18:00:00Z");
+  const hc = (hits: number, total: number) => ({ hits, total });
+  const sum = (bet: [number, number], i: [number, number]): OutcomeSummary => ({ bet: hc(...bet), spelbar: hc(0, 0), interesting: hc(...i), trollspot: hc(0, 0) });
+  const winner = mkStart("w", 5, { horse: { ...mkStart("x", 1).horse, name: "Kentucky River" }, result: { place: 1, finishOrder: 1, disqualified: false, galloped: false, kmTime: null, finalOdds: null } });
+  const done = (leg: number, s: OutcomeSummary | null) => mkRace(leg, [winner], { startAt: "2026-10-24T15:50:00Z", resultAt: "2026-10-24T16:10:00Z", summary: s });
+
+  it("legRow dolt: kind hidden, varken Vinnare eller hästnamn", () => {
+    const row = legRow(done(1, sum([1, 1], [1, 1])), T, false);
+    expect(row.kind).toBe("hidden");
+    expect(JSON.stringify(row)).not.toMatch(/Vinnare|Kentucky/);
+    expect(row).toEqual({ kind: "hidden", line2: "Startade 17:50 · resultatet är dolt" });
+  });
+  it("legRow visat: som i dag", () => {
+    const row = legRow(done(1, null), T, true);
+    expect(row).toMatchObject({ kind: "result", title: "Vinnare 5 Kentucky River" });
+  });
+  it("resultAnnouncement dolt: inget hästnamn", () => {
+    const view = raceResultView(done(7, null));
+    expect(resultAnnouncement("V85", 7, view.placed, null, false)).toBe("Resultatet för V85-7 har kommit. Det är dolt.");
+    expect(resultAnnouncement("V85", 7, view.placed, null, true)).toContain("Kentucky River");
+  });
+  it("revealedSummary: bara visade lopp, tom vid inget visat, summan vid alla", () => {
+    const races = [done(1, sum([1, 1], [2, 3])), done(2, sum([0, 1], [1, 2])), mkRace(3, [], { cancelled: true })];
+    expect(revealedSummary(races, [])).toBeNull();
+    const one = revealedSummary(races, [1]);
+    expect(one).toMatchObject({ shown: 1, total: 2, summary: sum([1, 1], [2, 3]) });
+    const all = revealedSummary(races, [1, 2]);
+    expect(all).toMatchObject({ shown: 2, total: 2, summary: sum([1, 2], [3, 5]) });
   });
 });

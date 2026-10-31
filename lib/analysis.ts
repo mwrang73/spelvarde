@@ -1,6 +1,6 @@
 // Efteranalys (mockupen efteranalys-tips, del 1 alternativ A): vad en omgång
 // gav, varför, och samma sak över tid. Rena funktioner över de frysta värdena i
-// Outcome och taggarna från Tagga loppet. Slutsatserna räknas med regler, inte
+// Outcome och taggarna från Live. Slutsatserna räknas med regler, inte
 // med AI. Enhet = 1 insats per spel: träff ger Bet-oddset − 1, miss −1.
 // Kronor = enheter × 100 kr (Mikael 2026-10-27). Jämförelsen singlar mot
 // dubbelsystem väntar tills det finns mer data.
@@ -203,7 +203,7 @@ export function roundAnalysis(rows: AnalysisRow[]): RoundAnalysis {
   }
   const topUnplaced = tags.unplaced.find((t) => t.count >= 2);
   if (topUnplaced) {
-    conclusions.push({ tone: "info", title: `"${topUnplaced.tag}" fanns på ${topUnplaced.count} av dina hästar som inte kom topp 3.`, text: "Taggarna kommer från Tagga loppet.", thin: true });
+    conclusions.push({ tone: "info", title: `"${topUnplaced.tag}" fanns på ${topUnplaced.count} av dina hästar som inte kom topp 3.`, text: "Taggarna kommer från Live.", thin: true });
   }
   return { board: b, conclusions, groups, plays, missed, missedUnits: round2(missed.reduce((s, x) => s + x.units, 0)), tags, pending: rows.filter((r) => r.hit === null).length };
 }

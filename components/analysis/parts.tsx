@@ -208,7 +208,7 @@ export function MissedList({ list, total, gameType }: { list: Missed[]; total: n
 }
 
 export function Tags({ tags, flat }: { tags: RoundAnalysis["tags"]; flat?: boolean }) {
-  if (!tags.tagged) return <p className="help pad">Inga taggar. Använd Tagga loppet i loppet efter start.</p>;
+  if (!tags.tagged) return <p className="help pad">Inga taggar. Tagga hästarna i Live efter start.</p>;
   const chips = (list: { tag: string; count: number }[]) => (
     <div className="tgc">
       {list.map((t) => (

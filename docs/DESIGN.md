@@ -75,7 +75,7 @@ Färg är aldrig ensam informationsbärare. Varje färg har alltid en bokstav, e
 - **Kolumner i täta rader** (från vänster, `column-gap: 6px`):
   - Analys: nummer 32 · namn och kusk `1fr` · form 52 · riktodds 38 · Intressant 44
   - Live: nummer 32 · namn `1fr` · streck nu 42 · rörelse 66
-  - Under loppet: nummer 32 · namn och noteringar `1fr` · antal · plus 44
+  - Under loppet: nummer 32 · namn och noteringar `1fr` · antal · plus 44 (ersatt av Live, se nedan)
 - **Namn kortas med ellipsis och märken krymper inte.** Galopp-, Intressant- och Spelbar-märket ligger direkt efter namnet med `flex: none`.
 - **Kort och luftigare rader** (Omgång 56 px, Spelförslag 60 px, odds 52 px) används bara där raden har två rader text eller ett fält.
 - Små inbördes avstånd är 3–6 px. Grupprubriker har 12 px luft ovanför och 6 px under.
@@ -90,9 +90,17 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 - Spårfördel på `FlapNumber`: bricka i övre vänstra hörnet, V (fylld grön, bäst vinstspår), P (ljusgrön, bäst platsspår) eller V+P (samma spår). Statistikraden visar samma märke som förklaring. Spår benämns via `lib/post-edge.ts`.
 - Lopp benämns `V85-1`, `V75-1` osv. (`legName` i `lib/game-type.ts`), aldrig "Avd": avdelning är ATG:s egen numrering och kan vara en annan. Utan känd spelform: "Lopp 1".
 - `RaceTabs`: avdelning 1–8 som fällbladsrutor, `role="tablist"`. Vald flik är bärnstensgul med sken. En röd prick (8 px, `aria-label` "rusningslarm") visar ett olarmat larm i avdelningen.
-- `PhaseRail`: fyra rutor (Analys, Odds, Live och Klart) med dag under. Klara faser får "✓", och den aktiva har `aria-current="step"` och bärnstensgul bakgrund. Varje ruta är en länk till fasens vy.
+- `PhaseRail`: fyra rutor (Analys, Odds, Live och Klart) med dag under. Klara faser får "✓", och den aktiva har `aria-current="step"` och bärnstensgul bakgrund. Står du på en fasens sida lyser den rutan med `aria-current="page"` i stället. Analys, Odds och Live är länkar, Klart är text.
 - `RaceStrip`: chips för distans, startmetod och klass, knappen "Loppstatistik ›" och en statistikrad ("Spår 5 vinner 12,2 %"). Klassbrickan är neutral (vanlig `.chip`), inte fylld bärnsten.
 - `BoardPanel`: generisk tavelyta med LED-raster för riktoddsrutan, budgeten, summeringar och jämförelsestaplar.
+
+### Live (E8, `docs/specs/e8-live.md`)
+- **Fönster:** från 1100 px en kolumn per häst med alla 13 taggar under (`LiveColumns`). Under 1100 px en häst i taget (`LiveSingle`). Sidan är `position: fixed`, och bottenmenyn visas inte på Live.
+- `BetTicket`: Bet som rak biljett med hack, "BET 2,40". `--bet` och `--bet-ink`, tvärtom i inverterat huvud. Kolumnen har 3 px ram i `--bet` och inverterat huvud.
+- `RadPill`: inlämnad rad som rund pill med "RAD" på mörk tavla, "✓ RAD" fylld när hästen vann. Kolumnen har en streckad list under huvudet. Bet och Rad kan gälla samtidigt.
+- `Verdict`: Träff och Miss med ord och ikon, aldrig bara färg.
+- **Resultatet är dolt tills det väljs**, per lopp på enheten (`revealStore`). Inget om utfallet visas eller läses upp för ett dolt lopp, varken i Live, Analys, Omgång eller hästkortet. Efteranalys och Statistik skyddas inte och har en varningsrad.
+- **Resultatlistan** ersätter kolumnerna när resultatet är visat: topp 3 med `--accent-soft` och 3 px `--fill` till vänster, sedan oplacerade och diskade. Raderna går inte att klicka på.
 
 ### Rader och märken
 - `StartRow` har varianterna `analysis`, `live` och `note`, med kolumnerna ovan. Zebrarader (`--surface`/`--surface-2`). Hover ger `--surface-3`.
@@ -111,7 +119,7 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 - `Segmented`: segmentkontroll med `aria-pressed`, där valt segment har `--ink` som bakgrund. Varianten `.seg.nav` används för navigering (fas, avdelningar, flikar) och har valt läge i bärnsten (`--fill`/`--fill-ink`). Regel: **navigering väljs i bärnsten, värden i `--ink`.**
 - `Stepper`: − och + på 40 × 44 med ett värde emellan. Knapparna stängs av vid gränsen. Ett värde som är ett ord ("Alla" i Max hästar per lopp) får klassen `.word` (Barlow Condensed 14 px, versaler).
 - `OddsKeypad`: tolv tangenter på 58 px, siffrorna 0–9, Radera och "Nästa ›" (primär). LED-displayen visar oddset med två decimaler.
-- `QuickChips`: snabbval på minst 44 px höjd. Valt chip är bärnstensgult med "✓", och kortkommandot visas som en liten bokstav på desktop.
+- `QuickChips` (taggarna i Live): snabbval på minst 44 px höjd. Valt chip är bärnstensgult med "✓", och kortkommandot visas som en liten bokstav på desktop.
 
 ### Kort och lägen
 - `NextStepCard`: etiketten "Nästa steg", rubrik, en mening och **en** primärknapp. Kortet har en bärnstensgul kant till vänster.
@@ -132,7 +140,7 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 
 ## Layoutmönster
 - **Navigation:** bottenmeny i mobilen med Omgång, Källor och Statistik (64 px, 22 px ikon och etikett). Aktiv del har `aria-current="page"` och en bärnstensgul list överst. På desktop är det toppmeny på tavlan.
-- **Omgång är navet.** Allt som hör till veckan (Avdelning, Häst, Odds, Live, Spelförslag och Under loppet) ligger under Omgång. Inställningar nås från ikonknappen i Omgångs vyrubrik.
+- **Omgång är navet.** Allt som hör till veckan (Avdelning, Häst, Odds, Live och Spelförslag) ligger under Omgång. Inställningar nås från ikonknappen i Omgångs vyrubrik.
 - **En primär handling per vy.** På Omgång är den primära handlingen knappen i Nästa steg.
 - **Ordning i listor:** det som kräver handling kommer först. I Live ligger egna hästar (I, S och B) överst och sedan övriga efter störst rörelse. I Spelförslag kommer Spelbara först.
 - **Mobil och desktop:** samma innehåll och samma funktioner. Desktop kombinerar vyer: avdelning och hästkort, live och larm. Platsspel och V85-rad är egna flikar i Spelförslaget.

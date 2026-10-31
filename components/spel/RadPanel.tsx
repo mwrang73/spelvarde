@@ -22,11 +22,12 @@ import { IconPen, IconTicket, IconWarn } from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/Toast";
 import { buildAtgFile, type AtgFileLeg } from "@/lib/atg-file";
-import { BUDGET_SLIDER, couponDateLabel, couponText, DEFAULT_BUDGET, DEFAULT_MAX_PER_LEG, DEFAULT_ROW_PRICE, sameNumbers, type Selections } from "@/lib/coupon";
+import { asSelections, BUDGET_SLIDER, couponDateLabel, couponText, DEFAULT_BUDGET, DEFAULT_MAX_PER_LEG, DEFAULT_ROW_PRICE, sameNumbers, type Selections } from "@/lib/coupon";
 import { BUDGET_ERROR, couponBody, parseBudget, parseRowPrice, ROW_PRICE_ERROR, selectionsOf, tippaLegs, toggleNumber } from "@/lib/coupon-ui";
 import { hhmm, odds, thousands } from "@/lib/format";
 import { legName, legsFor } from "@/lib/game-type";
-import { applySettings, xFactorsOf, type CouponBody } from "@/lib/round-overlay";
+import { applySettings, xFactorsOf, type CouponBody, type SubmittedRowBody } from "@/lib/round-overlay";
+import { rowDiff, sameRow, SUBMITTED_ROW_CHANGED_TEXT, SUBMITTED_ROW_CHANGED_TITLE, SUBMITTED_ROW_SCRATCHED_TEXT, SUBMITTED_ROW_SCRATCHED_TITLE } from "@/lib/submitted-row";
 import { BUDGET_OVER_MAX, buildRad, defaultSpikCount, type TippaLegResult, type TippaResult, type TippaRules, type TippaSuggestion } from "@/lib/tippa";
 import {
   allFitText,
@@ -53,14 +54,18 @@ import {
   suggestionToast,
   type ScratchNoticeItem,
 } from "@/lib/tippa-text";
-import type { AllgMode, CouponDto, RoundResponse, SettingsDto } from "@/lib/types";
+import type { AllgMode, CouponDto, RoundResponse, SettingsDto, SubmittedRowDto } from "@/lib/types";
 import { Kupong, type KupongLeg } from "./Kupong";
 import { RadActionBar } from "./RadActionBar";
 import { Bold, RadLegCard, type CardMode } from "./RadLegCard";
 import { RadRules, type FrozenRules } from "./RadRules";
 import { ownAfterSpik, RadAtgSheet, RadLegSheet, RadPrioSheet, RadSpikSheet } from "./RadSheets";
+import { SubmittedBox, type SubmittedNotice } from "./SubmittedBox";
+import { SubmittedRowLegs } from "./SubmittedRowLegs";
 
 const SAVE_DELAY_MS = 600;
+// E8 11: Ångra efter Ersätt raden och Ångra markeringen.
+const SUBMIT_UNDO_MS = 10_000;
 const LIVE_DELAY_MS = 500;
 
 // Reglerna för raden (9.3). spikCount null = standardvärdet (ny eller gammal
@@ -165,7 +170,7 @@ function differs(c: CouponDto, b: CouponBody, legs: number): boolean {
 }
 
 export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
-  const { saveCoupon } = useRound();
+  const { saveCoupon, submitRow, removeSubmittedRow } = useRound();
   const toast = useToast();
   const online = useOnline();
   const roundId = data.round.id;
@@ -439,7 +444,60 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
   // ---- Banderoller ----
   const dateShort = couponDateLabel(data.round.date).replace(/ \d{4}$/, "");
   const nowDate = new Date(now);
-  const changedText = mode === "live" || mode === "legacy" ? copyChangedText(current.copiedAt, current.copiedSelections, view, nowDate) : null;
+  // E8 10: med en inlämnad rad ersätter dess banderoll copyChangedText, så att bara en visas.
+  const submitted = data.submittedRow ?? null;
+  const changedText = !submitted && (mode === "live" || mode === "legacy") ? copyChangedText(current.copiedAt, current.copiedSelections, view, nowDate) : null;
+  // Raden som står på kupongen: `live` den räknade, annars den sparade.
+  const shownSelections = mode === "live" ? view.selections : selectionsOf(saved);
+  const submittedSel = submitted ? asSelections(submitted.selections) : null;
+  const rowChanged = submittedSel && !started ? rowDiff(submittedSel, shownSelections, gt) : "";
+  const scratchedInRow = submittedSel
+    ? data.races.flatMap((r) => (submittedSel[r.leg] ?? []).flatMap((n) => {
+        const s = r.starts.find((x) => x.number === n && x.scratched);
+        return s ? [{ leg: r.leg, number: n, name: s.horse.name }] : [];
+      }))
+    : [];
+
+  // ---- Inlämnad rad (E8 10–11) ----
+  const [subNotice, setSubNotice] = useState<SubmittedNotice>(null);
+  const [subUndo, setSubUndo] = useState<SubmittedRowDto | null>(null);
+  const subStatus = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (subNotice !== "removed" && subNotice !== "replaced") return;
+    const t = window.setTimeout(() => {
+      setSubNotice(null);
+      setSubUndo(null);
+    }, SUBMIT_UNDO_MS);
+    return () => window.clearTimeout(t);
+  }, [subNotice]);
+  const bodyOfRow = (r: SubmittedRowDto): SubmittedRowBody => ({ selections: r.selections, rowPrice: r.rowPrice, markedAt: r.markedAt });
+  const markRow = (sel: Selections) => {
+    const selections = Object.fromEntries(Object.entries(sel).map(([k, v]) => [k, v])) as Record<string, number[]>;
+    const replacing = submitted && !sameRow(sel, asSelections(submitted.selections));
+    setSubUndo(replacing ? submitted : null);
+    setSubNotice(replacing ? "replaced" : "saved");
+    submitRow({ selections, rowPrice: view.rowPrice, markedAt: new Date().toISOString() });
+    setSheet(null);
+    window.requestAnimationFrame(() => subStatus.current?.focus());
+  };
+  const removeRow = () => {
+    if (!submitted) return;
+    setSubUndo(submitted);
+    setSubNotice("removed");
+    removeSubmittedRow();
+  };
+  const undoRow = () => {
+    if (subUndo) submitRow(bodyOfRow(subUndo));
+    setSubUndo(null);
+    setSubNotice(null);
+  };
+  const submittedKupong: KupongLeg[] = submittedSel
+    ? view.legs.map((l) => {
+        const sel = submittedSel[l.leg] ?? [];
+        const info = numbersByLeg[l.leg] ?? { all: [], scratched: [] };
+        return { leg: l.leg, label: sel.length === 1 ? "Spik" : `${sel.length} st`, selection: sel, fav: null, all: [...info.all].sort((a, b) => a - b), scratched: info.scratched, allg: false };
+      })
+    : [];
   const viewBanners: React.ReactNode[] = [];
   if (started)
     viewBanners.push(
@@ -576,6 +634,19 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
           <div className="dact d-only">
             <AtgButton blocked={blocked} onClick={() => setSheet({ kind: "atg" })} />
           </div>
+          <SubmittedBox
+            ref={subStatus}
+            submitted={submitted}
+            started={started}
+            hasCoupon={!!saved}
+            blocked={!!blocked}
+            now={nowDate}
+            notice={subNotice}
+            rowView={submitted && <Kupong gameType={gt} legs={submittedKupong} rows={submitted.rows} cost={submitted.cost} left={0} favText={null} className="mini flat" />}
+            onOpen={() => setSheet({ kind: "atg" })}
+            onRemove={removeRow}
+            onUndo={undoRow}
+          />
           {budgetBanner}
           <RadRules
             ref={rulesRef}
@@ -591,16 +662,37 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
         </aside>
         <section className="drad-r" aria-labelledby="h-radlist">
           {scratchBanners}
+          {rowChanged && (
+            <Banner
+              tone="warn"
+              className="m"
+              actions={
+                <button type="button" className="btn secondary sm" aria-haspopup="dialog" onClick={() => setSheet({ kind: "atg" })} disabled={!!blocked}>
+                  <IconTicket />
+                  Spela hos ATG
+                </button>
+              }
+            >
+              <b>{SUBMITTED_ROW_CHANGED_TITLE}</b> {rowChanged} {SUBMITTED_ROW_CHANGED_TEXT}
+            </Banner>
+          )}
+          {scratchedInRow.map((x) => (
+            <Banner key={`${x.leg}-${x.number}`} tone="warn" className="m">
+              <b>{SUBMITTED_ROW_SCRATCHED_TITLE(x.number, x.name, gt, x.leg)}</b> {SUBMITTED_ROW_SCRATCHED_TEXT}
+            </Banner>
+          ))}
           <h2 className="sl rad-h" id="h-radlist">
-            Raden per lopp
-            {showRows && (
+            {started && submitted ? "Inlämnad rad per lopp" : "Raden per lopp"}
+            {showRows && !(started && submitted) && (
               <>
                 <span className="m-only">{listSummary(view)}</span>
                 <small className="d-only">{desktopSummary(view)}</small>
               </>
             )}
           </h2>
-          {showRows ? (
+          {started && submitted ? (
+            <SubmittedRowLegs gameType={gt} races={data.races} row={submitted} />
+          ) : showRows ? (
             <div className="lgg">
               {view.legs.map((l) => {
                 const ks = notices.filter((n) => n.leg === l.leg && n.kind === "SCRATCHED");
@@ -627,7 +719,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
           )}
         </section>
       </div>
-      <RadActionBar rows={view.rows} cost={view.cost} budget={view.budget} dontFit={dontFit} blocked={blocked} onOpen={() => setSheet({ kind: "atg" })} />
+      <RadActionBar rows={view.rows} cost={view.cost} budget={view.budget} dontFit={dontFit} blocked={blocked} submitted={submitted} started={started} onOpen={() => setSheet({ kind: "atg" })} />
       <span className="sr" role="status" aria-live="polite">
         {announce}
       </span>
@@ -686,6 +778,7 @@ export function RadPanel({ data, now }: { data: RoundResponse; now: number }) {
             hasStartedAt={(t) => data.races.some((r) => raceStarted(r, t))}
             onDownloaded={markTaken}
             onCopy={copyNow}
+            submit={{ submitted, current: shownSelections, copied: current.copiedAt && current.copiedSelections ? { at: current.copiedAt, selections: current.copiedSelections } : null, gameType: gt, now: nowDate, rowPrice: view.rowPrice, onMark: markRow }}
           />
         )}
       </Sheet>

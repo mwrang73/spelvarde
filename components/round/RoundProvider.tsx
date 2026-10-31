@@ -14,7 +14,7 @@ import { addToOutbox } from "@/components/outbox/outbox-client";
 import { useOutbox } from "@/components/outbox/OutboxProvider";
 import { useToast } from "@/components/ui/Toast";
 import type { MarkChange } from "@/lib/marks";
-import { applyPending, type CouponBody } from "@/lib/round-overlay";
+import { applyPending, type CouponBody, type SubmittedRowBody } from "@/lib/round-overlay";
 import type { SpelbarInput } from "@/lib/spelbar";
 import type { RaceDto, RoundResponse, StartDto } from "@/lib/types";
 import type { XFactor } from "@/lib/xfactor";
@@ -40,6 +40,9 @@ export type RoundContextValue = {
   setXFactor: (race: RaceDto, start: StartDto, xFactor: XFactor) => void;
   setSourceSupport: (race: RaceDto, start: StartDto, sourceSupport: number | null) => void;
   saveCoupon: (body: CouponBody) => void;
+  // E8 9.5: inlämnad rad genom utkorgen, syns direkt och överlever offline.
+  submitRow: (body: SubmittedRowBody) => void;
+  removeSubmittedRow: () => void;
 };
 
 // Loppet har startat enligt klockan (RaceDto.started gäller vid hämtningen).
@@ -126,6 +129,12 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
     [roundId],
   );
 
+  const submitRow = useCallback(
+    (body: SubmittedRowBody) => addToOutbox({ method: "PUT", url: `/api/rounds/${roundId}/submitted-row`, body, meta: { kind: "submitted-row", roundId } }),
+    [roundId],
+  );
+  const removeSubmittedRow = useCallback(() => addToOutbox({ method: "DELETE", url: `/api/rounds/${roundId}/submitted-row`, meta: { kind: "submitted-row-delete", roundId } }), [roundId]);
+
   const setReviewed = useCallback(
     (race: RaceDto, reviewed: boolean) => {
       addToOutbox({
@@ -139,8 +148,8 @@ export function RoundProvider({ roundId, children }: { roundId: string; children
   );
 
   const value = useMemo<RoundContextValue>(
-    () => ({ roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, setXFactor, setSourceSupport, saveCoupon }),
-    [roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, setXFactor, setSourceSupport, saveCoupon],
+    () => ({ roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, setXFactor, setSourceSupport, saveCoupon, submitRow, removeSubmittedRow }),
+    [roundId, data, load, refresh, setInteresting, setReviewed, setSpelbar, setBet, setOdds, setXFactor, setSourceSupport, saveCoupon, submitRow, removeSubmittedRow],
   );
   return <RoundContext.Provider value={value}>{children}</RoundContext.Provider>;
 }

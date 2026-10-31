@@ -1,5 +1,5 @@
 // Efteranalysen från databasen: Outcome (frysta värden vid start) och
-// taggarna från Tagga loppet (HorseComment RACE). Beräkningarna är lib/analysis.ts.
+// taggarna från Live (HorseComment RACE). Beräkningarna är lib/analysis.ts.
 import type { PrismaClient } from "@prisma/client";
 import { overTime, roundAnalysis, type AnalysisRow, type OverTime, type RoundAnalysis, type RoundRows } from "@/lib/analysis";
 import { dateStr } from "@/lib/dto";

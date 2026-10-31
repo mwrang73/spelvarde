@@ -70,8 +70,8 @@ Fasen räknas i Europe/Stockholm. `D` är omgångens datum (lördag).
 | Fas | Gäller när | Primär handling i Nästa steg |
 |---|---|---|
 | **Analys** | Från hämtning till `D−2 18:00` | Nästa avdelning som inte är genomgången |
-| **Odds** | `D−2 18:00` till `D 12:00` | "Fyll i Unibets odds (n kvar)", därefter "Markera Bet" och "Bygg V85-raden" |
-| **Live** | `D 12:00`, eller tidigare om något lopp har startat, tills alla 8 lopp har resultat | Larm som inte är kvitterade, annars "Avd n startar hh:mm" som leder till Under loppet |
+| **Odds** | `D−2 18:00` till första start (E8, `docs/specs/e8-live.md` 3.4) | "Fyll i Unibets odds (n kvar)", därefter "Markera Bet" och "Bygg V85-raden" |
+| **Live** | Från första start (tidigaste `startAt` bland alla lopp, också inställda; omgång utan lopp: `D 12:00`) tills alla 8 lopp har resultat | Larm som inte är kvitterade, annars "Avd n startar hh:mm" som leder till Under loppet |
 | **Klart** | Alla 8 lopp har resultat, eller alla startade lopp har resultat och resten är inställda | "Se statistik", och "Hämta nästa omgång" när nästa V85 finns |
 
 Faserna styr bara vad som föreslås. Alla vyer går alltid att öppna via fasraden. Allt som rör en start (I, S, B, X-faktor, källstöd, odds) låses vid **loppets starttid**. Kommentarer går att skriva även efter start.
@@ -81,7 +81,7 @@ Bara **ett** kort visas. Välj det första som stämmer i listan:
 1. Ingen omgång eller nästa V85 finns men är inte hämtad: "Hämta omgång – V85 <bana> <dag datum>".
 2. Hämtningen är ofullständig (något steg misslyckades): "Slutför hämtningen" (fortsätter där det tog stopp).
 3. Fas Live och olarmade larm finns: "Rusning i avd n – <häst>" eller "Tappar …".
-4. Fas Live: nästa lopp som inte har startat, "Avd n startar hh:mm", som leder till S7.
+4. Fas Live: loppet som pågår, annars nästa lopp som inte har startat, annars väntan på resultat. Se `docs/specs/e8-live.md` 3.5.
 5. Fas Odds och Intressant utan Unibet-odds: "Fyll i Unibets odds – n kvar" (S4).
 6. Fas Odds och Spelbar utan Bet: "Markera Bet – n spelbara" (S6a).
 7. Fas Odds och ingen V85-rad sparad: "Bygg V85-raden" (S6b).
@@ -104,8 +104,7 @@ Bottenmeny i mobilen och toppmeny på desktop har tre delar: **Omgång**, **Käl
 | `/omgang/[roundId]/avd/[nr]/hast/[startId]` | S3 Hästkortet (helsida i mobilen, sidopanel på desktop) | E1 |
 | `/omgang/[roundId]/odds` | S4 Unibets platsodds | E2 |
 | `/omgang/[roundId]/spel?flik=plats\|rad` | S6 Spelförslag | E2 |
-| `/omgang/[roundId]/live?avd=n` | S5 Lördag live | E3 |
-| `/omgang/[roundId]/lopp/[nr]` | S7 Under loppet och resultat | E4 |
+| `/omgang/[roundId]/live?avd=n` | Live (S7): se loppet, tagga och visa resultat, `docs/specs/e8-live.md` | E8 |
 | `/kallor` | S8 Källor | E1 (sidan), E5 (Hämta tips) |
 | `/statistik` | S9 Statistik | E4 |
 | `/installningar` | S10 Inställningar | E1 (tema), E2 (riktlinje, radpris, modell), E2.1 (X-faktorer), E3 (larmgräns) |
@@ -125,7 +124,7 @@ För varje skärm anges innehåll, lägen och interaktion. Utseendet följer moc
 2. **Fasrad:** `PhaseRail` med de fyra faserna och vald fas markerad. Varje ruta är en länk:
    - Analys leder till första avdelningen som inte är genomgången.
    - Odds leder till S4.
-   - Live leder till S5.
+   - Live leder till Live (S7, `docs/specs/e8-live.md`).
    - Klart leder till S9.
 3. **Nästa steg** enligt 3.2.
 4. **Hämtstatus:** en rad med "Startlistan hämtad sön 21:14" och, om det finns, "Ändrat sedan förra hämtningen: 2 strykningar, 1 kuskbyte" (länk som visar listan i ett ark).
@@ -248,6 +247,8 @@ Bottenark i mobilen och en utfällbar panel under loppremsan på desktop. Inneh�
 **Lägen:** inga Intressant ger `EmptyState` med "Inga intressanta hästar än. Markera Intressant i avdelningarna först." och länken "Till avd 1". Riktodds saknas ger "Riktodds saknas – hämta omgången igen", och oddset sparas ändå. Offline ger "Sparas när du är uppkopplad igen" med antal i kö.
 
 ### S5 Lördag live [E3]
+
+> E8: S5 ingår inte. Rutten `/live` är nu S7 (`docs/specs/e8-live.md`). Streckbevakningen hamnar under Odds om den byggs. Texten nedan gäller inte förrän dess.
 **Innehåll**
 - **Vyrubrik:** pulserande prick, "Lördag live" och underraden "Uppdaterad 14:05 · nästa 14:10". Ikonknappen **Uppdatera nu** kan användas högst en gång per 60 s och är annars avstängd med "Nyss uppdaterad".
 - **Avdelningsflikar** med röd prick för avdelningar som har olarmade larm.
@@ -298,6 +299,8 @@ Segmentkontroll: **Platsspel | V85-rad** (`?flik=plats|rad`).
 **Desktop:** Platsspel och V85-rad sida vid sida. Tabellen för platsspel har kolumnerna Nr, Häst, Rikt, Unibet (fält), Skillnad och Bet. Rikt visas som i S2 desktop, och Skillnad räknas mot riktoddset med X-faktor.
 
 ### S7 Under loppet och resultat [E4]
+
+> E8: S7 är nu Live, på `/omgang/[roundId]/live`. Där `docs/specs/e8-live.md` och texten nedan säger olika gäller E8. Resultatet visas per lopp med Visa resultat.
 **Mål: blixtsnabbt.** All data för omgången finns redan i klienten (9.1). Att byta häst är bara ett lokalt tillstånd, utan nätverksanrop och utan omladdning. Kommentarer sparas optimistiskt i bakgrunden och läggs i kö om nätet försvinner (9.3).
 
 **Innehåll, när loppet pågår eller inte har startat**
@@ -650,6 +653,7 @@ Prisma mot Postgres i Supabase, med samma inställningar som Tabellgissningen (`
 | **RaceReview** | `userId`, `raceId`, `reviewedAt`, `noneInteresting` | `(userId, raceId)` unik |
 | **HorseComment** | `userId`, `horseId`, `startId?`, `roundId?`, `kind` (`NOTE` = inför loppet, `RACE` = under loppet), `tags` (String[]), `text`, `clientId` (uuid från klienten), `createdAt`, `updatedAt`, `deletedAt?` | `(userId, clientId)` unik. Högst en `RACE`-kommentar per `(userId, startId)` |
 | **Coupon** | `userId`, `roundId`, `budget` (kr, Int), `rowPrice`, `selections` (JSON: `{ "1": [3,10], … }`), `lockedLegs` (Int[]), `updatedAt` | `(userId, roundId)` unik |
+| **SubmittedRow** [E8] | `userId`, `roundId`, `selections` (JSON, kopia), `rows`, `cost`, `rowPrice`, `markedAt`, `markedLate`, `createdAt`, `updatedAt`. Ändras aldrig av kupongen. Se `docs/specs/e8-live.md` 9 | `(userId, roundId)` unik |
 | **LiveAlarm** | `userId`, `startId`, `kind` (`RUSH`/`DROP`), `firstSeenAt`, `deltaAtFirst`, `lastDelta`, `ackAt?`, `rearmedAt?` | Index `(userId, startId, kind)` |
 | **Outcome** | `userId`, `startId`, `roundId`, `interesting`, `spelbar`, `bet`, `unibetOdds?`, `betOdds?`, `riktodds?`, från E2.1 `xFactor` (`XFactor`), `xFactorValue` (`Decimal(4,2)`, 1,00 för `NONE`), `riktoddsX?`, `sourceSupport?`, `sourceTotal?` (m vid start), `frozenAt`, `place?`, `disqualified`, `hit?` | `(userId, startId)` unik. Skapas vid loppets start (6.4) |
 | **Source** | `userId`, `name`, `url`, `enabled`, `sortOrder`, `lastReadAt?`, `lastStatus?`, `lastError?`, `lastFactCount?` | `(userId, url)` unik |

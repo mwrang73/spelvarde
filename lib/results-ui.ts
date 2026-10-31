@@ -126,7 +126,9 @@ export function marksSr(o: { interesting: boolean; spelbar: boolean; bet: boolea
 
 // Upplästes en gång när resultatet kommer medan vyn är öppen:
 // "Resultat i avd 7: Kentucky River vann. Bet 1 av 2 träff."
-export function resultAnnouncement(gameType: string, leg: number, placed: PlacedRow[], summary: OutcomeSummary | null | undefined): string {
+// E8 8.2 rad 5: dolt lopp läser aldrig upp hästar eller träff.
+export function resultAnnouncement(gameType: string, leg: number, placed: PlacedRow[], summary: OutcomeSummary | null | undefined, shown = true): string {
+  if (!shown) return `Resultatet för ${legName(gameType, leg)} har kommit. Det är dolt.`;
   const winners = placed.filter((p) => p.place === 1).map((p) => p.start.horse.name);
   const who = winners.length ? `${winners.join(" och ")} vann.` : "Placeringen är klar.";
   const bet = summary?.bet.total ? ` Bet ${summary.bet.hits} av ${summary.bet.total} träff.` : "";
@@ -139,15 +141,19 @@ export type LegRow =
   | { kind: "before" }
   | { kind: "live"; line2: string }
   | { kind: "cancelled" }
+  // E8 8.2 rad 11: resultatet finns men är inte valt på enheten.
+  | { kind: "hidden"; line2: string }
   | { kind: "result"; title: string; line2: string; bet: HitCount | null };
 
 // Rad 1 och 2 och högerdelen för en avdelning i S1 (specen, S1 under och
 // efter loppen). Bet läses ur de frysta Outcome (StartDto.outcome).
-export function legRow(race: RaceDto, now: number): LegRow {
+// shown = false: loppet är dolt (lib/reveal.ts), och inget om utfallet får följa med.
+export function legRow(race: RaceDto, now: number, shown = true): LegRow {
   const mode = resultMode(race, now);
   if (mode === "before") return { kind: "before" };
   if (mode === "cancelled") return { kind: "cancelled" };
   if (mode !== "result") return { kind: "live", line2: `Startade ${hhmm(race.startAt)} · väntar på resultat` };
+  if (!shown) return { kind: "hidden", line2: `Startade ${hhmm(race.startAt)} · resultatet är dolt` };
   const runners = race.starts.filter((s) => !s.scratched);
   const winner = runners.filter((s) => s.result?.place === 1 && !s.result.disqualified).sort((a, b) => a.number - b.number)[0];
   const bets = runners.filter((s) => s.outcome?.bet).sort((a, b) => a.number - b.number);
@@ -171,6 +177,21 @@ export function legRow(race: RaceDto, now: number): LegRow {
 // Har alla avdelningar resultat eller är inställda ("Omgången" i stället för "Hittills")?
 export function allLegsDone(races: Pick<RaceDto, "resultAt" | "cancelled">[]): boolean {
   return races.length > 0 && races.every((r) => r.cancelled || !!r.resultAt);
+}
+
+// Summeringen över de visade loppen (E8 8.2 rad 12). Räknas i klienten från
+// race.summary, eftersom servern inte känner valet på enheten. null = inget visat.
+export function revealedSummary(races: Pick<RaceDto, "leg" | "resultAt" | "cancelled" | "summary">[], shownLegs: readonly number[]): { summary: OutcomeSummary; shown: number; total: number } | null {
+  const withResult = races.filter((r) => r.resultAt && !r.cancelled);
+  const shown = withResult.filter((r) => shownLegs.includes(r.leg));
+  if (!shown.length) return null;
+  const add = (a: HitCount, b: HitCount | null | undefined): HitCount => ({ hits: a.hits + (b?.hits ?? 0), total: a.total + (b?.total ?? 0) });
+  const zero: HitCount = { hits: 0, total: 0 };
+  const summary = shown.reduce<OutcomeSummary>(
+    (acc, r) => ({ bet: add(acc.bet, r.summary?.bet), spelbar: add(acc.spelbar, r.summary?.spelbar), interesting: add(acc.interesting, r.summary?.interesting), trollspot: add(acc.trollspot, r.summary?.trollspot) }),
+    { bet: zero, spelbar: zero, interesting: zero, trollspot: zero },
+  );
+  return { summary, shown: shown.length, total: withResult.length };
 }
 
 // Senaste resultattid i omgången (för "Resultat hämtade från ATG …").

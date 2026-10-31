@@ -52,6 +52,7 @@ export function RoundAnalysisView({ roundId }: { roundId: string }) {
     <>
       <AppHeader title="Efteranalys" sub={sub} back={back} />
       <main className="page an" id="main">
+        <p className="help pad">Efteranalysen visar resultatet för alla lopp, också de du inte har visat.</p>
         {a.pending > 0 && (
           <Banner tone="info" className="m10">
             <b>Alla lopp har inte resultat än.</b> Analysen gäller det som är klart och uppdateras när resultaten kommer.

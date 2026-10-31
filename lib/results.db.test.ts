@@ -288,7 +288,7 @@ describe.skipIf(skip)("E4a resultat mot Postgres", () => {
     expect(res.results!.syncedAt).not.toBeNull();
     expect(res.results!.nextSyncAt).toBeNull();
     expect(res.nextStep.kind).toBe("SEE_ANALYSIS");
-    expect(res.nextStep.text).toMatch(/^Bet 1\/1 träff · Spelbar \d+\/\d+ topp 3 · Intressant \d+\/\d+ topp 3 · Trollspöt \d+\/\d+ topp 3\.$/);
+    expect(res.nextStep.text).toBe("Efteranalysen visar resultatet för alla lopp.");
     const h = res.races[0].starts.find((s) => s.number === 6)!;
     expect(h.outcome).toMatchObject({ bet: true, hit: true, place: 1 });
 

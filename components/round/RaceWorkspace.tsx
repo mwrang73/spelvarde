@@ -48,7 +48,8 @@ import { RaceStatsContent } from "./RaceStats";
 import { loadRaceStats, useRaceStats } from "./raceStatsStore";
 import { RoundBand } from "./RoundBand";
 import { raceStarted, useRound } from "./RoundProvider";
-import { TagCta, TagRace } from "./TagRace";
+import { LiveLink } from "./LiveLink";
+import { isShown, useShownLegs } from "./revealStore";
 import { prefetchDetails } from "./roundStore";
 import { xLockReason } from "./XFactor";
 import { pctSignal, signalClass, signalSr } from "@/lib/signals";
@@ -193,10 +194,16 @@ function Workspace({
   // E4a: segmentkontrollen "Startlista | Resultat" när loppet har startat
   // eller är inställt. Resultat är förvalt; valet står kvar vid byte till en
   // annan avdelning som också har startat. URL:en visar valet (?vy=resultat).
+  // E8 8.2 rad 1–3: dolt lopp har Startlista förvald och visat Resultat. Fliken
+  // Resultat och ?vy=resultat visar aldrig ett dolt resultat själva (ResultGate).
+  // Valet gäller loppet: nästa lopp följer sitt eget val.
   const now = useNow(15_000).getTime();
-  const [listChosen, setListChosen] = useState(false);
+  const shownLegs = useShownLegs(roundId, data.races);
+  const [choice, setChoice] = useState<{ leg: number; view: "list" | "result" } | null>(() => (new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("vy") === "resultat" ? { leg, view: "result" } : null));
   const canResult = showsResultToggle(race, now);
-  const showResult = canResult && !listChosen;
+  const picked = choice?.leg === leg ? choice.view : null;
+  const showResult = canResult && (picked ? picked === "result" : isShown(race, shownLegs));
+  const listSeg = useRef<HTMLButtonElement>(null);
   const vy = showResult ? "?vy=resultat" : "";
   // Rutan Streck · odds behövs inte när avdelningen har startat.
   const oddsOpen = !race.cancelled && !raceStarted(race, now);
@@ -250,7 +257,7 @@ function Workspace({
       if (to === leg && (startId || !window.matchMedia(DESKTOP_QUERY).matches)) return;
       const target = data.races.find((r) => r.leg === to);
       if (!target) return;
-      const result = showsResultToggle(target, Date.now()) && !listChosen;
+      const result = showsResultToggle(target, Date.now()) && isShown(target, shownLegs);
       const q = result ? "?vy=resultat" : "";
       if (window.matchMedia(DESKTOP_QUERY).matches) {
         const first = orderOf(target)[0];
@@ -261,7 +268,7 @@ function Workspace({
       }
       if (to !== leg) say(`${legName(data.round.gameType, to)}, ${shortRaceName(target.name)}, ${target.counts.starters} hästar`);
     },
-    [avdUrl, hastUrl, data.races, leg, startId, listChosen, orderOf],
+    [avdUrl, hastUrl, data.races, leg, startId, shownLegs, orderOf],
   );
 
   const openHorse = useCallback(
@@ -360,7 +367,7 @@ function Workspace({
     // R växlar Startlista och Resultat när segmentkontrollen visas (E4a).
     if ((e.key === "r" || e.key === "R") && canResult && !e.shiftKey) {
       e.preventDefault();
-      setListChosen(showResult);
+      setChoice({ leg, view: showResult ? "list" : "result" });
       return;
     }
     if ((e.key === "x" || e.key === "X") && start) {
@@ -423,12 +430,17 @@ function Workspace({
   const cardNav = { index: Math.max(0, index), total: ordered.length, nav: horseNav };
 
   const mode = resultMode(race, now);
+  // E8 8.3: Dölj resultat växlar till Startlista och flyttar fokus till segmentet.
+  const onResultHidden = () => {
+    setChoice({ leg, view: "list" });
+    window.requestAnimationFrame(() => listSeg.current?.focus());
+  };
   const segmented = canResult ? (
     <div className="seg rsegc" role="group" aria-label="Visa loppet" title="R växlar">
-      <button type="button" aria-pressed={!showResult} onClick={() => setListChosen(true)}>
+      <button ref={listSeg} type="button" aria-pressed={!showResult} onClick={() => setChoice({ leg, view: "list" })}>
         Startlista
       </button>
-      <button type="button" aria-pressed={showResult} onClick={() => setListChosen(false)}>
+      <button type="button" aria-pressed={showResult} onClick={() => setChoice({ leg, view: "result" })}>
         Resultat
       </button>
     </div>
@@ -468,7 +480,6 @@ function Workspace({
   );
   const sheets = (
     <>
-      <TagRace data={data} race={race} />
       <Sheet open={statsOpen} onClose={() => setStatsOpen(false)} title="Loppstatistik" sub={`${legName(data.round.gameType, leg)} · ${race.distance} m ${methodLabel(race.startMethod)} · ${data.round.trackName}`}>
         <RaceStatsContent roundId={roundId} race={race} trackName={data.round.trackName} gameType={data.round.gameType} />
       </Sheet>
@@ -486,8 +497,8 @@ function Workspace({
   if (isDesktop) {
     const list = showResult ? (
       <div className="rwrap">
-        <TagCta data={data} race={race} now={now} />
-        <RaceResult data={data} race={race} now={now} selectedId={start?.id ?? null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
+        <LiveLink data={data} race={race} now={now} />
+        <RaceResult data={data} race={race} now={now} selectedId={start?.id ?? null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} onHidden={onResultHidden} />
       </div>
     ) : wide ? (
       <div className="twrap">
@@ -736,10 +747,10 @@ function Workspace({
         {view === "list" ? (
           <div className="dmain" id="avd-panel" role="tabpanel" aria-labelledby={`tab-${leg}`}>
             {oddsOpen && <RefreshBanner data={data} className="m10" />}
-            <TagCta data={data} race={race} now={now} />
+            <LiveLink data={data} race={race} now={now} />
             {showResult && (
               <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-                <RaceResult data={data} race={race} now={now} selectedId={null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} />
+                <RaceResult data={data} race={race} now={now} selectedId={null} hrefFor={(s) => hastUrl(leg, s.id, vy)} onOpen={openHorse} onLeg={selectLeg} onHidden={onResultHidden} />
               </div>
             )}
             <ul className="list mlist" hidden={showResult} aria-label={`Startlista lopp ${leg}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>

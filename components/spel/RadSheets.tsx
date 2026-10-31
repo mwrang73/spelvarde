@@ -26,8 +26,24 @@ import {
   atgStartedHelp,
   type AtgFileResult,
 } from "@/lib/atg-file";
-import { couponCost, DEFAULT_ROW_PRICE } from "@/lib/coupon";
-import { hhmm, thousands } from "@/lib/format";
+import { asSelections, couponCost, DEFAULT_ROW_PRICE, type Selections } from "@/lib/coupon";
+import { hhmm, relTime, thousands } from "@/lib/format";
+import {
+  rowsOfSelections,
+  sameRow,
+  SUBMITTED_ROW_CHOICE_COPIED,
+  SUBMITTED_ROW_CHOICE_CURRENT,
+  SUBMITTED_ROW_MARK,
+  SUBMITTED_ROW_MARK_HELP,
+  SUBMITTED_ROW_MARK_LATE,
+  SUBMITTED_ROW_MARK_LATE_HELP,
+  SUBMITTED_ROW_REPLACE,
+  SUBMITTED_ROW_REPLACE_HELP,
+  SUBMITTED_ROW_SAME,
+  SUBMITTED_ROW_STAMP,
+  SUBMITTED_ROW_WHICH,
+} from "@/lib/submitted-row";
+import type { SubmittedRowDto } from "@/lib/types";
 import { detectPlatform } from "@/lib/home-screen";
 import { formatStockholm } from "@/lib/stockholm-time";
 import { buildRad, type TippaHorse, type TippaLeg, type TippaLegResult, type TippaResult, type TippaRules } from "@/lib/tippa";
@@ -430,6 +446,18 @@ function isIosHomeScreen(): boolean {
   return standalone && detectPlatform(navigator.userAgent, navigator.maxTouchPoints).startsWith("ios");
 }
 
+// Del av arket för inlämnad rad (E8 11). copied = raden som är uttagen, när den
+// skiljer sig från raden i appen: Mikael väljer vilken han lämnade in.
+export type AtgSubmit = {
+  submitted: SubmittedRowDto | null;
+  current: Selections;
+  copied: { at: string; selections: Selections } | null;
+  gameType: string;
+  now: Date;
+  rowPrice: number;
+  onMark: (selections: Selections) => void;
+};
+
 export function RadAtgSheet({
   kupong,
   rows,
@@ -446,6 +474,7 @@ export function RadAtgSheet({
   hasStartedAt,
   onDownloaded,
   onCopy,
+  submit,
 }: {
   kupong: KupongLeg[];
   rows: number;
@@ -462,12 +491,32 @@ export function RadAtgSheet({
   hasStartedAt: (t: number) => boolean;
   onDownloaded: () => void;
   onCopy: () => Promise<boolean>;
+  submit: AtgSubmit;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const errId = useId();
   useFocusOnOpen(ref, ".shbtns .btn:not(:disabled)");
   const [status, setStatus] = useState<AtgStatus | null>(null);
   const [clickErr, setClickErr] = useState<string | null>(null);
+
+  // Vilken rad som markeras (E8 10). Uttagen rad som skiljer sig är förvald, och kupongen visar valet.
+  const copied = submit.copied && !sameRow(submit.copied.selections, submit.current) ? submit.copied : null;
+  const [pick, setPick] = useState<"copied" | "current">("copied");
+  const chosen = copied && pick === "copied" ? copied.selections : submit.current;
+  const countOf = (sel: Selections) => rowsOfSelections(sel, submit.rowPrice, submit.gameType);
+  const summaryOf = (sel: Selections) => {
+    const c = countOf(sel);
+    return c.ok ? `${thousands(c.value.rows)} ${c.value.rows === 1 ? "rad" : "rader"} · ${krText(c.value.cost)}` : "";
+  };
+  const chosenCount = countOf(chosen);
+  const chosenSummary = summaryOf(chosen);
+  const shownKupong = kupong.map((l) => ({ ...l, selection: chosen[l.leg] ?? [] }));
+  const sub = submit.submitted;
+  const sameAsSubmitted = !!sub && sameRow(chosen, asSelections(sub.selections));
+  const taken = !!submit.copied;
+  // Bara knappen ligger i den klistrade delen.
+  const canMark = !blocked && chosenCount.ok;
+  const markErr = !blocked && !chosenCount.ok ? chosenCount.error : null;
 
   // Felen avgörs när arket renderas, så att knappen är avstängd med synlig orsak från början.
   const file = fileAt(nowDate);
@@ -536,7 +585,20 @@ export function RadAtgSheet({
             <Bold text={atgRemovedText(gameType, r)} />
           </Banner>
         ))}
-      <Kupong gameType={gameType} legs={kupong} rows={rows} cost={cost} left={left} favText={favText} className="mini flat" />
+      <Kupong gameType={gameType} legs={shownKupong} rows={chosenCount.ok ? chosenCount.value.rows : rows} cost={chosenCount.ok ? chosenCount.value.cost : cost} left={chosenCount.ok ? Math.round((left + cost - chosenCount.value.cost) * 100) / 100 : left} favText={favText} className="mini flat" />
+      {copied && !(started && sub) && (
+        <fieldset className="chs">
+          <legend>{SUBMITTED_ROW_WHICH}</legend>
+          <label>
+            <input type="radio" name="sub-row" checked={pick === "copied"} onChange={() => setPick("copied")} />
+            <span>{SUBMITTED_ROW_CHOICE_COPIED(formatStockholm(new Date(copied.at), "time"), summaryOf(copied.selections))}</span>
+          </label>
+          <label>
+            <input type="radio" name="sub-row" checked={pick === "current"} onChange={() => setPick("current")} />
+            <span>{SUBMITTED_ROW_CHOICE_CURRENT(summaryOf(submit.current))}</span>
+          </label>
+        </fieldset>
+      )}
       {started ? (
         <p className="help">{atgStartedHelp(gameType)}</p>
       ) : (
@@ -549,6 +611,9 @@ export function RadAtgSheet({
               <li>Ladda upp filen.</li>
               <li>
                 <Bold text={atgCompareStep(fileRows, fileCost)} />
+              </li>
+              <li>
+                Tryck <b>{SUBMITTED_ROW_MARK}</b> när ATG har tagit emot spelet.
               </li>
             </ol>
             <p className="help">{ATG_NO_SUBMIT_TEXT}</p>
@@ -565,7 +630,14 @@ export function RadAtgSheet({
             {ATG_COPY_HELP_TEXT}
             {isIosHomeScreen() && ` ${ATG_SAFARI_TEXT}`}
           </p>
+          {!blocked && !sameAsSubmitted && chosenSummary && <p className="help">{sub ? SUBMITTED_ROW_REPLACE_HELP : SUBMITTED_ROW_MARK_HELP(chosenSummary)}</p>}
         </>
+      )}
+      {started && !sub && !blocked && <p className="help">{SUBMITTED_ROW_MARK_LATE_HELP}</p>}
+      {markErr && (
+        <Banner tone="err">
+          {markErr}
+        </Banner>
       )}
       <div className="atg-foot">
         <p className="atg-status" role="status">
@@ -581,10 +653,10 @@ export function RadAtgSheet({
         </p>
         <div className="shbtns atg">
           {started ? (
-            copyBtn(true)
+            copyBtn(!!sub || !!blocked)
           ) : (
             <>
-              <button type="button" className="btn primary" disabled={!canDownload} aria-describedby={!canDownload ? errId : undefined} onClick={download}>
+              <button type="button" className={`btn ${taken ? "secondary" : "primary"}`} disabled={!canDownload} aria-describedby={!canDownload ? errId : undefined} onClick={download}>
                 <IconDownload />
                 Ladda ner ATG-fil
               </button>
@@ -594,6 +666,35 @@ export function RadAtgSheet({
               </a>
               {copyBtn(false)}
             </>
+          )}
+        </div>
+        <div className="subact">
+          {started ? (
+            sub ? (
+              <p className="help" role="status">
+                {SUBMITTED_ROW_STAMP} {relTime(sub.markedAt, submit.now)}.
+              </p>
+            ) : (
+              !blocked && (
+                <button type="button" className="btn primary" disabled={!canMark} onClick={() => submit.onMark(chosen)}>
+                  {SUBMITTED_ROW_MARK_LATE}
+                </button>
+              )
+            )
+          ) : sub ? (
+            sameAsSubmitted ? (
+              <p className="help" role="status">
+                {SUBMITTED_ROW_SAME}
+              </p>
+            ) : (
+              <button type="button" className="btn secondary" disabled={!canMark} onClick={() => submit.onMark(chosen)}>
+                {SUBMITTED_ROW_REPLACE}
+              </button>
+            )
+          ) : (
+            <button type="button" className={`btn ${taken ? "primary" : "secondary"}`} disabled={!canMark} onClick={() => submit.onMark(chosen)}>
+              {SUBMITTED_ROW_MARK}
+            </button>
           )}
         </div>
       </div>

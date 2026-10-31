@@ -81,6 +81,34 @@ export function BetBadge({ odds: o }: { odds: number | null | undefined }) {
   );
 }
 
+// E8 Live: Bet som rak biljett med hack, "BET 2,40". Dagens BetBadge används kvar i övriga vyer.
+export function BetTicket({ odds: o }: { odds: number | null | undefined }) {
+  return (
+    <span className="tk" role="img" aria-label={o != null ? `Bet, spelad till ${odds(o)}` : "Bet"}>
+      BET{o != null && <b>{odds(o)}</b>}
+    </span>
+  );
+}
+
+// E8 Live: inlämnad rad som rund pill. hit = hästen vann loppet ("✓ RAD").
+export function RadPill({ hit }: { hit?: boolean }) {
+  return (
+    <span className={`rad${hit ? " hit" : ""}`} role="img" aria-label={hit ? "Med i din inlämnade rad, vann loppet" : "Med i din inlämnade rad"}>
+      {hit ? "✓ RAD" : "RAD"}
+    </span>
+  );
+}
+
+// Träff eller Miss: ord och ikon, aldrig bara färg.
+export function Verdict({ hit }: { hit: boolean }) {
+  return (
+    <span className={`vd ${hit ? "y" : "n"}`} role="img" aria-label={hit ? "Träff" : "Miss"}>
+      {hit ? <IconCheck /> : <IconX />}
+      {hit ? "Träff" : "Miss"}
+    </span>
+  );
+}
+
 // X-märket efter S och B. Inget märke för Ingen.
 export function XBadge({ x, wide }: { x: "NONE" | "TROR" | "STARK" | undefined; wide?: boolean }) {
   if (!x || x === "NONE") return null;

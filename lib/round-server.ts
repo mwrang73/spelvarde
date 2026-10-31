@@ -5,13 +5,13 @@
 // modellversionen.
 
 import { Prisma, type PrismaClient } from "@prisma/client";
-import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, couponDto, dateStr, dec, iso, markDto, personDto, riktoddsDetailDto, roundDto, settingsDto, yearStatsDto } from "@/lib/dto";
+import { COMMENT_INCLUDE, asHorseStats, asPersonStats, commentDto, couponDto, dateStr, dec, iso, markDto, personDto, riktoddsDetailDto, roundDto, settingsDto, submittedRowDto, yearStatsDto } from "@/lib/dto";
 import { legsFor, type GameType } from "@/lib/game-type";
 import { positiveSignals, type SignalResult } from "@/lib/positive-signals";
 import { barefoot, isCalibrated, parseParams } from "@/lib/riktodds";
 import { bestNumbers, MIN_RACES_TRACK_BEST, postTable, postTablesForRaces, type PostTable } from "@/lib/hist";
 import { formSummary, gallopWarning, lastStarts, type FormRecord } from "@/lib/gallop";
-import { computePhase, mineLabel, nextStep, phaseRail, roundDayPassed, type NextStepRace } from "@/lib/phase";
+import { computePhase, firstStartOf, mineLabel, nextStep, phaseRail, roundDayPassed, type NextStepRace } from "@/lib/phase";
 import { byPlace, hitOf, nextResultsSyncAt, outcomeSummary } from "@/lib/outcomes";
 import { settleOutcomes } from "@/lib/outcomes-server";
 import { favoriteWinPct, msRanks, type LeagueData, type LeagueRow, type MsData, type RankData, type StartnrData } from "@/lib/travstatistik";
@@ -395,7 +395,7 @@ export async function buildRoundResponse(
   if (!round) return null;
   const date = dateStr(round.date);
   const horseIds = [...new Set(round.races.flatMap((r) => r.starts.map((s) => s.horseId)))];
-  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, sourcesEnabled, posts, trackPosts, unibet, latestOdds, lastOddsAttempt] = await Promise.all([
+  const [records, streck, stats, fetch, currentId, rikt, settingsRow, coupon, submittedRow, sourcesEnabled, posts, trackPosts, unibet, latestOdds, lastOddsAttempt] = await Promise.all([
     lastRecordsByHorse(db, horseIds, round.date),
     latestStreck(db, round.id),
     latestStats(db, round.id),
@@ -404,6 +404,7 @@ export async function buildRoundResponse(
     activeRiktodds(db, round.id),
     db.userSettings.findUnique({ where: { userId } }),
     db.coupon.findUnique({ where: { userId_roundId: { userId, roundId: round.id } } }),
+    db.submittedRow.findUnique({ where: { userId_roundId: { userId, roundId: round.id } } }),
     db.source.count({ where: { userId, enabled: true } }),
     postTablesForRaces(db, round.races, round.date),
     postTablesForRaces(db, round.races, round.date, round.trackId),
@@ -507,7 +508,7 @@ export async function buildRoundResponse(
     isCurrent: currentId === round.id,
     currentRoundId: currentId,
     phase,
-    phaseRail: phaseRail(date, phase),
+    phaseRail: phaseRail(date, phase, firstStartOf(round.races)),
     nextStep: nextStep({
       now,
       gameType: settings.gameType,
@@ -522,6 +523,7 @@ export async function buildRoundResponse(
     races,
     latestStreck: streck ? { kind: streck.kind, takenAt: streck.takenAt.toISOString() } : null,
     coupon: coupon ? couponDto(coupon, legsFor(round.gameType)) : null,
+    submittedRow: submittedRow ? submittedRowDto(submittedRow) : null,
     model: rikt.model ? { id: rikt.model.id, key: rikt.model.key, calibrated: isCalibrated(parseParams(rikt.model.params)) } : null,
     settings: { spelbarGuideline: settings.spelbarGuideline, rowPrice: settings.rowPrice, xFactorTror: settings.xFactorTror, xFactorStark: settings.xFactorStark, spelbarTolerance: settings.spelbarTolerance },
     sourcesEnabled,
@@ -610,7 +612,7 @@ export async function buildCurrentResponse(
     gameType,
     round: roundDto(round),
     phase,
-    phaseRail: phaseRail(date, phase),
+    phaseRail: phaseRail(date, phase, firstStartOf(round.races)),
     nextStep: nextStep({
       now,
       gameType,

@@ -321,6 +321,9 @@ export type RoundResponse = {
   latestStreck: { kind: "BASELINE" | "LIVE" | "FETCH"; takenAt: string } | null;
   // Användarens V85-rad för omgången (null = inte sparad).
   coupon: CouponDto | null;
+  // E8: raden som användaren har markerat som inlämnad (null = ingen). Äldre
+  // cachade svar saknar fältet: läs med ?? null.
+  submittedRow?: SubmittedRowDto | null;
   // Modellversionen som riktoddsen kommer från.
   // calibrated = modellen har kalibrering (v3: plattA/plattB/maxP3 ändrar P3).
   model: { id: string; key: string; calibrated?: boolean } | null;
@@ -604,6 +607,25 @@ export type CouponDto = {
   copiedAt?: string | null;
   copiedSelections?: Record<string, number[]> | null;
 };
+
+// PUT /api/rounds/[id]/submitted-row (E8, docs/specs/e8-live.md 9.3). En kopia:
+// ändras aldrig av kupongen, och struken häst står kvar.
+export type SubmittedRowDto = {
+  roundId: string;
+  // { "1": [2, 5], … }
+  selections: Record<string, number[]>;
+  rows: number;
+  cost: number;
+  rowPrice: number;
+  // När användaren tryckte, enligt klienten.
+  markedAt: string;
+  // markedAt var vid eller efter första start.
+  markedLate: boolean;
+  updatedAt: string;
+  // Bara i klienten: posten ligger i utkorgen (applyPending). Skickas aldrig av servern.
+  pending?: boolean;
+};
+export type SubmittedRowResponse = { submittedRow: SubmittedRowDto };
 
 // E6: prioriterat lopp, Auto eller valt (hette allgardering före E6b). Ingen NONE (spec 8.5).
 export type AllgMode = "AUTO" | "CHOSEN";

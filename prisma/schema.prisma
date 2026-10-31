@@ -13,7 +13,8 @@
 // HorseRecord, RoundSnapshot, StreckValue, StatsSnapshot, ModelVersion,
 // Riktodds, FetchLog. Skrivs bara av hämtning, synk och cron.
 // Per användare: UserSettings, Mark, RaceReview, HorseComment, Coupon,
-// LiveAlarm, Outcome, Source, TipFact. Har alltid userId från sessionen.
+// SubmittedRow, LiveAlarm, Outcome, Source, TipFact. Har alltid userId från
+// sessionen.
 //
 // Tider i UTC. Odds och procent som Decimal(6,2). Villkor som Prisma inte kan
 // uttrycka (check, delvisa unika index) ligger i migreringens SQL.
@@ -198,6 +199,7 @@ model User {
   reviews       RaceReview[]
   comments      HorseComment[]
   coupons       Coupon[]
+  submittedRows SubmittedRow[]
   alarms        LiveAlarm[]
   outcomes      Outcome[]
   sources       Source[]
@@ -259,18 +261,19 @@ model Round {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  races       Race[]
-  snapshots   RoundSnapshot[]
-  stats       StatsSnapshot[]
-  fetchLogs   FetchLog[]
-  comments    HorseComment[]
-  coupons     Coupon[]
-  outcomes    Outcome[]
-  tipFacts    TipFact[]
-  oddsFetches OddsFetch[]
-  tipArticles TipArticle[]
-  tips        Tip[]
-  aiUsages    AiUsage[]
+  races         Race[]
+  snapshots     RoundSnapshot[]
+  stats         StatsSnapshot[]
+  fetchLogs     FetchLog[]
+  comments      HorseComment[]
+  coupons       Coupon[]
+  submittedRows SubmittedRow[]
+  outcomes      Outcome[]
+  tipFacts      TipFact[]
+  oddsFetches   OddsFetch[]
+  tipArticles   TipArticle[]
+  tips          Tip[]
+  aiUsages      AiUsage[]
 
   @@index([date])
   @@schema("spelvarde")
@@ -691,18 +694,18 @@ model HorseComment {
 }
 
 model Coupon {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roundId    String
-  round      Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  budget     Int
-  rowPrice   Decimal  @db.Decimal(6, 2)
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roundId          String
+  round            Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  budget           Int
+  rowPrice         Decimal   @db.Decimal(6, 2)
   // { "1": [3, 10], "2": [5], … }
-  selections Json
-  lockedLegs Int[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  selections       Json
+  lockedLegs       Int[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   // E6 (docs/specs/e6-v85-rad.md 8.5). null = raden sparades före E6 (gammal
   // rad, visas som den är). Databasen har villkoren spikCount 0–8 och allgLeg 1–8.
   spikCount        Int?
@@ -718,6 +721,34 @@ model Coupon {
   // Senaste Kopiera texten och raden som kopierades då.
   copiedAt         DateTime?
   copiedSelections Json?
+
+  @@unique([userId, roundId])
+  @@index([roundId])
+  @@schema("spelvarde")
+}
+
+// E8 (docs/specs/e8-live.md 9.1): raden som användaren har markerat som inlämnad
+// hos ATG, en per omgång. En kopia som appen aldrig räknar om: struken häst står
+// kvar, och Coupon.selections och copiedSelections påverkar den inte. Databasen
+// har villkoren rows >= 1, cost >= 0 och rowPrice > 0.
+model SubmittedRow {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roundId    String
+  round      Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  // { "1": [2, 5], … }, sorterad och utan dubbletter.
+  selections Json
+  rows       Int
+  cost       Decimal  @db.Decimal(14, 2)
+  // Radpriset vid markeringen.
+  rowPrice   Decimal  @db.Decimal(6, 2)
+  // När användaren tryckte, enligt klienten.
+  markedAt   DateTime
+  // markedAt >= första start. Räknas av servern vid varje PUT.
+  markedLate Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@unique([userId, roundId])
   @@index([roundId])

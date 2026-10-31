@@ -126,7 +126,7 @@ export const AppHeader = forwardRef<HTMLHeadingElement, Props>(function AppHeade
   );
 });
 
-function DeskHeader({ meta, refresh }: { meta?: React.ReactNode; refresh?: React.ReactNode }) {
+export function DeskHeader({ meta, refresh }: { meta?: React.ReactNode; refresh?: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const stale = useOutboxStale();
   return (

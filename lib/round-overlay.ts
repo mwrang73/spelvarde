@@ -21,8 +21,9 @@ import { couponCost, rowCount, type Selections } from "@/lib/coupon";
 import { applyMarkChange, EMPTY_MARK, parseMarkChange, type MarkChange, type MarkState } from "@/lib/marks";
 import type { OutboxItem } from "@/lib/outbox";
 import { nextStep, type NextStepRace } from "@/lib/phase";
+import { isLateMark, rowsOfSelections, SUBMITTED_ROW_REJECTED, SUBMITTED_ROW_RETRY } from "@/lib/submitted-row";
 import { belowGuideline, DEFAULT_TOLERANCE, forslag, oddsClass, spelbar } from "@/lib/spelbar";
-import type { AllgMode, CommentDto, CommentKind, CouponDto, LegRolesDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto } from "@/lib/types";
+import type { AllgMode, CommentDto, CommentKind, CouponDto, LegRolesDto, CouponResponse, MarkDto, MarkResponse, RaceDto, ReviewResponse, RoundResponse, RoundSettings, SettingsDto, StartDto, SubmittedRowDto, SubmittedRowResponse } from "@/lib/types";
 import { DEFAULT_X_FACTORS, factorFor, riktoddsX, type XFactorSettings } from "@/lib/xfactor";
 import { legsFor } from "@/lib/game-type";
 
@@ -40,13 +41,20 @@ export type CommentMeta = {
   // Sammanhang för listan i hästkortet innan servern har svarat.
   round: CommentDto["round"];
   leg: number | null;
+  // E8 12.5: taggen, för toasten. Poster från före E8 saknar fältet.
+  what?: string;
 };
-export type CommentDeleteMeta = { kind: "comment-delete"; horseId: string; horseName: string; clientId: string };
+// roundId och what (E8): Live räknar posterna per omgång, och toasten säger vilken tagg.
+export type CommentDeleteMeta = { kind: "comment-delete"; horseId: string; horseName: string; clientId: string; roundId?: string; what?: string };
 // Kroppen är hela kupongen (CouponBody).
 export type CouponMeta = { kind: "coupon"; roundId: string };
-export type ItemMeta = MarkMeta | ReviewMeta | CommentMeta | CommentDeleteMeta | CouponMeta;
+// E8 9.5: inlämnad rad. Kroppen till PUT är SubmittedRowBody.
+export type SubmittedRowMeta = { kind: "submitted-row"; roundId: string };
+export type SubmittedRowDeleteMeta = { kind: "submitted-row-delete"; roundId: string };
+export type ItemMeta = MarkMeta | ReviewMeta | CommentMeta | CommentDeleteMeta | CouponMeta | SubmittedRowMeta | SubmittedRowDeleteMeta;
 
 export type CommentBody = { horseId: string; startId: string | null; roundId: string | null; kind: CommentKind; tags: string[]; text: string };
+export type SubmittedRowBody = { selections: Record<string, number[]>; rowPrice: number; markedAt: string };
 export type CouponBody = { budget: number; rowPrice: number | null; selections: Record<string, number[]>; lockedLegs: number[] } & CouponBodyE6;
 // E6-fälten (frivilliga, så att äldre köade kroppar fungerar).
 export type CouponBodyE6 = {
@@ -96,6 +104,8 @@ export function retryText(item: OutboxItem): string {
   if (m.kind === "mark") return `Kunde inte spara ${markWhat(item)} för ${m.horseName}. Försöker igen.`;
   if (m.kind === "review") return "Kunde inte spara granskningen. Försöker igen.";
   if (m.kind === "coupon") return "Kunde inte spara raden. Försöker igen.";
+  if (m.kind === "submitted-row" || m.kind === "submitted-row-delete") return SUBMITTED_ROW_RETRY;
+  if (m.what) return `Kunde inte spara ${m.what} för ${m.horseName}. Försöker igen.`;
   return `Kunde inte spara kommentaren om ${m.horseName}. Försöker igen.`;
 }
 
@@ -104,6 +114,7 @@ export function rejectedText(item: OutboxItem, error: string): string {
   const m = metaOf(item);
   if (m?.kind === "mark") return `Kunde inte spara ${markWhat(item)} för ${m.horseName}: ${error}`;
   if (m?.kind === "coupon") return `Kunde inte spara raden: ${error}`;
+  if (m?.kind === "submitted-row" || m?.kind === "submitted-row-delete") return SUBMITTED_ROW_REJECTED(error);
   return error;
 }
 
@@ -153,7 +164,8 @@ function withNextStep(data: RoundResponse, now: Date): RoundResponse {
   const open = data.races.filter((r) => !r.started).flatMap((r) => r.starts).filter((s) => !s.scratched);
   const step = nextStep({
     now,
-    round: { id: data.round.id, date: data.round.date, fetchStatus: data.round.fetchStatus, races },
+    gameType: data.round.gameType,
+    round: { id: data.round.id, date: data.round.date, fetchStatus: data.round.fetchStatus, gameType: data.round.gameType, races },
     nextAvailable: null,
     interestingWithoutOdds: open.filter((s) => s.mark?.interesting && s.mark.unibetOdds === null).length,
     spelbarWithoutBet: open.filter((s) => s.mark?.spelbar && !s.mark.bet).length,
@@ -290,11 +302,33 @@ export function couponDtoOf(roundId: string, body: CouponBody, fallbackRowPrice:
   };
 }
 
+// Inlämnad rad i kön som SubmittedRowDto (rader och kostnad räknas som på servern).
+// null = kroppen går inte att räkna, och då visas inget överlägg.
+export function submittedRowDtoOf(data: RoundResponse, body: SubmittedRowBody, at: number): SubmittedRowDto | null {
+  const sel: Selections = {};
+  for (const [k, v] of Object.entries(body.selections)) sel[Number(k)] = v;
+  const counted = rowsOfSelections(sel, body.rowPrice, data.round.gameType);
+  if (!counted.ok) return null;
+  return {
+    roundId: data.round.id,
+    selections: body.selections,
+    rows: counted.value.rows,
+    cost: counted.value.cost,
+    rowPrice: body.rowPrice,
+    markedAt: body.markedAt,
+    markedLate: isLateMark(body.markedAt, data.races),
+    updatedAt: new Date(at).toISOString(),
+    pending: true,
+  };
+}
+
 // Lägger utkorgens poster för omgången ovanpå cachen.
 export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date = new Date()): RoundResponse {
   const marks = new Map<string, { change: MarkChange; at: number }[]>();
   const reviews = new Map<string, { reviewed: boolean; noneInteresting: boolean; at: number }>();
   let coupon: { body: CouponBody; at: number } | null = null;
+  // E8 9.5: sista posten för omgången vinner. undefined = ingen post.
+  let submitted: SubmittedRowDto | null | undefined;
   for (const item of queue) {
     const m = metaOf(item);
     if (!m || !("roundId" in m) || m.roundId !== data.round.id) continue;
@@ -305,9 +339,15 @@ export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date
       reviews.set(m.raceId, { reviewed: m.reviewed, noneInteresting: m.noneInteresting, at: item.createdAt });
     } else if (m.kind === "coupon" && item.body && typeof item.body === "object") {
       coupon = { body: item.body as CouponBody, at: item.createdAt };
+    } else if (m.kind === "submitted-row" && item.body && typeof item.body === "object") {
+      const dto = submittedRowDtoOf(data, item.body as SubmittedRowBody, item.createdAt);
+      if (dto) submitted = dto;
+    } else if (m.kind === "submitted-row-delete") {
+      submitted = null;
     }
   }
-  if (!marks.size && !reviews.size && !coupon) return data;
+  const submittedRow = submitted === undefined ? (data.submittedRow ?? null) : submitted;
+  if (!marks.size && !reviews.size && !coupon) return submitted === undefined ? data : { ...data, submittedRow };
   const guideline = data.settings?.spelbarGuideline ?? 2;
   const factors = xFactorsOf(data.settings);
   const tolerance = toleranceOf(data.settings);
@@ -321,13 +361,18 @@ export function applyPending(data: RoundResponse, queue: OutboxItem[], now: Date
   });
   const pendingCoupon = coupon as { body: CouponBody; at: number } | null;
   const nextCoupon = pendingCoupon ? couponDtoOf(data.round.id, pendingCoupon.body, data.coupon?.rowPrice ?? data.settings?.rowPrice ?? 0.5, pendingCoupon.at, legsFor(data.round.gameType), data.coupon) : data.coupon;
-  return withNextStep({ ...data, races, coupon: nextCoupon }, now);
+  return withNextStep({ ...data, races, coupon: nextCoupon, submittedRow }, now);
 }
 
 // Skriver in serverns bekräftade svar i cachen.
 export function applyDone(data: RoundResponse, item: OutboxItem, response: unknown, now: Date = new Date()): RoundResponse {
   const m = metaOf(item);
-  if (!m || (m.kind !== "mark" && m.kind !== "review" && m.kind !== "coupon") || m.roundId !== data.round.id) return data;
+  if (!m || (m.kind !== "mark" && m.kind !== "review" && m.kind !== "coupon" && m.kind !== "submitted-row" && m.kind !== "submitted-row-delete") || m.roundId !== data.round.id) return data;
+  if (m.kind === "submitted-row-delete") return { ...data, submittedRow: null };
+  if (m.kind === "submitted-row") {
+    const row = (response as Partial<SubmittedRowResponse> | null)?.submittedRow;
+    return row && row.roundId === m.roundId ? { ...data, submittedRow: row } : data;
+  }
   if (m.kind === "coupon") {
     const c = (response as Partial<CouponResponse> | null)?.coupon;
     if (!c || c.roundId !== m.roundId) return data;

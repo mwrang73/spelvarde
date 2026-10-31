@@ -19,7 +19,7 @@ export function RoundBand({ data, leg, onSelect }: { data: RoundResponse; leg: n
         <h2 className="bl">
           Fas
         </h2>
-        <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} variant="seg" />
+        <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} liveHref={`${base}/live`} activePage="ANALYS" variant="seg" />
       </div>
       <div className="pn bandp band-tool">
         <h2 className="bl">

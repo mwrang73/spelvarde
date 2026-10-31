@@ -13,12 +13,13 @@ import { Sheet } from "@/components/ui/Sheet";
 import { changesSummary, dayDate, hhmm, methodLabel, relTime, shortRaceName } from "@/lib/format";
 import { resumeMessage } from "@/lib/fetch-chain";
 import type { NextStep } from "@/lib/phase";
-import { allLegsDone, lastResultAt, latestIso, legRow, type LegRow } from "@/lib/results-ui";
+import { allLegsDone, lastResultAt, latestIso, legRow, revealedSummary, type LegRow } from "@/lib/results-ui";
 import type { RaceDto, RoundResponse } from "@/lib/types";
 import { useFetchChain } from "./fetchChain";
 import { FetchBanners, FetchSteps, runChain } from "./FetchUi";
 import { Counts, PhaseRail, RoundLinks, firstTodoLeg } from "./parts";
 import { Summary } from "./RaceResult";
+import { isShown, useShownLegs } from "./revealStore";
 import { allRacesStarted, useRound } from "./RoundProvider";
 import { OddsFetchCard, RefreshBanner, RefreshBoardButton } from "./StreckOdds";
 import { needsOddsFetch } from "@/lib/streck-odds";
@@ -87,6 +88,7 @@ export function RoundOverview() {
   const [changesOpen, setChangesOpen] = useState(false);
   // Klockan för "Pågår" och "väntar på resultat" i raderna (E4a).
   const now = useNow(30_000);
+  const shownLegs = useShownLegs(roundId, data?.races);
 
   if (!data) {
     return (
@@ -110,13 +112,15 @@ export function RoundOverview() {
   const resume = data.fetch.resumeFrom;
   const done = data.phase === "KLART";
   const resultsAt = done ? latestIso(data.results?.syncedAt, lastResultAt(data.races)) : null;
-  const roundSummary = data.results?.summary ?? null;
+  // E8 8.2 rad 12: summeringen räknas över de visade loppen, aldrig ur serverns summa.
+  const revealed = revealedSummary(data.races, shownLegs);
+  const summaryHead = !revealed ? "" : revealed.shown < revealed.total ? `Visade lopp (${revealed.shown} av ${revealed.total})` : allLegsDone(data.races) ? "Omgången" : "Hittills";
 
   return (
     <>
       <AppHeader brand title="Omgången" sub={roundSub(data)} refresh={allRacesStarted(data.races, now.getTime()) ? undefined : <RefreshBoardButton data={data} />} actions={<HeaderActions roundId={data.round.id} gameId={data.round.atgGameId} />} />
       <main className="page" id="main">
-        <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} className="rail" />
+        <PhaseRail steps={data.phaseRail} analysHref={`${base}/avd/${firstTodoLeg(data.races)}`} oddsHref={`${base}/odds`} liveHref={`${base}/live`} className="rail" />
         {!data.isCurrent && data.currentRoundId && (
           <div className="ban thin m10">
             <p>
@@ -127,9 +131,7 @@ export function RoundOverview() {
         <FetchBanners onRetry={(from, rid) => runChain(from, data.round.atgGameId, rid ?? data.round.id)} />
         <FetchSteps state={chain} />
         <NextStepCardFor data={data} />
-        {roundSummary && data.races.some((r) => r.resultAt && !r.cancelled) && (
-          <Summary summary={roundSummary} heading={allLegsDone(data.races) ? "Omgången" : "Hittills"} label={allLegsDone(data.races) ? "Summering omgången" : "Summering hittills"} />
-        )}
+        {revealed && <Summary summary={revealed.summary} heading={summaryHead} label={`Summering ${summaryHead.toLowerCase()}`} />}
         {!allRacesStarted(data.races, now.getTime()) && <RefreshBanner data={data} className="m10" />}
         <p className="fetchline">
           {done && resultsAt ? (
@@ -157,7 +159,7 @@ export function RoundOverview() {
         <ul className="olist" aria-label="Lopp">
           {data.races.map((r) => (
             <li key={r.id}>
-              <LegLink gameType={data.round.gameType} race={r} href={`${base}/avd/${r.leg}`} row={legRow(r, now.getTime())} />
+              <LegLink gameType={data.round.gameType} race={r} href={`${base}/avd/${r.leg}`} row={legRow(r, now.getTime(), isShown(r, shownLegs))} />
             </li>
           ))}
         </ul>
@@ -205,8 +207,8 @@ function TipsLineRow({ data, done, now }: { data: RoundResponse; done: boolean; 
 }
 
 // En avdelning i S1: som i dag före start, och med resultatstatus efter
-// (E4a: "Pågår", vinnaren och dina Bet, "Inställt"). Raden leder till S2,
-// som visar Resultat när loppet har startat.
+// (E4a: "Pågår", vinnaren och dina Bet, "Inställt"; E8: "Dolt" utan utfall). Raden
+// leder till S2.
 function LegLink({ race: r, gameType, href, row }: { race: RaceDto; gameType: string; href: string; row: LegRow }) {
   const counts = <Counts interesting={r.counts.interesting} spelbar={r.counts.spelbar} bet={r.counts.bet} />;
   const line1 = row.kind === "result" ? row.title : shortRaceName(r.name);
@@ -225,6 +227,7 @@ function LegLink({ race: r, gameType, href, row }: { race: RaceDto; gameType: st
   if (row.kind === "before") right = r.reviewed ? counts : <span className="todo">Ej genomgången</span>;
   else if (row.kind === "live") right = <span className="tag live">Pågår</span>;
   else if (row.kind === "cancelled") right = <span className="tag">Inställt</span>;
+  else if (row.kind === "hidden") right = <span className="tag">Dolt</span>;
   else if (row.bet)
     right = (
       <span className={`hit ${row.bet.hits ? "y" : "n"}`}>

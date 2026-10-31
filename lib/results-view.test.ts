@@ -85,3 +85,22 @@ describe("Nästa-kortet", () => {
     expect(nextCard("V85", waiting[3], waiting, "R", now, sum)).toMatchObject({ title: "Väntar på V85-5", text: "V85-5 och V85-6 saknar resultat." });
   });
 });
+
+describe("nextCard med resultatskyddet (E8 8.2 rad 10)", () => {
+  const T = Date.parse("2026-10-24T20:00:00Z");
+  const sum = { bet: { hits: 1, total: 1 }, spelbar: { hits: 0, total: 0 }, interesting: { hits: 0, total: 0 }, trollspot: { hits: 0, total: 0 } };
+  const r = (leg: number) => mkRace(leg, [], { startAt: "2026-10-24T15:00:00Z", resultAt: "2026-10-24T16:00:00Z", summary: sum });
+  it("nästa lopp dolt: ingen Träff", () => {
+    const c = nextCard("V85", r(1), [r(1), r(2)], "x", T, sum, [1]);
+    expect(c.title).toBe("V85-2 · resultat dolt");
+    expect(c.text).toBe("Tryck Visa resultat i loppet.");
+    expect(c.text).not.toMatch(/Träff/);
+  });
+  it("sista loppet, inte alla visade: ingen summering", () => {
+    const c = nextCard("V85", r(2), [r(1), r(2)], "x", T, sum, [2]);
+    expect(c.text).toBe("Alla lopp har resultat.");
+  });
+  it("sista loppet, alla visade: summeringen", () => {
+    expect(nextCard("V85", r(2), [r(1), r(2)], "x", T, sum, [1, 2]).text).toMatch(/Bet 1\/1/);
+  });
+});
