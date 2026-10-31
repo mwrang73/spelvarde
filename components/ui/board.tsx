@@ -82,9 +82,12 @@ export function BetBadge({ odds: o }: { odds: number | null | undefined }) {
 }
 
 // E8 Live: Bet som rak biljett med hack, "BET 2,40". Dagens BetBadge används kvar i övriga vyer.
-export function BetTicket({ odds: o }: { odds: number | null | undefined }) {
+// Med resultat (hit) blir biljetten grön med ✓ eller röd med ✗, aldrig bara färg.
+export function BetTicket({ odds: o, hit }: { odds: number | null | undefined; hit?: boolean }) {
+  const played = o != null ? `Bet, spelad till ${odds(o)}` : "Bet";
   return (
-    <span className="tk" role="img" aria-label={o != null ? `Bet, spelad till ${odds(o)}` : "Bet"}>
+    <span className={`tk${hit === undefined ? "" : hit ? " y" : " n"}`} role="img" aria-label={hit === undefined ? played : `${played}, ${hit ? "träff" : "miss"}`}>
+      {hit !== undefined && (hit ? <IconCheck /> : <IconX />)}
       BET{o != null && <b>{odds(o)}</b>}
     </span>
   );
@@ -95,16 +98,6 @@ export function RadPill({ hit }: { hit?: boolean }) {
   return (
     <span className={`rad${hit ? " hit" : ""}`} role="img" aria-label={hit ? "Med i din inlämnade rad, vann loppet" : "Med i din inlämnade rad"}>
       {hit ? "✓ RAD" : "RAD"}
-    </span>
-  );
-}
-
-// Träff eller Miss: ord och ikon, aldrig bara färg.
-export function Verdict({ hit }: { hit: boolean }) {
-  return (
-    <span className={`vd ${hit ? "y" : "n"}`} role="img" aria-label={hit ? "Träff" : "Miss"}>
-      {hit ? <IconCheck /> : <IconX />}
-      {hit ? "Träff" : "Miss"}
     </span>
   );
 }

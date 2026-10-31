@@ -96,9 +96,8 @@ Komponenterna ligger i `components/`. Namnen nedan är förslag. Utseendet för 
 
 ### Live (E8, `docs/specs/e8-live.md`)
 - **Fönster:** från 1100 px en kolumn per häst med alla 13 taggar under (`LiveColumns`). Under 1100 px en häst i taget (`LiveSingle`). Sidan är `position: fixed`, och bottenmenyn visas inte på Live.
-- `BetTicket`: Bet som rak biljett med hack, "BET 2,40". `--bet` och `--bet-ink`, tvärtom i inverterat huvud. Kolumnen har 3 px ram i `--bet` och inverterat huvud.
+- `BetTicket`: Bet som rak biljett med hack, "BET 2,40". `--bet` och `--bet-ink`, tvärtom i inverterat huvud. Kolumnen har 3 px ram i `--bet` och inverterat huvud. I resultatlistan visar biljetten utfallet: `--up` med ✓ vid träff, `--down` med ✗ vid miss.
 - `RadPill`: inlämnad rad som rund pill med "RAD" på mörk tavla, "✓ RAD" fylld när hästen vann. Kolumnen har en streckad list under huvudet. Bet och Rad kan gälla samtidigt.
-- `Verdict`: Träff och Miss med ord och ikon, aldrig bara färg.
 - **Resultatet är dolt tills det väljs**, per lopp på enheten (`revealStore`). Inget om utfallet visas eller läses upp för ett dolt lopp, varken i Live, Analys, Omgång eller hästkortet. Efteranalys och Statistik skyddas inte och har en varningsrad.
 - **Resultatlistan** ersätter kolumnerna när resultatet är visat: topp 3 med `--accent-soft` och 3 px `--fill` till vänster, sedan oplacerade och diskade. Raderna går inte att klicka på.
 

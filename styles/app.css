@@ -2014,10 +2014,9 @@ section.lg { margin-bottom: 14px; }
 .thead .tk b { font-size: 16px; }
 .lv .rad, .lres .rad { display: inline-flex; align-items: center; justify-content: center; height: 17px; padding: 0 6px; border-radius: 9px; background: var(--head); color: var(--head-ink); box-shadow: inset 0 0 0 1px var(--head-ink); font: 700 10.5px/1 var(--f-label); letter-spacing: .03em; white-space: nowrap; flex: none; }
 .lv .rad.hit { background: var(--head-ink); color: var(--head); box-shadow: none; }
-.vd { display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 5px; border-radius: 3px; font: 700 11.5px/1 var(--f-label); letter-spacing: .05em; text-transform: uppercase; flex: none; }
-.vd svg { width: 12px; height: 12px; }
-.vd.y { background: var(--up); color: var(--surface); }
-.vd.n { background: var(--down-soft); color: var(--down); box-shadow: inset 0 0 0 1.5px var(--down); }
+.tk svg { width: 12px; height: 12px; }
+.tk.y { background: var(--up); color: var(--surface); }
+.tk.n { background: var(--down); color: var(--surface); }
 .pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--head-down); margin-right: 5px; vertical-align: 1px; animation: sv-pulse 1.4s infinite; }
 @keyframes sv-pulse { 50% { opacity: .35; } }
 

@@ -4,7 +4,7 @@
 // resultat är visat. Raderna går inte att klicka på. Renderas bara för visat lopp.
 
 import { forwardRef } from "react";
-import { BetTicket, FlapNumber, RadPill, Verdict } from "@/components/ui/board";
+import { BetTicket, FlapNumber, RadPill } from "@/components/ui/board";
 import { legName } from "@/lib/game-type";
 import { BAD_TAGS, RESULT_LIST_HELP, type ResultRow } from "@/lib/live-view";
 
@@ -44,12 +44,7 @@ export const LiveResultList = forwardRef<HTMLHeadingElement, { gameType: string;
               {r.start.driver?.name ?? "Kusk saknas"}
             </span>
             <span className="lb" aria-hidden="true">
-              {r.bet && (
-                <>
-                  <BetTicket odds={r.bet.odds} />
-                  <Verdict hit={r.bet.hit} />
-                </>
-              )}
+              {r.bet && <BetTicket odds={r.bet.odds} hit={r.bet.hit} />}
             </span>
             <span className="lq" aria-hidden="true">
               {r.rad && <RadPill hit={r.rad.hit} />}

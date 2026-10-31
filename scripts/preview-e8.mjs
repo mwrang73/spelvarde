@@ -283,7 +283,7 @@ try {
         if (w === 1400 && theme === "light") console.log(list.join("\n"));
         check(list[0].startsWith("1:a, nummer 2") && list.some((t) => t.startsWith("Oplacerad")) && list[list.length - 1].startsWith("Diskad") && !list.some((t) => t.includes(`nummer 4,`)), `Resultatlista ${w} ${theme}: topp, oplacerad, diskad sist, struken saknas`);
         check(await page.locator(".lrw.top").count() === 3, `Resultatlista ${w} ${theme}: 3 topp-rader`);
-        check((await page.locator(".lres").textContent()).includes("Träff") && (await page.locator(".lres").textContent()).includes("Miss") && (await page.locator(".lres").textContent()).includes("✓ RAD"), `Resultatlista ${w} ${theme}: Träff, Miss och ✓ RAD`);
+        check((await page.locator(".lres .tk.y").count()) > 0 && (await page.locator(".lres .tk.n").count()) > 0 && (await page.locator(".lres").textContent()).includes("✓ RAD"), `Resultatlista ${w} ${theme}: grön och röd Bet-biljett och ✓ RAD`);
         const score = await page.locator(".score").first().textContent();
         check(score === "Raden: 1 rätt av 1 visade", `Summan: "${score}"`);
         await page.getByRole("button", { name: "Dölj resultat" }).first().click();
